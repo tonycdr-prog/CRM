@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown } from "lucide-react";
+import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
@@ -25,6 +25,15 @@ const POSITION_LABELS = [
 
 const STORAGE_KEY = "airflow-tests";
 
+const PRESET_NOTES = [
+  "Louvers fully open",
+  "No obstructions observed",
+  "Visual inspection passed",
+  "Damper operating normally",
+  "Clean condition",
+  "Minor dust accumulation",
+];
+
 export default function AirflowTester() {
   const [readings, setReadings] = useState<(number | "")[]>(Array(8).fill(""));
   const [testDate, setTestDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -37,6 +46,13 @@ export default function AirflowTester() {
   const [notes, setNotes] = useState<string>("");
   const [savedTests, setSavedTests] = useState<Test[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filterSystemType, setFilterSystemType] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "building" | "floor" | "average">("date-desc");
+  const [selectedTestIds, setSelectedTestIds] = useState<Set<string>>(new Set());
+  const [minVelocityThreshold, setMinVelocityThreshold] = useState<number>(2.5);
+  const [showPassFailConfig, setShowPassFailConfig] = useState<boolean>(false);
   
   const captureRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -210,6 +226,14 @@ export default function AirflowTester() {
     });
   };
 
+  const generateFilename = (test: Test, extension: string): string => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const building = test.building || 'unknown';
+    const floor = test.floorNumber || 'unknown';
+    const safe = (str: string) => str.replace(/[^a-zA-Z0-9-]/g, '_').slice(0, 20);
+    return `airflow_${safe(building)}_floor-${safe(floor)}_${timestamp}.${extension}`;
+  };
+
   const captureTestImage = async (element: HTMLElement): Promise<string> => {
     return await toPng(element, {
       quality: 1.0,
@@ -239,6 +263,8 @@ export default function AirflowTester() {
             test={{ ...test, readings: test.readings }}
             average={test.average}
             filledCount={filledCount}
+            passFailStatus={evaluatePassFail(test.average)}
+            threshold={minVelocityThreshold}
           />
         </div>
       );
@@ -248,7 +274,7 @@ export default function AirflowTester() {
     try {
       const dataUrl = await captureTestImage(tempDiv);
       const link = document.createElement('a');
-      link.download = `airflow-test-${test.testDate}-${test.floorNumber || 'floor'}-${Date.now()}.png`;
+      link.download = generateFilename(test, 'png');
       link.href = dataUrl;
       link.click();
       
@@ -272,10 +298,25 @@ export default function AirflowTester() {
   const handleExportCurrentImage = async () => {
     if (!captureRef.current) return;
     
+    const currentTest: Test = {
+      id: Date.now().toString(),
+      testDate,
+      building,
+      location,
+      floorNumber,
+      shaftId,
+      systemType,
+      testerName,
+      notes,
+      readings,
+      average: calculateAverage() || 0,
+      createdAt: Date.now(),
+    };
+    
     try {
       const dataUrl = await captureTestImage(captureRef.current);
       const link = document.createElement('a');
-      link.download = `airflow-test-${testDate}-${Date.now()}.png`;
+      link.download = generateFilename(currentTest, 'png');
       link.href = dataUrl;
       link.click();
       
@@ -326,6 +367,8 @@ export default function AirflowTester() {
               test={{ ...test, readings: test.readings }}
               average={test.average}
               filledCount={filledCount}
+              passFailStatus={evaluatePassFail(test.average)}
+              threshold={minVelocityThreshold}
             />
           </div>
         );
@@ -335,7 +378,8 @@ export default function AirflowTester() {
       try {
         const dataUrl = await captureTestImage(tempDiv);
         const base64Data = dataUrl.split(',')[1];
-        zip.file(`test-${i + 1}-${test.floorNumber || 'floor'}.png`, base64Data, { base64: true });
+        const filename = generateFilename(test, 'png').replace('.png', '');
+        zip.file(`${i + 1}_${filename}.png`, base64Data, { base64: true });
       } catch (error) {
         console.error('Error generating image for test:', test.id, error);
       } finally {
@@ -345,8 +389,9 @@ export default function AirflowTester() {
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const link = document.createElement('a');
-    link.download = `airflow-tests-${testDate}.zip`;
+    link.download = `airflow-tests_batch_${timestamp}.zip`;
     link.href = URL.createObjectURL(blob);
     link.click();
 
@@ -391,6 +436,8 @@ export default function AirflowTester() {
                 test={{ ...test, readings: test.readings }}
                 average={test.average}
                 filledCount={filledCount}
+                passFailStatus={evaluatePassFail(test.average)}
+                threshold={minVelocityThreshold}
               />
             </div>
           );
@@ -419,7 +466,8 @@ export default function AirflowTester() {
         return;
       }
 
-      pdf.save(`airflow-tests-${testDate}.pdf`);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      pdf.save(`airflow-tests_batch_${timestamp}.pdf`);
 
       toast({
         title: "PDF export complete",
@@ -434,6 +482,81 @@ export default function AirflowTester() {
       });
     }
   };
+
+  const evaluatePassFail = (average: number): "pass" | "fail" => {
+    return average >= minVelocityThreshold ? "pass" : "fail";
+  };
+
+  const handleAddPresetNote = (presetNote: string) => {
+    if (notes) {
+      setNotes(notes + "; " + presetNote);
+    } else {
+      setNotes(presetNote);
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedTestIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedTestIds.size === filteredAndSortedTests.length && filteredAndSortedTests.length > 0) {
+      setSelectedTestIds(new Set());
+    } else {
+      setSelectedTestIds(new Set(filteredAndSortedTests.map(t => t.id)));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedTestIds.size === 0) return;
+    
+    setSavedTests(prev => prev.filter(test => !selectedTestIds.has(test.id)));
+    setSelectedTestIds(new Set());
+    
+    toast({
+      title: "Tests deleted",
+      description: `${selectedTestIds.size} test${selectedTestIds.size !== 1 ? 's' : ''} removed from history`,
+    });
+  };
+
+  const filteredAndSortedTests = useMemo(() => {
+    let filtered = savedTests.filter(test => {
+      const matchesSearch = searchTerm === "" || 
+        test.building?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        test.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        test.floorNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        test.shaftId?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesSystemType = filterSystemType === "all" || test.systemType === filterSystemType;
+      
+      return matchesSearch && matchesSystemType;
+    });
+
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "date-desc":
+          return b.createdAt - a.createdAt;
+        case "date-asc":
+          return a.createdAt - b.createdAt;
+        case "building":
+          return (a.building || "").localeCompare(b.building || "");
+        case "floor":
+          return (a.floorNumber || "").localeCompare(b.floorNumber || "");
+        case "average":
+          return b.average - a.average;
+        default:
+          return 0;
+      }
+    });
+  }, [savedTests, searchTerm, filterSystemType, sortBy]);
 
   const average = calculateAverage();
   const filledCount = readings.filter((r): r is number => typeof r === "number" && !isNaN(r)).length;
@@ -584,6 +707,21 @@ export default function AirflowTester() {
                     onChange={(e) => setNotes(e.target.value)}
                     data-testid="input-notes"
                   />
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {PRESET_NOTES.map((presetNote, index) => (
+                      <Button
+                        key={index}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddPresetNote(presetNote)}
+                        data-testid={`button-preset-note-${index}`}
+                        className="text-xs"
+                      >
+                        {presetNote}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -627,15 +765,19 @@ export default function AirflowTester() {
               <TestVisualization 
                 test={{
                   testDate,
+                  building,
                   location,
                   floorNumber,
                   shaftId,
+                  systemType,
                   testerName,
                   notes,
                   readings,
                 }}
                 average={average}
                 filledCount={filledCount}
+                passFailStatus={average !== null ? evaluatePassFail(average) : null}
+                threshold={minVelocityThreshold}
               />
             </div>
 
@@ -681,12 +823,121 @@ export default function AirflowTester() {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            {savedTests.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Search & Filter</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search building, floor, shaft..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-9"
+                      data-testid="input-search"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        data-testid="button-clear-search"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="filter-system">System Type</Label>
+                    <select
+                      id="filter-system"
+                      value={filterSystemType}
+                      onChange={(e) => setFilterSystemType(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      data-testid="select-filter-system"
+                    >
+                      <option value="all">All Systems</option>
+                      <option value="push">Push</option>
+                      <option value="pull">Pull</option>
+                      <option value="push-pull">Push/Pull</option>
+                      <option value="">Not specified</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="sort-by">Sort By</Label>
+                    <select
+                      id="sort-by"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      data-testid="select-sort"
+                    >
+                      <option value="date-desc">Date (Newest First)</option>
+                      <option value="date-asc">Date (Oldest First)</option>
+                      <option value="building">Building (A-Z)</option>
+                      <option value="floor">Floor Number</option>
+                      <option value="average">Average Velocity</option>
+                    </select>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    Showing {filteredAndSortedTests.length} of {savedTests.length} test{savedTests.length !== 1 ? 's' : ''}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            
+            {savedTests.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">Pass/Fail Criteria</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPassFailConfig(!showPassFailConfig)}
+                      data-testid="button-toggle-passfail"
+                    >
+                      {showPassFailConfig ? "Hide" : "Show"}
+                    </Button>
+                  </div>
+                </CardHeader>
+                {showPassFailConfig && (
+                  <CardContent className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="min-velocity">Minimum Average Velocity (m/s)</Label>
+                      <Input
+                        id="min-velocity"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={minVelocityThreshold}
+                        onChange={(e) => setMinVelocityThreshold(parseFloat(e.target.value) || 0)}
+                        data-testid="input-min-velocity"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Tests with average velocity below this threshold will be marked as "Fail"
+                      </p>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            )}
+            
             <TestHistoryPanel 
-              tests={savedTests}
+              tests={filteredAndSortedTests}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onExportSingle={handleExportSingleImage}
+              selectedIds={selectedTestIds}
+              onToggleSelect={handleToggleSelect}
+              onToggleSelectAll={handleToggleSelectAll}
+              onDeleteSelected={handleDeleteSelected}
+              minVelocityThreshold={minVelocityThreshold}
             />
           </div>
         </div>

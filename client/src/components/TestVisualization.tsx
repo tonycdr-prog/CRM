@@ -1,4 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, XCircle } from "lucide-react";
 import damperImage from "@assets/generated_images/Vertical_smoke_damper_with_louvres_9fd2740b.png";
 
 interface TestVisualizationProps {
@@ -15,9 +17,15 @@ interface TestVisualizationProps {
   };
   average: number | null;
   filledCount: number;
+  passFailStatus?: "pass" | "fail" | null;
+  threshold?: number;
 }
 
-export default function TestVisualization({ test, average, filledCount }: TestVisualizationProps) {
+export default function TestVisualization({ test, average, filledCount, passFailStatus, threshold }: TestVisualizationProps) {
+  const validReadings = test.readings.filter((r): r is number => typeof r === "number" && !isNaN(r));
+  const minValue = validReadings.length > 0 ? Math.min(...validReadings) : null;
+  const maxValue = validReadings.length > 0 ? Math.max(...validReadings) : null;
+
   return (
     <div className="space-y-6">
       <div className="text-center space-y-1">
@@ -73,16 +81,60 @@ export default function TestVisualization({ test, average, filledCount }: TestVi
 
       {average !== null && (
         <Card className="border-2 border-primary/20 bg-primary/5">
-          <CardContent className="pt-6 text-center">
-            <p className="text-sm text-muted-foreground mb-2">
-              Average Airflow Velocity
-            </p>
-            <p className="text-4xl font-bold font-mono text-primary" data-testid="text-average">
-              {average.toFixed(2)} <span className="text-2xl">m/s</span>
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Calculated from {filledCount} measurement{filledCount !== 1 ? "s" : ""}
-            </p>
+          <CardContent className="pt-6 text-center space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">
+                Average Airflow Velocity
+              </p>
+              <p className="text-4xl font-bold font-mono text-primary" data-testid="text-average">
+                {average.toFixed(2)} <span className="text-2xl">m/s</span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Calculated from {filledCount} measurement{filledCount !== 1 ? "s" : ""}
+              </p>
+            </div>
+            
+            {minValue !== null && maxValue !== null && (
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-primary/10">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Minimum</p>
+                  <p className="text-xl font-semibold font-mono text-card-foreground" data-testid="text-min">
+                    {minValue.toFixed(2)} <span className="text-sm">m/s</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Maximum</p>
+                  <p className="text-xl font-semibold font-mono text-card-foreground" data-testid="text-max">
+                    {maxValue.toFixed(2)} <span className="text-sm">m/s</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {passFailStatus && threshold !== undefined && (
+              <div className="pt-4 border-t border-primary/10">
+                <div className="flex items-center justify-center gap-2">
+                  {passFailStatus === "pass" ? (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <Badge className="bg-green-600 hover:bg-green-700" data-testid="badge-pass">
+                        PASS
+                      </Badge>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-5 h-5 text-red-600" />
+                      <Badge className="bg-red-600 hover:bg-red-700" data-testid="badge-fail">
+                        FAIL
+                      </Badge>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Threshold: {threshold.toFixed(2)} m/s
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

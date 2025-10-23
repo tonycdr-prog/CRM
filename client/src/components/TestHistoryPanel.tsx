@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Trash2, Edit, Download } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FileText, Trash2, Edit, Download, CheckCircle2, XCircle } from "lucide-react";
 import type { Test } from "@shared/schema";
 
 interface TestHistoryPanelProps {
@@ -10,9 +11,27 @@ interface TestHistoryPanelProps {
   onEdit: (test: Test) => void;
   onDelete: (id: string) => void;
   onExportSingle: (test: Test) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
+  onDeleteSelected?: () => void;
+  minVelocityThreshold?: number;
 }
 
-export default function TestHistoryPanel({ tests, onEdit, onDelete, onExportSingle }: TestHistoryPanelProps) {
+export default function TestHistoryPanel({ 
+  tests, 
+  onEdit, 
+  onDelete, 
+  onExportSingle,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  onDeleteSelected,
+  minVelocityThreshold
+}: TestHistoryPanelProps) {
+  const hasSelection = selectedIds && selectedIds.size > 0;
+  const allSelected = selectedIds && tests.length > 0 && tests.every(test => selectedIds.has(test.id));
+
   if (tests.length === 0) {
     return (
       <Card>
@@ -33,12 +52,35 @@ export default function TestHistoryPanel({ tests, onEdit, onDelete, onExportSing
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center justify-between">
-          <span>Test History</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {onToggleSelectAll && (
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={() => onToggleSelectAll()}
+                data-testid="checkbox-select-all"
+              />
+            )}
+            <CardTitle className="text-lg">Test History</CardTitle>
+          </div>
           <Badge variant="secondary" data-testid="badge-test-count">
             {tests.length} test{tests.length !== 1 ? "s" : ""}
           </Badge>
-        </CardTitle>
+        </div>
+        {hasSelection && onDeleteSelected && (
+          <div className="mt-3">
+            <Button
+              onClick={onDeleteSelected}
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              data-testid="button-delete-selected"
+            >
+              <Trash2 className="w-3 h-3 mr-2" />
+              Delete {selectedIds.size} Selected
+            </Button>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[600px] pr-4">
@@ -46,19 +88,44 @@ export default function TestHistoryPanel({ tests, onEdit, onDelete, onExportSing
             {tests.map((test) => (
               <Card key={test.id} className="hover-elevate">
                 <CardContent className="p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">
-                        {test.building || "Unknown Building"}
-                        {test.floorNumber && ` - ${test.floorNumber}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {test.testDate}
-                      </p>
+                  <div className="flex items-start gap-2">
+                    {onToggleSelect && (
+                      <Checkbox
+                        checked={selectedIds?.has(test.id) || false}
+                        onCheckedChange={() => onToggleSelect(test.id)}
+                        data-testid={`checkbox-${test.id}`}
+                        className="mt-1"
+                      />
+                    )}
+                    <div className="flex items-start justify-between gap-2 flex-1">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">
+                          {test.building || "Unknown Building"}
+                          {test.floorNumber && ` - ${test.floorNumber}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {test.testDate}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <Badge className="shrink-0">
+                          {test.average.toFixed(2)} m/s
+                        </Badge>
+                        {minVelocityThreshold !== undefined && (
+                          test.average >= minVelocityThreshold ? (
+                            <Badge className="bg-green-600 hover:bg-green-700 text-xs">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Pass
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-red-600 hover:bg-red-700 text-xs">
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Fail
+                            </Badge>
+                          )
+                        )}
+                      </div>
                     </div>
-                    <Badge className="shrink-0">
-                      {test.average.toFixed(2)} m/s
-                    </Badge>
                   </div>
                   
                   <div className="space-y-0.5">
