@@ -215,6 +215,7 @@ export default function AirflowTester() {
       quality: 1.0,
       pixelRatio: 2,
       backgroundColor: '#ffffff',
+      skipFonts: true,
     });
   };
 
@@ -365,53 +366,73 @@ export default function AirflowTester() {
       return;
     }
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const { createRoot } = await import('react-dom/client');
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const { createRoot } = await import('react-dom/client');
+      let successCount = 0;
 
-    for (let i = 0; i < savedTests.length; i++) {
-      const test = savedTests[i];
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.width = '800px';
-      tempDiv.className = 'bg-background p-6 rounded-lg border-2 border-border';
-      document.body.appendChild(tempDiv);
+      for (let i = 0; i < savedTests.length; i++) {
+        const test = savedTests[i];
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.width = '800px';
+        tempDiv.className = 'bg-background p-6 rounded-lg border-2 border-border';
+        document.body.appendChild(tempDiv);
 
-      const root = createRoot(tempDiv);
-      
-      const filledCount = test.readings.filter((r): r is number => typeof r === "number" && !isNaN(r)).length;
-      
-      await new Promise<void>((resolve) => {
-        root.render(
-          <div>
-            <TestVisualization 
-              test={{ ...test, readings: test.readings }}
-              average={test.average}
-              filledCount={filledCount}
-            />
-          </div>
-        );
-        setTimeout(resolve, 500);
-      });
+        const root = createRoot(tempDiv);
+        
+        const filledCount = test.readings.filter((r): r is number => typeof r === "number" && !isNaN(r)).length;
+        
+        await new Promise<void>((resolve) => {
+          root.render(
+            <div>
+              <TestVisualization 
+                test={{ ...test, readings: test.readings }}
+                average={test.average}
+                filledCount={filledCount}
+              />
+            </div>
+          );
+          setTimeout(resolve, 500);
+        });
 
-      try {
-        const dataUrl = await captureTestImage(tempDiv);
-        if (i > 0) pdf.addPage();
-        pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 0);
-      } catch (error) {
-        console.error('Error generating PDF page for test:', test.id, error);
-      } finally {
-        root.unmount();
-        document.body.removeChild(tempDiv);
+        try {
+          const dataUrl = await captureTestImage(tempDiv);
+          if (successCount > 0) pdf.addPage();
+          pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 0);
+          successCount++;
+        } catch (error) {
+          console.error('Error generating PDF page for test:', test.id, error);
+        } finally {
+          root.unmount();
+          document.body.removeChild(tempDiv);
+        }
       }
+
+      if (successCount === 0) {
+        toast({
+          title: "Export failed",
+          description: "Could not generate any PDF pages",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      pdf.save(`airflow-tests-${testDate}.pdf`);
+
+      toast({
+        title: "PDF export complete",
+        description: `${successCount} test${successCount !== 1 ? 's' : ''} exported to PDF`,
+      });
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast({
+        title: "Export failed",
+        description: "Could not generate PDF",
+        variant: "destructive",
+      });
     }
-
-    pdf.save(`airflow-tests-${testDate}.pdf`);
-
-    toast({
-      title: "PDF export complete",
-      description: `${savedTests.length} tests exported to PDF`,
-    });
   };
 
   const average = calculateAverage();
