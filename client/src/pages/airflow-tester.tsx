@@ -59,12 +59,14 @@ export default function AirflowTester() {
               });
             }
             
+            const isLegacyTest = !('building' in test);
+            
             const validatedTest = {
               ...test,
               readings: normalizedReadings,
-              building: test.building || test.location || "",
-              location: test.location && test.building ? test.location : "",
-              systemType: test.systemType || "",
+              building: isLegacyTest ? (test.location || "") : (test.building ?? ""),
+              location: isLegacyTest ? "" : (test.location ?? ""),
+              systemType: test.systemType ?? "",
             };
             
             const parsedTest = testSchema.parse(validatedTest);
