@@ -17,12 +17,16 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+export const systemTypeEnum = z.enum(["push", "pull", "push-pull", ""]);
+
 export const testSchema = z.object({
   id: z.string(),
   testDate: z.string(),
+  building: z.string(),
   location: z.string(),
   floorNumber: z.string(),
   shaftId: z.string(),
+  systemType: systemTypeEnum,
   testerName: z.string(),
   notes: z.string(),
   readings: z.array(z.union([z.number(), z.literal("")])).length(8),

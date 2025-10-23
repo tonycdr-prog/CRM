@@ -28,9 +28,11 @@ const STORAGE_KEY = "airflow-tests";
 export default function AirflowTester() {
   const [readings, setReadings] = useState<(number | "")[]>(Array(8).fill(""));
   const [testDate, setTestDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [building, setBuilding] = useState<string>("");
   const [location, setLocation] = useState<string>("");
   const [floorNumber, setFloorNumber] = useState<string>("");
   const [shaftId, setShaftId] = useState<string>("");
+  const [systemType, setSystemType] = useState<"push" | "pull" | "push-pull" | "">("");
   const [testerName, setTesterName] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [savedTests, setSavedTests] = useState<Test[]>([]);
@@ -60,6 +62,9 @@ export default function AirflowTester() {
             const validatedTest = {
               ...test,
               readings: normalizedReadings,
+              building: test.building || test.location || "",
+              location: test.location && test.building ? test.location : "",
+              systemType: test.systemType || "",
             };
             
             const parsedTest = testSchema.parse(validatedTest);
@@ -100,9 +105,11 @@ export default function AirflowTester() {
 
   const handleClear = () => {
     setReadings(Array(8).fill(""));
+    setBuilding("");
     setLocation("");
     setFloorNumber("");
     setShaftId("");
+    setSystemType("");
     setTesterName("");
     setNotes("");
     setTestDate(new Date().toISOString().split('T')[0]);
@@ -125,9 +132,11 @@ export default function AirflowTester() {
     const test: Test = {
       id: editingId || `test-${Date.now()}`,
       testDate,
+      building,
       location,
       floorNumber,
       shaftId,
+      systemType,
       testerName,
       notes,
       readings: normalizedReadings,
@@ -170,9 +179,11 @@ export default function AirflowTester() {
 
   const handleEdit = (test: Test) => {
     setTestDate(test.testDate);
+    setBuilding(test.building);
     setLocation(test.location);
     setFloorNumber(test.floorNumber);
     setShaftId(test.shaftId);
+    setSystemType(test.systemType);
     setTesterName(test.testerName);
     setNotes(test.notes);
     setReadings([...test.readings]);
@@ -468,16 +479,29 @@ export default function AirflowTester() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="location">Building/Location</Label>
+                    <Label htmlFor="building">Building</Label>
+                    <Input
+                      id="building"
+                      type="text"
+                      placeholder="e.g., Building A"
+                      value={building}
+                      onChange={(e) => setBuilding(e.target.value)}
+                      data-testid="input-building"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
                     <Input
                       id="location"
                       type="text"
-                      placeholder="e.g., Building A"
+                      placeholder="e.g., North Wing"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       data-testid="input-location"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="floor">Floor Number</Label>
                     <Input
@@ -489,8 +513,6 @@ export default function AirflowTester() {
                       data-testid="input-floor"
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="shaft-id">Shaft/Damper ID</Label>
                     <Input
@@ -501,6 +523,21 @@ export default function AirflowTester() {
                       onChange={(e) => setShaftId(e.target.value)}
                       data-testid="input-shaft-id"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="system-type">System Type</Label>
+                    <select
+                      id="system-type"
+                      value={systemType}
+                      onChange={(e) => setSystemType(e.target.value as "" | "push" | "pull" | "push-pull")}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      data-testid="select-system-type"
+                    >
+                      <option value="">Not specified</option>
+                      <option value="push">Push</option>
+                      <option value="pull">Pull</option>
+                      <option value="push-pull">Push/Pull</option>
+                    </select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tester">Tester Name</Label>
