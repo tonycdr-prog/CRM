@@ -6,16 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, RotateCcw, Gauge } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useToast } from "@/hooks/use-toast";
-import damperImage from "@assets/generated_images/Smoke_control_damper_measurement_diagram_c76041f2.png";
+import damperImage from "@assets/generated_images/Vertical_smoke_damper_with_louvres_9fd2740b.png";
 
 const POSITION_LABELS = [
   "Position 1 - Top Left",
-  "Position 2 - Top Center Left", 
-  "Position 3 - Top Center Right",
-  "Position 4 - Top Right",
-  "Position 5 - Bottom Left",
-  "Position 6 - Bottom Center Left",
-  "Position 7 - Bottom Center Right",
+  "Position 2 - Top Right", 
+  "Position 3 - Second Left",
+  "Position 4 - Second Right",
+  "Position 5 - Third Left",
+  "Position 6 - Third Right",
+  "Position 7 - Bottom Left",
   "Position 8 - Bottom Right",
 ];
 
@@ -226,14 +226,14 @@ export default function AirflowTester() {
               </div>
             </div>
 
-            <div className="relative w-full max-w-3xl mx-auto">
+            <div className="relative w-full max-w-2xl mx-auto">
               <img
                 src={damperImage}
                 alt="Smoke control damper diagram"
                 className="w-full h-auto opacity-20"
               />
               
-              <div className="absolute inset-0 grid grid-cols-4 grid-rows-2 gap-4 p-8">
+              <div className="absolute inset-0 grid grid-cols-2 grid-rows-4 gap-4 p-8">
                 {readings.map((reading, index) => {
                   const hasValue = typeof reading === "number" && !isNaN(reading);
                   return (
