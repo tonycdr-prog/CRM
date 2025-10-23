@@ -4,9 +4,11 @@ import damperImage from "@assets/generated_images/Vertical_smoke_damper_with_lou
 interface TestVisualizationProps {
   test: {
     testDate?: string;
+    building?: string;
     location?: string;
     floorNumber?: string;
     shaftId?: string;
+    systemType?: "" | "push" | "pull" | "push-pull";
     testerName?: string;
     notes?: string;
     readings: (number | "")[];
@@ -22,9 +24,11 @@ export default function TestVisualization({ test, average, filledCount }: TestVi
         <h2 className="text-xl font-semibold mb-2">Smoke Control Damper Test Results</h2>
         <div className="text-sm text-muted-foreground space-y-0.5">
           <p className="font-medium">Date: {test.testDate || new Date().toISOString().split('T')[0]}</p>
+          {test.building && <p>Building: {test.building}</p>}
           {test.location && <p>Location: {test.location}</p>}
           {test.floorNumber && <p>Floor: {test.floorNumber}</p>}
           {test.shaftId && <p>Shaft/Damper ID: {test.shaftId}</p>}
+          {test.systemType && <p>System Type: {test.systemType === "push-pull" ? "Push/Pull" : test.systemType.charAt(0).toUpperCase() + test.systemType.slice(1)}</p>}
           {test.testerName && <p>Tested by: {test.testerName}</p>}
           {test.notes && <p className="italic mt-2">Notes: {test.notes}</p>}
         </div>

@@ -49,7 +49,7 @@ export default function TestHistoryPanel({ tests, onEdit, onDelete, onExportSing
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate">
-                        {test.location || "Unknown Location"}
+                        {test.building || "Unknown Building"}
                         {test.floorNumber && ` - ${test.floorNumber}`}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -61,11 +61,23 @@ export default function TestHistoryPanel({ tests, onEdit, onDelete, onExportSing
                     </Badge>
                   </div>
                   
-                  {test.shaftId && (
-                    <p className="text-xs text-muted-foreground">
-                      ID: {test.shaftId}
-                    </p>
-                  )}
+                  <div className="space-y-0.5">
+                    {test.location && (
+                      <p className="text-xs text-muted-foreground">
+                        Location: {test.location}
+                      </p>
+                    )}
+                    {test.shaftId && (
+                      <p className="text-xs text-muted-foreground">
+                        Shaft ID: {test.shaftId}
+                      </p>
+                    )}
+                    {test.systemType && (
+                      <p className="text-xs text-muted-foreground">
+                        System: {test.systemType === "push-pull" ? "Push/Pull" : test.systemType.charAt(0).toUpperCase() + test.systemType.slice(1)}
+                      </p>
+                    )}
+                  </div>
                   
                   <div className="flex gap-2 pt-2">
                     <Button
