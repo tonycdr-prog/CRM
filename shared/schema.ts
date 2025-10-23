@@ -25,7 +25,7 @@ export const testSchema = z.object({
   shaftId: z.string(),
   testerName: z.string(),
   notes: z.string(),
-  readings: z.array(z.number()),
+  readings: z.array(z.union([z.number(), z.literal("")])).length(8),
   average: z.number(),
   createdAt: z.number(),
 });

@@ -1,9 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import damperImage from "@assets/generated_images/Vertical_smoke_damper_with_louvres_9fd2740b.png";
-import type { Test } from "@shared/schema";
 
 interface TestVisualizationProps {
-  test: Partial<Test> & { readings: (number | "")[] };
+  test: {
+    testDate?: string;
+    location?: string;
+    floorNumber?: string;
+    shaftId?: string;
+    testerName?: string;
+    notes?: string;
+    readings: (number | "")[];
+  };
   average: number | null;
   filledCount: number;
 }
