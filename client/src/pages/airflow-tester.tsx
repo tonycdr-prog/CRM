@@ -23,7 +23,10 @@ export default function AirflowTester() {
   const [readings, setReadings] = useState<(number | "")[]>(Array(8).fill(""));
   const [testDate, setTestDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [location, setLocation] = useState<string>("");
+  const [floorNumber, setFloorNumber] = useState<string>("");
+  const [shaftId, setShaftId] = useState<string>("");
   const [testerName, setTesterName] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
   const captureRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -43,7 +46,10 @@ export default function AirflowTester() {
   const handleClear = () => {
     setReadings(Array(8).fill(""));
     setLocation("");
+    setFloorNumber("");
+    setShaftId("");
     setTesterName("");
+    setNotes("");
     setTestDate(new Date().toISOString().split('T')[0]);
   };
 
@@ -98,37 +104,74 @@ export default function AirflowTester() {
           <CardHeader>
             <CardTitle className="text-lg">Test Information</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="test-date">Test Date</Label>
-              <Input
-                id="test-date"
-                type="date"
-                value={testDate}
-                onChange={(e) => setTestDate(e.target.value)}
-                data-testid="input-date"
-              />
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="test-date">Test Date</Label>
+                <Input
+                  id="test-date"
+                  type="date"
+                  value={testDate}
+                  onChange={(e) => setTestDate(e.target.value)}
+                  data-testid="input-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Building/Location</Label>
+                <Input
+                  id="location"
+                  type="text"
+                  placeholder="e.g., Building A"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  data-testid="input-location"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="floor">Floor Number</Label>
+                <Input
+                  id="floor"
+                  type="text"
+                  placeholder="e.g., 5th Floor"
+                  value={floorNumber}
+                  onChange={(e) => setFloorNumber(e.target.value)}
+                  data-testid="input-floor"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="shaft-id">Shaft/Damper ID</Label>
+                <Input
+                  id="shaft-id"
+                  type="text"
+                  placeholder="e.g., SCD-03"
+                  value={shaftId}
+                  onChange={(e) => setShaftId(e.target.value)}
+                  data-testid="input-shaft-id"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tester">Tester Name</Label>
+                <Input
+                  id="tester"
+                  type="text"
+                  placeholder="Your name"
+                  value={testerName}
+                  onChange={(e) => setTesterName(e.target.value)}
+                  data-testid="input-tester"
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="notes">Notes (Optional)</Label>
               <Input
-                id="location"
+                id="notes"
                 type="text"
-                placeholder="e.g., Building A - Shaft 3"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                data-testid="input-location"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tester">Tester Name</Label>
-              <Input
-                id="tester"
-                type="text"
-                placeholder="Your name"
-                value={testerName}
-                onChange={(e) => setTesterName(e.target.value)}
-                data-testid="input-tester"
+                placeholder="Any observations or special conditions"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                data-testid="input-notes"
               />
             </div>
           </CardContent>
@@ -171,15 +214,16 @@ export default function AirflowTester() {
 
         <div ref={captureRef} className="bg-background p-6 rounded-lg border-2 border-border">
           <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Smoke Control Damper</h2>
-              {location && (
-                <p className="text-sm text-muted-foreground">Location: {location}</p>
-              )}
-              {testerName && (
-                <p className="text-sm text-muted-foreground">Tester: {testerName}</p>
-              )}
-              <p className="text-sm text-muted-foreground">Date: {testDate}</p>
+            <div className="text-center space-y-1">
+              <h2 className="text-xl font-semibold mb-2">Smoke Control Damper Test Results</h2>
+              <div className="text-sm text-muted-foreground space-y-0.5">
+                <p className="font-medium">Date: {testDate}</p>
+                {location && <p>Location: {location}</p>}
+                {floorNumber && <p>Floor: {floorNumber}</p>}
+                {shaftId && <p>Shaft/Damper ID: {shaftId}</p>}
+                {testerName && <p>Tested by: {testerName}</p>}
+                {notes && <p className="italic mt-2">Notes: {notes}</p>}
+              </div>
             </div>
 
             <div className="relative w-full max-w-3xl mx-auto">
