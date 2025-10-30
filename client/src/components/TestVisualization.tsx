@@ -17,6 +17,7 @@ interface TestVisualizationProps {
     damperWidth?: number;
     damperHeight?: number;
     freeArea?: number;
+    gridSize?: number;
   };
   average: number | null;
   filledCount: number;
@@ -28,6 +29,15 @@ export default function TestVisualization({ test, average, filledCount, passFail
   const validReadings = test.readings.filter((r): r is number => typeof r === "number" && !isNaN(r));
   const minValue = validReadings.length > 0 ? Math.min(...validReadings) : null;
   const maxValue = validReadings.length > 0 ? Math.max(...validReadings) : null;
+  
+  const gridSize = test.gridSize || 
+    (test.readings.length === 25 ? 5 : 
+     test.readings.length === 36 ? 6 : 
+     test.readings.length === 49 ? 7 : 
+     Math.ceil(Math.sqrt(test.readings.length)));
+
+  const gridColsClass = `grid-cols-${gridSize}`;
+  const gridRowsClass = `grid-rows-${gridSize}`;
 
   return (
     <div className="space-y-6">
@@ -44,44 +54,47 @@ export default function TestVisualization({ test, average, filledCount, passFail
           {test.damperWidth && test.damperHeight && (
             <p>Damper Size: {test.damperWidth} × {test.damperHeight} mm {test.freeArea && `(${test.freeArea.toFixed(4)} m²)`}</p>
           )}
+          <p className="font-medium">Test Grid: {gridSize}×{gridSize} ({test.readings.length} points)</p>
           {test.notes && <p className="italic mt-2">Notes: {test.notes}</p>}
         </div>
       </div>
 
-      <div className="relative w-full max-w-2xl mx-auto">
-        <img
-          src={damperImage}
-          alt="Smoke control damper diagram"
-          className="w-full h-auto opacity-20"
-        />
-        
-        <div className="absolute inset-0 grid grid-cols-2 grid-rows-4 gap-4 p-8">
-          {test.readings.map((reading, index) => {
-            const hasValue = typeof reading === "number" && !isNaN(reading);
-            return (
-              <div
-                key={index}
-                className="flex flex-col items-center justify-center"
-              >
+      <div className="relative w-full max-w-3xl mx-auto">
+        <div className="relative aspect-square bg-muted/20 rounded-lg border-2 border-muted p-6">
+          <div 
+            className="h-full w-full grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+              gridTemplateRows: `repeat(${gridSize}, 1fr)`
+            }}
+          >
+            {test.readings.map((reading, index) => {
+              const hasValue = typeof reading === "number" && !isNaN(reading);
+              return (
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-semibold border-2 ${
-                    hasValue
-                      ? "bg-primary text-primary-foreground border-primary-border"
-                      : "bg-muted text-muted-foreground border-muted-border"
-                  }`}
+                  key={index}
+                  className="flex flex-col items-center justify-center gap-1"
                 >
-                  {index + 1}
-                </div>
-                {hasValue && (
-                  <div className="mt-2 bg-card border border-card-border rounded px-3 py-1">
-                    <p className="text-sm font-mono font-semibold text-card-foreground">
-                      {reading.toFixed(2)} m/s
-                    </p>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold border-2 ${
+                      hasValue
+                        ? "bg-primary text-primary-foreground border-primary-border"
+                        : "bg-muted text-muted-foreground border-muted-border"
+                    }`}
+                  >
+                    {index + 1}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                  {hasValue && (
+                    <div className="bg-card border border-card-border rounded px-1 py-0.5">
+                      <p className="text-xs font-mono font-semibold text-card-foreground">
+                        {reading.toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

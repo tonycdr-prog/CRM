@@ -962,6 +962,7 @@ export default function AirflowTester() {
                   testerName,
                   notes,
                   readings,
+                  gridSize,
                   damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
                   damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
                   freeArea: calculateFreeArea(),
