@@ -1,0 +1,18 @@
+UK Regulations for Airflow Measurement in Smoke Control Dampers
+In the UK, smoke control dampers form part of mechanical smoke ventilation systems (e.g., for high-rise residential buildings or large commercial spaces) and must comply with Building Regulations 2010 (as amended), primarily under Approved Document B (Fire Safety) for smoke control design and Approved Document F (Ventilation) for system commissioning and airflow verification. These reference industry standards like BS EN 12101-8:2011+A1:2017 (Smoke and Heat Control Systems – Smoke Dampers) for performance and BSRIA BG 49/2024 (Commissioning Air Systems) for testing procedures.
+Key Requirements for Airflow Measurement Points
+•  Total Measurement Points (Grid Sections): The damper face is divided into a grid of equal-area sections, with velocity readings taken at the center of each to calculate average velocity and flow rate (Q = average velocity × area). Per BSRIA BG 49/2024 (aligned with CIBSE Commissioning Code A: 2024), a minimum of 25 points is required for rectangular dampers/ducts under 30 inches (760 mm) per side:
+	•  5 × 5 grid for smaller faces (≤ 24 inches/610 mm).
+	•  Scaling up: 6 × 6 = 36 points (24–36 inches/610–914 mm); 7 × 7 = 49 points (>36 inches/914 mm).
+•  This ensures representative sampling for smoke extraction performance, with ±10% tolerance on design flow rates.
+Traverse Lines and Points per Line (“Deviations”)
+•  Testing follows the Log-Tchebycheff method (logarithmic spacing for non-uniform flow profiles), as detailed in BSRIA BG 49/2024 and BS EN 1752:1997 (Airflow Measurement in Ducts).
+•  Number of Traverse Lines: 5 (minimum) across the damper width, perpendicular to flow.
+•  Points per Traverse Line: 5 points (typically at 0.05, 0.2, 0.5, 0.8, and 0.95 of the duct height/depth for logarithmic accuracy).
+•  Total: 5 lines × 5 points = 25 minimum, matching the grid approach.
+Commissioning and Verification
+•  Approved Document F (2021 edition, Vol. 2: Non-Dwellings) requires airflow testing during commissioning (Regulation 42) using calibrated instruments (e.g., anemometers per BS EN 13141-1). Results must be recorded on a commissioning sheet and submitted to building control.
+•  For smoke control, Approved Document B (Vol. 2, Section 11) mandates annual functional testing, including airflow across dampers to confirm pressure differentials (e.g., 25 Pa minimum for stairwell pressurization).
+•  BS EN 12101-8 tests damper integrity under airflow (up to 10 m/s velocity, 1 kPa pressure), but in-situ measurement follows BSRIA/CIBSE methods.
+•  Non-compliance risks building control rejection; use certified engineers (e.g., via BESA or CIBSE).
+These align with post-Grenfell updates (e.g., Building Safety Act 2022) emphasizing robust smoke control. For site-specific advice, consult a registered commissioning specialist.

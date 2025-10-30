@@ -34,8 +34,44 @@ const PRESET_NOTES = [
   "Minor dust accumulation",
 ];
 
+// UK Regulations: Calculate required grid size based on damper dimensions
+// Per BS EN 12101-8 and BSRIA BG 49/2024
+const calculateRequiredGridSize = (width: number | "", height: number | ""): number => {
+  if (typeof width !== "number" || typeof height !== "number") {
+    return 5; // Default to 5x5
+  }
+  
+  const maxDimension = Math.max(width, height);
+  
+  // UK regulations specify:
+  // ≤ 610mm (24"): 5x5 = 25 points
+  // 610-914mm (24-36"): 6x6 = 36 points
+  // > 914mm (36"): 7x7 = 49 points
+  
+  if (maxDimension <= 610) {
+    return 5;
+  } else if (maxDimension <= 914) {
+    return 6;
+  } else {
+    return 7;
+  }
+};
+
+const generatePositionLabels = (gridSize: number): string[] => {
+  const labels: string[] = [];
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      labels.push(`Row ${row + 1}, Col ${col + 1}`);
+    }
+  }
+  return labels;
+};
+
 export default function AirflowTester() {
-  const [readings, setReadings] = useState<(number | "")[]>(Array(8).fill(""));
+  const [damperWidth, setDamperWidth] = useState<number | "">("");
+  const [damperHeight, setDamperHeight] = useState<number | "">("");
+  const [gridSize, setGridSize] = useState<number>(5);
+  const [readings, setReadings] = useState<(number | "")[]>(Array(25).fill(""));
   const [testDate, setTestDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [building, setBuilding] = useState<string>("");
   const [location, setLocation] = useState<string>("");
@@ -44,8 +80,6 @@ export default function AirflowTester() {
   const [systemType, setSystemType] = useState<"push" | "pull" | "push-pull" | "">("");
   const [testerName, setTesterName] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
-  const [damperWidth, setDamperWidth] = useState<number | "">("");
-  const [damperHeight, setDamperHeight] = useState<number | "">("");
   const [savedTests, setSavedTests] = useState<Test[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -59,6 +93,34 @@ export default function AirflowTester() {
   const captureRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Update grid size and readings array when damper dimensions change
+  useEffect(() => {
+    const newGridSize = calculateRequiredGridSize(damperWidth, damperHeight);
+    const requiredPoints = newGridSize * newGridSize;
+    
+    if (newGridSize !== gridSize) {
+      setGridSize(newGridSize);
+      
+      // Preserve existing readings when resizing
+      const currentReadings = [...readings];
+      const newReadings = Array(requiredPoints).fill("");
+      
+      // Copy over existing readings up to the new size
+      for (let i = 0; i < Math.min(currentReadings.length, requiredPoints); i++) {
+        newReadings[i] = currentReadings[i];
+      }
+      
+      setReadings(newReadings);
+      
+      if (typeof damperWidth === "number" && typeof damperHeight === "number") {
+        toast({
+          title: "Grid size updated",
+          description: `UK regulations require a ${newGridSize}×${newGridSize} grid (${requiredPoints} points) for this damper size`,
+        });
+      }
+    }
+  }, [damperWidth, damperHeight]);
+
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -68,10 +130,16 @@ export default function AirflowTester() {
         
         for (const test of rawTests) {
           try {
-            const normalizedReadings: (number | "")[] = Array(8).fill("");
+            // Determine expected array size (legacy 8-point or new grid-based)
+            let expectedSize = test.readings?.length || 25;
+            if (![8, 25, 36, 49].includes(expectedSize)) {
+              expectedSize = 25; // Default to 5x5 grid
+            }
+            
+            const normalizedReadings: (number | "")[] = Array(expectedSize).fill("");
             if (Array.isArray(test.readings)) {
               test.readings.forEach((r: any, i: number) => {
-                if (i < 8 && (typeof r === "number" || r === "")) {
+                if (i < expectedSize && (typeof r === "number" || r === "")) {
                   normalizedReadings[i] = r;
                 }
               });
@@ -82,6 +150,7 @@ export default function AirflowTester() {
             const validatedTest = {
               ...test,
               readings: normalizedReadings,
+              gridSize: test.gridSize || Math.sqrt(expectedSize),
               building: isLegacyTest ? (test.location || "") : (test.building ?? ""),
               location: isLegacyTest ? "" : (test.location ?? ""),
               systemType: test.systemType ?? "",
@@ -131,7 +200,8 @@ export default function AirflowTester() {
   };
 
   const handleClear = () => {
-    setReadings(Array(8).fill(""));
+    const requiredPoints = gridSize * gridSize;
+    setReadings(Array(requiredPoints).fill(""));
     setBuilding("");
     setLocation("");
     setFloorNumber("");
@@ -141,6 +211,7 @@ export default function AirflowTester() {
     setNotes("");
     setDamperWidth("");
     setDamperHeight("");
+    setGridSize(5);
     setTestDate(new Date().toISOString().split('T')[0]);
     setEditingId(null);
   };
@@ -156,7 +227,6 @@ export default function AirflowTester() {
       return;
     }
     
-    const normalizedReadings: (number | "")[] = Array.from({ length: 8 }, (_, i) => readings[i] ?? "");
     const freeArea = calculateFreeArea();
     
     const test: Test = {
@@ -169,7 +239,8 @@ export default function AirflowTester() {
       systemType,
       testerName,
       notes,
-      readings: normalizedReadings,
+      readings: [...readings],
+      gridSize,
       average,
       damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
       damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
@@ -197,7 +268,6 @@ export default function AirflowTester() {
   const handleNextFloor = () => {
     const average = calculateAverage();
     if (average !== null) {
-      const normalizedReadings: (number | "")[] = Array.from({ length: 8 }, (_, i) => readings[i] ?? "");
       const freeArea = calculateFreeArea();
       
       const test: Test = {
@@ -210,7 +280,8 @@ export default function AirflowTester() {
         systemType,
         testerName,
         notes,
-        readings: normalizedReadings,
+        readings: [...readings],
+        gridSize,
         average,
         damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
         damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
@@ -234,7 +305,8 @@ export default function AirflowTester() {
     const nextFloorNum = currentFloor ? parseInt(currentFloor) + 1 : "";
     const floorSuffix = floorNumber.match(/[a-zA-Z\s]+$/)?.[0] || "";
     
-    setReadings(Array(8).fill(""));
+    const requiredPoints = gridSize * gridSize;
+    setReadings(Array(requiredPoints).fill(""));
     setFloorNumber(nextFloorNum ? `${nextFloorNum}${floorSuffix}` : "");
     setNotes("");
     setEditingId(null);
@@ -251,6 +323,7 @@ export default function AirflowTester() {
     setNotes(test.notes);
     setDamperWidth(test.damperWidth ?? "");
     setDamperHeight(test.damperHeight ?? "");
+    setGridSize(test.gridSize || Math.sqrt(test.readings.length));
     setReadings([...test.readings]);
     setEditingId(test.id);
 
@@ -358,6 +431,7 @@ export default function AirflowTester() {
       testerName,
       notes,
       readings,
+      gridSize,
       average: calculateAverage() || 0,
       damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
       damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
@@ -660,6 +734,66 @@ export default function AirflowTester() {
               </Card>
             )}
 
+            <Card className="border-2 border-primary/30">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Gauge className="w-5 h-5" />
+                  Damper Dimensions (Required First)
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  UK regulations (BS EN 12101-8, BSRIA BG 49/2024) require specific test grids based on damper size
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label htmlFor="damper-width">Width (mm)</Label>
+                    <Input
+                      id="damper-width"
+                      type="number"
+                      step="1"
+                      placeholder="e.g., 1200"
+                      value={damperWidth}
+                      onChange={(e) => setDamperWidth(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                      data-testid="input-damper-width"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="damper-height">Height (mm)</Label>
+                    <Input
+                      id="damper-height"
+                      type="number"
+                      step="1"
+                      placeholder="e.g., 800"
+                      value={damperHeight}
+                      onChange={(e) => setDamperHeight(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                      data-testid="input-damper-height"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Geometric Free Area (m²)</Label>
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm items-center">
+                      <span className="font-mono" data-testid="text-free-area">
+                        {calculateFreeArea()?.toFixed(4) ?? "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {typeof damperWidth === "number" && typeof damperHeight === "number" && (
+                  <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-md">
+                    <p className="text-sm font-medium">
+                      Required Test Grid: {gridSize} × {gridSize} = {gridSize * gridSize} measurement points
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {gridSize === 5 && "Damper ≤ 610mm: 5×5 grid (25 points)"}
+                      {gridSize === 6 && "Damper 610-914mm: 6×6 grid (36 points)"}
+                      {gridSize === 7 && "Damper > 914mm: 7×7 grid (49 points)"}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Test Information</CardTitle>
@@ -780,80 +914,38 @@ export default function AirflowTester() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Damper Dimensions (Optional)</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Enter dimensions to calculate geometric free area
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                  <div className="space-y-2">
-                    <Label htmlFor="damper-width">Width (mm)</Label>
-                    <Input
-                      id="damper-width"
-                      type="number"
-                      step="1"
-                      placeholder="e.g., 1200"
-                      value={damperWidth}
-                      onChange={(e) => setDamperWidth(e.target.value === "" ? "" : parseFloat(e.target.value))}
-                      data-testid="input-damper-width"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="damper-height">Height (mm)</Label>
-                    <Input
-                      id="damper-height"
-                      type="number"
-                      step="1"
-                      placeholder="e.g., 800"
-                      value={damperHeight}
-                      onChange={(e) => setDamperHeight(e.target.value === "" ? "" : parseFloat(e.target.value))}
-                      data-testid="input-damper-height"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Geometric Free Area (m²)</Label>
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm items-center">
-                      <span className="font-mono" data-testid="text-free-area">
-                        {calculateFreeArea()?.toFixed(4) ?? "—"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
                 <CardTitle className="text-lg">Velocity Readings (m/s)</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  {filledCount} of 8 readings entered
+                  {filledCount} of {gridSize * gridSize} readings entered ({gridSize}×{gridSize} grid)
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  {readings.map((reading, index) => (
-                    <div key={index} className="space-y-2">
-                      <Label htmlFor={`reading-${index}`} className="text-sm font-medium">
-                        {POSITION_LABELS[index]}
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id={`reading-${index}`}
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={reading}
-                          onChange={(e) => handleReadingChange(index, e.target.value)}
-                          className="pr-12 font-mono"
-                          data-testid={`input-reading-${index + 1}`}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          m/s
-                        </span>
+                <div className={`grid gap-4 ${gridSize === 5 ? 'grid-cols-2' : gridSize === 6 ? 'grid-cols-3' : 'grid-cols-3'}`}>
+                  {readings.map((reading, index) => {
+                    const positionLabels = generatePositionLabels(gridSize);
+                    return (
+                      <div key={index} className="space-y-2">
+                        <Label htmlFor={`reading-${index}`} className="text-sm font-medium">
+                          {positionLabels[index]}
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id={`reading-${index}`}
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={reading}
+                            onChange={(e) => handleReadingChange(index, e.target.value)}
+                            className="pr-12 font-mono"
+                            data-testid={`input-reading-${index + 1}`}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                            m/s
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
