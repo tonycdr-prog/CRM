@@ -44,6 +44,8 @@ export default function AirflowTester() {
   const [systemType, setSystemType] = useState<"push" | "pull" | "push-pull" | "">("");
   const [testerName, setTesterName] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [damperWidth, setDamperWidth] = useState<number | "">("");
+  const [damperHeight, setDamperHeight] = useState<number | "">("");
   const [savedTests, setSavedTests] = useState<Test[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -121,6 +123,13 @@ export default function AirflowTester() {
     return validReadings.reduce((sum, r) => sum + r, 0) / validReadings.length;
   };
 
+  const calculateFreeArea = (): number | undefined => {
+    if (typeof damperWidth === "number" && typeof damperHeight === "number" && damperWidth > 0 && damperHeight > 0) {
+      return (damperWidth * damperHeight) / 1000000;
+    }
+    return undefined;
+  };
+
   const handleClear = () => {
     setReadings(Array(8).fill(""));
     setBuilding("");
@@ -130,6 +139,8 @@ export default function AirflowTester() {
     setSystemType("");
     setTesterName("");
     setNotes("");
+    setDamperWidth("");
+    setDamperHeight("");
     setTestDate(new Date().toISOString().split('T')[0]);
     setEditingId(null);
   };
@@ -146,6 +157,7 @@ export default function AirflowTester() {
     }
     
     const normalizedReadings: (number | "")[] = Array.from({ length: 8 }, (_, i) => readings[i] ?? "");
+    const freeArea = calculateFreeArea();
     
     const test: Test = {
       id: editingId || `test-${Date.now()}`,
@@ -159,6 +171,9 @@ export default function AirflowTester() {
       notes,
       readings: normalizedReadings,
       average,
+      damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
+      damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
+      freeArea,
       createdAt: Date.now(),
     };
 
@@ -182,7 +197,37 @@ export default function AirflowTester() {
   const handleNextFloor = () => {
     const average = calculateAverage();
     if (average !== null) {
-      handleSaveTest();
+      const normalizedReadings: (number | "")[] = Array.from({ length: 8 }, (_, i) => readings[i] ?? "");
+      const freeArea = calculateFreeArea();
+      
+      const test: Test = {
+        id: editingId || `test-${Date.now()}`,
+        testDate,
+        building,
+        location,
+        floorNumber,
+        shaftId,
+        systemType,
+        testerName,
+        notes,
+        readings: normalizedReadings,
+        average,
+        damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
+        damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
+        freeArea,
+        createdAt: Date.now(),
+      };
+
+      if (editingId) {
+        setSavedTests(prev => prev.map(t => t.id === editingId ? test : t));
+      } else {
+        setSavedTests(prev => [...prev, test]);
+      }
+      
+      toast({
+        title: "Test saved",
+        description: "Moving to next floor",
+      });
     }
 
     const currentFloor = floorNumber.match(/\d+/)?.[0];
@@ -204,6 +249,8 @@ export default function AirflowTester() {
     setSystemType(test.systemType);
     setTesterName(test.testerName);
     setNotes(test.notes);
+    setDamperWidth(test.damperWidth ?? "");
+    setDamperHeight(test.damperHeight ?? "");
     setReadings([...test.readings]);
     setEditingId(test.id);
 
@@ -260,7 +307,7 @@ export default function AirflowTester() {
       root.render(
         <div>
           <TestVisualization 
-            test={{ ...test, readings: test.readings }}
+            test={test}
             average={test.average}
             filledCount={filledCount}
             passFailStatus={evaluatePassFail(test.average)}
@@ -298,6 +345,8 @@ export default function AirflowTester() {
   const handleExportCurrentImage = async () => {
     if (!captureRef.current) return;
     
+    const freeArea = calculateFreeArea();
+    
     const currentTest: Test = {
       id: Date.now().toString(),
       testDate,
@@ -310,6 +359,9 @@ export default function AirflowTester() {
       notes,
       readings,
       average: calculateAverage() || 0,
+      damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
+      damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
+      freeArea,
       createdAt: Date.now(),
     };
     
@@ -364,7 +416,7 @@ export default function AirflowTester() {
         root.render(
           <div>
             <TestVisualization 
-              test={{ ...test, readings: test.readings }}
+              test={test}
               average={test.average}
               filledCount={filledCount}
               passFailStatus={evaluatePassFail(test.average)}
@@ -433,7 +485,7 @@ export default function AirflowTester() {
           root.render(
             <div>
               <TestVisualization 
-                test={{ ...test, readings: test.readings }}
+                test={test}
                 average={test.average}
                 filledCount={filledCount}
                 passFailStatus={evaluatePassFail(test.average)}
@@ -728,6 +780,51 @@ export default function AirflowTester() {
 
             <Card>
               <CardHeader>
+                <CardTitle className="text-lg">Damper Dimensions (Optional)</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Enter dimensions to calculate geometric free area
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label htmlFor="damper-width">Width (mm)</Label>
+                    <Input
+                      id="damper-width"
+                      type="number"
+                      step="1"
+                      placeholder="e.g., 1200"
+                      value={damperWidth}
+                      onChange={(e) => setDamperWidth(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                      data-testid="input-damper-width"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="damper-height">Height (mm)</Label>
+                    <Input
+                      id="damper-height"
+                      type="number"
+                      step="1"
+                      placeholder="e.g., 800"
+                      value={damperHeight}
+                      onChange={(e) => setDamperHeight(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                      data-testid="input-damper-height"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Geometric Free Area (m²)</Label>
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm items-center">
+                      <span className="font-mono" data-testid="text-free-area">
+                        {calculateFreeArea()?.toFixed(4) ?? "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-lg">Velocity Readings (m/s)</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   {filledCount} of 8 readings entered
@@ -773,6 +870,9 @@ export default function AirflowTester() {
                   testerName,
                   notes,
                   readings,
+                  damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
+                  damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
+                  freeArea: calculateFreeArea(),
                 }}
                 average={average}
                 filledCount={filledCount}

@@ -31,6 +31,9 @@ export const testSchema = z.object({
   notes: z.string(),
   readings: z.array(z.union([z.number(), z.literal("")])).length(8),
   average: z.number(),
+  damperWidth: z.number().optional(),
+  damperHeight: z.number().optional(),
+  freeArea: z.number().optional(),
   createdAt: z.number(),
 });
 

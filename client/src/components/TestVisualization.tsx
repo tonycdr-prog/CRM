@@ -14,6 +14,9 @@ interface TestVisualizationProps {
     testerName?: string;
     notes?: string;
     readings: (number | "")[];
+    damperWidth?: number;
+    damperHeight?: number;
+    freeArea?: number;
   };
   average: number | null;
   filledCount: number;
@@ -38,6 +41,9 @@ export default function TestVisualization({ test, average, filledCount, passFail
           {test.shaftId && <p>Shaft/Damper ID: {test.shaftId}</p>}
           {test.systemType && <p>System Type: {test.systemType === "push-pull" ? "Push/Pull" : test.systemType.charAt(0).toUpperCase() + test.systemType.slice(1)}</p>}
           {test.testerName && <p>Tested by: {test.testerName}</p>}
+          {test.damperWidth && test.damperHeight && (
+            <p>Damper Size: {test.damperWidth} × {test.damperHeight} mm {test.freeArea && `(${test.freeArea.toFixed(4)} m²)`}</p>
+          )}
           {test.notes && <p className="italic mt-2">Notes: {test.notes}</p>}
         </div>
       </div>
