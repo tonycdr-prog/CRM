@@ -43,7 +43,7 @@ export default function PDFTrendPage({ damperHistories, minVelocityThreshold }: 
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold text-lg text-foreground">
-                      {damper.building} - {damper.location}
+                      {damper.building} - {damper.location}, Floor {damper.floorNumber}
                     </h3>
                     <p className="text-sm text-muted-foreground font-mono">
                       Damper ID: {damper.shaftId}

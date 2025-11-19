@@ -41,7 +41,7 @@ export default function TrendChart({ damperHistory, minVelocityThreshold, testId
               Historical Trend Analysis
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1" data-testid="text-damper-info">
-              {damper.building} - {damper.location} (Shaft {damper.shaftId})
+              {damper.building} - {damper.location}, Floor {damper.floorNumber} (Shaft {damper.shaftId})
             </p>
           </div>
           

@@ -24,9 +24,10 @@ export const reportTypeEnum = z.enum(["commissioning", "annual_inspection", "rem
 // Damper entity - represents a physical damper that can be tested multiple times
 export const damperSchema = z.object({
   id: z.string(),
-  damperKey: z.string(), // Unique identifier: building+location+shaftId
+  damperKey: z.string(), // Unique identifier: building+location+floorNumber+shaftId
   building: z.string(),
   location: z.string(),
+  floorNumber: z.string(), // Floor number is part of damper identity for trend tracking
   shaftId: z.string(),
   description: z.string().optional(),
   systemType: systemTypeEnum,

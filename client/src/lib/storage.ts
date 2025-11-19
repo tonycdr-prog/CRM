@@ -1,7 +1,7 @@
 import { Test, Damper, Report, damperSchema, reportSchema, testSchema } from "@shared/schema";
 import { nanoid } from "nanoid";
 
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 const STORAGE_KEY = "airflow-data";
 const LEGACY_STORAGE_KEY = "airflow-tests";
 
@@ -14,10 +14,11 @@ export interface StorageData {
 }
 
 /**
- * Generate a unique damper key from building, location, and shaftId
+ * Generate a unique damper key from building, location, floor, and shaftId
+ * Including floor number ensures each floor is tracked separately for trend analysis
  */
-export function generateDamperKey(building: string, location: string, shaftId: string): string {
-  return `${building.trim().toLowerCase()}_${location.trim().toLowerCase()}_${shaftId.trim().toLowerCase()}`;
+export function generateDamperKey(building: string, location: string, floorNumber: string, shaftId: string): string {
+  return `${building.trim().toLowerCase()}_${location.trim().toLowerCase()}_${floorNumber.trim().toLowerCase()}_${shaftId.trim().toLowerCase()}`;
 }
 
 /**
@@ -27,7 +28,7 @@ export function getOrCreateDamper(
   test: Test,
   dampers: Record<string, Damper>
 ): Damper {
-  const damperKey = generateDamperKey(test.building, test.location, test.shaftId);
+  const damperKey = generateDamperKey(test.building, test.location, test.floorNumber, test.shaftId);
   
   // Check if damper already exists
   const existing = Object.values(dampers).find(d => d.damperKey === damperKey);
@@ -41,9 +42,10 @@ export function getOrCreateDamper(
     damperKey,
     building: test.building,
     location: test.location,
+    floorNumber: test.floorNumber,
     shaftId: test.shaftId,
     systemType: test.systemType,
-    description: `Damper at ${test.location}, Floor ${test.floorNumber}`,
+    description: `${test.location}, Floor ${test.floorNumber}, Shaft ${test.shaftId}`,
     createdAt: test.createdAt,
   };
   
@@ -93,6 +95,74 @@ function migrateLegacyData(legacyTests: Test[]): StorageData {
 }
 
 /**
+ * Migrate from version 2 to version 3
+ * Updates damper keys to include floor number for floor-level trend tracking
+ */
+function migrateV2ToV3(data: StorageData): StorageData {
+  console.log('Migrating dampers to include floor number in key');
+  
+  // Rebuild dampers with new keys that include floor number
+  const newDampers: Record<string, Damper> = {};
+  const damperIdMapping = new Map<string, string>(); // old damperId -> new damperId
+  
+  // Group tests by the new damper key (building+location+floor+shaft)
+  const testsByNewKey = new Map<string, Test[]>();
+  
+  Object.values(data.tests).forEach(test => {
+    const newKey = generateDamperKey(test.building, test.location, test.floorNumber, test.shaftId);
+    if (!testsByNewKey.has(newKey)) {
+      testsByNewKey.set(newKey, []);
+    }
+    testsByNewKey.get(newKey)!.push(test);
+  });
+  
+  // Create new dampers for each unique key
+  testsByNewKey.forEach((tests, newKey) => {
+    const firstTest = tests[0];
+    const newDamper: Damper = {
+      id: nanoid(),
+      damperKey: newKey,
+      building: firstTest.building,
+      location: firstTest.location,
+      floorNumber: firstTest.floorNumber,
+      shaftId: firstTest.shaftId,
+      systemType: firstTest.systemType,
+      description: `${firstTest.location}, Floor ${firstTest.floorNumber}, Shaft ${firstTest.shaftId}`,
+      createdAt: Math.min(...tests.map(t => t.createdAt)),
+    };
+    
+    newDampers[newDamper.id] = newDamper;
+    
+    // Map all old damper IDs from these tests to the new damper ID
+    tests.forEach(test => {
+      if (test.damperId) {
+        damperIdMapping.set(test.damperId, newDamper.id);
+      }
+    });
+  });
+  
+  // Update all test damperId references
+  const updatedTests: Record<string, Test> = {};
+  Object.values(data.tests).forEach(test => {
+    const newDamperId = test.damperId 
+      ? damperIdMapping.get(test.damperId) 
+      : undefined;
+    
+    updatedTests[test.id] = {
+      ...test,
+      damperId: newDamperId,
+    };
+  });
+  
+  return {
+    ...data,
+    version: 3,
+    dampers: newDampers,
+    tests: updatedTests,
+  };
+}
+
+/**
  * Load data from LocalStorage with automatic migration
  */
 export function loadStorageData(): StorageData {
@@ -100,12 +170,19 @@ export function loadStorageData(): StorageData {
     // Try to load new format
     const rawData = localStorage.getItem(STORAGE_KEY);
     if (rawData) {
-      const data = JSON.parse(rawData) as StorageData;
+      let data = JSON.parse(rawData) as StorageData;
       
       // Check if migration is needed
       if (data.version < STORAGE_VERSION) {
         console.log(`Migrating storage from version ${data.version} to ${STORAGE_VERSION}`);
-        // Future migrations would go here
+        
+        // Apply migrations sequentially
+        if (data.version === 2) {
+          data = migrateV2ToV3(data);
+        }
+        
+        // Save migrated data
+        saveStorageData(data);
       }
       
       return data;

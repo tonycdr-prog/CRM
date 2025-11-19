@@ -43,11 +43,11 @@ Preferred communication style: Simple, everyday language.
   - Report type selection (Commissioning/Annual Inspection/Reactive)
   - Executive summary and pass/fail statistics
 - **Trend Analysis & Historical Tracking**:
-  - Automatic damper tracking across multiple years
+  - Floor-level damper tracking across multiple years (each floor tracked separately)
   - Year-over-year velocity trend visualization with Recharts
   - Repeat visit detection for annual compliance testing
-  - Historical data grouping by damper and year
-  - Pass/fail trend indicators
+  - Historical data grouping by building+location+floor+shaft and year
+  - Pass/fail trend indicators with floor-specific granularity
   - Filter to show only dampers with multi-year data
 - **Enhanced PDF Export**:
   - Professional cover page with company logo and project details
@@ -193,13 +193,14 @@ Report {
 
 Damper {
   id: string                  // Unique damper ID
-  key: string                 // Generated from building+location+shaftId
+  damperKey: string           // Generated from building+location+floorNumber+shaftId
   building: string
   location: string
+  floorNumber: string         // Floor number is part of damper identity
   shaftId: string
-  testIds: string[]           // All tests performed on this damper
+  systemType: "" | "push" | "pull" | "push-pull"
+  description?: string
   createdAt: number
-  updatedAt: number
 }
 
 Test {
@@ -226,10 +227,11 @@ Test {
 ```
 
 **Storage Features**:
-- Automatic migration from legacy localStorage format
+- Automatic migration from legacy localStorage format (v1 → v2 → v3)
 - Multi-report support with active report tracking via `currentReportId` state
-- Damper tracking across years for trend analysis
-- Test-to-damper linking via damperKey (building+location+shaftId)
+- Floor-level damper tracking across years for trend analysis
+- Test-to-damper linking via damperKey (building+location+floorNumber+shaftId)
+- Version 3 migration: Updates damper keys to include floor number for floor-specific tracking
 - Defensive persistence with undefined guards and error handling
 
 **Export Reliability**:
