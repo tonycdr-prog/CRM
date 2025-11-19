@@ -583,10 +583,19 @@ export default function AirflowTester() {
 
         try {
           const dataUrl = await captureTestImage(tempDiv);
+          console.log('Captured image data URL length:', dataUrl?.length);
+          
+          if (!dataUrl || dataUrl.length < 100) {
+            console.error('Invalid or empty data URL generated');
+            throw new Error('Failed to capture test visualization');
+          }
+          
           if (successCount > 0) pdf.addPage();
           
           // Add test visualization at top - adjust height based on whether images exist
           const hasImages = test.damperOpenImage || test.damperClosedImage;
+          
+          console.log('Adding image to PDF - hasImages:', hasImages);
           
           if (hasImages) {
             // Constrained height to make room for images below
@@ -596,6 +605,7 @@ export default function AirflowTester() {
             pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 0);
           }
           successCount++;
+          console.log('Successfully added page', successCount);
           
           // Add damper images side by side below the test if they exist
           if (hasImages) {
