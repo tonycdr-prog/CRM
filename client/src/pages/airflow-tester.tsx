@@ -429,10 +429,25 @@ export default function AirflowTester() {
   const waitForImages = async (element: HTMLElement | null): Promise<void> => {
     if (!element) return;
     const images = element.getElementsByTagName('img');
-    const promises = Array.from(images).map(img => {
-      if (img.complete) return Promise.resolve();
+    const promises = Array.from(images).map(async (img) => {
+      if (img.complete && img.naturalWidth > 0) {
+        // Image already loaded, but ensure it's decoded
+        try {
+          await img.decode();
+        } catch (e) {
+          // Ignore decode errors
+        }
+        return;
+      }
       return new Promise((resolve) => {
-        img.addEventListener('load', () => resolve(null));
+        img.addEventListener('load', async () => {
+          try {
+            await img.decode();
+          } catch (e) {
+            // Ignore decode errors
+          }
+          resolve(null);
+        });
         img.addEventListener('error', () => resolve(null)); // Resolve even on error to not block
         setTimeout(() => resolve(null), 5000); // Timeout after 5s
       });
