@@ -27,10 +27,21 @@ export function ImageUpload({ label, value, onChange, testId }: ImageUploadProps
       });
 
       if (image.dataUrl) {
+        if (!image.dataUrl.startsWith('data:')) {
+          console.error('Camera returned non-data URL:', image.dataUrl);
+          alert('Camera error: Image format not supported. Please try again or use gallery.');
+          return;
+        }
         onChange(image.dataUrl);
+      } else {
+        console.error('Camera did not return dataUrl');
+        alert('Failed to capture image. Please try again.');
       }
     } catch (error) {
       console.error("Camera error:", error);
+      if ((error as any).message !== 'User cancelled photos app') {
+        alert('Failed to access camera. Please check permissions.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -75,10 +86,21 @@ export function ImageUpload({ label, value, onChange, testId }: ImageUploadProps
       });
 
       if (image.dataUrl) {
+        if (!image.dataUrl.startsWith('data:')) {
+          console.error('Gallery returned non-data URL:', image.dataUrl);
+          alert('Image format not supported. Please select a different image.');
+          return;
+        }
         onChange(image.dataUrl);
+      } else {
+        console.error('Gallery did not return dataUrl');
+        alert('Failed to load image. Please try again.');
       }
     } catch (error) {
       console.error("Gallery error:", error);
+      if ((error as any).message !== 'User cancelled photos app') {
+        alert('Failed to access photo library. Please check permissions.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -98,6 +120,7 @@ export function ImageUpload({ label, value, onChange, testId }: ImageUploadProps
             src={value} 
             alt={label}
             className="w-full h-48 object-cover"
+            data-testid={`${testId}-preview`}
           />
           <Button
             type="button"
