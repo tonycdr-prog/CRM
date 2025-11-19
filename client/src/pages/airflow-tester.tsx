@@ -8,7 +8,7 @@ import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Came
 import { toPng, toJpeg } from "html-to-image";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
-import TestHistoryPanel from "@/components/TestHistoryPanel";
+import GroupedTestHistory from "@/components/GroupedTestHistory";
 import ReportSetupForm from "@/components/ReportSetupForm";
 import TrendChart from "@/components/TrendChart";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -1761,7 +1761,7 @@ export default function AirflowTester() {
               </Card>
             )}
             
-            <TestHistoryPanel 
+            <GroupedTestHistory 
               tests={filteredAndSortedTests}
               onEdit={handleEdit}
               onDelete={handleDelete}
@@ -1787,10 +1787,22 @@ export default function AirflowTester() {
           </Card>
         ) : (
           <div className="space-y-6">
+            <GroupedTestHistory 
+              tests={savedTests}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onExportSingle={handleExportSingleImage}
+              selectedIds={selectedTestIds}
+              onToggleSelect={handleToggleSelect}
+              onToggleSelectAll={handleToggleSelectAll}
+              onDeleteSelected={handleDeleteSelected}
+              minVelocityThreshold={minVelocityThreshold}
+            />
+
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold" data-testid="text-history-title">
-                  Test History & Trends
+                  Year-over-Year Trend Analysis
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {savedTests.length} test{savedTests.length !== 1 ? 's' : ''} across {Object.keys(dampers).length} damper{Object.keys(dampers).length !== 1 ? 's' : ''}
