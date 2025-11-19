@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a professional utility application for visualizing and documenting airflow velocity readings across smoke control dampers. The tool enables field technicians to record 8 measurement points in a standardized grid pattern, automatically calculate averages, and export compliance documentation. The application is designed for on-site use with touch-friendly controls and focuses on precision and reliability over decorative elements.
+This is a professional UK regulation-compliant utility application for visualizing and documenting airflow velocity readings across smoke control dampers. The tool enables field technicians to perform compliant testing with automatic grid size calculation (5×5, 6×6, or 7×7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The application is designed for on-site use with touch-friendly controls and is available as both a web application and native mobile app (iOS/Android).
 
 ## User Preferences
 
@@ -32,15 +32,21 @@ Preferred communication style: Simple, everyday language.
 - LocalStorage for client-side data persistence of test history
 
 **Key Features**:
-- 8-position reading input grid (2×4 layout)
-- Automatic average calculation
-- Test metadata capture (date, location, floor, shaft ID, tester name, notes)
+- **UK Regulation Compliance**: Automatic grid size calculation based on damper dimensions
+  - Damper ≤ 610mm: 5×5 grid (25 measurement points)
+  - Damper 610-914mm: 6×6 grid (36 measurement points)
+  - Damper > 914mm: 7×7 grid (49 measurement points)
+- Dynamic grid visualization adapting to test requirements
+- Automatic average, minimum, and maximum velocity calculations
+- Pass/fail criteria evaluation with configurable thresholds
+- Test metadata capture (date, building, location, floor, shaft ID, system type, tester name, notes)
 - Test history panel with CRUD operations
 - Export functionality:
   - Individual test export (PNG image)
   - Bulk export (ZIP with PNG images)
   - PDF export support via jsPDF
-- Visualization overlay on damper diagram image
+- Geometric free area calculation from damper dimensions
+- "Next Floor" workflow for efficient multi-floor testing
 
 ### Backend Architecture
 
@@ -106,18 +112,32 @@ Preferred communication style: Simple, everyday language.
 - **@replit/vite-plugin-cartographer**: Replit integration
 - **@replit/vite-plugin-dev-banner**: Development environment indicator
 
+**Mobile App Platform**:
+- **Capacitor** (v7.4.4): Native iOS and Android app wrapper
+- **@capacitor/app**: App lifecycle events
+- **@capacitor/splash-screen**: Native splash screen management
+- **@capacitor/status-bar**: Status bar styling control
+- Supports iOS 13.0+ and Android 6.0+ (API 23+)
+- Full native app deployment to App Store and Google Play Store
+
 **Data Storage Schema**:
 ```typescript
 Test {
   id: string
   testDate: string
+  building: string
   location: string
   floorNumber: string
   shaftId: string
+  systemType: "" | "push" | "pull" | "push-pull"
   testerName: string
   notes: string
-  readings: (number | "")[]  // Array of 8 readings
+  readings: (number | "")[]  // Variable length: 25, 36, or 49 readings
+  gridSize: number           // 5, 6, or 7
   average: number
+  damperWidth?: number       // Width in mm
+  damperHeight?: number      // Height in mm
+  freeArea?: number         // Calculated geometric free area in m²
   createdAt: number
 }
 ```
@@ -130,3 +150,27 @@ User {
   password: string
 }
 ```
+
+## Mobile App Deployment
+
+### Platform Support
+- **iOS**: Minimum iOS 13.0, builds with Xcode 14+
+- **Android**: Minimum API 23 (Android 6.0), builds with Android Studio
+
+### Build Process
+See `MOBILE_BUILD.md` for complete build and deployment instructions.
+
+**Quick Start:**
+1. Build web app: `npm run build`
+2. Sync platforms: `npx cap sync`
+3. Open native IDE: `npx cap open android` or `npx cap open ios`
+4. Build and run from Android Studio or Xcode
+
+### App Store Distribution
+- **Google Play**: Build signed AAB in Android Studio
+- **Apple App Store**: Archive and upload via Xcode
+
+### Configuration
+- App ID: `com.airflow.tester`
+- App Name: "Airflow Velocity Tester"
+- Edit `capacitor.config.ts` for customization
