@@ -132,9 +132,8 @@ export default function PDFStandardsPage({ report, minVelocityThreshold }: PDFSt
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer - page numbers added by PDF generation */}
       <div className="text-center text-xs text-muted-foreground border-t pt-3 mt-auto">
-        <p>Page 2</p>
       </div>
     </div>
   );

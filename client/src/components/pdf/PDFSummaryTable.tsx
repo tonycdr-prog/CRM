@@ -128,9 +128,8 @@ export default function PDFSummaryTable({ tests, dampers, minVelocityThreshold }
         </p>
       </div>
 
-      {/* Footer */}
+      {/* Footer - page numbers added by PDF generation */}
       <div className="text-center text-xs text-muted-foreground border-t pt-3 mt-6">
-        <p>Page 3</p>
       </div>
     </div>
   );
