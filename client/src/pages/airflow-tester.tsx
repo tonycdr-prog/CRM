@@ -673,25 +673,49 @@ export default function AirflowTester() {
           const imgProps = pdf.getImageProperties(dataUrl);
           const pageWidth = pdf.internal.pageSize.getWidth();
           const pageHeight = pdf.internal.pageSize.getHeight();
-          const pdfWidth = pageWidth - 20; // 10mm margins on each side
+          const maxPdfWidth = pageWidth - 20; // 10mm margins on each side
           const aspectRatio = imgProps.height / imgProps.width;
-          let calculatedHeight = pdfWidth * aspectRatio;
           
           // Add test visualization at top - adjust height based on whether images exist
           const hasImages = test.damperOpenImage || test.damperClosedImage;
+          
+          let finalWidth: number;
+          let finalHeight: number;
           
           if (hasImages) {
             // Constrained height to make room for images below
             // Max height 140mm to leave room for damper images (160 + 80 = 240mm total)
             const maxHeight = 140;
-            calculatedHeight = Math.min(calculatedHeight, maxHeight);
-            pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, calculatedHeight);
+            const naturalHeight = maxPdfWidth * aspectRatio;
+            
+            if (naturalHeight <= maxHeight) {
+              // Fits within max height, use full width
+              finalWidth = maxPdfWidth;
+              finalHeight = naturalHeight;
+            } else {
+              // Too tall, scale down proportionally
+              finalHeight = maxHeight;
+              finalWidth = maxHeight / aspectRatio;
+            }
           } else {
             // Constrain to page height with margins
             const maxHeight = pageHeight - 20; // 20mm total margins (10mm top + 10mm bottom)
-            calculatedHeight = Math.min(calculatedHeight, maxHeight);
-            pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, calculatedHeight);
+            const naturalHeight = maxPdfWidth * aspectRatio;
+            
+            if (naturalHeight <= maxHeight) {
+              // Fits within max height, use full width
+              finalWidth = maxPdfWidth;
+              finalHeight = naturalHeight;
+            } else {
+              // Too tall, scale down proportionally
+              finalHeight = maxHeight;
+              finalWidth = maxHeight / aspectRatio;
+            }
           }
+          
+          // Center the image horizontally if it's narrower than max width
+          const xPos = 10 + (maxPdfWidth - finalWidth) / 2;
+          pdf.addImage(dataUrl, 'PNG', xPos, 10, finalWidth, finalHeight);
           successCount++;
           
           // Add damper images side by side below the test if they exist
