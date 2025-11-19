@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera } from "lucide-react";
-import { toPng } from "html-to-image";
+import { toPng, toJpeg } from "html-to-image";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
 import TestHistoryPanel from "@/components/TestHistoryPanel";
@@ -946,15 +946,25 @@ export default function AirflowTester() {
         await new Promise(resolve => setTimeout(resolve, 500));
         
         console.log('[PDF] Capturing screenshot...');
+        
+        // First capture to trigger image loading
+        try {
+          await toPng(pdfCaptureRef.current, { cacheBust: true });
+        } catch (e) {
+          // Ignore first capture errors
+        }
+        
+        // Wait a bit for images to be fully embedded
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Second capture - the real one
         const dataUrl = await toPng(pdfCaptureRef.current, {
           quality: 1.0,
           pixelRatio: 2,
           backgroundColor: '#ffffff',
           cacheBust: true,
-          filter: (node) => {
-            // Include all nodes, especially images
-            return true;
-          },
+          includeQueryParams: false,
+          preferredFontFormat: 'woff2',
         });
         
         console.log('[PDF] Screenshot captured, size:', dataUrl.length, 'bytes');
