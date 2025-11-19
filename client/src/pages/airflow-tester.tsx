@@ -889,14 +889,25 @@ export default function AirflowTester() {
 
       // Helper to capture visible pdfCaptureRef component
       const capturePDFSection = async (): Promise<string> => {
-        // Wait for React to flush state and render new DOM
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        // Wait for DOM paint
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        // Additional time for fonts
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
         if (!pdfCaptureRef.current) throw new Error('PDF capture ref not available');
+        
+        // Wait for React to flush state changes
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Wait until the element has actual dimensions (content is rendered)
+        let attempts = 0;
+        while (attempts < 50) {
+          const rect = pdfCaptureRef.current.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 50));
+          attempts++;
+        }
+        
+        // Wait for fonts and final paint
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // Wait for all images to load
         await waitForImages(pdfCaptureRef.current);
@@ -905,8 +916,9 @@ export default function AirflowTester() {
           quality: 1.0,
           pixelRatio: 2,
           backgroundColor: '#ffffff',
-          skipFonts: false,
+          skipFonts: true,
           cacheBust: true,
+          skipAutoScale: false,
         });
         
         return dataUrl;
