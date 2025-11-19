@@ -239,8 +239,8 @@ Test {
 - Explicit image loading with timeout fallbacks
 - Shared `waitForImages()` helper used across all export paths
 - **Optimized PDF Generation**:
-  * JPEG format instead of PNG reduces file size by ~70-80%
-  * Quality set to 0.92 (barely noticeable difference, significant size reduction)
+  * Hybrid format: PNG for cover page (preserves logo quality), JPEG for other pages
+  * JPEG quality 0.92 reduces file size by ~70-80% with minimal visual difference
   * PixelRatio reduced from 2x to 1.5x (optimal for PDF print quality)
   * skipFonts: true eliminates Google Fonts CSS errors
   * Streamlined wait times (reduced from ~1s+ to ~150-300ms per capture)

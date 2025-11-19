@@ -937,7 +937,7 @@ export default function AirflowTester() {
       let pageNumber = 1;
 
       // Helper to capture visible pdfCaptureRef component - optimized for speed
-      const capturePDFSection = async (): Promise<string> => {
+      const capturePDFSection = async (usePNG: boolean = false): Promise<string> => {
         if (!pdfCaptureRef.current) throw new Error('PDF capture ref not available');
         
         // Temporarily move element on-screen for reliable capture
@@ -966,17 +966,25 @@ export default function AirflowTester() {
         // Wait for images to load
         await waitForImages(pdfCaptureRef.current);
         
-        // Final render wait
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Final render wait (extra time for cover page with logo)
+        await new Promise(resolve => setTimeout(resolve, usePNG ? 200 : 100));
         
-        // Single optimized capture using JPEG for smaller file size
-        const dataUrl = await toJpeg(pdfCaptureRef.current, {
-          quality: 0.92,
-          pixelRatio: 1.5,
-          backgroundColor: '#ffffff',
-          skipFonts: true,
-          cacheBust: true,
-        });
+        // Use PNG for cover page (better for logos), JPEG for others (smaller size)
+        const dataUrl = usePNG 
+          ? await toPng(pdfCaptureRef.current, {
+              quality: 1.0,
+              pixelRatio: 1.5,
+              backgroundColor: '#ffffff',
+              skipFonts: true,
+              cacheBust: true,
+            })
+          : await toJpeg(pdfCaptureRef.current, {
+              quality: 0.92,
+              pixelRatio: 1.5,
+              backgroundColor: '#ffffff',
+              skipFonts: true,
+              cacheBust: true,
+            });
         
         // Move element back off-screen
         pdfCaptureRef.current.style.top = originalTop;
@@ -985,7 +993,7 @@ export default function AirflowTester() {
         return dataUrl;
       };
 
-      // Helper to add full-page image - now supports JPEG
+      // Helper to add full-page image - auto-detects PNG vs JPEG
       const addFullPageImage = (dataUrl: string) => {
         const maxPdfWidth = pageWidth - 20;
         const maxPdfHeight = pageHeight - 20;
@@ -1007,8 +1015,10 @@ export default function AirflowTester() {
         
         const xPos = 10 + (maxPdfWidth - finalWidth) / 2;
         const yPos = 10;
-        // Use JPEG format for smaller file size
-        pdf.addImage(dataUrl, 'JPEG', xPos, yPos, finalWidth, finalHeight);
+        
+        // Auto-detect format from data URL
+        const format = dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+        pdf.addImage(dataUrl, format, xPos, yPos, finalWidth, finalHeight);
         
         // Add page number
         pdf.setFontSize(8);
@@ -1018,12 +1028,12 @@ export default function AirflowTester() {
       };
 
       try {
-        // 1. Cover Page
+        // 1. Cover Page (use PNG for better logo quality)
         flushSync(() => {
           setPdfRenderState('cover');
         });
-        await new Promise(resolve => setTimeout(resolve, 150)); // Reduced wait time
-        const coverDataUrl = await capturePDFSection();
+        await new Promise(resolve => setTimeout(resolve, 150));
+        const coverDataUrl = await capturePDFSection(true); // PNG for logo
         addFullPageImage(coverDataUrl);
         setPdfRenderState(null);
 
