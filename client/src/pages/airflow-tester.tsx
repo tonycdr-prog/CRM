@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X } from "lucide-react";
+import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
 import TestHistoryPanel from "@/components/TestHistoryPanel";
+import { ImageUpload } from "@/components/ImageUpload";
 import { testSchema, type Test } from "@shared/schema";
 import JSZip from "jszip";
 import jsPDF from "jspdf";
@@ -80,6 +81,8 @@ export default function AirflowTester() {
   const [systemType, setSystemType] = useState<"push" | "pull" | "push-pull" | "">("");
   const [testerName, setTesterName] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [damperOpenImage, setDamperOpenImage] = useState<string | undefined>(undefined);
+  const [damperClosedImage, setDamperClosedImage] = useState<string | undefined>(undefined);
   const [savedTests, setSavedTests] = useState<Test[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -209,6 +212,8 @@ export default function AirflowTester() {
     setSystemType("");
     setTesterName("");
     setNotes("");
+    setDamperOpenImage(undefined);
+    setDamperClosedImage(undefined);
     setDamperWidth("");
     setDamperHeight("");
     setGridSize(5);
@@ -245,6 +250,8 @@ export default function AirflowTester() {
       damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
       damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
       freeArea,
+      damperOpenImage,
+      damperClosedImage,
       createdAt: Date.now(),
     };
 
@@ -286,6 +293,8 @@ export default function AirflowTester() {
         damperWidth: typeof damperWidth === "number" ? damperWidth : undefined,
         damperHeight: typeof damperHeight === "number" ? damperHeight : undefined,
         freeArea,
+        damperOpenImage,
+        damperClosedImage,
         createdAt: Date.now(),
       };
 
@@ -321,6 +330,8 @@ export default function AirflowTester() {
     setSystemType(test.systemType);
     setTesterName(test.testerName);
     setNotes(test.notes);
+    setDamperOpenImage(test.damperOpenImage);
+    setDamperClosedImage(test.damperClosedImage);
     setDamperWidth(test.damperWidth ?? "");
     setDamperHeight(test.damperHeight ?? "");
     setGridSize(test.gridSize || Math.sqrt(test.readings.length));
@@ -908,6 +919,34 @@ export default function AirflowTester() {
                       </Button>
                     ))}
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Camera className="w-5 h-5" />
+                  Damper Images (Optional)
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Document the damper condition in open and closed positions
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ImageUpload
+                    label="Damper Open Position"
+                    value={damperOpenImage}
+                    onChange={setDamperOpenImage}
+                    testId="damper-open"
+                  />
+                  <ImageUpload
+                    label="Damper Closed Position"
+                    value={damperClosedImage}
+                    onChange={setDamperClosedImage}
+                    testId="damper-closed"
+                  />
                 </div>
               </CardContent>
             </Card>
