@@ -12,6 +12,7 @@ export default function PDFSummaryTable({ tests, dampers, minVelocityThreshold }
   const passCount = tests.filter(t => t.average >= minVelocityThreshold).length;
   const failCount = tests.length - passCount;
   const passRate = tests.length > 0 ? (passCount / tests.length) * 100 : 0;
+  const failRate = tests.length > 0 ? (failCount / tests.length) * 100 : 0;
 
   // Group tests by building for better organization
   const testsByBuilding = tests.reduce((acc, test) => {
@@ -45,7 +46,7 @@ export default function PDFSummaryTable({ tests, dampers, minVelocityThreshold }
         <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-4 text-center">
           <p className="text-sm text-red-700 dark:text-red-300 mb-1">Failed</p>
           <p className="text-3xl font-bold text-red-700 dark:text-red-300">{failCount}</p>
-          <p className="text-xs text-red-600 dark:text-red-400 mt-1">{((failCount / tests.length) * 100).toFixed(1)}%</p>
+          <p className="text-xs text-red-600 dark:text-red-400 mt-1">{failRate.toFixed(1)}%</p>
         </div>
       </div>
 
