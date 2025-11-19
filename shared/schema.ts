@@ -35,6 +35,8 @@ export const testSchema = z.object({
   damperWidth: z.number().optional(),
   damperHeight: z.number().optional(),
   freeArea: z.number().optional(),
+  damperOpenImage: z.string().optional(),
+  damperClosedImage: z.string().optional(),
   createdAt: z.number(),
 }).refine((data) => {
   const validLengths = [8, 25, 36, 49];
