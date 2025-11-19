@@ -36,6 +36,11 @@ Preferred communication style: Simple, everyday language.
   - Damper ≤ 610mm: 5×5 grid (25 measurement points)
   - Damper 610-914mm: 6×6 grid (36 measurement points)
   - Damper > 914mm: 7×7 grid (49 measurement points)
+- **Damper Image Documentation**: Camera integration for documenting damper conditions
+  - Take photos directly using device camera (mobile) or upload images (web)
+  - Capture damper in open and closed positions
+  - Images stored as base64 data URLs for offline access
+  - Included automatically in PDF exports for complete documentation
 - Dynamic grid visualization adapting to test requirements
 - Automatic average, minimum, and maximum velocity calculations
 - Pass/fail criteria evaluation with configurable thresholds
@@ -44,7 +49,7 @@ Preferred communication style: Simple, everyday language.
 - Export functionality:
   - Individual test export (PNG image)
   - Bulk export (ZIP with PNG images)
-  - PDF export support via jsPDF
+  - PDF export with test data and damper images
 - Geometric free area calculation from damper dimensions
 - "Next Floor" workflow for efficient multi-floor testing
 
@@ -117,8 +122,10 @@ Preferred communication style: Simple, everyday language.
 - **@capacitor/app**: App lifecycle events
 - **@capacitor/splash-screen**: Native splash screen management
 - **@capacitor/status-bar**: Status bar styling control
+- **@capacitor/camera**: Native camera access for photo capture and gallery selection
 - Supports iOS 13.0+ and Android 6.0+ (API 23+)
 - Full native app deployment to App Store and Google Play Store
+- Camera permissions configured for both iOS and Android platforms
 
 **Data Storage Schema**:
 ```typescript
@@ -138,6 +145,8 @@ Test {
   damperWidth?: number       // Width in mm
   damperHeight?: number      // Height in mm
   freeArea?: number         // Calculated geometric free area in m²
+  damperOpenImage?: string   // Base64 data URL for damper open position photo
+  damperClosedImage?: string // Base64 data URL for damper closed position photo
   createdAt: number
 }
 ```
