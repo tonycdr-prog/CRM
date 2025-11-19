@@ -54,7 +54,10 @@ Preferred communication style: Simple, everyday language.
   - Standards and methodology section
   - Summary table with pass/fail statistics and comparisons
   - Individual test pages with grid visualizations
-  - Trend charts for dampers with historical data
+  - Trend charts for dampers with historical data (only for dampers with multi-year history)
+  - Selection-based filtering: exports respect selected tests from Test History tab
+  - When tests are selected, PDF includes only those tests and their associated dampers
+  - Button location: Test History tab for selection-aware export workflow
   - Deterministic rendering ensures reliable exports
 - **Damper Image Documentation**: Camera integration for documenting damper conditions
   - Take photos directly using device camera (mobile) or upload images (web)
