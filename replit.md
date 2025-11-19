@@ -36,20 +36,44 @@ Preferred communication style: Simple, everyday language.
   - Damper ≤ 610mm: 5×5 grid (25 measurement points)
   - Damper 610-914mm: 6×6 grid (36 measurement points)
   - Damper > 914mm: 7×7 grid (49 measurement points)
+- **Professional Report System**: Comprehensive project documentation
+  - Report setup with company details, logo upload, project metadata
+  - Scope of works and system description
+  - Testing standards (BS EN 12101-8:2020, BSRIA BG 49/2024)
+  - Report type selection (Commissioning/Annual Inspection/Reactive)
+  - Executive summary and pass/fail statistics
+- **Trend Analysis & Historical Tracking**:
+  - Automatic damper tracking across multiple years
+  - Year-over-year velocity trend visualization with Recharts
+  - Repeat visit detection for annual compliance testing
+  - Historical data grouping by damper and year
+  - Pass/fail trend indicators
+  - Filter to show only dampers with multi-year data
+- **Enhanced PDF Export**:
+  - Professional cover page with company logo and project details
+  - Standards and methodology section
+  - Summary table with pass/fail statistics and comparisons
+  - Individual test pages with grid visualizations
+  - Trend charts for dampers with historical data
+  - Deterministic rendering ensures reliable exports
 - **Damper Image Documentation**: Camera integration for documenting damper conditions
   - Take photos directly using device camera (mobile) or upload images (web)
   - Capture damper in open and closed positions
   - Images stored as base64 data URLs for offline access
   - Included automatically in PDF exports for complete documentation
+- **Three-Tab Interface**:
+  - Report Setup: Configure professional report metadata
+  - Testing: Perform velocity measurements with live grid
+  - Test History: View, filter, and analyze past tests with trends
 - Dynamic grid visualization adapting to test requirements
 - Automatic average, minimum, and maximum velocity calculations
 - Pass/fail criteria evaluation with configurable thresholds
 - Test metadata capture (date, building, location, floor, shaft ID, system type, tester name, notes)
-- Test history panel with CRUD operations
 - Export functionality:
   - Individual test export (PNG image)
-  - Bulk export (ZIP with PNG images)
-  - PDF export with test data and damper images
+  - Batch export (ZIP with PNG images)
+  - Batch PDF export (multiple tests in one document)
+  - Comprehensive PDF report (cover, standards, summary, tests, trends)
 - Geometric free area calculation from damper dimensions
 - "Next Floor" workflow for efficient multi-floor testing
 
@@ -127,10 +151,50 @@ Preferred communication style: Simple, everyday language.
 - Full native app deployment to App Store and Google Play Store
 - Camera permissions configured for both iOS and Android platforms
 
-**Data Storage Schema**:
+**Data Storage Architecture**:
+
+The application uses a versioned localStorage-based storage system with automatic migration support. The storage structure includes:
+
 ```typescript
+StorageData {
+  version: number             // Schema version for migrations
+  reports: Record<string, Report>  // Project reports indexed by ID
+  dampers: Record<string, Damper>  // Damper equipment records
+  tests: Record<string, Test>      // Individual test records
+}
+
+Report {
+  id: string
+  projectName: string
+  siteName: string
+  siteAddress: string
+  companyName: string
+  companyLogo?: string        // Base64 data URL
+  scopeOfWorks: string
+  systemDescription: string
+  reportDate: string
+  reportTitle: string
+  reportType: "commissioning" | "annual_inspection" | "reactive"
+  testingStandards: string    // BS EN 12101-8:2020, BSRIA BG 49/2024
+  includeExecutiveSummary: boolean
+  includePassFailSummary: boolean
+  testIds?: string[]          // Associated test IDs
+}
+
+Damper {
+  id: string                  // Unique damper ID
+  key: string                 // Generated from building+location+shaftId
+  building: string
+  location: string
+  shaftId: string
+  testIds: string[]           // All tests performed on this damper
+  createdAt: number
+  updatedAt: number
+}
+
 Test {
   id: string
+  damperId?: string           // Link to damper equipment
   testDate: string
   building: string
   location: string
@@ -139,17 +203,35 @@ Test {
   systemType: "" | "push" | "pull" | "push-pull"
   testerName: string
   notes: string
-  readings: (number | "")[]  // Variable length: 25, 36, or 49 readings
-  gridSize: number           // 5, 6, or 7
+  readings: (number | "")[]   // Variable length: 25, 36, or 49 readings
+  gridSize: number            // 5, 6, or 7
   average: number
-  damperWidth?: number       // Width in mm
-  damperHeight?: number      // Height in mm
-  freeArea?: number         // Calculated geometric free area in m²
+  damperWidth?: number        // Width in mm
+  damperHeight?: number       // Height in mm
+  freeArea?: number          // Calculated geometric free area in m²
   damperOpenImage?: string   // Base64 data URL for damper open position photo
   damperClosedImage?: string // Base64 data URL for damper closed position photo
   createdAt: number
 }
 ```
+
+**Storage Features**:
+- Automatic migration from legacy localStorage format
+- Multi-report support with active report tracking via `currentReportId` state
+- Damper tracking across years for trend analysis
+- Test-to-damper linking via damperKey (building+location+shaftId)
+- Defensive persistence with undefined guards and error handling
+
+**Export Reliability**:
+- Deterministic DOM rendering with `waitForDOMReady()` helper
+- Explicit image loading with timeout fallbacks
+- Shared `waitForImages()` helper used across all export paths:
+  * Single test PNG export
+  * Batch PNG export (ZIP)
+  * Batch PDF export
+  * Comprehensive PDF report
+- Triple requestAnimationFrame sequence ensures React state flush and DOM paint
+- 500ms font loading buffer + 5s per-image timeout prevents blank captures
 
 **Authentication Schema** (Prepared but not actively used):
 ```typescript

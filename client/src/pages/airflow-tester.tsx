@@ -79,6 +79,7 @@ export default function AirflowTester() {
   const [storageData, setStorageData] = useState<StorageData | null>(null);
   const [dampers, setDampers] = useState<Record<string, Damper>>({});
   const [savedTests, setSavedTests] = useState<Test[]>([]);
+  const [currentReportId, setCurrentReportId] = useState<string>('default-report');
   const [currentReport, setCurrentReport] = useState<Partial<Report>>({
     reportDate: new Date().toISOString().split('T')[0],
     testingStandards: "BS EN 12101-8:2020, BSRIA BG 49/2024",
@@ -161,7 +162,9 @@ export default function AirflowTester() {
       // Load the first report if it exists
       const reportIds = Object.keys(data.reports);
       if (reportIds.length > 0) {
-        const firstReport = data.reports[reportIds[0]];
+        const firstReportId = reportIds[0];
+        const firstReport = data.reports[firstReportId];
+        setCurrentReportId(firstReportId);
         setCurrentReport(firstReport);
       }
       
@@ -185,18 +188,12 @@ export default function AirflowTester() {
   useEffect(() => {
     if (storageData) {
       try {
-        // Determine report ID - use first existing or create default
-        let reportId = Object.keys(storageData.reports)[0];
-        if (!reportId) {
-          reportId = 'default-report';
-        }
-        
-        // Preserve all existing reports, only update the current one
+        // Preserve all existing reports, only update the current one being edited
         const updatedReports = {
           ...storageData.reports,
-          [reportId]: {
-            id: reportId,
-            ...storageData.reports[reportId], // Preserve existing fields
+          [currentReportId]: {
+            id: currentReportId,
+            ...(storageData.reports[currentReportId] ?? {}), // Preserve existing fields (empty object if new)
             ...currentReport, // Overlay with current changes
           } as Partial<Report> & {id: string},
         };
@@ -213,7 +210,7 @@ export default function AirflowTester() {
         console.error('Error saving storage data:', error);
       }
     }
-  }, [savedTests, dampers, currentReport]);
+  }, [savedTests, dampers, currentReport, currentReportId]);
 
   const handleReadingChange = (index: number, value: string) => {
     const numValue = value === "" ? "" : parseFloat(value);
@@ -428,7 +425,34 @@ export default function AirflowTester() {
     return `airflow_${safe(building)}_floor-${safe(floor)}_${timestamp}.${extension}`;
   };
 
+  // Helper to wait for all images to load in an element
+  const waitForImages = async (element: HTMLElement): Promise<void> => {
+    const images = element.getElementsByTagName('img');
+    const promises = Array.from(images).map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.addEventListener('load', () => resolve(null));
+        img.addEventListener('error', () => resolve(null)); // Resolve even on error to not block
+        setTimeout(() => resolve(null), 5000); // Timeout after 5s
+      });
+    });
+    await Promise.all(promises);
+  };
+
+  // Helper to wait for DOM render and images to load
+  const waitForDOMReady = async (element: HTMLElement): Promise<void> => {
+    // Wait for React to flush state and render new DOM
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // Wait for DOM paint
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    // Additional time for fonts
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for all images to load
+    await waitForImages(element);
+  };
+
   const captureTestImage = async (element: HTMLElement): Promise<string> => {
+    await waitForDOMReady(element);
     return await toPng(element, {
       quality: 1.0,
       pixelRatio: 2,
@@ -479,9 +503,6 @@ export default function AirflowTester() {
       setDamperWidth(test.damperWidth || "");
       setDamperHeight(test.damperHeight || "");
       setGridSize(test.gridSize || 5);
-      
-      // Wait for React to render the changes
-      await new Promise(resolve => setTimeout(resolve, 500));
 
       const dataUrl = await captureTestImage(captureRef.current);
       const link = document.createElement('a');
@@ -618,9 +639,6 @@ export default function AirflowTester() {
       setDamperWidth(test.damperWidth || "");
       setDamperHeight(test.damperHeight || "");
       setGridSize(test.gridSize || 5);
-      
-      // Wait for React to render the changes
-      await new Promise(resolve => setTimeout(resolve, 500));
 
       try {
         const dataUrl = await captureTestImage(captureRef.current!);
@@ -718,9 +736,6 @@ export default function AirflowTester() {
         setDamperWidth(test.damperWidth || "");
         setDamperHeight(test.damperHeight || "");
         setGridSize(test.gridSize || 5);
-        
-        // Wait for React to render the changes
-        await new Promise(resolve => setTimeout(resolve, 500));
 
         try {
           // Capture the visible component
@@ -880,20 +895,6 @@ export default function AirflowTester() {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       let pageNumber = 1;
-
-      // Helper to wait for all images to load in an element
-      const waitForImages = async (element: HTMLElement): Promise<void> => {
-        const images = element.getElementsByTagName('img');
-        const promises = Array.from(images).map(img => {
-          if (img.complete) return Promise.resolve();
-          return new Promise((resolve, reject) => {
-            img.addEventListener('load', () => resolve(null));
-            img.addEventListener('error', () => resolve(null)); // Resolve even on error to not block
-            setTimeout(() => resolve(null), 5000); // Timeout after 5s
-          });
-        });
-        await Promise.all(promises);
-      };
 
       // Helper to capture visible pdfCaptureRef component
       const capturePDFSection = async (): Promise<string> => {
