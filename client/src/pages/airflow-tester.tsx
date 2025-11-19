@@ -906,6 +906,27 @@ export default function AirflowTester() {
         description: "This may take a few moments. Please wait...",
       });
 
+      // FIRST: Calculate which tests to export and set state BEFORE any rendering
+      const testsToExport = selectedTestIds.size > 0
+        ? savedTests.filter(test => selectedTestIds.has(test.id))
+        : savedTests;
+      
+      // Calculate damper histories for trend analysis
+      const damperIds = new Set(testsToExport.map(t => t.damperId).filter(Boolean) as string[]);
+      const damperHistories: DamperHistory[] = [];
+      damperIds.forEach(damperId => {
+        const history = getDamperHistory(damperId, savedTests, dampers, minVelocityThreshold);
+        if (history && history.hasMultipleYears) {
+          damperHistories.push(history);
+        }
+      });
+      
+      // Set state synchronously BEFORE starting any PDF rendering
+      flushSync(() => {
+        setPdfTestsToExport(testsToExport);
+        setPdfDamperHistories(damperHistories);
+      });
+
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
