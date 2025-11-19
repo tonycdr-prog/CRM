@@ -893,6 +893,13 @@ export default function AirflowTester() {
         
         console.log('[PDF] Starting capture, state:', pdfRenderState);
         
+        // Temporarily move element on-screen for reliable capture
+        const originalTop = pdfCaptureRef.current.style.top;
+        pdfCaptureRef.current.style.top = '0';
+        pdfCaptureRef.current.style.left = '0';
+        pdfCaptureRef.current.style.position = 'fixed';
+        pdfCaptureRef.current.style.zIndex = '99999';
+        
         // Wait for React to flush state changes
         await new Promise(resolve => setTimeout(resolve, 100));
         
@@ -931,6 +938,11 @@ export default function AirflowTester() {
         });
         
         console.log('[PDF] Screenshot captured, size:', dataUrl.length, 'bytes');
+        
+        // Move element back off-screen
+        pdfCaptureRef.current.style.top = originalTop;
+        pdfCaptureRef.current.style.zIndex = '-9999';
+        
         return dataUrl;
       };
 
@@ -1906,12 +1918,12 @@ export default function AirflowTester() {
         ref={pdfCaptureRef} 
         data-testid="pdf-staging"
         style={{ 
-          position: 'fixed', 
+          position: 'absolute', 
           left: '0', 
-          top: '0',
-          opacity: 0,
+          top: '-100000px',
+          visibility: 'visible',
           pointerEvents: 'none',
-          zIndex: -1,
+          zIndex: -9999,
           backgroundColor: 'white',
           width: '210mm',
           minHeight: '297mm',
