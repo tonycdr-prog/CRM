@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1024,7 +1025,9 @@ export default function AirflowTester() {
         }
         
         // 1. Cover Page (with extra wait for logo loading)
-        setPdfRenderState('cover');
+        flushSync(() => {
+          setPdfRenderState('cover');
+        });
         await new Promise(resolve => setTimeout(resolve, 800)); // Extra wait for logo
         const coverDataUrl = await capturePDFSection();
         addFullPageImage(coverDataUrl);
@@ -1032,17 +1035,25 @@ export default function AirflowTester() {
 
         // 2. Standards Page
         pdf.addPage();
-        setPdfRenderState('standards');
+        flushSync(() => {
+          setPdfRenderState('standards');
+        });
         const standardsDataUrl = await capturePDFSection();
         addFullPageImage(standardsDataUrl);
-        setPdfRenderState(null);
+        flushSync(() => {
+          setPdfRenderState(null);
+        });
 
         // 3. Summary Table
         pdf.addPage();
-        setPdfRenderState('summary');
+        flushSync(() => {
+          setPdfRenderState('summary');
+        });
         const summaryDataUrl = await capturePDFSection();
         addFullPageImage(summaryDataUrl);
-        setPdfRenderState(null);
+        flushSync(() => {
+          setPdfRenderState(null);
+        });
       } catch (sectionError) {
         console.error('Error capturing PDF section:', sectionError);
         setPdfRenderState(null);
@@ -1068,15 +1079,21 @@ export default function AirflowTester() {
       });
       
       // Store filtered tests and damper histories for use in PDF components
-      setPdfTestsToExport(testsToExport);
-      setPdfDamperHistories(damperHistories);
+      // Use flushSync to force synchronous state updates before PDF rendering begins
+      flushSync(() => {
+        setPdfTestsToExport(testsToExport);
+        setPdfDamperHistories(damperHistories);
+      });
       
       for (let i = 0; i < testsToExport.length; i++) {
         const test = testsToExport[i];
         
         pdf.addPage();
-        setPdfCurrentTestIndex(i);
-        setPdfRenderState('test');
+        // Force synchronous state updates before capture
+        flushSync(() => {
+          setPdfCurrentTestIndex(i);
+          setPdfRenderState('test');
+        });
         
         // Capture using the same reliable method
         const dataUrl = await capturePDFSection();
@@ -1156,10 +1173,14 @@ export default function AirflowTester() {
       // 5. Trend Analysis Page (if there are dampers with multiple years)
       if (damperHistories.length > 0) {
         pdf.addPage();
-        setPdfRenderState('trends');
+        flushSync(() => {
+          setPdfRenderState('trends');
+        });
         const trendsDataUrl = await capturePDFSection();
         addFullPageImage(trendsDataUrl);
-        setPdfRenderState(null);
+        flushSync(() => {
+          setPdfRenderState(null);
+        });
       }
 
       // Clean up PDF render state
