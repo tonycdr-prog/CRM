@@ -61,10 +61,17 @@ Preferred communication style: Simple, everyday language.
   - Capture damper in open and closed positions
   - Images stored as base64 data URLs for offline access
   - Included automatically in PDF exports for complete documentation
+- **Grouped Test History**: Organized site visit view for field technicians
+  - Tests automatically grouped by building and date (site visits)
+  - Expandable/collapsible cards for each site visit
+  - Summary statistics per visit (test count, pass/fail badges)
+  - Tests within visit sorted by floor number
+  - Visit-level selection for bulk operations (export, delete)
+  - Normalized grouping prevents duplicate visits from spacing/casing differences
 - **Three-Tab Interface**:
   - Report Setup: Configure professional report metadata
   - Testing: Perform velocity measurements with live grid
-  - Test History: View, filter, and analyze past tests with trends
+  - Test History: Grouped site visits with year-over-year trend analysis
 - Dynamic grid visualization adapting to test requirements
 - Automatic average, minimum, and maximum velocity calculations
 - Pass/fail criteria evaluation with configurable thresholds
