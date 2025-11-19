@@ -379,40 +379,48 @@ export default function AirflowTester() {
   };
 
   const handleExportSingleImage = async (test: Test) => {
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
-    tempDiv.style.top = '0';
-    tempDiv.style.width = '800px';
-    tempDiv.style.minHeight = '600px';
-    tempDiv.style.zIndex = '-1000';
-    tempDiv.style.opacity = '1';
-    tempDiv.style.visibility = 'visible';
-    tempDiv.className = 'bg-background p-6 rounded-lg border-2 border-border';
-    document.body.appendChild(tempDiv);
+    if (!captureRef.current) {
+      toast({
+        title: "Export failed",
+        description: "Visualization component not ready",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const { createRoot } = await import('react-dom/client');
-    const root = createRoot(tempDiv);
-    
-    const filledCount = test.readings.filter((r): r is number => typeof r === "number" && !isNaN(r)).length;
-    
-    await new Promise<void>((resolve) => {
-      root.render(
-        <div>
-          <TestVisualization 
-            test={test}
-            average={test.average}
-            filledCount={filledCount}
-            passFailStatus={evaluatePassFail(test.average)}
-            threshold={minVelocityThreshold}
-          />
-        </div>
-      );
-      setTimeout(resolve, 2000);
-    });
+    // Store current state to restore later
+    const originalReadings = [...readings];
+    const originalTestDate = testDate;
+    const originalBuilding = building;
+    const originalLocation = location;
+    const originalFloorNumber = floorNumber;
+    const originalShaftId = shaftId;
+    const originalSystemType = systemType;
+    const originalTesterName = testerName;
+    const originalNotes = notes;
+    const originalDamperWidth = damperWidth;
+    const originalDamperHeight = damperHeight;
+    const originalGridSize = gridSize;
 
     try {
-      const dataUrl = await captureTestImage(tempDiv);
+      // Update the visible component with this test's data
+      setReadings(test.readings);
+      setTestDate(test.testDate);
+      setBuilding(test.building);
+      setLocation(test.location);
+      setFloorNumber(test.floorNumber);
+      setShaftId(test.shaftId);
+      setSystemType(test.systemType);
+      setTesterName(test.testerName);
+      setNotes(test.notes);
+      setDamperWidth(test.damperWidth || "");
+      setDamperHeight(test.damperHeight || "");
+      setGridSize(test.gridSize || 5);
+      
+      // Wait for React to render the changes
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const dataUrl = await captureTestImage(captureRef.current);
       const link = document.createElement('a');
       link.download = generateFilename(test, 'png');
       link.href = dataUrl;
@@ -430,8 +438,19 @@ export default function AirflowTester() {
         variant: "destructive",
       });
     } finally {
-      root.unmount();
-      document.body.removeChild(tempDiv);
+      // Restore original state
+      setReadings(originalReadings);
+      setTestDate(originalTestDate);
+      setBuilding(originalBuilding);
+      setLocation(originalLocation);
+      setFloorNumber(originalFloorNumber);
+      setShaftId(originalShaftId);
+      setSystemType(originalSystemType);
+      setTesterName(originalTesterName);
+      setNotes(originalNotes);
+      setDamperWidth(originalDamperWidth);
+      setDamperHeight(originalDamperHeight);
+      setGridSize(originalGridSize);
     }
   };
 
@@ -490,54 +509,79 @@ export default function AirflowTester() {
       return;
     }
 
+    if (!captureRef.current) {
+      toast({
+        title: "Export failed",
+        description: "Visualization component not ready",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Exporting images...",
+      description: `Processing ${savedTests.length} test${savedTests.length !== 1 ? 's' : ''}`,
+    });
+
     const zip = new JSZip();
-    const { createRoot } = await import('react-dom/client');
+
+    // Store current state to restore later
+    const originalReadings = [...readings];
+    const originalTestDate = testDate;
+    const originalBuilding = building;
+    const originalLocation = location;
+    const originalFloorNumber = floorNumber;
+    const originalShaftId = shaftId;
+    const originalSystemType = systemType;
+    const originalTesterName = testerName;
+    const originalNotes = notes;
+    const originalDamperWidth = damperWidth;
+    const originalDamperHeight = damperHeight;
+    const originalGridSize = gridSize;
 
     for (let i = 0; i < savedTests.length; i++) {
       const test = savedTests[i];
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '0';
-      tempDiv.style.width = '800px';
-      tempDiv.style.minHeight = '600px';
-      tempDiv.style.zIndex = '-1000';
-      tempDiv.style.opacity = '1';
-      tempDiv.style.visibility = 'visible';
-      tempDiv.className = 'bg-background p-6 rounded-lg border-2 border-border';
-      document.body.appendChild(tempDiv);
-
-      const root = createRoot(tempDiv);
       
-      const filledCount = test.readings.filter((r): r is number => typeof r === "number" && !isNaN(r)).length;
+      // Update the visible component with this test's data
+      setReadings(test.readings);
+      setTestDate(test.testDate);
+      setBuilding(test.building);
+      setLocation(test.location);
+      setFloorNumber(test.floorNumber);
+      setShaftId(test.shaftId);
+      setSystemType(test.systemType);
+      setTesterName(test.testerName);
+      setNotes(test.notes);
+      setDamperWidth(test.damperWidth || "");
+      setDamperHeight(test.damperHeight || "");
+      setGridSize(test.gridSize || 5);
       
-      await new Promise<void>((resolve) => {
-        root.render(
-          <div>
-            <TestVisualization 
-              test={test}
-              average={test.average}
-              filledCount={filledCount}
-              passFailStatus={evaluatePassFail(test.average)}
-              threshold={minVelocityThreshold}
-            />
-          </div>
-        );
-        setTimeout(resolve, 2000);
-      });
+      // Wait for React to render the changes
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       try {
-        const dataUrl = await captureTestImage(tempDiv);
+        const dataUrl = await captureTestImage(captureRef.current!);
         const base64Data = dataUrl.split(',')[1];
         const filename = generateFilename(test, 'png').replace('.png', '');
         zip.file(`${i + 1}_${filename}.png`, base64Data, { base64: true });
       } catch (error) {
         console.error('Error generating image for test:', test.id, error);
-      } finally {
-        root.unmount();
-        document.body.removeChild(tempDiv);
       }
     }
+
+    // Restore original state
+    setReadings(originalReadings);
+    setTestDate(originalTestDate);
+    setBuilding(originalBuilding);
+    setLocation(originalLocation);
+    setFloorNumber(originalFloorNumber);
+    setShaftId(originalShaftId);
+    setSystemType(originalSystemType);
+    setTesterName(originalTesterName);
+    setNotes(originalNotes);
+    setDamperWidth(originalDamperWidth);
+    setDamperHeight(originalDamperHeight);
+    setGridSize(originalGridSize);
 
     const blob = await zip.generateAsync({ type: 'blob' });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -628,18 +672,24 @@ export default function AirflowTester() {
           // Calculate proper image dimensions using getImageProperties
           const imgProps = pdf.getImageProperties(dataUrl);
           const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
           const pdfWidth = pageWidth - 20; // 10mm margins on each side
           const aspectRatio = imgProps.height / imgProps.width;
-          const calculatedHeight = pdfWidth * aspectRatio;
+          let calculatedHeight = pdfWidth * aspectRatio;
           
           // Add test visualization at top - adjust height based on whether images exist
           const hasImages = test.damperOpenImage || test.damperClosedImage;
           
           if (hasImages) {
             // Constrained height to make room for images below
-            pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, 140);
+            // Max height 140mm to leave room for damper images (160 + 80 = 240mm total)
+            const maxHeight = 140;
+            calculatedHeight = Math.min(calculatedHeight, maxHeight);
+            pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, calculatedHeight);
           } else {
-            // Use calculated height to maintain aspect ratio
+            // Constrain to page height with margins
+            const maxHeight = pageHeight - 20; // 20mm total margins (10mm top + 10mm bottom)
+            calculatedHeight = Math.min(calculatedHeight, maxHeight);
             pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, calculatedHeight);
           }
           successCount++;
