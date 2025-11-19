@@ -3,15 +3,30 @@ import App from "./App";
 import "./index.css";
 
 import { Capacitor } from '@capacitor/core';
-import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
 async function initMobileApp() {
   if (Capacitor.isNativePlatform()) {
-    await SplashScreen.hide();
-    
     if (Capacitor.getPlatform() === 'ios' || Capacitor.getPlatform() === 'android') {
-      await StatusBar.setStyle({ style: Style.Light });
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      const updateStatusBar = async (matches: boolean) => {
+        await StatusBar.setStyle({ 
+          style: matches ? Style.Dark : Style.Light 
+        });
+      };
+      
+      await updateStatusBar(mediaQuery.matches);
+      
+      const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+        updateStatusBar(e.matches);
+      };
+      
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleChange);
+      } else {
+        mediaQuery.addListener(handleChange);
+      }
     }
   }
 }
