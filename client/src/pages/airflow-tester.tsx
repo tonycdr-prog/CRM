@@ -382,7 +382,12 @@ export default function AirflowTester() {
     const tempDiv = document.createElement('div');
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
+    tempDiv.style.top = '0';
     tempDiv.style.width = '800px';
+    tempDiv.style.minHeight = '600px';
+    tempDiv.style.zIndex = '-1000';
+    tempDiv.style.opacity = '1';
+    tempDiv.style.visibility = 'visible';
     tempDiv.className = 'bg-background p-6 rounded-lg border-2 border-border';
     document.body.appendChild(tempDiv);
 
@@ -403,7 +408,7 @@ export default function AirflowTester() {
           />
         </div>
       );
-      setTimeout(resolve, 500);
+      setTimeout(resolve, 2000);
     });
 
     try {
@@ -493,7 +498,12 @@ export default function AirflowTester() {
       const tempDiv = document.createElement('div');
       tempDiv.style.position = 'absolute';
       tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '0';
       tempDiv.style.width = '800px';
+      tempDiv.style.minHeight = '600px';
+      tempDiv.style.zIndex = '-1000';
+      tempDiv.style.opacity = '1';
+      tempDiv.style.visibility = 'visible';
       tempDiv.className = 'bg-background p-6 rounded-lg border-2 border-border';
       document.body.appendChild(tempDiv);
 
@@ -513,7 +523,7 @@ export default function AirflowTester() {
             />
           </div>
         );
-        setTimeout(resolve, 500);
+        setTimeout(resolve, 2000);
       });
 
       try {
