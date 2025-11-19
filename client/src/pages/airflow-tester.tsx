@@ -12,6 +12,9 @@ import TestHistoryPanel from "@/components/TestHistoryPanel";
 import ReportSetupForm from "@/components/ReportSetupForm";
 import TrendChart from "@/components/TrendChart";
 import { ImageUpload } from "@/components/ImageUpload";
+import PDFCoverPage from "@/components/pdf/PDFCoverPage";
+import PDFStandardsPage from "@/components/pdf/PDFStandardsPage";
+import PDFSummaryTable from "@/components/pdf/PDFSummaryTable";
 import { testSchema, type Test, type Report, type Damper } from "@shared/schema";
 import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
 import { getDamperHistory, getDampersWithRepeatVisits, getTestYear } from "@/lib/trendAnalysis";
@@ -111,8 +114,12 @@ export default function AirflowTester() {
   const [minVelocityThreshold, setMinVelocityThreshold] = useState<number>(2.5);
   const [showPassFailConfig, setShowPassFailConfig] = useState<boolean>(false);
   const [showRepeatVisitsOnly, setShowRepeatVisitsOnly] = useState<boolean>(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
+  const [pdfRenderState, setPdfRenderState] = useState<'cover' | 'standards' | 'summary' | 'test' | null>(null);
+  const [pdfCurrentTestIndex, setPdfCurrentTestIndex] = useState<number>(0);
   
   const captureRef = useRef<HTMLDivElement>(null);
+  const pdfCaptureRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Update grid size and readings array when damper dimensions change
@@ -151,6 +158,13 @@ export default function AirflowTester() {
       setDampers(data.dampers);
       setSavedTests(Object.values(data.tests));
       
+      // Load the first report if it exists
+      const reportIds = Object.keys(data.reports);
+      if (reportIds.length > 0) {
+        const firstReport = data.reports[reportIds[0]];
+        setCurrentReport(firstReport);
+      }
+      
       if (Object.keys(data.tests).length > 0) {
         toast({
           title: "Data loaded",
@@ -167,18 +181,39 @@ export default function AirflowTester() {
     }
   }, []);
 
-  // Save storage data whenever tests or dampers change
+  // Save storage data whenever tests, dampers, or report changes
   useEffect(() => {
     if (storageData) {
-      const updatedData: StorageData = {
-        ...storageData,
-        tests: Object.fromEntries(savedTests.map(t => [t.id, t])),
-        dampers,
-      };
-      saveStorageData(updatedData);
-      setStorageData(updatedData);
+      try {
+        // Determine report ID - use first existing or create default
+        let reportId = Object.keys(storageData.reports)[0];
+        if (!reportId) {
+          reportId = 'default-report';
+        }
+        
+        // Preserve all existing reports, only update the current one
+        const updatedReports = {
+          ...storageData.reports,
+          [reportId]: {
+            id: reportId,
+            ...storageData.reports[reportId], // Preserve existing fields
+            ...currentReport, // Overlay with current changes
+          } as Partial<Report> & {id: string},
+        };
+        
+        const updatedData: StorageData = {
+          ...storageData,
+          tests: Object.fromEntries(savedTests.map(t => [t.id, t])),
+          dampers,
+          reports: updatedReports,
+        };
+        saveStorageData(updatedData);
+        setStorageData(updatedData);
+      } catch (error) {
+        console.error('Error saving storage data:', error);
+      }
     }
-  }, [savedTests, dampers]);
+  }, [savedTests, dampers, currentReport]);
 
   const handleReadingChange = (index: number, value: string) => {
     const numValue = value === "" ? "" : parseFloat(value);
@@ -823,6 +858,289 @@ export default function AirflowTester() {
     }
   };
 
+  const generateComprehensivePDF = async () => {
+    if (savedTests.length === 0) {
+      toast({
+        title: "No tests available",
+        description: "Save some tests first before generating a comprehensive report",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+
+    try {
+      toast({
+        title: "Generating comprehensive PDF...",
+        description: "This may take a few moments. Please wait...",
+      });
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let pageNumber = 1;
+
+      // Helper to wait for all images to load in an element
+      const waitForImages = async (element: HTMLElement): Promise<void> => {
+        const images = element.getElementsByTagName('img');
+        const promises = Array.from(images).map(img => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve, reject) => {
+            img.addEventListener('load', () => resolve(null));
+            img.addEventListener('error', () => resolve(null)); // Resolve even on error to not block
+            setTimeout(() => resolve(null), 5000); // Timeout after 5s
+          });
+        });
+        await Promise.all(promises);
+      };
+
+      // Helper to capture visible pdfCaptureRef component
+      const capturePDFSection = async (): Promise<string> => {
+        // Wait for React to flush state and render new DOM
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        // Wait for DOM paint
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        // Additional time for fonts
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (!pdfCaptureRef.current) throw new Error('PDF capture ref not available');
+        
+        // Wait for all images to load
+        await waitForImages(pdfCaptureRef.current);
+        
+        const dataUrl = await toPng(pdfCaptureRef.current, {
+          quality: 1.0,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          skipFonts: false,
+          cacheBust: true,
+        });
+        
+        return dataUrl;
+      };
+
+      // Helper to add full-page image
+      const addFullPageImage = (dataUrl: string) => {
+        const maxPdfWidth = pageWidth - 20;
+        const maxPdfHeight = pageHeight - 20;
+        
+        const imgProps = pdf.getImageProperties(dataUrl);
+        const aspectRatio = imgProps.height / imgProps.width;
+        const naturalHeight = maxPdfWidth * aspectRatio;
+        
+        let finalWidth: number;
+        let finalHeight: number;
+        
+        if (naturalHeight <= maxPdfHeight) {
+          finalWidth = maxPdfWidth;
+          finalHeight = naturalHeight;
+        } else {
+          finalHeight = maxPdfHeight;
+          finalWidth = maxPdfHeight / aspectRatio;
+        }
+        
+        const xPos = 10 + (maxPdfWidth - finalWidth) / 2;
+        const yPos = 10;
+        pdf.addImage(dataUrl, 'PNG', xPos, yPos, finalWidth, finalHeight);
+        
+        // Add page number
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+        pageNumber++;
+      };
+
+      // Store original state
+      const originalReadings = [...readings];
+      const originalTestDate = testDate;
+      const originalBuilding = building;
+      const originalLocation = location;
+      const originalFloorNumber = floorNumber;
+      const originalShaftId = shaftId;
+      const originalSystemType = systemType;
+      const originalTesterName = testerName;
+      const originalNotes = notes;
+      const originalDamperWidth = damperWidth;
+      const originalDamperHeight = damperHeight;
+      const originalGridSize = gridSize;
+
+      try {
+        // 1. Cover Page
+        setPdfRenderState('cover');
+        const coverDataUrl = await capturePDFSection();
+        addFullPageImage(coverDataUrl);
+        setPdfRenderState(null);
+
+        // 2. Standards Page
+        pdf.addPage();
+        setPdfRenderState('standards');
+        const standardsDataUrl = await capturePDFSection();
+        addFullPageImage(standardsDataUrl);
+        setPdfRenderState(null);
+
+        // 3. Summary Table
+        pdf.addPage();
+        setPdfRenderState('summary');
+        const summaryDataUrl = await capturePDFSection();
+        addFullPageImage(summaryDataUrl);
+        setPdfRenderState(null);
+      } catch (sectionError) {
+        console.error('Error capturing PDF section:', sectionError);
+        setPdfRenderState(null);
+        throw sectionError;
+      }
+
+      // 4. Individual Test Pages
+      for (let i = 0; i < savedTests.length; i++) {
+        const test = savedTests[i];
+        
+        pdf.addPage();
+        setPdfCurrentTestIndex(i);
+        setPdfRenderState('test');
+        
+        // Update state to render test visualization
+        setReadings(test.readings);
+        setTestDate(test.testDate);
+        setBuilding(test.building);
+        setLocation(test.location);
+        setFloorNumber(test.floorNumber);
+        setShaftId(test.shaftId);
+        setSystemType(test.systemType);
+        setTesterName(test.testerName);
+        setNotes(test.notes);
+        setDamperWidth(test.damperWidth || "");
+        setDamperHeight(test.damperHeight || "");
+        setGridSize(test.gridSize || 5);
+        
+        await new Promise(resolve => setTimeout(resolve, 600));
+
+        // Capture the existing TestVisualization component
+        if (!captureRef.current) continue;
+        
+        const dataUrl = await toPng(captureRef.current, {
+          quality: 1.0,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          skipFonts: false,
+          cacheBust: true,
+        });
+
+        // Add test visualization - calculate proper dimensions
+        const imgProps = pdf.getImageProperties(dataUrl);
+        const maxPdfWidth = pageWidth - 20;
+        const aspectRatio = imgProps.height / imgProps.width;
+        
+        const hasImages = test.damperOpenImage || test.damperClosedImage;
+        
+        let finalWidth: number;
+        let finalHeight: number;
+        
+        if (hasImages) {
+          const maxHeight = 140;
+          const naturalHeight = maxPdfWidth * aspectRatio;
+          
+          if (naturalHeight <= maxHeight) {
+            finalWidth = maxPdfWidth;
+            finalHeight = naturalHeight;
+          } else {
+            finalHeight = maxHeight;
+            finalWidth = maxHeight / aspectRatio;
+          }
+        } else {
+          const maxHeight = pageHeight - 20;
+          const naturalHeight = maxPdfWidth * aspectRatio;
+          
+          if (naturalHeight <= maxHeight) {
+            finalWidth = maxPdfWidth;
+            finalHeight = naturalHeight;
+          } else {
+            finalHeight = maxHeight;
+            finalWidth = maxHeight / aspectRatio;
+          }
+        }
+        
+        const xPos = 10 + (maxPdfWidth - finalWidth) / 2;
+        pdf.addImage(dataUrl, 'PNG', xPos, 10, finalWidth, finalHeight);
+        
+        // Add damper images if they exist
+        if (hasImages) {
+          const imageY = 160;
+          const imageWidth = 90;
+          const imageHeight = 80;
+          
+          pdf.setFontSize(10);
+          pdf.setTextColor(100, 100, 100);
+          
+          if (test.damperOpenImage) {
+            pdf.text('Damper Open Position', 10, imageY - 3);
+            try {
+              pdf.addImage(test.damperOpenImage, 'JPEG', 10, imageY, imageWidth, imageHeight);
+            } catch (imgError) {
+              console.error('Error adding open image:', imgError);
+            }
+          }
+          
+          if (test.damperClosedImage) {
+            pdf.text('Damper Closed Position', 110, imageY - 3);
+            try {
+              pdf.addImage(test.damperClosedImage, 'JPEG', 110, imageY, imageWidth, imageHeight);
+            } catch (imgError) {
+              console.error('Error adding closed image:', imgError);
+            }
+          }
+        }
+        
+        // Add page number
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+        pageNumber++;
+      }
+
+      // Clean up PDF render state
+      setPdfRenderState(null);
+      setPdfCurrentTestIndex(0);
+
+      // Restore original state
+      setReadings(originalReadings);
+      setTestDate(originalTestDate);
+      setBuilding(originalBuilding);
+      setLocation(originalLocation);
+      setFloorNumber(originalFloorNumber);
+      setShaftId(originalShaftId);
+      setSystemType(originalSystemType);
+      setTesterName(originalTesterName);
+      setNotes(originalNotes);
+      setDamperWidth(originalDamperWidth);
+      setDamperHeight(originalDamperHeight);
+      setGridSize(originalGridSize);
+
+      // Generate filename and save
+      const reportName = currentReport.projectName || 'Smoke_Control_Report';
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `${reportName.replace(/[^a-zA-Z0-9-]/g, '_')}_${dateStr}.pdf`;
+      
+      pdf.save(filename);
+
+      toast({
+        title: "PDF report generated",
+        description: `Professional report with cover page, standards, summary, and ${savedTests.length} test page${savedTests.length !== 1 ? 's' : ''} exported successfully`,
+      });
+    } catch (error) {
+      console.error('Error generating comprehensive PDF:', error);
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Could not generate comprehensive PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+      setPdfRenderState(null);
+      setPdfCurrentTestIndex(0);
+    }
+  };
+
   const evaluatePassFail = (average: number): "pass" | "fail" => {
     return average >= minVelocityThreshold ? "pass" : "fail";
   };
@@ -954,6 +1272,53 @@ export default function AirflowTester() {
               report={currentReport}
               onUpdate={(updates) => setCurrentReport(prev => ({ ...prev, ...updates }))}
             />
+            
+            {savedTests.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Generate Professional Report</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Create a comprehensive PDF report with cover page, standards, summary tables, individual test pages, and trend analysis
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm mb-2">Report Contents</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                          <li>• Cover page with project details</li>
+                          <li>• Testing standards and methodology</li>
+                          <li>• Summary table ({savedTests.length} test{savedTests.length !== 1 ? 's' : ''})</li>
+                          <li>• Individual test pages with visualizations</li>
+                          {Object.values(dampers).filter(d => {
+                            const history = getDamperHistory(d.id, savedTests, dampers, minVelocityThreshold);
+                            return history?.hasMultipleYears;
+                          }).length > 0 && (
+                            <li>• Trend analysis charts for repeat visits</li>
+                          )}
+                        </ul>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          onClick={generateComprehensivePDF}
+                          disabled={isGeneratingPDF}
+                          data-testid="button-generate-comprehensive-pdf"
+                        >
+                          <FileDown className="w-4 h-4 mr-2" />
+                          {isGeneratingPDF ? "Generating..." : "Generate Professional Report PDF"}
+                        </Button>
+                        {isGeneratingPDF && (
+                          <p className="text-xs text-muted-foreground">
+                            This may take a moment...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="testing">
@@ -1520,6 +1885,34 @@ export default function AirflowTester() {
         )}
       </TabsContent>
     </Tabs>
+      </div>
+      
+      {/* Hidden capture divs for PDF generation */}
+      <div 
+        ref={pdfCaptureRef} 
+        style={{ 
+          position: 'fixed', 
+          left: '-9999px', 
+          top: '0',
+          backgroundColor: 'white',
+          width: '210mm',
+          minHeight: '297mm',
+          padding: '20px'
+        }}
+      >
+        {pdfRenderState === 'cover' && currentReport && (
+          <PDFCoverPage report={currentReport} tests={savedTests} />
+        )}
+        {pdfRenderState === 'standards' && currentReport && (
+          <PDFStandardsPage report={currentReport} minVelocityThreshold={minVelocityThreshold} />
+        )}
+        {pdfRenderState === 'summary' && (
+          <PDFSummaryTable 
+            tests={savedTests} 
+            dampers={dampers}
+            minVelocityThreshold={minVelocityThreshold}
+          />
+        )}
       </div>
     </div>
   );
