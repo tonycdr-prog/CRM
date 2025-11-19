@@ -950,10 +950,11 @@ export default function AirflowTester() {
           quality: 1.0,
           pixelRatio: 2,
           backgroundColor: '#ffffff',
-          skipFonts: false,
           cacheBust: true,
-          skipAutoScale: false,
-          includeQueryParams: true,
+          filter: (node) => {
+            // Include all nodes, especially images
+            return true;
+          },
         });
         
         console.log('[PDF] Screenshot captured, size:', dataUrl.length, 'bytes');
@@ -1004,8 +1005,9 @@ export default function AirflowTester() {
           console.log('[PDF] Logo format:', currentReport.companyLogo.substring(0, 30));
         }
         
-        // 1. Cover Page
+        // 1. Cover Page (with extra wait for logo loading)
         setPdfRenderState('cover');
+        await new Promise(resolve => setTimeout(resolve, 800)); // Extra wait for logo
         const coverDataUrl = await capturePDFSection();
         addFullPageImage(coverDataUrl);
         setPdfRenderState(null);
