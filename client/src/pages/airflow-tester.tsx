@@ -891,6 +891,8 @@ export default function AirflowTester() {
       const capturePDFSection = async (): Promise<string> => {
         if (!pdfCaptureRef.current) throw new Error('PDF capture ref not available');
         
+        console.log('[PDF] Starting capture, state:', pdfRenderState);
+        
         // Wait for React to flush state changes
         await new Promise(resolve => setTimeout(resolve, 100));
         
@@ -898,11 +900,17 @@ export default function AirflowTester() {
         let attempts = 0;
         while (attempts < 50) {
           const rect = pdfCaptureRef.current.getBoundingClientRect();
+          console.log('[PDF] Attempt', attempts, 'dimensions:', rect.width, 'x', rect.height);
           if (rect.width > 0 && rect.height > 0) {
+            console.log('[PDF] Element ready with dimensions:', rect.width, 'x', rect.height);
             break;
           }
           await new Promise(resolve => setTimeout(resolve, 50));
           attempts++;
+        }
+        
+        if (attempts >= 50) {
+          console.error('[PDF] Failed to get dimensions after 50 attempts');
         }
         
         // Wait for fonts and final paint
@@ -912,6 +920,7 @@ export default function AirflowTester() {
         // Wait for all images to load
         await waitForImages(pdfCaptureRef.current);
         
+        console.log('[PDF] Capturing screenshot...');
         const dataUrl = await toPng(pdfCaptureRef.current, {
           quality: 1.0,
           pixelRatio: 2,
@@ -921,6 +930,7 @@ export default function AirflowTester() {
           skipAutoScale: false,
         });
         
+        console.log('[PDF] Screenshot captured, size:', dataUrl.length, 'bytes');
         return dataUrl;
       };
 
@@ -1894,10 +1904,14 @@ export default function AirflowTester() {
       {/* Hidden capture divs for PDF generation */}
       <div 
         ref={pdfCaptureRef} 
+        data-testid="pdf-staging"
         style={{ 
           position: 'fixed', 
-          left: '-9999px', 
+          left: '0', 
           top: '0',
+          opacity: 0,
+          pointerEvents: 'none',
+          zIndex: -1,
           backgroundColor: 'white',
           width: '210mm',
           minHeight: '297mm',
