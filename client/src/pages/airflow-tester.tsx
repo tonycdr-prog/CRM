@@ -15,9 +15,10 @@ import { ImageUpload } from "@/components/ImageUpload";
 import PDFCoverPage from "@/components/pdf/PDFCoverPage";
 import PDFStandardsPage from "@/components/pdf/PDFStandardsPage";
 import PDFSummaryTable from "@/components/pdf/PDFSummaryTable";
+import PDFTrendPage from "@/components/pdf/PDFTrendPage";
 import { testSchema, type Test, type Report, type Damper } from "@shared/schema";
 import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
-import { getDamperHistory, getDampersWithRepeatVisits, getTestYear } from "@/lib/trendAnalysis";
+import { getDamperHistory, getDampersWithRepeatVisits, getTestYear, type DamperHistory } from "@/lib/trendAnalysis";
 import JSZip from "jszip";
 import jsPDF from "jspdf";
 
@@ -116,8 +117,10 @@ export default function AirflowTester() {
   const [showPassFailConfig, setShowPassFailConfig] = useState<boolean>(false);
   const [showRepeatVisitsOnly, setShowRepeatVisitsOnly] = useState<boolean>(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
-  const [pdfRenderState, setPdfRenderState] = useState<'cover' | 'standards' | 'summary' | 'test' | null>(null);
+  const [pdfRenderState, setPdfRenderState] = useState<'cover' | 'standards' | 'summary' | 'test' | 'trends' | null>(null);
   const [pdfCurrentTestIndex, setPdfCurrentTestIndex] = useState<number>(0);
+  const [pdfTestsToExport, setPdfTestsToExport] = useState<Test[]>([]);
+  const [pdfDamperHistories, setPdfDamperHistories] = useState<DamperHistory[]>([]);
   
   const captureRef = useRef<HTMLDivElement>(null);
   const pdfCaptureRef = useRef<HTMLDivElement>(null);
@@ -880,10 +883,15 @@ export default function AirflowTester() {
   };
 
   const generateComprehensivePDF = async () => {
-    if (savedTests.length === 0) {
+    // Determine which tests to export
+    const testsToCheck = selectedTestIds.size > 0
+      ? savedTests.filter(test => selectedTestIds.has(test.id))
+      : savedTests;
+    
+    if (testsToCheck.length === 0) {
       toast({
         title: "No tests available",
-        description: "Save some tests first before generating a comprehensive report",
+        description: selectedTestIds.size > 0 ? "No tests selected for export" : "Save some tests first before generating a comprehensive report",
         variant: "destructive",
       });
       return;
@@ -1042,8 +1050,29 @@ export default function AirflowTester() {
       }
 
       // 4. Individual Test Pages
-      for (let i = 0; i < savedTests.length; i++) {
-        const test = savedTests[i];
+      // Filter tests by selection if any are selected, otherwise use all tests
+      const testsToExport = selectedTestIds.size > 0
+        ? savedTests.filter(test => selectedTestIds.has(test.id))
+        : savedTests;
+      
+      // Calculate damper histories for trend analysis (using all savedTests for full history context)
+      // Even when filtering tests for export, we want to show the complete historical trend
+      const damperIds = new Set(testsToExport.map(t => t.damperId).filter(Boolean) as string[]);
+      const damperHistories: DamperHistory[] = [];
+      damperIds.forEach(damperId => {
+        // Use savedTests to get complete historical trend, but only for dampers in the filtered set
+        const history = getDamperHistory(damperId, savedTests, dampers, minVelocityThreshold);
+        if (history && history.hasMultipleYears) {
+          damperHistories.push(history);
+        }
+      });
+      
+      // Store filtered tests and damper histories for use in PDF components
+      setPdfTestsToExport(testsToExport);
+      setPdfDamperHistories(damperHistories);
+      
+      for (let i = 0; i < testsToExport.length; i++) {
+        const test = testsToExport[i];
         
         pdf.addPage();
         setPdfCurrentTestIndex(i);
@@ -1124,6 +1153,15 @@ export default function AirflowTester() {
         pageNumber++;
       }
 
+      // 5. Trend Analysis Page (if there are dampers with multiple years)
+      if (damperHistories.length > 0) {
+        pdf.addPage();
+        setPdfRenderState('trends');
+        const trendsDataUrl = await capturePDFSection();
+        addFullPageImage(trendsDataUrl);
+        setPdfRenderState(null);
+      }
+
       // Clean up PDF render state
       setPdfRenderState(null);
       setPdfCurrentTestIndex(0);
@@ -1135,9 +1173,13 @@ export default function AirflowTester() {
       
       pdf.save(filename);
 
+      const trendInfo = damperHistories.length > 0 
+        ? `, and trends for ${damperHistories.length} damper${damperHistories.length !== 1 ? 's' : ''}` 
+        : '';
+      
       toast({
         title: "PDF report generated",
-        description: `Professional report with cover page, standards, summary, and ${savedTests.length} test page${savedTests.length !== 1 ? 's' : ''} exported successfully`,
+        description: `Professional report with cover page, standards, summary, ${testsToExport.length} test page${testsToExport.length !== 1 ? 's' : ''}${trendInfo} exported successfully`,
       });
     } catch (error) {
       console.error('Error generating comprehensive PDF:', error);
@@ -1150,6 +1192,8 @@ export default function AirflowTester() {
       setIsGeneratingPDF(false);
       setPdfRenderState(null);
       setPdfCurrentTestIndex(0);
+      setPdfTestsToExport([]);
+      setPdfDamperHistories([]);
     }
   };
 
@@ -1799,6 +1843,63 @@ export default function AirflowTester() {
               minVelocityThreshold={minVelocityThreshold}
             />
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Generate Professional Report</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {selectedTestIds.size > 0 
+                    ? `Create a professional PDF report for ${selectedTestIds.size} selected test${selectedTestIds.size !== 1 ? 's' : ''}`
+                    : "Create a comprehensive PDF report with cover page, standards, summary tables, individual test pages, and trend analysis"}
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-sm mb-2">Report Contents</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                        <li>• Cover page with project details</li>
+                        <li>• Testing standards and methodology</li>
+                        <li>• Summary table ({selectedTestIds.size > 0 ? selectedTestIds.size : savedTests.length} test{(selectedTestIds.size > 0 ? selectedTestIds.size : savedTests.length) !== 1 ? 's' : ''})</li>
+                        <li>• Individual test pages with visualizations</li>
+                        {(() => {
+                          const testsForReport = selectedTestIds.size > 0
+                            ? savedTests.filter(t => selectedTestIds.has(t.id))
+                            : savedTests;
+                          const damperIds = new Set(testsForReport.map(t => t.damperId).filter((id): id is string => Boolean(id)));
+                          const hasTrends = Array.from(damperIds).some(id => {
+                            const history = getDamperHistory(id, savedTests, dampers, minVelocityThreshold);
+                            return history?.hasMultipleYears;
+                          });
+                          return hasTrends && <li>• Trend analysis charts for repeat visits</li>;
+                        })()}
+                      </ul>
+                      {selectedTestIds.size > 0 && (
+                        <p className="text-xs text-primary mt-2 font-semibold">
+                          Only selected tests will be included in the report
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        onClick={generateComprehensivePDF}
+                        disabled={isGeneratingPDF}
+                        data-testid="button-generate-comprehensive-pdf-history"
+                      >
+                        <FileDown className="w-4 h-4 mr-2" />
+                        {isGeneratingPDF ? "Generating..." : "Generate Report PDF"}
+                      </Button>
+                      {isGeneratingPDF && (
+                        <p className="text-xs text-muted-foreground">
+                          This may take a moment...
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold" data-testid="text-history-title">
@@ -1929,10 +2030,10 @@ export default function AirflowTester() {
         }}
       >
         {pdfRenderState === 'cover' && currentReport && (() => {
-          // Calculate test date range for cover page
-          const testDateRange = savedTests.length > 0 ? {
-            earliest: savedTests.reduce((min, test) => test.testDate < min ? test.testDate : min, savedTests[0].testDate),
-            latest: savedTests.reduce((max, test) => test.testDate > max ? test.testDate : max, savedTests[0].testDate),
+          // Calculate test date range for cover page using filtered tests
+          const testDateRange = pdfTestsToExport.length > 0 ? {
+            earliest: pdfTestsToExport.reduce((min, test) => test.testDate < min ? test.testDate : min, pdfTestsToExport[0].testDate),
+            latest: pdfTestsToExport.reduce((max, test) => test.testDate > max ? test.testDate : max, pdfTestsToExport[0].testDate),
           } : undefined;
           
           return <PDFCoverPage report={currentReport} testDateRange={testDateRange} />;
@@ -1942,13 +2043,19 @@ export default function AirflowTester() {
         )}
         {pdfRenderState === 'summary' && (
           <PDFSummaryTable 
-            tests={savedTests} 
+            tests={pdfTestsToExport} 
             dampers={dampers}
             minVelocityThreshold={minVelocityThreshold}
           />
         )}
-        {pdfRenderState === 'test' && pdfCurrentTestIndex >= 0 && savedTests[pdfCurrentTestIndex] && (() => {
-          const test = savedTests[pdfCurrentTestIndex];
+        {pdfRenderState === 'trends' && pdfDamperHistories.length > 0 && (
+          <PDFTrendPage
+            damperHistories={pdfDamperHistories}
+            minVelocityThreshold={minVelocityThreshold}
+          />
+        )}
+        {pdfRenderState === 'test' && pdfCurrentTestIndex >= 0 && pdfTestsToExport[pdfCurrentTestIndex] && (() => {
+          const test = pdfTestsToExport[pdfCurrentTestIndex];
           const avg = test.average;
           return (
             <TestVisualization 
