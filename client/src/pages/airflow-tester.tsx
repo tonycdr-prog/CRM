@@ -942,14 +942,18 @@ export default function AirflowTester() {
         // Wait for all images to load
         await waitForImages(pdfCaptureRef.current);
         
+        // Extra wait to ensure base64 images are fully rendered
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         console.log('[PDF] Capturing screenshot...');
         const dataUrl = await toPng(pdfCaptureRef.current, {
           quality: 1.0,
           pixelRatio: 2,
           backgroundColor: '#ffffff',
-          skipFonts: true,
+          skipFonts: false,
           cacheBust: true,
           skipAutoScale: false,
+          includeQueryParams: true,
         });
         
         console.log('[PDF] Screenshot captured, size:', dataUrl.length, 'bytes');
@@ -993,6 +997,13 @@ export default function AirflowTester() {
       };
 
       try {
+        // Debug: Check if logo is present
+        console.log('[PDF] Report has logo:', !!currentReport.companyLogo);
+        if (currentReport.companyLogo) {
+          console.log('[PDF] Logo size:', currentReport.companyLogo.length, 'bytes');
+          console.log('[PDF] Logo format:', currentReport.companyLogo.substring(0, 30));
+        }
+        
         // 1. Cover Page
         setPdfRenderState('cover');
         const coverDataUrl = await capturePDFSection();
