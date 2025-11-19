@@ -926,6 +926,9 @@ export default function AirflowTester() {
         setPdfTestsToExport(testsToExport);
         setPdfDamperHistories(damperHistories);
       });
+      
+      // Give React time to re-render with the new state before starting captures
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -1082,30 +1085,6 @@ export default function AirflowTester() {
       }
 
       // 4. Individual Test Pages
-      // Filter tests by selection if any are selected, otherwise use all tests
-      const testsToExport = selectedTestIds.size > 0
-        ? savedTests.filter(test => selectedTestIds.has(test.id))
-        : savedTests;
-      
-      // Calculate damper histories for trend analysis (using all savedTests for full history context)
-      // Even when filtering tests for export, we want to show the complete historical trend
-      const damperIds = new Set(testsToExport.map(t => t.damperId).filter(Boolean) as string[]);
-      const damperHistories: DamperHistory[] = [];
-      damperIds.forEach(damperId => {
-        // Use savedTests to get complete historical trend, but only for dampers in the filtered set
-        const history = getDamperHistory(damperId, savedTests, dampers, minVelocityThreshold);
-        if (history && history.hasMultipleYears) {
-          damperHistories.push(history);
-        }
-      });
-      
-      // Store filtered tests and damper histories for use in PDF components
-      // Use flushSync to force synchronous state updates before PDF rendering begins
-      flushSync(() => {
-        setPdfTestsToExport(testsToExport);
-        setPdfDamperHistories(damperHistories);
-      });
-      
       for (let i = 0; i < testsToExport.length; i++) {
         const test = testsToExport[i];
         
