@@ -587,13 +587,19 @@ export default function AirflowTester() {
           
           // Add test visualization at top - adjust height based on whether images exist
           const hasImages = test.damperOpenImage || test.damperClosedImage;
-          const testHeight = hasImages ? 140 : 0; // Reduced from full height to make room for images
-          pdf.addImage(dataUrl, 'PNG', 10, 10, 190, testHeight);
+          
+          if (hasImages) {
+            // Constrained height to make room for images below
+            pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 140);
+          } else {
+            // Full auto-height when no images
+            pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 0);
+          }
           successCount++;
           
           // Add damper images side by side below the test if they exist
           if (hasImages) {
-            const imageY = testHeight + 20; // Position below test visualization
+            const imageY = 160; // Position below test visualization (140mm test + 20mm spacing)
             const imageWidth = 90; // Width for each image
             const imageHeight = 80; // Height for images
             
