@@ -586,6 +586,28 @@ export default function AirflowTester() {
           if (successCount > 0) pdf.addPage();
           pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 0);
           successCount++;
+          
+          if (test.damperOpenImage) {
+            pdf.addPage();
+            pdf.setFontSize(14);
+            pdf.text('Damper Open Position', 10, 15);
+            try {
+              pdf.addImage(test.damperOpenImage, 'JPEG', 10, 25, 190, 0);
+            } catch (imgError) {
+              console.error('Error adding open image to PDF:', imgError);
+            }
+          }
+          
+          if (test.damperClosedImage) {
+            pdf.addPage();
+            pdf.setFontSize(14);
+            pdf.text('Damper Closed Position', 10, 15);
+            try {
+              pdf.addImage(test.damperClosedImage, 'JPEG', 10, 25, 190, 0);
+            } catch (imgError) {
+              console.error('Error adding closed image to PDF:', imgError);
+            }
+          }
         } catch (error) {
           console.error('Error generating PDF page for test:', test.id, error);
         } finally {
