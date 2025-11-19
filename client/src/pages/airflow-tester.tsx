@@ -562,59 +562,64 @@ export default function AirflowTester() {
       return;
     }
 
+    if (!captureRef.current) {
+      toast({
+        title: "Export failed",
+        description: "Visualization component not ready",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Show progress toast
     toast({
       title: "Generating PDF...",
-      description: `Processing ${savedTests.length} test${savedTests.length !== 1 ? 's' : ''}`,
+      description: `Processing ${savedTests.length} test${savedTests.length !== 1 ? 's' : ''}. Please wait...`,
     });
 
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const { createRoot } = await import('react-dom/client');
       let successCount = 0;
-      const diagnostics: string[] = [];
+
+      // Store current state to restore later
+      const originalReadings = [...readings];
+      const originalTestDate = testDate;
+      const originalBuilding = building;
+      const originalLocation = location;
+      const originalFloorNumber = floorNumber;
+      const originalShaftId = shaftId;
+      const originalSystemType = systemType;
+      const originalTesterName = testerName;
+      const originalNotes = notes;
+      const originalDamperWidth = damperWidth;
+      const originalDamperHeight = damperHeight;
+      const originalGridSize = gridSize;
 
       for (let i = 0; i < savedTests.length; i++) {
         const test = savedTests[i];
-        diagnostics.push(`Test ${i + 1}: Starting capture...`);
         
-        const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.top = '0';
-        tempDiv.style.width = '800px';
-        tempDiv.style.minHeight = '600px';
-        tempDiv.style.zIndex = '-1000';
-        tempDiv.style.opacity = '1';
-        tempDiv.style.visibility = 'visible';
-        tempDiv.className = 'bg-background p-6 rounded-lg border-2 border-border';
-        document.body.appendChild(tempDiv);
-
-        const root = createRoot(tempDiv);
+        // Update the visible component with this test's data
+        setReadings(test.readings);
+        setTestDate(test.testDate);
+        setBuilding(test.building);
+        setLocation(test.location);
+        setFloorNumber(test.floorNumber);
+        setShaftId(test.shaftId);
+        setSystemType(test.systemType);
+        setTesterName(test.testerName);
+        setNotes(test.notes);
+        setDamperWidth(test.damperWidth || "");
+        setDamperHeight(test.damperHeight || "");
+        setGridSize(test.gridSize || 5);
         
-        const filledCount = test.readings.filter((r): r is number => typeof r === "number" && !isNaN(r)).length;
-        
-        await new Promise<void>((resolve) => {
-          root.render(
-            <div>
-              <TestVisualization 
-                test={test}
-                average={test.average}
-                filledCount={filledCount}
-                passFailStatus={evaluatePassFail(test.average)}
-                threshold={minVelocityThreshold}
-              />
-            </div>
-          );
-          setTimeout(resolve, 2000);
-        });
+        // Wait for React to render the changes
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         try {
-          const dataUrl = await captureTestImage(tempDiv);
-          diagnostics.push(`Test ${i + 1}: Image captured (${dataUrl?.length || 0} bytes)`);
+          // Capture the visible component
+          const dataUrl = await captureTestImage(captureRef.current!);
           
           if (!dataUrl || dataUrl.length < 100) {
-            diagnostics.push(`Test ${i + 1}: ERROR - Invalid data URL`);
             throw new Error('Failed to capture test visualization');
           }
           
@@ -622,14 +627,10 @@ export default function AirflowTester() {
           
           // Calculate proper image dimensions using getImageProperties
           const imgProps = pdf.getImageProperties(dataUrl);
-          diagnostics.push(`Test ${i + 1}: Image props - ${imgProps.width}x${imgProps.height}`);
-          
           const pageWidth = pdf.internal.pageSize.getWidth();
           const pdfWidth = pageWidth - 20; // 10mm margins on each side
           const aspectRatio = imgProps.height / imgProps.width;
           const calculatedHeight = pdfWidth * aspectRatio;
-          
-          diagnostics.push(`Test ${i + 1}: PDF dimensions - ${pdfWidth}mm x ${calculatedHeight}mm`);
           
           // Add test visualization at top - adjust height based on whether images exist
           const hasImages = test.damperOpenImage || test.damperClosedImage;
@@ -637,11 +638,9 @@ export default function AirflowTester() {
           if (hasImages) {
             // Constrained height to make room for images below
             pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, 140);
-            diagnostics.push(`Test ${i + 1}: Added with images (140mm height)`);
           } else {
             // Use calculated height to maintain aspect ratio
             pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, calculatedHeight);
-            diagnostics.push(`Test ${i + 1}: Added without images (${calculatedHeight}mm height)`);
           }
           successCount++;
           
@@ -679,17 +678,27 @@ export default function AirflowTester() {
           }
         } catch (error) {
           console.error('Error generating PDF page for test:', test.id, error);
-        } finally {
-          root.unmount();
-          document.body.removeChild(tempDiv);
         }
       }
 
+      // Restore original state
+      setReadings(originalReadings);
+      setTestDate(originalTestDate);
+      setBuilding(originalBuilding);
+      setLocation(originalLocation);
+      setFloorNumber(originalFloorNumber);
+      setShaftId(originalShaftId);
+      setSystemType(originalSystemType);
+      setTesterName(originalTesterName);
+      setNotes(originalNotes);
+      setDamperWidth(originalDamperWidth);
+      setDamperHeight(originalDamperHeight);
+      setGridSize(originalGridSize);
+
       if (successCount === 0) {
-        console.log('PDF Export Diagnostics:', diagnostics.join('\n'));
         toast({
           title: "Export failed",
-          description: "Could not generate any PDF pages. Check console for details.",
+          description: "Could not generate any PDF pages",
           variant: "destructive",
         });
         return;
@@ -698,7 +707,6 @@ export default function AirflowTester() {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       pdf.save(`airflow-tests_batch_${timestamp}.pdf`);
 
-      console.log('PDF Export Diagnostics:', diagnostics.join('\n'));
       toast({
         title: "PDF export complete",
         description: `${successCount} test${successCount !== 1 ? 's' : ''} exported to PDF`,
