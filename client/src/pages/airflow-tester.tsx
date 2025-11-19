@@ -426,7 +426,8 @@ export default function AirflowTester() {
   };
 
   // Helper to wait for all images to load in an element
-  const waitForImages = async (element: HTMLElement): Promise<void> => {
+  const waitForImages = async (element: HTMLElement | null): Promise<void> => {
+    if (!element) return;
     const images = element.getElementsByTagName('img');
     const promises = Array.from(images).map(img => {
       if (img.complete) return Promise.resolve();
@@ -440,7 +441,8 @@ export default function AirflowTester() {
   };
 
   // Helper to wait for DOM render and images to load
-  const waitForDOMReady = async (element: HTMLElement): Promise<void> => {
+  const waitForDOMReady = async (element: HTMLElement | null): Promise<void> => {
+    if (!element) throw new Error('Element is null in waitForDOMReady');
     // Wait for React to flush state and render new DOM
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     // Wait for DOM paint
@@ -451,7 +453,8 @@ export default function AirflowTester() {
     await waitForImages(element);
   };
 
-  const captureTestImage = async (element: HTMLElement): Promise<string> => {
+  const captureTestImage = async (element: HTMLElement | null): Promise<string> => {
+    if (!element) throw new Error('Element is null in captureTestImage');
     await waitForDOMReady(element);
     return await toPng(element, {
       quality: 1.0,
@@ -593,15 +596,6 @@ export default function AirflowTester() {
       return;
     }
 
-    if (!captureRef.current) {
-      toast({
-        title: "Export failed",
-        description: "Visualization component not ready",
-        variant: "destructive",
-      });
-      return;
-    }
-
     toast({
       title: "Exporting images...",
       description: `Processing ${savedTests.length} test${savedTests.length !== 1 ? 's' : ''}`,
@@ -626,7 +620,7 @@ export default function AirflowTester() {
     for (let i = 0; i < savedTests.length; i++) {
       const test = savedTests[i];
       
-      // Update the visible component with this test's data
+      // Update the hidden component with this test's data
       setReadings(test.readings);
       setTestDate(test.testDate);
       setBuilding(test.building);
@@ -639,6 +633,9 @@ export default function AirflowTester() {
       setDamperWidth(test.damperWidth || "");
       setDamperHeight(test.damperHeight || "");
       setGridSize(test.gridSize || 5);
+
+      // Wait for React to re-render the hidden component
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       try {
         const dataUrl = await captureTestImage(captureRef.current!);
@@ -687,15 +684,6 @@ export default function AirflowTester() {
       return;
     }
 
-    if (!captureRef.current) {
-      toast({
-        title: "Export failed",
-        description: "Visualization component not ready",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Show progress toast
     toast({
       title: "Generating PDF...",
@@ -723,7 +711,7 @@ export default function AirflowTester() {
       for (let i = 0; i < savedTests.length; i++) {
         const test = savedTests[i];
         
-        // Update the visible component with this test's data
+        // Update the hidden component with this test's data
         setReadings(test.readings);
         setTestDate(test.testDate);
         setBuilding(test.building);
@@ -737,8 +725,11 @@ export default function AirflowTester() {
         setDamperHeight(test.damperHeight || "");
         setGridSize(test.gridSize || 5);
 
+        // Wait for React to re-render the hidden component
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         try {
-          // Capture the visible component
+          // Capture the hidden component after it has re-rendered
           const dataUrl = await captureTestImage(captureRef.current!);
           
           if (!dataUrl || dataUrl.length < 100) {
@@ -1901,9 +1892,15 @@ export default function AirflowTester() {
           padding: '20px'
         }}
       >
-        {pdfRenderState === 'cover' && currentReport && (
-          <PDFCoverPage report={currentReport} tests={savedTests} />
-        )}
+        {pdfRenderState === 'cover' && currentReport && (() => {
+          // Calculate test date range for cover page
+          const testDateRange = savedTests.length > 0 ? {
+            earliest: savedTests.reduce((min, test) => test.testDate < min ? test.testDate : min, savedTests[0].testDate),
+            latest: savedTests.reduce((max, test) => test.testDate > max ? test.testDate : max, savedTests[0].testDate),
+          } : undefined;
+          
+          return <PDFCoverPage report={currentReport} testDateRange={testDateRange} />;
+        })()}
         {pdfRenderState === 'standards' && currentReport && (
           <PDFStandardsPage report={currentReport} minVelocityThreshold={minVelocityThreshold} />
         )}
@@ -1914,6 +1911,44 @@ export default function AirflowTester() {
             minVelocityThreshold={minVelocityThreshold}
           />
         )}
+      </div>
+      
+      {/* Hidden test visualization for batch exports from any tab */}
+      <div 
+        ref={captureRef} 
+        style={{ 
+          position: 'fixed', 
+          left: '-9999px', 
+          top: '0',
+          backgroundColor: 'white',
+          padding: '24px',
+          minWidth: '800px'
+        }}
+      >
+        <TestVisualization 
+          test={{
+            testDate,
+            building,
+            location,
+            floorNumber,
+            shaftId,
+            systemType,
+            testerName,
+            notes,
+            readings,
+            gridSize,
+            damperWidth: damperWidth || undefined,
+            damperHeight: damperHeight || undefined,
+            freeArea: calculateFreeArea(),
+          }}
+          average={calculateAverage()}
+          filledCount={readings.filter(r => r !== "").length}
+          passFailStatus={(() => {
+            const avg = calculateAverage();
+            return avg !== null ? evaluatePassFail(avg) : null;
+          })()}
+          threshold={minVelocityThreshold}
+        />
       </div>
     </div>
   );
