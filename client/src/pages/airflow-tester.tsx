@@ -977,20 +977,6 @@ export default function AirflowTester() {
         pageNumber++;
       };
 
-      // Store original state
-      const originalReadings = [...readings];
-      const originalTestDate = testDate;
-      const originalBuilding = building;
-      const originalLocation = location;
-      const originalFloorNumber = floorNumber;
-      const originalShaftId = shaftId;
-      const originalSystemType = systemType;
-      const originalTesterName = testerName;
-      const originalNotes = notes;
-      const originalDamperWidth = damperWidth;
-      const originalDamperHeight = damperHeight;
-      const originalGridSize = gridSize;
-
       try {
         // 1. Cover Page
         setPdfRenderState('cover');
@@ -1025,32 +1011,8 @@ export default function AirflowTester() {
         setPdfCurrentTestIndex(i);
         setPdfRenderState('test');
         
-        // Update state to render test visualization
-        setReadings(test.readings);
-        setTestDate(test.testDate);
-        setBuilding(test.building);
-        setLocation(test.location);
-        setFloorNumber(test.floorNumber);
-        setShaftId(test.shaftId);
-        setSystemType(test.systemType);
-        setTesterName(test.testerName);
-        setNotes(test.notes);
-        setDamperWidth(test.damperWidth || "");
-        setDamperHeight(test.damperHeight || "");
-        setGridSize(test.gridSize || 5);
-        
-        await new Promise(resolve => setTimeout(resolve, 600));
-
-        // Capture the existing TestVisualization component
-        if (!captureRef.current) continue;
-        
-        const dataUrl = await toPng(captureRef.current, {
-          quality: 1.0,
-          pixelRatio: 2,
-          backgroundColor: '#ffffff',
-          skipFonts: false,
-          cacheBust: true,
-        });
+        // Capture using the same reliable method
+        const dataUrl = await capturePDFSection();
 
         // Add test visualization - calculate proper dimensions
         const imgProps = pdf.getImageProperties(dataUrl);
@@ -1127,20 +1089,6 @@ export default function AirflowTester() {
       // Clean up PDF render state
       setPdfRenderState(null);
       setPdfCurrentTestIndex(0);
-
-      // Restore original state
-      setReadings(originalReadings);
-      setTestDate(originalTestDate);
-      setBuilding(originalBuilding);
-      setLocation(originalLocation);
-      setFloorNumber(originalFloorNumber);
-      setShaftId(originalShaftId);
-      setSystemType(originalSystemType);
-      setTesterName(originalTesterName);
-      setNotes(originalNotes);
-      setDamperWidth(originalDamperWidth);
-      setDamperHeight(originalDamperHeight);
-      setGridSize(originalGridSize);
 
       // Generate filename and save
       const reportName = currentReport.projectName || 'Smoke_Control_Report';
@@ -1949,6 +1897,19 @@ export default function AirflowTester() {
             minVelocityThreshold={minVelocityThreshold}
           />
         )}
+        {pdfRenderState === 'test' && pdfCurrentTestIndex >= 0 && savedTests[pdfCurrentTestIndex] && (() => {
+          const test = savedTests[pdfCurrentTestIndex];
+          const avg = test.average;
+          return (
+            <TestVisualization 
+              test={test}
+              average={avg}
+              filledCount={test.readings.filter((r): r is number => typeof r === 'number').length}
+              passFailStatus={avg >= minVelocityThreshold ? 'pass' : 'fail'}
+              threshold={minVelocityThreshold}
+            />
+          );
+        })()}
       </div>
       
       {/* Hidden test visualization for batch exports from any tab */}
