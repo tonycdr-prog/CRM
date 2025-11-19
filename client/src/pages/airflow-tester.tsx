@@ -3,13 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
 import TestHistoryPanel from "@/components/TestHistoryPanel";
+import ReportSetupForm from "@/components/ReportSetupForm";
+import TrendChart from "@/components/TrendChart";
 import { ImageUpload } from "@/components/ImageUpload";
-import { testSchema, type Test } from "@shared/schema";
+import { testSchema, type Test, type Report, type Damper } from "@shared/schema";
+import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
+import { getDamperHistory, getDampersWithRepeatVisits, getTestYear } from "@/lib/trendAnalysis";
 import JSZip from "jszip";
 import jsPDF from "jspdf";
 
@@ -23,8 +28,6 @@ const POSITION_LABELS = [
   "Position 7 - Bottom Left",
   "Position 8 - Bottom Right",
 ];
-
-const STORAGE_KEY = "airflow-tests";
 
 const PRESET_NOTES = [
   "Louvers fully open",
@@ -69,6 +72,20 @@ const generatePositionLabels = (gridSize: number): string[] => {
 };
 
 export default function AirflowTester() {
+  // Storage state
+  const [storageData, setStorageData] = useState<StorageData | null>(null);
+  const [dampers, setDampers] = useState<Record<string, Damper>>({});
+  const [savedTests, setSavedTests] = useState<Test[]>([]);
+  const [currentReport, setCurrentReport] = useState<Partial<Report>>({
+    reportDate: new Date().toISOString().split('T')[0],
+    testingStandards: "BS EN 12101-8:2020, BSRIA BG 49/2024",
+    reportTitle: "Smoke Control Damper Testing Report",
+    reportType: "commissioning",
+    includeExecutiveSummary: true,
+    includePassFailSummary: true,
+  });
+  
+  // Test form state
   const [damperWidth, setDamperWidth] = useState<number | "">("");
   const [damperHeight, setDamperHeight] = useState<number | "">("");
   const [gridSize, setGridSize] = useState<number>(5);
@@ -83,15 +100,17 @@ export default function AirflowTester() {
   const [notes, setNotes] = useState<string>("");
   const [damperOpenImage, setDamperOpenImage] = useState<string | undefined>(undefined);
   const [damperClosedImage, setDamperClosedImage] = useState<string | undefined>(undefined);
-  const [savedTests, setSavedTests] = useState<Test[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // UI state
+  const [activeTab, setActiveTab] = useState<string>("testing");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterSystemType, setFilterSystemType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "building" | "floor" | "average">("date-desc");
   const [selectedTestIds, setSelectedTestIds] = useState<Set<string>>(new Set());
   const [minVelocityThreshold, setMinVelocityThreshold] = useState<number>(2.5);
   const [showPassFailConfig, setShowPassFailConfig] = useState<boolean>(false);
+  const [showRepeatVisitsOnly, setShowRepeatVisitsOnly] = useState<boolean>(false);
   
   const captureRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -124,63 +143,42 @@ export default function AirflowTester() {
     }
   }, [damperWidth, damperHeight]);
 
+  // Load storage data on mount (auto-migrates legacy data)
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const rawTests = JSON.parse(stored);
-        const validatedTests: Test[] = [];
-        
-        for (const test of rawTests) {
-          try {
-            // Determine expected array size (legacy 8-point or new grid-based)
-            let expectedSize = test.readings?.length || 25;
-            if (![8, 25, 36, 49].includes(expectedSize)) {
-              expectedSize = 25; // Default to 5x5 grid
-            }
-            
-            const normalizedReadings: (number | "")[] = Array(expectedSize).fill("");
-            if (Array.isArray(test.readings)) {
-              test.readings.forEach((r: any, i: number) => {
-                if (i < expectedSize && (typeof r === "number" || r === "")) {
-                  normalizedReadings[i] = r;
-                }
-              });
-            }
-            
-            const isLegacyTest = !('building' in test);
-            
-            const validatedTest = {
-              ...test,
-              readings: normalizedReadings,
-              gridSize: test.gridSize || Math.sqrt(expectedSize),
-              building: isLegacyTest ? (test.location || "") : (test.building ?? ""),
-              location: isLegacyTest ? "" : (test.location ?? ""),
-              systemType: test.systemType ?? "",
-            };
-            
-            const parsedTest = testSchema.parse(validatedTest);
-            validatedTests.push(parsedTest);
-          } catch (validationError) {
-            console.error('Skipping invalid test:', validationError);
-          }
-        }
-        
-        setSavedTests(validatedTests);
-      } catch (error) {
-        console.error('Error loading saved tests:', error);
-        localStorage.removeItem(STORAGE_KEY);
+    try {
+      const data = loadStorageData();
+      setStorageData(data);
+      setDampers(data.dampers);
+      setSavedTests(Object.values(data.tests));
+      
+      if (Object.keys(data.tests).length > 0) {
+        toast({
+          title: "Data loaded",
+          description: `Loaded ${Object.keys(data.tests).length} test(s) and ${Object.keys(data.dampers).length} damper(s)`,
+        });
       }
+    } catch (error) {
+      console.error('Error loading storage data:', error);
+      toast({
+        title: "Error loading data",
+        description: "Failed to load saved data. Starting fresh.",
+        variant: "destructive",
+      });
     }
   }, []);
 
+  // Save storage data whenever tests or dampers change
   useEffect(() => {
-    if (savedTests.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedTests));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+    if (storageData) {
+      const updatedData: StorageData = {
+        ...storageData,
+        tests: Object.fromEntries(savedTests.map(t => [t.id, t])),
+        dampers,
+      };
+      saveStorageData(updatedData);
+      setStorageData(updatedData);
     }
-  }, [savedTests]);
+  }, [savedTests, dampers]);
 
   const handleReadingChange = (index: number, value: string) => {
     const numValue = value === "" ? "" : parseFloat(value);
@@ -234,7 +232,8 @@ export default function AirflowTester() {
     
     const freeArea = calculateFreeArea();
     
-    const test: Test = {
+    // Create test object (damperId will be added after damper creation)
+    const testData: Omit<Test, 'damperId'> & { damperId?: string } = {
       id: editingId || `test-${Date.now()}`,
       testDate,
       building,
@@ -252,8 +251,22 @@ export default function AirflowTester() {
       freeArea,
       damperOpenImage,
       damperClosedImage,
-      createdAt: Date.now(),
+      createdAt: editingId ? (savedTests.find(t => t.id === editingId)?.createdAt || Date.now()) : Date.now(),
     };
+    
+    // Get or create damper entity
+    const damper = getOrCreateDamper(testData as Test, dampers);
+    
+    // Link test to damper
+    const test: Test = {
+      ...testData,
+      damperId: damper.id,
+    } as Test;
+    
+    // Update dampers state if new damper was created
+    if (!dampers[damper.id]) {
+      setDampers(prev => ({ ...prev, [damper.id]: damper }));
+    }
 
     if (editingId) {
       setSavedTests(prev => prev.map(t => t.id === editingId ? test : t));
@@ -277,7 +290,8 @@ export default function AirflowTester() {
     if (average !== null) {
       const freeArea = calculateFreeArea();
       
-      const test: Test = {
+      // Create test object (damperId will be added after damper creation)
+      const testData: Omit<Test, 'damperId'> & { damperId?: string } = {
         id: editingId || `test-${Date.now()}`,
         testDate,
         building,
@@ -295,8 +309,22 @@ export default function AirflowTester() {
         freeArea,
         damperOpenImage,
         damperClosedImage,
-        createdAt: Date.now(),
+        createdAt: editingId ? (savedTests.find(t => t.id === editingId)?.createdAt || Date.now()) : Date.now(),
       };
+      
+      // Get or create damper entity
+      const damper = getOrCreateDamper(testData as Test, dampers);
+      
+      // Link test to damper
+      const test: Test = {
+        ...testData,
+        damperId: damper.id,
+      } as Test;
+      
+      // Update dampers state if new damper was created
+      if (!dampers[damper.id]) {
+        setDampers(prev => ({ ...prev, [damper.id]: damper }));
+      }
 
       if (editingId) {
         setSavedTests(prev => prev.map(t => t.id === editingId ? test : t));
@@ -908,8 +936,29 @@ export default function AirflowTester() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3" data-testid="tabs-main">
+            <TabsTrigger value="report-setup" data-testid="tab-report-setup">
+              Report Setup
+            </TabsTrigger>
+            <TabsTrigger value="testing" data-testid="tab-testing">
+              Testing
+            </TabsTrigger>
+            <TabsTrigger value="history" data-testid="tab-history">
+              Test History
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="report-setup" className="space-y-6">
+            <ReportSetupForm 
+              report={currentReport}
+              onUpdate={(updates) => setCurrentReport(prev => ({ ...prev, ...updates }))}
+            />
+          </TabsContent>
+
+          <TabsContent value="testing">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
             {editingId && (
               <Card className="border-primary bg-primary/5">
                 <CardContent className="pt-4">
@@ -1346,8 +1395,131 @@ export default function AirflowTester() {
               onDeleteSelected={handleDeleteSelected}
               minVelocityThreshold={minVelocityThreshold}
             />
+              </div>
+            </div>
+          </TabsContent>
+
+      <TabsContent value="history" className="space-y-6">
+        {savedTests.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="text-muted-foreground" data-testid="text-no-tests">
+                No tests saved yet. Create some tests in the Testing tab to see historical trends.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold" data-testid="text-history-title">
+                  Test History & Trends
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {savedTests.length} test{savedTests.length !== 1 ? 's' : ''} across {Object.keys(dampers).length} damper{Object.keys(dampers).length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="show-repeat-visits" className="text-sm">
+                  Show only repeat visits
+                </Label>
+                <input
+                  id="show-repeat-visits"
+                  type="checkbox"
+                  checked={showRepeatVisitsOnly}
+                  onChange={(e) => setShowRepeatVisitsOnly(e.target.checked)}
+                  className="rounded border-input"
+                  data-testid="checkbox-repeat-visits"
+                />
+              </div>
+            </div>
+
+            {(() => {
+              const dampersWithHistory = Object.values(dampers)
+                .map(damper => getDamperHistory(damper.id, savedTests, dampers, minVelocityThreshold))
+                .filter((history): history is NonNullable<typeof history> => history !== null);
+              
+              const displayedDampers = showRepeatVisitsOnly
+                ? dampersWithHistory.filter(h => h.hasMultipleYears)
+                : dampersWithHistory;
+
+              if (displayedDampers.length === 0) {
+                return (
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-muted-foreground" data-testid="text-no-repeat-visits">
+                        {showRepeatVisitsOnly 
+                          ? "No dampers with repeat visits yet. Test the same damper in different years to see trends."
+                          : "No damper history available."}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {displayedDampers.map(damperHistory => (
+                    <div key={damperHistory.damper.id}>
+                      {damperHistory.hasMultipleYears && (
+                        <TrendChart 
+                          damperHistory={damperHistory}
+                          minVelocityThreshold={minVelocityThreshold}
+                          testId={damperHistory.damper.id}
+                        />
+                      )}
+                      
+                      {!damperHistory.hasMultipleYears && !showRepeatVisitsOnly && (
+                        <Card data-testid={`card-single-year-${damperHistory.damper.id}`}>
+                          <CardHeader>
+                            <CardTitle className="text-lg">
+                              {damperHistory.damper.building} - {damperHistory.damper.location} (Shaft {damperHistory.damper.shaftId})
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                              Single year of data - Test again in a future year to see trends
+                            </p>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Year</p>
+                                <p className="text-2xl font-bold">
+                                  {damperHistory.yearlyData[0].year}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Tests</p>
+                                <p className="text-2xl font-bold">
+                                  {damperHistory.totalTests}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Avg Velocity</p>
+                                <p className="text-2xl font-bold">
+                                  {damperHistory.yearlyData[0].averageVelocity.toFixed(2)}
+                                  <span className="text-sm font-normal ml-1">m/s</span>
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Pass Rate</p>
+                                <p className="text-2xl font-bold">
+                                  {((damperHistory.yearlyData[0].passCount / damperHistory.yearlyData[0].tests.length) * 100).toFixed(0)}
+                                  <span className="text-sm font-normal ml-1">%</span>
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
-        </div>
+        )}
+      </TabsContent>
+    </Tabs>
       </div>
     </div>
   );
