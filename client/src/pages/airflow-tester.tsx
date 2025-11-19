@@ -562,13 +562,22 @@ export default function AirflowTester() {
       return;
     }
 
+    // Show progress toast
+    toast({
+      title: "Generating PDF...",
+      description: `Processing ${savedTests.length} test${savedTests.length !== 1 ? 's' : ''}`,
+    });
+
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const { createRoot } = await import('react-dom/client');
       let successCount = 0;
+      const diagnostics: string[] = [];
 
       for (let i = 0; i < savedTests.length; i++) {
         const test = savedTests[i];
+        diagnostics.push(`Test ${i + 1}: Starting capture...`);
+        
         const tempDiv = document.createElement('div');
         tempDiv.style.position = 'absolute';
         tempDiv.style.left = '-9999px';
@@ -602,9 +611,10 @@ export default function AirflowTester() {
 
         try {
           const dataUrl = await captureTestImage(tempDiv);
+          diagnostics.push(`Test ${i + 1}: Image captured (${dataUrl?.length || 0} bytes)`);
           
           if (!dataUrl || dataUrl.length < 100) {
-            console.error('Invalid or empty data URL generated');
+            diagnostics.push(`Test ${i + 1}: ERROR - Invalid data URL`);
             throw new Error('Failed to capture test visualization');
           }
           
@@ -612,10 +622,14 @@ export default function AirflowTester() {
           
           // Calculate proper image dimensions using getImageProperties
           const imgProps = pdf.getImageProperties(dataUrl);
+          diagnostics.push(`Test ${i + 1}: Image props - ${imgProps.width}x${imgProps.height}`);
+          
           const pageWidth = pdf.internal.pageSize.getWidth();
           const pdfWidth = pageWidth - 20; // 10mm margins on each side
           const aspectRatio = imgProps.height / imgProps.width;
           const calculatedHeight = pdfWidth * aspectRatio;
+          
+          diagnostics.push(`Test ${i + 1}: PDF dimensions - ${pdfWidth}mm x ${calculatedHeight}mm`);
           
           // Add test visualization at top - adjust height based on whether images exist
           const hasImages = test.damperOpenImage || test.damperClosedImage;
@@ -623,9 +637,11 @@ export default function AirflowTester() {
           if (hasImages) {
             // Constrained height to make room for images below
             pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, 140);
+            diagnostics.push(`Test ${i + 1}: Added with images (140mm height)`);
           } else {
             // Use calculated height to maintain aspect ratio
             pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, calculatedHeight);
+            diagnostics.push(`Test ${i + 1}: Added without images (${calculatedHeight}mm height)`);
           }
           successCount++;
           
@@ -670,9 +686,10 @@ export default function AirflowTester() {
       }
 
       if (successCount === 0) {
+        console.log('PDF Export Diagnostics:', diagnostics.join('\n'));
         toast({
           title: "Export failed",
-          description: "Could not generate any PDF pages",
+          description: "Could not generate any PDF pages. Check console for details.",
           variant: "destructive",
         });
         return;
@@ -681,6 +698,7 @@ export default function AirflowTester() {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       pdf.save(`airflow-tests_batch_${timestamp}.pdf`);
 
+      console.log('PDF Export Diagnostics:', diagnostics.join('\n'));
       toast({
         title: "PDF export complete",
         description: `${successCount} test${successCount !== 1 ? 's' : ''} exported to PDF`,
@@ -689,7 +707,7 @@ export default function AirflowTester() {
       console.error('Error exporting PDF:', error);
       toast({
         title: "Export failed",
-        description: "Could not generate PDF",
+        description: error instanceof Error ? error.message : "Could not generate PDF",
         variant: "destructive",
       });
     }
