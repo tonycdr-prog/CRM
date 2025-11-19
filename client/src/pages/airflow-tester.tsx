@@ -602,7 +602,6 @@ export default function AirflowTester() {
 
         try {
           const dataUrl = await captureTestImage(tempDiv);
-          console.log('Captured image data URL length:', dataUrl?.length);
           
           if (!dataUrl || dataUrl.length < 100) {
             console.error('Invalid or empty data URL generated');
@@ -611,20 +610,24 @@ export default function AirflowTester() {
           
           if (successCount > 0) pdf.addPage();
           
+          // Calculate proper image dimensions using getImageProperties
+          const imgProps = pdf.getImageProperties(dataUrl);
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pdfWidth = pageWidth - 20; // 10mm margins on each side
+          const aspectRatio = imgProps.height / imgProps.width;
+          const calculatedHeight = pdfWidth * aspectRatio;
+          
           // Add test visualization at top - adjust height based on whether images exist
           const hasImages = test.damperOpenImage || test.damperClosedImage;
           
-          console.log('Adding image to PDF - hasImages:', hasImages);
-          
           if (hasImages) {
             // Constrained height to make room for images below
-            pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 140);
+            pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, 140);
           } else {
-            // Full auto-height when no images
-            pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 0);
+            // Use calculated height to maintain aspect ratio
+            pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, calculatedHeight);
           }
           successCount++;
-          console.log('Successfully added page', successCount);
           
           // Add damper images side by side below the test if they exist
           if (hasImages) {
