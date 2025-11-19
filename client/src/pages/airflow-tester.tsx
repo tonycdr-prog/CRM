@@ -584,28 +584,43 @@ export default function AirflowTester() {
         try {
           const dataUrl = await captureTestImage(tempDiv);
           if (successCount > 0) pdf.addPage();
-          pdf.addImage(dataUrl, 'PNG', 10, 10, 190, 0);
+          
+          // Add test visualization at top - adjust height based on whether images exist
+          const hasImages = test.damperOpenImage || test.damperClosedImage;
+          const testHeight = hasImages ? 140 : 0; // Reduced from full height to make room for images
+          pdf.addImage(dataUrl, 'PNG', 10, 10, 190, testHeight);
           successCount++;
           
-          if (test.damperOpenImage) {
-            pdf.addPage();
-            pdf.setFontSize(14);
-            pdf.text('Damper Open Position', 10, 15);
-            try {
-              pdf.addImage(test.damperOpenImage, 'JPEG', 10, 25, 190, 0);
-            } catch (imgError) {
-              console.error('Error adding open image to PDF:', imgError);
+          // Add damper images side by side below the test if they exist
+          if (hasImages) {
+            const imageY = testHeight + 20; // Position below test visualization
+            const imageWidth = 90; // Width for each image
+            const imageHeight = 80; // Height for images
+            
+            pdf.setFontSize(10);
+            pdf.setTextColor(100, 100, 100);
+            
+            if (test.damperOpenImage) {
+              pdf.text('Damper Open Position', 10, imageY - 3);
+              try {
+                pdf.addImage(test.damperOpenImage, 'JPEG', 10, imageY, imageWidth, imageHeight);
+              } catch (imgError) {
+                console.error('Error adding open image to PDF:', imgError);
+                pdf.setFontSize(8);
+                pdf.text('Image error', 10, imageY + 40);
+              }
             }
-          }
-          
-          if (test.damperClosedImage) {
-            pdf.addPage();
-            pdf.setFontSize(14);
-            pdf.text('Damper Closed Position', 10, 15);
-            try {
-              pdf.addImage(test.damperClosedImage, 'JPEG', 10, 25, 190, 0);
-            } catch (imgError) {
-              console.error('Error adding closed image to PDF:', imgError);
+            
+            if (test.damperClosedImage) {
+              const secondImageX = test.damperOpenImage ? 110 : 10; // Position next to open image or at start
+              pdf.text('Damper Closed Position', secondImageX, imageY - 3);
+              try {
+                pdf.addImage(test.damperClosedImage, 'JPEG', secondImageX, imageY, imageWidth, imageHeight);
+              } catch (imgError) {
+                console.error('Error adding closed image to PDF:', imgError);
+                pdf.setFontSize(8);
+                pdf.text('Image error', secondImageX, imageY + 40);
+              }
             }
           }
         } catch (error) {
