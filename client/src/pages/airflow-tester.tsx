@@ -466,8 +466,8 @@ export default function AirflowTester() {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     // Wait for DOM paint
     await new Promise(resolve => requestAnimationFrame(resolve));
-    // Additional time for fonts
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Reduced time for fonts
+    await new Promise(resolve => setTimeout(resolve, 200));
     // Wait for all images to load
     await waitForImages(element);
   };
@@ -475,11 +475,12 @@ export default function AirflowTester() {
   const captureTestImage = async (element: HTMLElement | null): Promise<string> => {
     if (!element) throw new Error('Element is null in captureTestImage');
     await waitForDOMReady(element);
-    return await toPng(element, {
-      quality: 1.0,
-      pixelRatio: 2,
+    // Use JPEG with optimized quality for smaller file size
+    return await toJpeg(element, {
+      quality: 0.92,
+      pixelRatio: 1.5,
       backgroundColor: '#ffffff',
-      skipFonts: false,
+      skipFonts: true,
       cacheBust: true,
       style: {
         transform: 'none',
@@ -935,11 +936,9 @@ export default function AirflowTester() {
       const pageHeight = pdf.internal.pageSize.getHeight();
       let pageNumber = 1;
 
-      // Helper to capture visible pdfCaptureRef component
+      // Helper to capture visible pdfCaptureRef component - optimized for speed
       const capturePDFSection = async (): Promise<string> => {
         if (!pdfCaptureRef.current) throw new Error('PDF capture ref not available');
-        
-        console.log('[PDF] Starting capture, state:', pdfRenderState);
         
         // Temporarily move element on-screen for reliable capture
         const originalTop = pdfCaptureRef.current.style.top;
@@ -948,59 +947,36 @@ export default function AirflowTester() {
         pdfCaptureRef.current.style.position = 'fixed';
         pdfCaptureRef.current.style.zIndex = '99999';
         
-        // Wait for React to flush state changes
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Single consolidated wait for React state flush and render
+        await new Promise(resolve => requestAnimationFrame(() => 
+          requestAnimationFrame(() => setTimeout(resolve, 50))
+        ));
         
         // Wait until the element has actual dimensions (content is rendered)
         let attempts = 0;
-        while (attempts < 50) {
+        while (attempts < 30) {
           const rect = pdfCaptureRef.current.getBoundingClientRect();
-          console.log('[PDF] Attempt', attempts, 'dimensions:', rect.width, 'x', rect.height);
           if (rect.width > 0 && rect.height > 0) {
-            console.log('[PDF] Element ready with dimensions:', rect.width, 'x', rect.height);
             break;
           }
-          await new Promise(resolve => setTimeout(resolve, 50));
+          await new Promise(resolve => setTimeout(resolve, 30));
           attempts++;
         }
         
-        if (attempts >= 50) {
-          console.error('[PDF] Failed to get dimensions after 50 attempts');
-        }
-        
-        // Wait for fonts and final paint
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Wait for all images to load
+        // Wait for images to load
         await waitForImages(pdfCaptureRef.current);
         
-        // Extra wait to ensure base64 images are fully rendered
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Final render wait
+        await new Promise(resolve => setTimeout(resolve, 100));
         
-        console.log('[PDF] Capturing screenshot...');
-        
-        // First capture to trigger image loading
-        try {
-          await toPng(pdfCaptureRef.current, { cacheBust: true });
-        } catch (e) {
-          // Ignore first capture errors
-        }
-        
-        // Wait a bit for images to be fully embedded
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Second capture - the real one
-        const dataUrl = await toPng(pdfCaptureRef.current, {
-          quality: 1.0,
-          pixelRatio: 2,
+        // Single optimized capture using JPEG for smaller file size
+        const dataUrl = await toJpeg(pdfCaptureRef.current, {
+          quality: 0.92,
+          pixelRatio: 1.5,
           backgroundColor: '#ffffff',
+          skipFonts: true,
           cacheBust: true,
-          includeQueryParams: false,
-          preferredFontFormat: 'woff2',
         });
-        
-        console.log('[PDF] Screenshot captured, size:', dataUrl.length, 'bytes');
         
         // Move element back off-screen
         pdfCaptureRef.current.style.top = originalTop;
@@ -1009,7 +985,7 @@ export default function AirflowTester() {
         return dataUrl;
       };
 
-      // Helper to add full-page image
+      // Helper to add full-page image - now supports JPEG
       const addFullPageImage = (dataUrl: string) => {
         const maxPdfWidth = pageWidth - 20;
         const maxPdfHeight = pageHeight - 20;
@@ -1031,7 +1007,8 @@ export default function AirflowTester() {
         
         const xPos = 10 + (maxPdfWidth - finalWidth) / 2;
         const yPos = 10;
-        pdf.addImage(dataUrl, 'PNG', xPos, yPos, finalWidth, finalHeight);
+        // Use JPEG format for smaller file size
+        pdf.addImage(dataUrl, 'JPEG', xPos, yPos, finalWidth, finalHeight);
         
         // Add page number
         pdf.setFontSize(8);
@@ -1041,18 +1018,11 @@ export default function AirflowTester() {
       };
 
       try {
-        // Debug: Check if logo is present
-        console.log('[PDF] Report has logo:', !!currentReport.companyLogo);
-        if (currentReport.companyLogo) {
-          console.log('[PDF] Logo size:', currentReport.companyLogo.length, 'bytes');
-          console.log('[PDF] Logo format:', currentReport.companyLogo.substring(0, 30));
-        }
-        
-        // 1. Cover Page (with extra wait for logo loading)
+        // 1. Cover Page
         flushSync(() => {
           setPdfRenderState('cover');
         });
-        await new Promise(resolve => setTimeout(resolve, 800)); // Extra wait for logo
+        await new Promise(resolve => setTimeout(resolve, 150)); // Reduced wait time
         const coverDataUrl = await capturePDFSection();
         addFullPageImage(coverDataUrl);
         setPdfRenderState(null);
