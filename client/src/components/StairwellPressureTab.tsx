@@ -113,6 +113,19 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
       setSavedStairwellTests(Object.values(storageData.stairwellTests));
     }
   }, [storageData]);
+  
+  // Reset system type when standard changes and current class is not available
+  useEffect(() => {
+    if (systemType && standardVersion) {
+      const isAvailable = isClassAvailableForStandard(
+        standardVersion as StandardVersion,
+        systemType as SystemClass
+      );
+      if (!isAvailable) {
+        setSystemType("");
+      }
+    }
+  }, [standardVersion]);
 
   // Get compliance thresholds based on system type and standard version
   const getComplianceThresholds = () => {
@@ -121,6 +134,7 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
       systemType as SystemClass
     );
     
+    // Handle classes with specific min/max values
     if (classReq && classReq.minPressure !== null && classReq.maxPressure !== null) {
       return {
         minPressure: classReq.minPressure,
@@ -130,6 +144,21 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
         doorForceMax: classReq.doorForceValue || PRESSURE_COMPLIANCE.DOOR_FORCE_MAX,
         doorForceCloserMax: classReq.doorForceCloserValue || PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX,
         openDoorMin: classReq.openDoorMinValue || PRESSURE_COMPLIANCE.OPEN_DOOR_MIN,
+        isPerDesign: false,
+      };
+    }
+    
+    // Handle "per design" classes (D, E, F) - no automatic compliance checking
+    if (classReq && classReq.minPressure === null) {
+      return {
+        minPressure: null,
+        maxPressure: null,
+        nominalPressure: null,
+        label: `${classReq.nominalPressure} (${classReq.pressureRange})`,
+        doorForceMax: classReq.doorForceValue || null,
+        doorForceCloserMax: classReq.doorForceCloserValue || null,
+        openDoorMin: classReq.openDoorMinValue || null,
+        isPerDesign: true,
       };
     }
     
@@ -143,6 +172,7 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
         doorForceMax: PRESSURE_COMPLIANCE.DOOR_FORCE_MAX,
         doorForceCloserMax: PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX,
         openDoorMin: PRESSURE_COMPLIANCE.OPEN_DOOR_MIN,
+        isPerDesign: false,
       };
     } else if (systemType === "class_b") {
       return {
@@ -153,6 +183,7 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
         doorForceMax: PRESSURE_COMPLIANCE.DOOR_FORCE_MAX,
         doorForceCloserMax: PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX,
         openDoorMin: PRESSURE_COMPLIANCE.OPEN_DOOR_MIN,
+        isPerDesign: false,
       };
     }
     return {
@@ -163,18 +194,25 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
       doorForceMax: PRESSURE_COMPLIANCE.DOOR_FORCE_MAX,
       doorForceCloserMax: PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX,
       openDoorMin: PRESSURE_COMPLIANCE.OPEN_DOOR_MIN,
+      isPerDesign: false,
     };
   };
 
   // Check if a level measurement is compliant
-  const checkLevelCompliance = (level: LevelMeasurement): { pressure: boolean | undefined, force: boolean | undefined } => {
+  const checkLevelCompliance = (level: LevelMeasurement): { pressure: boolean | undefined, force: boolean | undefined, isPerDesign: boolean } => {
     const thresholds = getComplianceThresholds();
+    
+    // For "per design" classes, we can't automatically determine compliance
+    if (thresholds.isPerDesign) {
+      return { pressure: undefined, force: undefined, isPerDesign: true };
+    }
     
     let pressureCompliant: boolean | undefined;
     if (level.differentialPressure !== undefined && level.differentialPressure !== null) {
       if (scenario === "single_door_open" || scenario === "multiple_doors_open") {
-        pressureCompliant = level.differentialPressure >= PRESSURE_COMPLIANCE.OPEN_DOOR_MIN;
-      } else {
+        const openDoorMin = thresholds.openDoorMin ?? PRESSURE_COMPLIANCE.OPEN_DOOR_MIN;
+        pressureCompliant = level.differentialPressure >= openDoorMin;
+      } else if (thresholds.minPressure !== null && thresholds.maxPressure !== null) {
         pressureCompliant = level.differentialPressure >= thresholds.minPressure && 
                           level.differentialPressure <= thresholds.maxPressure;
       }
@@ -183,12 +221,12 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
     let forceCompliant: boolean | undefined;
     if (level.doorOpeningForce !== undefined && level.doorOpeningForce !== null) {
       const maxForce = level.hasDoorCloser 
-        ? PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX 
-        : PRESSURE_COMPLIANCE.DOOR_FORCE_MAX;
+        ? (thresholds.doorForceCloserMax ?? PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX)
+        : (thresholds.doorForceMax ?? PRESSURE_COMPLIANCE.DOOR_FORCE_MAX);
       forceCompliant = level.doorOpeningForce <= maxForce;
     }
     
-    return { pressure: pressureCompliant, force: forceCompliant };
+    return { pressure: pressureCompliant, force: forceCompliant, isPerDesign: false };
   };
 
   // Calculate summary statistics
