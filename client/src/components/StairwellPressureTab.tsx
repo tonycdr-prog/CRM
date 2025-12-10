@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,21 +8,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Save, RotateCcw, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Save, RotateCcw, CheckCircle, XCircle, AlertTriangle, FileDown, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   StairwellPressureTest, 
   LevelMeasurement, 
   PRESSURE_COMPLIANCE,
   pressureSystemTypeEnum,
-  testScenarioEnum 
+  testScenarioEnum,
+  Report
 } from "@shared/schema";
 import { StorageData, saveStorageData, loadStorageData } from "@/lib/storage";
 import { nanoid } from "nanoid";
+import { toPng, toJpeg } from "html-to-image";
+import jsPDF from "jspdf";
+import PDFCoverPage from "@/components/pdf/PDFCoverPage";
+import PDFStairwellStandardsPage from "@/components/pdf/PDFStairwellStandardsPage";
+import PDFStairwellSummaryTable from "@/components/pdf/PDFStairwellSummaryTable";
+import PDFStairwellTestPage from "@/components/pdf/PDFStairwellTestPage";
 
 interface StairwellPressureTabProps {
   storageData: StorageData | null;
   setStorageData: (data: StorageData) => void;
+  report?: Partial<Report>;
 }
 
 const SYSTEM_TYPE_LABELS: Record<string, string> = {
@@ -47,8 +56,15 @@ const WIND_LABELS: Record<string, string> = {
   "strong": "Strong Wind",
 };
 
-export default function StairwellPressureTab({ storageData, setStorageData }: StairwellPressureTabProps) {
+export default function StairwellPressureTab({ storageData, setStorageData, report }: StairwellPressureTabProps) {
   const { toast } = useToast();
+  const pdfCaptureRef = useRef<HTMLDivElement>(null);
+  
+  // PDF generation state
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [pdfRenderState, setPdfRenderState] = useState<'cover' | 'standards' | 'summary' | 'test' | null>(null);
+  const [pdfCurrentTestIndex, setPdfCurrentTestIndex] = useState<number>(0);
+  const [pdfTestsToExport, setPdfTestsToExport] = useState<StairwellPressureTest[]>([]);
   
   // Test form state
   const [testDate, setTestDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -358,6 +374,210 @@ export default function StairwellPressureTab({ storageData, setStorageData }: St
         title: "Test deleted",
         description: "Stairwell pressure test removed",
       });
+    }
+  };
+
+  // Wait for images to load
+  const waitForImages = async (element: HTMLElement): Promise<void> => {
+    const images = element.querySelectorAll('img');
+    const imagePromises = Array.from(images).map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+      });
+    });
+    await Promise.all(imagePromises);
+  };
+
+  // Generate comprehensive PDF report
+  const generateStairwellPDF = async () => {
+    if (savedStairwellTests.length === 0) {
+      toast({
+        title: "No tests to export",
+        description: "Save some stairwell pressure tests first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+
+    try {
+      toast({
+        title: "Generating PDF...",
+        description: "This may take a few moments. Please wait...",
+      });
+
+      const testsToExport = savedStairwellTests.sort((a, b) => b.createdAt - a.createdAt);
+      
+      flushSync(() => {
+        setPdfTestsToExport(testsToExport);
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let pageNumber = 1;
+
+      // Helper to capture visible pdfCaptureRef component
+      const capturePDFSection = async (usePNG: boolean = false): Promise<string> => {
+        if (!pdfCaptureRef.current) {
+          throw new Error('PDF capture ref not available');
+        }
+        
+        const originalTop = pdfCaptureRef.current.style.top;
+        pdfCaptureRef.current.style.top = '0';
+        pdfCaptureRef.current.style.left = '0';
+        pdfCaptureRef.current.style.position = 'fixed';
+        pdfCaptureRef.current.style.zIndex = '99999';
+        
+        await new Promise(resolve => requestAnimationFrame(() => 
+          requestAnimationFrame(() => setTimeout(resolve, 50))
+        ));
+        
+        let attempts = 0;
+        while (attempts < 30) {
+          const rect = pdfCaptureRef.current.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 30));
+          attempts++;
+        }
+        
+        await waitForImages(pdfCaptureRef.current);
+        await new Promise(resolve => setTimeout(resolve, usePNG ? 200 : 100));
+        
+        const dataUrl = usePNG 
+          ? await toPng(pdfCaptureRef.current, {
+              quality: 1.0,
+              pixelRatio: 1.5,
+              backgroundColor: '#ffffff',
+              skipFonts: true,
+              cacheBust: true,
+            })
+          : await toJpeg(pdfCaptureRef.current, {
+              quality: 0.92,
+              pixelRatio: 1.5,
+              backgroundColor: '#ffffff',
+              skipFonts: true,
+              cacheBust: true,
+            });
+        
+        pdfCaptureRef.current.style.top = originalTop;
+        pdfCaptureRef.current.style.zIndex = '-9999';
+        
+        return dataUrl;
+      };
+
+      // Helper to add full-page image
+      const addFullPageImage = (dataUrl: string) => {
+        const maxPdfWidth = pageWidth - 20;
+        const maxPdfHeight = pageHeight - 20;
+        
+        const imgProps = pdf.getImageProperties(dataUrl);
+        const aspectRatio = imgProps.height / imgProps.width;
+        const naturalHeight = maxPdfWidth * aspectRatio;
+        
+        let finalWidth: number;
+        let finalHeight: number;
+        
+        if (naturalHeight <= maxPdfHeight) {
+          finalWidth = maxPdfWidth;
+          finalHeight = naturalHeight;
+        } else {
+          finalHeight = maxPdfHeight;
+          finalWidth = maxPdfHeight / aspectRatio;
+        }
+        
+        const xPos = 10 + (maxPdfWidth - finalWidth) / 2;
+        const yPos = 10;
+        
+        const format = dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+        pdf.addImage(dataUrl, format, xPos, yPos, finalWidth, finalHeight);
+        
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+        pageNumber++;
+      };
+
+      try {
+        // 1. Cover Page
+        flushSync(() => {
+          setPdfRenderState('cover');
+        });
+        await new Promise(resolve => setTimeout(resolve, 150));
+        const coverDataUrl = await capturePDFSection(true);
+        addFullPageImage(coverDataUrl);
+        flushSync(() => {
+          setPdfRenderState(null);
+        });
+
+        // 2. Standards Page
+        pdf.addPage();
+        flushSync(() => {
+          setPdfRenderState('standards');
+        });
+        const standardsDataUrl = await capturePDFSection();
+        addFullPageImage(standardsDataUrl);
+        flushSync(() => {
+          setPdfRenderState(null);
+        });
+
+        // 3. Summary Table
+        pdf.addPage();
+        flushSync(() => {
+          setPdfRenderState('summary');
+        });
+        const summaryDataUrl = await capturePDFSection();
+        addFullPageImage(summaryDataUrl);
+        flushSync(() => {
+          setPdfRenderState(null);
+        });
+
+        // 4. Individual Test Pages
+        for (let i = 0; i < testsToExport.length; i++) {
+          pdf.addPage();
+          flushSync(() => {
+            setPdfCurrentTestIndex(i);
+            setPdfRenderState('test');
+          });
+          
+          const dataUrl = await capturePDFSection();
+          addFullPageImage(dataUrl);
+          
+          flushSync(() => {
+            setPdfRenderState(null);
+          });
+        }
+      } catch (sectionError) {
+        console.error('Error capturing PDF section:', sectionError);
+        setPdfRenderState(null);
+        throw sectionError;
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const projectName = report?.projectName ? `_${report.projectName.replace(/\s+/g, '_')}` : '';
+      pdf.save(`stairwell_pressure_report${projectName}_${timestamp}.pdf`);
+
+      toast({
+        title: "PDF generated successfully",
+        description: `Report with ${testsToExport.length} test${testsToExport.length !== 1 ? 's' : ''} exported`,
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "PDF generation failed",
+        description: error instanceof Error ? error.message : "Could not generate PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+      setPdfRenderState(null);
     }
   };
 
@@ -899,8 +1119,20 @@ export default function StairwellPressureTab({ storageData, setStorageData }: St
       {/* Saved Tests List */}
       {savedStairwellTests.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle className="text-base">Saved Stairwell Pressure Tests</CardTitle>
+            <Button 
+              onClick={generateStairwellPDF} 
+              disabled={isGeneratingPDF}
+              data-testid="button-export-stairwell-pdf"
+            >
+              {isGeneratingPDF ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-2" />
+              )}
+              {isGeneratingPDF ? "Generating..." : "Export PDF Report"}
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -948,6 +1180,44 @@ export default function StairwellPressureTab({ storageData, setStorageData }: St
           </CardContent>
         </Card>
       )}
+
+      {/* Hidden PDF Capture Area */}
+      <div
+        ref={pdfCaptureRef}
+        style={{
+          position: 'fixed',
+          top: '-9999px',
+          left: '-9999px',
+          zIndex: -9999,
+          backgroundColor: '#ffffff',
+        }}
+      >
+        {pdfRenderState === 'cover' && (
+          <PDFCoverPage 
+            report={{
+              ...report,
+              reportTitle: report?.reportTitle || "Stairwell Differential Pressure Testing Report",
+            }}
+            testDateRange={
+              pdfTestsToExport.length > 0
+                ? {
+                    earliest: pdfTestsToExport.reduce((min, t) => t.testDate < min ? t.testDate : min, pdfTestsToExport[0].testDate),
+                    latest: pdfTestsToExport.reduce((max, t) => t.testDate > max ? t.testDate : max, pdfTestsToExport[0].testDate),
+                  }
+                : undefined
+            }
+          />
+        )}
+        {pdfRenderState === 'standards' && (
+          <PDFStairwellStandardsPage report={report || {}} />
+        )}
+        {pdfRenderState === 'summary' && (
+          <PDFStairwellSummaryTable tests={pdfTestsToExport} />
+        )}
+        {pdfRenderState === 'test' && pdfTestsToExport[pdfCurrentTestIndex] && (
+          <PDFStairwellTestPage test={pdfTestsToExport[pdfCurrentTestIndex]} />
+        )}
+      </div>
     </div>
   );
 }

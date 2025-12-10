@@ -1829,6 +1829,7 @@ export default function AirflowTester() {
             <StairwellPressureTab 
               storageData={storageData}
               setStorageData={setStorageData}
+              report={currentReport}
             />
           </TabsContent>
 
