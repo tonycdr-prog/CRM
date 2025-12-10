@@ -21,6 +21,7 @@ import { useState, useEffect, useMemo } from "react";
 import { format, parseISO, differenceInDays, addYears } from "date-fns";
 import { SyncIndicator } from "@/components/SyncIndicator";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardStats {
   totalProjects: number;
@@ -56,7 +57,8 @@ interface FlaggedDamper {
 
 export default function Dashboard() {
   const [storageData, setStorageData] = useState<StorageData | null>(null);
-  const syncState = useOfflineSync();
+  const { user } = useAuth();
+  const syncState = useOfflineSync(user?.id);
 
   useEffect(() => {
     setStorageData(loadStorageData());

@@ -31,6 +31,7 @@ import { FloorSequencing } from "@/components/FloorSequencing";
 import { BulkTestPacks } from "@/components/BulkTestPacks";
 import { DeviationNarrative } from "@/components/DeviationNarrative";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useAuth } from "@/hooks/useAuth";
 import { testSchema, type Test, type Report, type Damper, type DamperTemplate, type Project } from "@shared/schema";
 import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
 import { getDamperHistory, getDampersWithRepeatVisits, getTestYear, type DamperHistory } from "@/lib/trendAnalysis";
@@ -151,8 +152,9 @@ export default function AirflowTester() {
   const [showFloorSequencing, setShowFloorSequencing] = useState(false);
   const [showBulkTestPacks, setShowBulkTestPacks] = useState(false);
   
-  // Offline sync
-  const syncState = useOfflineSync();
+  // Auth and offline sync
+  const { user } = useAuth();
+  const syncState = useOfflineSync(user?.id);
   
   // UI state
   const [activeTab, setActiveTab] = useState<string>("testing");
