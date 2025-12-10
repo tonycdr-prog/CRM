@@ -25,6 +25,12 @@ The frontend is a single-page application built with **React 18+** and **TypeScr
 -   **Four-Tab Interface**: Report Setup, Damper Testing, Stairwell Pressure Testing, and Test History.
 -   **Stairwell Differential Pressure Testing**: Compliant with BS EN 12101-6 and other relevant standards, supporting various system classifications and test scenarios. Features floor-by-floor measurements, live compliance checking, pressure thresholds, door opening force validation, and environmental condition tracking.
 -   **Multi-Standard Support**: Support for multiple UK building standard versions (BS 5588-4:1978, BS 5588-4:1998, BS EN 12101-6:2022) to accommodate systems installed under different regulatory periods. Automatic class availability filtering based on selected standard, with superseded standard warnings. "Per design" class handling for BS EN 12101-6 Classes D-F.
+-   **Data Backup & Restore**: JSON export/import functionality in Test History tab for backing up all test data with schema validation on import.
+-   **Anomaly Detection**: Intelligent detection of unusual readings using MAD (Median Absolute Deviation) algorithm. Flags negative values, readings >12 m/s, and statistical outliers with visual badges and input highlighting.
+-   **Keyboard Navigation**: Arrow key, Tab, and Enter key navigation for velocity grid inputs to speed up data entry.
+-   **Duplicate Test**: Quick copy feature to duplicate test configurations (building, location, damper settings) for rapid multi-floor testing.
+-   **Offline Status Indicator**: Visual indicator in header showing connection state for field use awareness.
+-   **Signature Capture**: Canvas-based component (SignatureCapture.tsx) ready for witness sign-off integration in PDF exports.
 
 ### Backend
 

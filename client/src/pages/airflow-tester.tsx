@@ -1,12 +1,15 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera, AlertTriangle } from "lucide-react";
 import { toPng, toJpeg } from "html-to-image";
+import OfflineIndicator from "@/components/OfflineIndicator";
+import DataBackupRestore from "@/components/DataBackupRestore";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
 import GroupedTestHistory from "@/components/GroupedTestHistory";
@@ -444,6 +447,48 @@ export default function AirflowTester() {
       title: "Test deleted",
       description: "Test removed from history",
     });
+  };
+
+  const handleDuplicate = (test: Test) => {
+    // Pre-fill form with test data but don't save yet
+    setTestDate(new Date().toISOString().split('T')[0]); // Use current date
+    setBuilding(test.building);
+    setLocation(test.location);
+    setFloorNumber(test.floorNumber);
+    setShaftId(test.shaftId);
+    setSystemType(test.systemType);
+    setTesterName(test.testerName);
+    setNotes(test.notes);
+    setDamperWidth(test.damperWidth ?? "");
+    setDamperHeight(test.damperHeight ?? "");
+    setGridSize(test.gridSize || Math.sqrt(test.readings.length));
+    // Clear readings for new test
+    setReadings(Array(test.readings.length).fill(""));
+    setDamperOpenImage(undefined);
+    setDamperClosedImage(undefined);
+    setEditingId(null); // This is a new test, not editing
+
+    toast({
+      title: "Test duplicated",
+      description: "Form pre-filled with test settings. Enter new readings and save.",
+    });
+
+    setActiveTab("testing");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Data import handler
+  const handleDataImported = (data: StorageData) => {
+    setStorageData(data);
+    setDampers(data.dampers);
+    setSavedTests(Object.values(data.tests));
+    
+    if (data.damperReportSettings) {
+      setDamperReport(prev => ({ ...prev, ...data.damperReportSettings }));
+    }
+    if (data.stairwellReportSettings) {
+      setStairwellReport(prev => ({ ...prev, ...data.stairwellReportSettings }));
+    }
   };
 
   const generateFilename = (test: Test, extension: string): string => {
@@ -1301,6 +1346,120 @@ export default function AirflowTester() {
   const average = calculateAverage();
   const filledCount = readings.filter((r): r is number => typeof r === "number" && !isNaN(r)).length;
 
+  // Anomaly detection for readings
+  const detectAnomalies = useCallback((currentReadings: (number | "")[]): { index: number; type: 'low' | 'high' | 'negative' }[] => {
+    const numericReadings = currentReadings.filter((r): r is number => typeof r === "number" && !isNaN(r));
+    if (numericReadings.length < 2) return [];
+
+    const anomalies: { index: number; type: 'low' | 'high' | 'negative' }[] = [];
+
+    // Calculate median (more robust than mean for outlier detection)
+    const sorted = [...numericReadings].sort((a, b) => a - b);
+    const median = sorted.length % 2 === 0
+      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+      : sorted[Math.floor(sorted.length / 2)];
+
+    // Calculate MAD (Median Absolute Deviation) - more robust than standard deviation
+    const absoluteDeviations = numericReadings.map(v => Math.abs(v - median));
+    const sortedDeviations = [...absoluteDeviations].sort((a, b) => a - b);
+    const mad = sortedDeviations.length % 2 === 0
+      ? (sortedDeviations[sortedDeviations.length / 2 - 1] + sortedDeviations[sortedDeviations.length / 2]) / 2
+      : sortedDeviations[Math.floor(sortedDeviations.length / 2)];
+
+    // Modified Z-score using MAD (threshold of 3.5 is common, we use 2.5 to be more sensitive)
+    const modifiedZThreshold = 2.5;
+    const k = 0.6745; // Constant for converting MAD to approximate standard deviation
+
+    currentReadings.forEach((reading, index) => {
+      if (typeof reading !== "number" || isNaN(reading)) return;
+
+      // Always flag negative values
+      if (reading < 0) {
+        anomalies.push({ index, type: 'negative' });
+        return;
+      }
+
+      // Flag unrealistic velocities (> 12 m/s is very unusual for damper testing)
+      if (reading > 12) {
+        anomalies.push({ index, type: 'high' });
+        return;
+      }
+
+      // Modified z-score using MAD
+      if (mad > 0) {
+        const modifiedZ = (k * (reading - median)) / mad;
+        if (Math.abs(modifiedZ) > modifiedZThreshold) {
+          anomalies.push({ index, type: reading > median ? 'high' : 'low' });
+          return;
+        }
+      }
+
+      // Simple percentage deviation check when MAD is 0 or readings are too similar
+      // Flag if a reading deviates more than 100% from median
+      if (median > 0 && Math.abs(reading - median) / median > 1.0) {
+        anomalies.push({ index, type: reading > median ? 'high' : 'low' });
+      }
+    });
+
+    return anomalies;
+  }, []);
+
+  const anomalies = useMemo(() => detectAnomalies(readings), [readings, detectAnomalies]);
+
+  // Keyboard navigation for grid inputs
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    const totalPoints = gridSize * gridSize;
+
+    const focusInput = (targetIndex: number) => {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        const input = document.getElementById(`reading-${targetIndex}`) as HTMLInputElement | null;
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      });
+    };
+
+    if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
+      const nextIndex = index + 1;
+      if (nextIndex < totalPoints) {
+        e.preventDefault();
+        focusInput(nextIndex);
+      }
+    } else if (e.key === 'Tab' && e.shiftKey) {
+      const prevIndex = index - 1;
+      if (prevIndex >= 0) {
+        e.preventDefault();
+        focusInput(prevIndex);
+      }
+    } else if (e.key === 'ArrowRight') {
+      const nextIndex = index + 1;
+      if (nextIndex < totalPoints) {
+        e.preventDefault();
+        focusInput(nextIndex);
+      }
+    } else if (e.key === 'ArrowLeft') {
+      const prevIndex = index - 1;
+      if (prevIndex >= 0) {
+        e.preventDefault();
+        focusInput(prevIndex);
+      }
+    } else if (e.key === 'ArrowDown') {
+      const nextIndex = index + gridSize;
+      if (nextIndex < totalPoints) {
+        e.preventDefault();
+        focusInput(nextIndex);
+      }
+    } else if (e.key === 'ArrowUp') {
+      const prevIndex = index - gridSize;
+      if (prevIndex >= 0) {
+        e.preventDefault();
+        focusInput(prevIndex);
+      }
+    }
+  }, [gridSize]);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-4 md:p-6">
@@ -1310,9 +1469,12 @@ export default function AirflowTester() {
             <h1 className="text-2xl font-semibold" data-testid="text-title">
               Airflow Velocity Testing
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Smoke Control Damper Measurement Tool
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">
+                Smoke Control Damper Measurement Tool
+              </p>
+              <OfflineIndicator />
+            </div>
           </div>
           {savedTests.length > 0 && (
             <div className="flex gap-2">
@@ -1582,13 +1744,42 @@ export default function AirflowTester() {
                 </p>
               </CardHeader>
               <CardContent>
+                {anomalies.length > 0 && (
+                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="text-sm font-medium">
+                        {anomalies.length} unusual reading{anomalies.length !== 1 ? 's' : ''} detected
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Check highlighted values - they differ significantly from others or may be outside typical ranges.
+                    </p>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mb-4">
+                  Use arrow keys or Tab/Enter to navigate between cells quickly.
+                </p>
                 <div className={`grid gap-4 ${gridSize === 5 ? 'grid-cols-2' : gridSize === 6 ? 'grid-cols-3' : 'grid-cols-3'}`}>
                   {readings.map((reading, index) => {
                     const positionLabels = generatePositionLabels(gridSize);
+                    const anomaly = anomalies.find(a => a.index === index);
                     return (
                       <div key={index} className="space-y-2">
-                        <Label htmlFor={`reading-${index}`} className="text-sm font-medium">
+                        <Label htmlFor={`reading-${index}`} className="text-sm font-medium flex items-center gap-1">
                           {positionLabels[index]}
+                          {anomaly && (
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                anomaly.type === 'negative' 
+                                  ? 'bg-red-100 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800' 
+                                  : 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
+                              }`}
+                            >
+                              {anomaly.type === 'negative' ? 'Negative' : anomaly.type === 'high' ? 'High' : 'Low'}
+                            </Badge>
+                          )}
                         </Label>
                         <div className="relative">
                           <Input
@@ -1598,7 +1789,14 @@ export default function AirflowTester() {
                             placeholder="0.00"
                             value={reading}
                             onChange={(e) => handleReadingChange(index, e.target.value)}
-                            className="pr-12 font-mono"
+                            onKeyDown={(e) => handleKeyDown(e, index)}
+                            className={`pr-12 font-mono ${
+                              anomaly 
+                                ? anomaly.type === 'negative'
+                                  ? 'border-red-500 focus-visible:ring-red-500'
+                                  : 'border-amber-500 focus-visible:ring-amber-500'
+                                : ''
+                            }`}
                             data-testid={`input-reading-${index + 1}`}
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -1788,6 +1986,7 @@ export default function AirflowTester() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onExportSingle={handleExportSingleImage}
+              onDuplicate={handleDuplicate}
               selectedIds={selectedTestIds}
               onToggleSelect={handleToggleSelect}
               onToggleSelectAll={handleToggleSelectAll}
@@ -1823,6 +2022,7 @@ export default function AirflowTester() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onExportSingle={handleExportSingleImage}
+              onDuplicate={handleDuplicate}
               selectedIds={selectedTestIds}
               onToggleSelect={handleToggleSelect}
               onToggleSelectAll={handleToggleSelectAll}
@@ -1993,6 +2193,8 @@ export default function AirflowTester() {
                 </div>
               );
             })()}
+
+            <DataBackupRestore onDataImported={handleDataImported} />
           </div>
         )}
       </TabsContent>

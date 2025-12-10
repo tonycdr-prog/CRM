@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronRight,
   Calendar,
-  Building2
+  Building2,
+  Copy
 } from "lucide-react";
 import type { Test } from "@shared/schema";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -24,6 +25,7 @@ interface GroupedTestHistoryProps {
   onEdit: (test: Test) => void;
   onDelete: (id: string) => void;
   onExportSingle: (test: Test) => void;
+  onDuplicate?: (test: Test) => void;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
   onToggleSelectAll?: () => void;
@@ -75,6 +77,7 @@ export default function GroupedTestHistory({
   onEdit, 
   onDelete, 
   onExportSingle,
+  onDuplicate,
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
@@ -307,6 +310,17 @@ export default function GroupedTestHistory({
                                       <Edit className="w-3 h-3 mr-1" />
                                       Edit
                                     </Button>
+                                    {onDuplicate && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => onDuplicate(test)}
+                                        title="Duplicate test"
+                                        data-testid={`button-duplicate-${test.id}`}
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                      </Button>
+                                    )}
                                     <Button
                                       size="sm"
                                       variant="outline"
