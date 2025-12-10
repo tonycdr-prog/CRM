@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Camera, Upload, X } from "lucide-react";
+import { Camera, Upload, X, Pencil } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from "@capacitor/camera";
+import ImageAnnotator from "./ImageAnnotator";
 
 interface ImageUploadProps {
   label: string;
@@ -14,6 +15,7 @@ interface ImageUploadProps {
 
 export function ImageUpload({ label, value, onChange, testId }: ImageUploadProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAnnotating, setIsAnnotating] = useState(false);
   const isNative = Capacitor.isNativePlatform();
 
   const handleCamera = async () => {
@@ -122,16 +124,26 @@ export function ImageUpload({ label, value, onChange, testId }: ImageUploadProps
             className="w-full h-48 object-cover"
             data-testid={`${testId}-preview`}
           />
-          <Button
-            type="button"
-            size="icon"
-            variant="destructive"
-            className="absolute top-2 right-2"
-            onClick={handleRemove}
-            data-testid={`${testId}-remove`}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="absolute top-2 right-2 flex gap-1">
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              onClick={() => setIsAnnotating(true)}
+              data-testid={`${testId}-annotate`}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="destructive"
+              onClick={handleRemove}
+              data-testid={`${testId}-remove`}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </Card>
       ) : (
         <div className="flex flex-wrap gap-2">
@@ -194,6 +206,18 @@ export function ImageUpload({ label, value, onChange, testId }: ImageUploadProps
       
       {isLoading && (
         <p className="text-sm text-muted-foreground">Loading image...</p>
+      )}
+      
+      {value && (
+        <ImageAnnotator
+          image={value}
+          open={isAnnotating}
+          onSave={(annotatedImage) => {
+            onChange(annotatedImage);
+            setIsAnnotating(false);
+          }}
+          onCancel={() => setIsAnnotating(false)}
+        />
       )}
     </div>
   );

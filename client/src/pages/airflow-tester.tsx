@@ -12,6 +12,7 @@ import OfflineIndicator from "@/components/OfflineIndicator";
 import AutoSaveIndicator from "@/components/AutoSaveIndicator";
 import DataBackupRestore from "@/components/DataBackupRestore";
 import DamperTemplates from "@/components/DamperTemplates";
+import ProjectManagement from "@/components/ProjectManagement";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
 import GroupedTestHistory from "@/components/GroupedTestHistory";
@@ -23,7 +24,7 @@ import PDFStandardsPage from "@/components/pdf/PDFStandardsPage";
 import PDFSummaryTable from "@/components/pdf/PDFSummaryTable";
 import PDFTrendPage from "@/components/pdf/PDFTrendPage";
 import PDFCertificationPage from "@/components/pdf/PDFCertificationPage";
-import { testSchema, type Test, type Report, type Damper, type DamperTemplate } from "@shared/schema";
+import { testSchema, type Test, type Report, type Damper, type DamperTemplate, type Project } from "@shared/schema";
 import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
 import { getDamperHistory, getDampersWithRepeatVisits, getTestYear, type DamperHistory } from "@/lib/trendAnalysis";
 import { exportDamperTestsToCSV, downloadCSV } from "@/lib/csvExport";
@@ -90,6 +91,7 @@ export default function AirflowTester() {
   const [dampers, setDampers] = useState<Record<string, Damper>>({});
   const [savedTests, setSavedTests] = useState<Test[]>([]);
   const [damperTemplates, setDamperTemplates] = useState<Record<string, DamperTemplate>>({});
+  const [projects, setProjects] = useState<Record<string, Project>>({});
   const [lastSavedTime, setLastSavedTime] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [currentReportId, setCurrentReportId] = useState<string>('default-report');
@@ -210,6 +212,11 @@ export default function AirflowTester() {
         setDamperTemplates(data.damperTemplates);
       }
       
+      // Load projects
+      if (data.projects) {
+        setProjects(data.projects);
+      }
+      
       // Set initial last saved time
       if (data.lastUpdated) {
         setLastSavedTime(data.lastUpdated);
@@ -257,6 +264,7 @@ export default function AirflowTester() {
             damperReportSettings: damperReport,
             stairwellReportSettings: stairwellReport,
             damperTemplates,
+            projects,
           };
           saveStorageData(updatedData);
           setStorageData(updatedData);
@@ -270,7 +278,7 @@ export default function AirflowTester() {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [savedTests, dampers, damperReport, stairwellReport, currentReportId, damperTemplates]);
+  }, [savedTests, dampers, damperReport, stairwellReport, currentReportId, damperTemplates, projects]);
 
   const handleReadingChange = (index: number, value: string) => {
     const numValue = value === "" ? "" : parseFloat(value);
@@ -363,6 +371,57 @@ export default function AirflowTester() {
       description: `${savedTests.length} test(s) exported to ${filename}`,
     });
   };
+
+  // Project handlers - update both local state and storageData for immediate persistence
+  const handleSaveProject = (project: Project) => {
+    setProjects(prev => {
+      const updated = { ...prev, [project.id]: project };
+      if (storageData) {
+        setStorageData(prevData => prevData ? { ...prevData, projects: updated } : null);
+      }
+      return updated;
+    });
+  };
+
+  const handleDeleteProject = (id: string) => {
+    setProjects(prev => {
+      const updated = { ...prev };
+      delete updated[id];
+      if (storageData) {
+        setStorageData(prevData => prevData ? { ...prevData, projects: updated } : null);
+      }
+      return updated;
+    });
+  };
+
+  const handleSelectProject = (project: Project) => {
+    // Auto-fill report settings from the selected project
+    setDamperReport(prev => ({
+      ...prev,
+      projectName: project.name,
+      siteAddress: project.siteAddress,
+      sitePostcode: project.sitePostcode,
+      clientName: project.clientName,
+      mainContractor: project.mainContractor,
+    }));
+    setStairwellReport(prev => ({
+      ...prev,
+      projectName: project.name,
+      siteAddress: project.siteAddress,
+      sitePostcode: project.sitePostcode,
+      clientName: project.clientName,
+      mainContractor: project.mainContractor,
+    }));
+  };
+
+  // Get unique building names from existing tests
+  const existingBuildings = useMemo(() => {
+    const buildings = new Set<string>();
+    savedTests.forEach(test => {
+      if (test.building) buildings.add(test.building);
+    });
+    return Array.from(buildings).sort();
+  }, [savedTests]);
 
   const handleSaveTest = () => {
     const average = calculateAverage();
@@ -2002,6 +2061,15 @@ export default function AirflowTester() {
                 />
               </CardContent>
             </Card>
+            
+            <ProjectManagement
+              projects={projects}
+              onSaveProject={handleSaveProject}
+              onDeleteProject={handleDeleteProject}
+              onSelectProject={handleSelectProject}
+              currentReport={damperReport}
+              existingBuildings={existingBuildings}
+            />
             
             {savedTests.length > 0 && (
               <Card>

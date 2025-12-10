@@ -35,7 +35,8 @@ The frontend is a single-page application built with **React 18+** and **TypeScr
 -   **Auto-Save Indicator**: Visual indicator showing last save timestamp for data persistence awareness.
 -   **Damper Templates**: Save and reuse common damper configurations (dimensions, system type, location) for rapid testing setup.
 -   **CSV Export**: Export test data to CSV format for spreadsheet analysis and external reporting.
--   **Project Schema**: Multi-building project support with schema ready for grouping multiple buildings under a single project.
+-   **Project Management**: Full UI for creating and managing projects that group multiple buildings. Projects auto-fill report settings (address, client, postcode, contractor) and support adding/editing/deleting buildings. Data persists to localStorage.
+-   **Photo Annotation**: Canvas-based annotation system for damper images. Supports arrows, circles, rectangles, freehand drawing, and text annotations with color selection and stroke width control. Touch-friendly for mobile devices. Annotated images replace originals and are included in PDF exports.
 
 ### Backend
 
