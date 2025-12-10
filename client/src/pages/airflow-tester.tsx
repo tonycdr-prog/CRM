@@ -20,6 +20,7 @@ import PDFTrendPage from "@/components/pdf/PDFTrendPage";
 import { testSchema, type Test, type Report, type Damper } from "@shared/schema";
 import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
 import { getDamperHistory, getDampersWithRepeatVisits, getTestYear, type DamperHistory } from "@/lib/trendAnalysis";
+import StairwellPressureTab from "@/components/StairwellPressureTab";
 import JSZip from "jszip";
 import jsPDF from "jspdf";
 
@@ -1312,12 +1313,15 @@ export default function AirflowTester() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3" data-testid="tabs-main">
+          <TabsList className="grid w-full grid-cols-4" data-testid="tabs-main">
             <TabsTrigger value="report-setup" data-testid="tab-report-setup">
               Report Setup
             </TabsTrigger>
             <TabsTrigger value="testing" data-testid="tab-testing">
-              Testing
+              Damper Testing
+            </TabsTrigger>
+            <TabsTrigger value="stairwell" data-testid="tab-stairwell">
+              Stairwell Pressure
             </TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history">
               Test History
@@ -1819,6 +1823,13 @@ export default function AirflowTester() {
             />
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="stairwell" className="space-y-6">
+            <StairwellPressureTab 
+              storageData={storageData}
+              setStorageData={setStorageData}
+            />
           </TabsContent>
 
       <TabsContent value="history" className="space-y-6">

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a professional UK regulation-compliant utility application for visualizing and documenting airflow velocity readings across smoke control dampers. The tool enables field technicians to perform compliant testing with automatic grid size calculation (5×5, 6×6, or 7×7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The application is designed for on-site use with touch-friendly controls and is available as both a web application and native mobile app (iOS/Android).
+This application is a professional, UK regulation-compliant utility for visualizing and documenting airflow velocity readings across smoke control dampers. It enables field technicians to perform compliant testing with automatic grid size calculation (5×5, 6×6, or 7×7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The tool supports on-site use with touch-friendly controls and is available as a web application and native mobile app (iOS/Android). The project aims to provide comprehensive reporting, trend analysis, and efficient workflow for commissioning, annual inspection, and reactive testing of smoke control systems.
 
 ## User Preferences
 
@@ -10,272 +10,35 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
+### Frontend
 
-**Framework**: React 18+ with TypeScript using Vite as the build tool
-
-**UI Component System**: 
-- shadcn/ui component library (New York style variant) with Radix UI primitives
-- Tailwind CSS for styling with custom design tokens following Material Design principles
-- CSS variables for theming support (light/dark modes)
-
-**Design Philosophy**:
-- Single-page application optimized for field testing workflow
-- Material Design with technical/engineering focus
-- Touch-optimized interface for on-site tablet/mobile use
-- Inter font family for UI with Roboto Mono for numeric precision
-- Responsive grid layout: single column mobile (<768px), 2-column grid for readings on larger screens
-
-**State Management**:
-- React hooks for local component state
-- TanStack Query (React Query) for server state management
-- LocalStorage for client-side data persistence of test history
+The frontend is a single-page application built with **React 18+** and **TypeScript**, using **Vite** as the build tool. It leverages **shadcn/ui** with **Radix UI** primitives and **Tailwind CSS** for styling, following Material Design principles with custom design tokens. The UI is touch-optimized for field use on tablets and mobile devices, featuring a responsive grid layout. State management uses **React hooks** for local state and **TanStack Query** for server state, with **LocalStorage** for client-side data persistence.
 
 **Key Features**:
-- **UK Regulation Compliance**: Automatic grid size calculation based on damper dimensions
-  - Damper ≤ 610mm: 5×5 grid (25 measurement points)
-  - Damper 610-914mm: 6×6 grid (36 measurement points)
-  - Damper > 914mm: 7×7 grid (49 measurement points)
-- **Professional Report System**: Comprehensive project documentation
-  - Report setup with company details, logo upload, project metadata
-  - Scope of works and system description
-  - Testing standards (BS EN 12101-8:2020, BSRIA BG 49/2024)
-  - Report type selection (Commissioning/Annual Inspection/Reactive)
-  - Executive summary and pass/fail statistics
-- **Trend Analysis & Historical Tracking**:
-  - Floor-level damper tracking across multiple years (each floor tracked separately)
-  - Year-over-year velocity trend visualization with Recharts
-  - Repeat visit detection for annual compliance testing
-  - Historical data grouping by building+location+floor+shaft and year
-  - Pass/fail trend indicators with floor-specific granularity
-  - Filter to show only dampers with multi-year data
-- **Enhanced PDF Export**:
-  - Professional cover page with company logo and project details
-  - Standards and methodology section
-  - Summary table with pass/fail statistics and comparisons
-  - Individual test pages with grid visualizations
-  - Trend charts for dampers with historical data (only for dampers with multi-year history)
-  - Selection-based filtering: exports respect selected tests from Test History tab
-  - When tests are selected, PDF includes only those tests and their associated dampers
-  - Button location: Test History tab for selection-aware export workflow
-  - Deterministic rendering ensures reliable exports
-- **Damper Image Documentation**: Camera integration for documenting damper conditions
-  - Take photos directly using device camera (mobile) or upload images (web)
-  - Capture damper in open and closed positions
-  - Images stored as base64 data URLs for offline access
-  - Included automatically in PDF exports for complete documentation
-- **Grouped Test History**: Organized site visit view for field technicians
-  - Tests automatically grouped by building and date (site visits)
-  - Expandable/collapsible cards for each site visit
-  - Summary statistics per visit (test count, pass/fail badges)
-  - Tests within visit sorted by floor number
-  - Visit-level selection for bulk operations (export, delete)
-  - Normalized grouping prevents duplicate visits from spacing/casing differences
-- **Three-Tab Interface**:
-  - Report Setup: Configure professional report metadata
-  - Testing: Perform velocity measurements with live grid
-  - Test History: Grouped site visits with year-over-year trend analysis
-- Dynamic grid visualization adapting to test requirements
-- Automatic average, minimum, and maximum velocity calculations
-- Pass/fail criteria evaluation with configurable thresholds
-- Test metadata capture (date, building, location, floor, shaft ID, system type, tester name, notes)
-- Export functionality:
-  - Individual test export (PNG image)
-  - Batch export (ZIP with PNG images)
-  - Batch PDF export (multiple tests in one document)
-  - Comprehensive PDF report (cover, standards, summary, tests, trends)
-- Geometric free area calculation from damper dimensions
-- "Next Floor" workflow for efficient multi-floor testing
 
-### Backend Architecture
+-   **UK Regulation Compliance**: Automatic grid size calculation (5x5, 6x6, 7x7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024.
+-   **Professional Report System**: Comprehensive project documentation including company details, scope of works, system description, testing standards, executive summary, and pass/fail statistics.
+-   **Trend Analysis & Historical Tracking**: Year-over-year velocity trend visualization using Recharts, historical data grouping, and pass/fail trend indicators for floor-level dampers.
+-   **Enhanced PDF Export**: Professional, selection-aware PDF generation with cover pages, standards sections, summary tables, individual test pages with grid visualizations, and trend charts for historical data. Optimized for performance and file size.
+-   **Damper Image Documentation**: Camera integration for capturing damper conditions (open/closed positions), with images stored as base64 data URLs and included in PDF exports.
+-   **Grouped Test History**: Tests are organized by building and date into expandable site visit cards, offering summary statistics and visit-level selection for bulk operations.
+-   **Four-Tab Interface**: Report Setup, Damper Testing, Stairwell Pressure Testing, and Test History.
+-   **Stairwell Differential Pressure Testing**: Compliant with BS EN 12101-6 and other relevant standards, supporting various system classifications and test scenarios. Features floor-by-floor measurements, live compliance checking, pressure thresholds, door opening force validation, and environmental condition tracking.
 
-**Server Framework**: Express.js with TypeScript
+### Backend
 
-**Build & Development**:
-- Development: tsx for TypeScript execution
-- Production: esbuild for server bundling
-- ESM module system throughout
+The backend is an **Express.js** application with **TypeScript**. It follows a **RESTful API** design, with routes defined in `server/routes.ts`. It uses `tsx` for development and `esbuild` for production bundling. The data layer uses an abstract storage interface, currently with an in-memory implementation (`MemStorage`) and prepared for database integration via **Drizzle ORM**.
 
-**API Structure**:
-- RESTful API design (all routes prefixed with `/api`)
-- Routes defined in `server/routes.ts`
-- Request/response logging middleware
-- JSON body parsing with raw body capture support
+### Mobile App Platform
 
-**Data Layer**:
-- Abstracted storage interface (`IStorage`) allowing multiple implementations
-- In-memory storage (`MemStorage`) for development/testing
-- Prepared for database integration via Drizzle ORM
+The application is wrapped for native iOS and Android deployment using **Capacitor**. It supports iOS 13.0+ and Android 6.0+ (API 23+), including native camera access and splash screen management.
 
-**Session Management**:
-- connect-pg-simple for PostgreSQL session storage (when database is connected)
+## External Dependencies
 
-### External Dependencies
-
-**Database**:
-- **Drizzle ORM** (v0.39.1): Type-safe SQL query builder
-- **Drizzle Kit**: Schema management and migrations
-- **@neondatabase/serverless**: Neon PostgreSQL serverless driver
-- Configured for PostgreSQL dialect
-- Schema validation with Zod via drizzle-zod
-- Connection string via `DATABASE_URL` environment variable
-- Migrations output to `./migrations` directory
-
-**UI & Styling**:
-- **Tailwind CSS**: Utility-first CSS framework with custom configuration
-- **shadcn/ui**: Comprehensive component library built on Radix UI
-- **Radix UI**: Unstyled, accessible component primitives (20+ packages)
-- **class-variance-authority**: Type-safe variant styling
-- **Lucide React**: Icon library
-
-**Form Handling**:
-- **React Hook Form**: Efficient form state management
-- **@hookform/resolvers**: Schema validation resolvers
-- **Zod**: Runtime type validation and schema definition
-
-**Data Export**:
-- **html-to-image**: DOM to image conversion (PNG export)
-- **jsPDF**: PDF generation
-- **JSZip**: ZIP file creation for bulk exports
-
-**Routing**:
-- **wouter**: Lightweight client-side routing (~1.2KB)
-
-**Utilities**:
-- **date-fns**: Date manipulation and formatting
-- **clsx** & **tailwind-merge**: Conditional className composition
-- **nanoid**: Unique ID generation
-
-**Development Tools**:
-- **@replit/vite-plugin-runtime-error-modal**: Development error overlay
-- **@replit/vite-plugin-cartographer**: Replit integration
-- **@replit/vite-plugin-dev-banner**: Development environment indicator
-
-**Mobile App Platform**:
-- **Capacitor** (v7.4.4): Native iOS and Android app wrapper
-- **@capacitor/app**: App lifecycle events
-- **@capacitor/splash-screen**: Native splash screen management
-- **@capacitor/status-bar**: Status bar styling control
-- **@capacitor/camera**: Native camera access for photo capture and gallery selection
-- Supports iOS 13.0+ and Android 6.0+ (API 23+)
-- Full native app deployment to App Store and Google Play Store
-- Camera permissions configured for both iOS and Android platforms
-
-**Data Storage Architecture**:
-
-The application uses a versioned localStorage-based storage system with automatic migration support. The storage structure includes:
-
-```typescript
-StorageData {
-  version: number             // Schema version for migrations
-  reports: Record<string, Report>  // Project reports indexed by ID
-  dampers: Record<string, Damper>  // Damper equipment records
-  tests: Record<string, Test>      // Individual test records
-}
-
-Report {
-  id: string
-  projectName: string
-  siteName: string
-  siteAddress: string
-  companyName: string
-  companyLogo?: string        // Base64 data URL
-  scopeOfWorks: string
-  systemDescription: string
-  reportDate: string
-  reportTitle: string
-  reportType: "commissioning" | "annual_inspection" | "reactive"
-  testingStandards: string    // BS EN 12101-8:2020, BSRIA BG 49/2024
-  includeExecutiveSummary: boolean
-  includePassFailSummary: boolean
-  testIds?: string[]          // Associated test IDs
-}
-
-Damper {
-  id: string                  // Unique damper ID
-  damperKey: string           // Generated from building+location+floorNumber+shaftId
-  building: string
-  location: string
-  floorNumber: string         // Floor number is part of damper identity
-  shaftId: string
-  systemType: "" | "push" | "pull" | "push-pull"
-  description?: string
-  createdAt: number
-}
-
-Test {
-  id: string
-  damperId?: string           // Link to damper equipment
-  testDate: string
-  building: string
-  location: string
-  floorNumber: string
-  shaftId: string
-  systemType: "" | "push" | "pull" | "push-pull"
-  testerName: string
-  notes: string
-  readings: (number | "")[]   // Variable length: 25, 36, or 49 readings
-  gridSize: number            // 5, 6, or 7
-  average: number
-  damperWidth?: number        // Width in mm
-  damperHeight?: number       // Height in mm
-  freeArea?: number          // Calculated geometric free area in m²
-  damperOpenImage?: string   // Base64 data URL for damper open position photo
-  damperClosedImage?: string // Base64 data URL for damper closed position photo
-  createdAt: number
-}
-```
-
-**Storage Features**:
-- Automatic migration from legacy localStorage format (v1 → v2 → v3)
-- Multi-report support with active report tracking via `currentReportId` state
-- Floor-level damper tracking across years for trend analysis
-- Test-to-damper linking via damperKey (building+location+floorNumber+shaftId)
-- Version 3 migration: Updates damper keys to include floor number for floor-specific tracking
-- Defensive persistence with undefined guards and error handling
-
-**Export Reliability & Performance**:
-- Deterministic DOM rendering with `waitForDOMReady()` helper
-- Explicit image loading with timeout fallbacks
-- Shared `waitForImages()` helper used across all export paths
-- **Optimized PDF Generation**:
-  * Hybrid format: PNG for cover page (preserves logo quality), JPEG for other pages
-  * JPEG quality 0.92 reduces file size by ~70-80% with minimal visual difference
-  * PixelRatio reduced from 2x to 1.5x (optimal for PDF print quality)
-  * skipFonts: true eliminates Google Fonts CSS errors
-  * Streamlined wait times (reduced from ~1s+ to ~150-300ms per capture)
-  * Single-pass capture (removed redundant double-capture)
-  * Combined result: ~3-5x faster generation, ~70% smaller file size
-
-**Authentication Schema** (Prepared but not actively used):
-```typescript
-User {
-  id: string (UUID)
-  username: string (unique)
-  password: string
-}
-```
-
-## Mobile App Deployment
-
-### Platform Support
-- **iOS**: Minimum iOS 13.0, builds with Xcode 14+
-- **Android**: Minimum API 23 (Android 6.0), builds with Android Studio
-
-### Build Process
-See `MOBILE_BUILD.md` for complete build and deployment instructions.
-
-**Quick Start:**
-1. Build web app: `npm run build`
-2. Sync platforms: `npx cap sync`
-3. Open native IDE: `npx cap open android` or `npx cap open ios`
-4. Build and run from Android Studio or Xcode
-
-### App Store Distribution
-- **Google Play**: Build signed AAB in Android Studio
-- **Apple App Store**: Archive and upload via Xcode
-
-### Configuration
-- App ID: `com.airflow.tester`
-- App Name: "Airflow Velocity Tester"
-- Edit `capacitor.config.ts` for customization
+-   **Database**: Drizzle ORM (Type-safe SQL query builder), Drizzle Kit (schema management), @neondatabase/serverless (Neon PostgreSQL driver).
+-   **UI & Styling**: Tailwind CSS, shadcn/ui, Radix UI, class-variance-authority, Lucide React (icons).
+-   **Form Handling**: React Hook Form, @hookform/resolvers, Zod (validation).
+-   **Data Export**: html-to-image, jsPDF, JSZip.
+-   **Routing**: wouter.
+-   **Utilities**: date-fns, clsx, tailwind-merge, nanoid.
+-   **Mobile App**: Capacitor (core), @capacitor/app, @capacitor/splash-screen, @capacitor/status-bar, @capacitor/camera.
