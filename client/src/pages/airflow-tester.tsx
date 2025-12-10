@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera, AlertTriangle } from "lucide-react";
+import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera, AlertTriangle, FileSpreadsheet } from "lucide-react";
 import { toPng, toJpeg } from "html-to-image";
 import OfflineIndicator from "@/components/OfflineIndicator";
+import AutoSaveIndicator from "@/components/AutoSaveIndicator";
 import DataBackupRestore from "@/components/DataBackupRestore";
+import DamperTemplates from "@/components/DamperTemplates";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
 import GroupedTestHistory from "@/components/GroupedTestHistory";
@@ -21,9 +23,10 @@ import PDFStandardsPage from "@/components/pdf/PDFStandardsPage";
 import PDFSummaryTable from "@/components/pdf/PDFSummaryTable";
 import PDFTrendPage from "@/components/pdf/PDFTrendPage";
 import PDFCertificationPage from "@/components/pdf/PDFCertificationPage";
-import { testSchema, type Test, type Report, type Damper } from "@shared/schema";
+import { testSchema, type Test, type Report, type Damper, type DamperTemplate } from "@shared/schema";
 import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
 import { getDamperHistory, getDampersWithRepeatVisits, getTestYear, type DamperHistory } from "@/lib/trendAnalysis";
+import { exportDamperTestsToCSV, downloadCSV } from "@/lib/csvExport";
 import StairwellPressureTab from "@/components/StairwellPressureTab";
 import JSZip from "jszip";
 import jsPDF from "jspdf";
@@ -86,6 +89,9 @@ export default function AirflowTester() {
   const [storageData, setStorageData] = useState<StorageData | null>(null);
   const [dampers, setDampers] = useState<Record<string, Damper>>({});
   const [savedTests, setSavedTests] = useState<Test[]>([]);
+  const [damperTemplates, setDamperTemplates] = useState<Record<string, DamperTemplate>>({});
+  const [lastSavedTime, setLastSavedTime] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [currentReportId, setCurrentReportId] = useState<string>('default-report');
   // Separate report settings for damper and stairwell tabs
   const [damperReport, setDamperReport] = useState<Partial<Report>>({
@@ -199,6 +205,16 @@ export default function AirflowTester() {
         setDamperReport(prev => ({ ...prev, ...firstReport }));
       }
       
+      // Load damper templates
+      if (data.damperTemplates) {
+        setDamperTemplates(data.damperTemplates);
+      }
+      
+      // Set initial last saved time
+      if (data.lastUpdated) {
+        setLastSavedTime(data.lastUpdated);
+      }
+      
       if (Object.keys(data.tests).length > 0) {
         toast({
           title: "Data loaded",
@@ -215,35 +231,46 @@ export default function AirflowTester() {
     }
   }, []);
 
-  // Save storage data whenever tests, dampers, or report changes
+  // Save storage data whenever tests, dampers, or report changes (debounced)
   useEffect(() => {
     if (storageData) {
-      try {
-        // Preserve all existing reports, only update the current one being edited
-        const updatedReports = {
-          ...storageData.reports,
-          [currentReportId]: {
-            id: currentReportId,
-            ...(storageData.reports[currentReportId] ?? {}), // Preserve existing fields (empty object if new)
-            ...damperReport, // Overlay with current changes
-          } as Partial<Report> & {id: string},
-        };
-        
-        const updatedData: StorageData = {
-          ...storageData,
-          tests: Object.fromEntries(savedTests.map(t => [t.id, t])),
-          dampers,
-          reports: updatedReports,
-          damperReportSettings: damperReport,
-          stairwellReportSettings: stairwellReport,
-        };
-        saveStorageData(updatedData);
-        setStorageData(updatedData);
-      } catch (error) {
-        console.error('Error saving storage data:', error);
-      }
+      setIsSaving(true);
+      
+      // Debounce saves to prevent excessive localStorage writes
+      const timeoutId = setTimeout(() => {
+        try {
+          // Preserve all existing reports, only update the current one being edited
+          const updatedReports = {
+            ...storageData.reports,
+            [currentReportId]: {
+              id: currentReportId,
+              ...(storageData.reports[currentReportId] ?? {}), // Preserve existing fields (empty object if new)
+              ...damperReport, // Overlay with current changes
+            } as Partial<Report> & {id: string},
+          };
+          
+          const updatedData: StorageData = {
+            ...storageData,
+            tests: Object.fromEntries(savedTests.map(t => [t.id, t])),
+            dampers,
+            reports: updatedReports,
+            damperReportSettings: damperReport,
+            stairwellReportSettings: stairwellReport,
+            damperTemplates,
+          };
+          saveStorageData(updatedData);
+          setStorageData(updatedData);
+          setLastSavedTime(Date.now());
+        } catch (error) {
+          console.error('Error saving storage data:', error);
+        } finally {
+          setIsSaving(false);
+        }
+      }, 300);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [savedTests, dampers, damperReport, stairwellReport, currentReportId]);
+  }, [savedTests, dampers, damperReport, stairwellReport, currentReportId, damperTemplates]);
 
   const handleReadingChange = (index: number, value: string) => {
     const numValue = value === "" ? "" : parseFloat(value);
@@ -282,6 +309,59 @@ export default function AirflowTester() {
     setGridSize(5);
     setTestDate(new Date().toISOString().split('T')[0]);
     setEditingId(null);
+  };
+
+  // Template handlers - update both local state and storageData for immediate persistence
+  const handleSaveTemplate = (template: DamperTemplate) => {
+    setDamperTemplates(prev => {
+      const updated = { ...prev, [template.id]: template };
+      // Also update storageData to ensure persistence
+      if (storageData) {
+        setStorageData(prevData => prevData ? { ...prevData, damperTemplates: updated } : null);
+      }
+      return updated;
+    });
+  };
+
+  const handleDeleteTemplate = (id: string) => {
+    setDamperTemplates(prev => {
+      const updated = { ...prev };
+      delete updated[id];
+      // Also update storageData to ensure persistence
+      if (storageData) {
+        setStorageData(prevData => prevData ? { ...prevData, damperTemplates: updated } : null);
+      }
+      return updated;
+    });
+  };
+
+  const handleApplyTemplate = (template: DamperTemplate) => {
+    setDamperWidth(template.damperWidth);
+    setDamperHeight(template.damperHeight);
+    setSystemType(template.systemType);
+    if (template.location) setLocation(template.location);
+    if (template.shaftId) setShaftId(template.shaftId);
+  };
+
+  // CSV export handler
+  const handleExportCSV = () => {
+    if (savedTests.length === 0) {
+      toast({
+        title: "No data to export",
+        description: "Please record some tests before exporting",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const csvContent = exportDamperTestsToCSV(savedTests);
+    const filename = `damper-tests-${new Date().toISOString().split('T')[0]}.csv`;
+    downloadCSV(csvContent, filename);
+    
+    toast({
+      title: "CSV exported",
+      description: `${savedTests.length} test(s) exported to ${filename}`,
+    });
   };
 
   const handleSaveTest = () => {
@@ -1482,30 +1562,42 @@ export default function AirflowTester() {
             <h1 className="text-2xl font-semibold" data-testid="text-title">
               Airflow Velocity Testing
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm text-muted-foreground">
                 Smoke Control Damper Measurement Tool
               </p>
               <OfflineIndicator />
+              <AutoSaveIndicator lastSaved={lastSavedTime} isSaving={isSaving} />
             </div>
           </div>
           {savedTests.length > 0 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                onClick={handleExportCSV}
+                variant="outline"
+                size="sm"
+                data-testid="button-export-csv"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                CSV
+              </Button>
               <Button
                 onClick={handleBatchExportImages}
                 variant="outline"
+                size="sm"
                 data-testid="button-export-all-images"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Export All Images
+                Images
               </Button>
               <Button
                 onClick={handleBatchExportPDF}
                 variant="outline"
+                size="sm"
                 data-testid="button-export-pdf"
               >
                 <FileDown className="w-4 h-4 mr-2" />
-                Export PDF
+                PDF
               </Button>
             </div>
           )}
@@ -1890,6 +1982,27 @@ export default function AirflowTester() {
           </div>
 
           <div className="lg:col-span-1 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Quick Templates</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DamperTemplates
+                  templates={damperTemplates}
+                  onSaveTemplate={handleSaveTemplate}
+                  onDeleteTemplate={handleDeleteTemplate}
+                  onApplyTemplate={handleApplyTemplate}
+                  currentConfig={{
+                    damperWidth,
+                    damperHeight,
+                    systemType,
+                    location,
+                    shaftId,
+                  }}
+                />
+              </CardContent>
+            </Card>
+            
             {savedTests.length > 0 && (
               <Card>
                 <CardHeader>

@@ -30,7 +30,12 @@ The frontend is a single-page application built with **React 18+** and **TypeScr
 -   **Keyboard Navigation**: Arrow key, Tab, and Enter key navigation for velocity grid inputs to speed up data entry.
 -   **Duplicate Test**: Quick copy feature to duplicate test configurations (building, location, damper settings) for rapid multi-floor testing.
 -   **Offline Status Indicator**: Visual indicator in header showing connection state for field use awareness.
--   **Signature Capture**: Canvas-based component (SignatureCapture.tsx) ready for witness sign-off integration in PDF exports.
+-   **Signature Capture**: Canvas-based component (SignatureCapture.tsx) integrated into Report Settings and PDF exports with tester/witness signatures.
+-   **PDF Certification Page**: Professional certification section in PDF exports with tester/witness signatures and QR codes linking to digital report verification.
+-   **Auto-Save Indicator**: Visual indicator showing last save timestamp for data persistence awareness.
+-   **Damper Templates**: Save and reuse common damper configurations (dimensions, system type, location) for rapid testing setup.
+-   **CSV Export**: Export test data to CSV format for spreadsheet analysis and external reporting.
+-   **Project Schema**: Multi-building project support with schema ready for grouping multiple buildings under a single project.
 
 ### Backend
 

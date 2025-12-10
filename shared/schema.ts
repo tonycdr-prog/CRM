@@ -257,3 +257,48 @@ export const insertStairwellPressureTestSchema = stairwellPressureTestSchema.omi
   overallCompliant: true,
 });
 export type InsertStairwellPressureTest = z.infer<typeof insertStairwellPressureTestSchema>;
+
+// ============================================
+// PROJECT ENTITY - Multi-building Support
+// ============================================
+
+// Project entity - groups multiple buildings for large developments
+export const projectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  siteAddress: z.string(),
+  sitePostcode: z.string().optional(),
+  clientName: z.string(),
+  mainContractor: z.string().optional(),
+  buildings: z.array(z.string()).default([]), // Building names in this project
+  createdAt: z.number(),
+  updatedAt: z.number().optional(),
+});
+
+export type Project = z.infer<typeof projectSchema>;
+
+export const insertProjectSchema = projectSchema.omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+
+// ============================================
+// DAMPER TEMPLATE - Save common configurations
+// ============================================
+
+// Damper template for saving common configurations
+export const damperTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(), // Template name, e.g., "Standard 600x600 Extract"
+  description: z.string().optional(),
+  damperWidth: z.number(),
+  damperHeight: z.number(),
+  systemType: systemTypeEnum,
+  location: z.string().optional(), // Common location description
+  shaftId: z.string().optional(), // Common shaft ID
+  createdAt: z.number(),
+});
+
+export type DamperTemplate = z.infer<typeof damperTemplateSchema>;
+
+export const insertDamperTemplateSchema = damperTemplateSchema.omit({ id: true, createdAt: true });
+export type InsertDamperTemplate = z.infer<typeof insertDamperTemplateSchema>;

@@ -1,7 +1,7 @@
-import { Test, Damper, Report, StairwellPressureTest, damperSchema, reportSchema, testSchema, stairwellPressureTestSchema } from "@shared/schema";
+import { Test, Damper, Report, StairwellPressureTest, Project, DamperTemplate, damperSchema, reportSchema, testSchema, stairwellPressureTestSchema, projectSchema, damperTemplateSchema } from "@shared/schema";
 import { nanoid } from "nanoid";
 
-const STORAGE_VERSION = 4;
+const STORAGE_VERSION = 5;
 const STORAGE_KEY = "airflow-data";
 const LEGACY_STORAGE_KEY = "airflow-tests";
 
@@ -11,6 +11,8 @@ export interface StorageData {
   dampers: Record<string, Damper>;
   reports: Record<string, Report>;
   stairwellTests: Record<string, StairwellPressureTest>;
+  projects: Record<string, Project>;
+  damperTemplates: Record<string, DamperTemplate>;
   damperReportSettings?: Partial<Report>;
   stairwellReportSettings?: Partial<Report>;
   lastUpdated: number;
@@ -65,6 +67,8 @@ function initializeStorage(): StorageData {
     dampers: {},
     reports: {},
     stairwellTests: {},
+    projects: {},
+    damperTemplates: {},
     lastUpdated: Date.now(),
   };
 }
@@ -184,6 +188,21 @@ function migrateV3ToV4(data: StorageData): StorageData {
 }
 
 /**
+ * Migrate from version 4 to version 5
+ * Adds projects and damperTemplates collections
+ */
+function migrateV4ToV5(data: StorageData): StorageData {
+  console.log('Adding projects and damperTemplates collections');
+  
+  return {
+    ...data,
+    version: 5,
+    projects: data.projects || {},
+    damperTemplates: data.damperTemplates || {},
+  };
+}
+
+/**
  * Load data from LocalStorage with automatic migration
  */
 export function loadStorageData(): StorageData {
@@ -204,14 +223,23 @@ export function loadStorageData(): StorageData {
         if (data.version === 3) {
           data = migrateV3ToV4(data);
         }
+        if (data.version === 4) {
+          data = migrateV4ToV5(data);
+        }
         
         // Save migrated data
         saveStorageData(data);
       }
       
-      // Ensure stairwellTests exists (defensive)
+      // Ensure all collections exist (defensive)
       if (!data.stairwellTests) {
         data.stairwellTests = {};
+      }
+      if (!data.projects) {
+        data.projects = {};
+      }
+      if (!data.damperTemplates) {
+        data.damperTemplates = {};
       }
       
       return data;
@@ -274,9 +302,15 @@ export function importData(jsonString: string): StorageData {
       throw new Error('Invalid data structure');
     }
     
-    // Ensure stairwellTests exists
+    // Ensure all collections exist
     if (!imported.stairwellTests) {
       imported.stairwellTests = {};
+    }
+    if (!imported.projects) {
+      imported.projects = {};
+    }
+    if (!imported.damperTemplates) {
+      imported.damperTemplates = {};
     }
     
     // Validate schemas
@@ -291,6 +325,12 @@ export function importData(jsonString: string): StorageData {
     });
     Object.values(imported.stairwellTests).forEach(stairwellTest => {
       stairwellPressureTestSchema.parse(stairwellTest);
+    });
+    Object.values(imported.projects).forEach(project => {
+      projectSchema.parse(project);
+    });
+    Object.values(imported.damperTemplates).forEach(template => {
+      damperTemplateSchema.parse(template);
     });
     
     // Save imported data
