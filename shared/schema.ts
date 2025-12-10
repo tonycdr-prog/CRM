@@ -71,6 +71,11 @@ export const reportSchema = z.object({
   includeExecutiveSummary: z.boolean().default(true),
   includePassFailSummary: z.boolean().default(true),
   
+  // Signatures
+  testerSignature: z.string().optional(), // Base64 data URL of tester signature
+  witnessSignature: z.string().optional(), // Base64 data URL of witness signature
+  witnessName: z.string().optional(),
+  
   // Metadata
   testIds: z.array(z.string()).default([]), // Tests included in this report
   createdAt: z.number(),

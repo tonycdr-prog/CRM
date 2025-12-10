@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { Report } from "@shared/schema";
 import { ImageUpload } from "./ImageUpload";
+import SignatureCapture from "./SignatureCapture";
 
 interface ReportSettingsSectionProps {
   report: Partial<Report>;
@@ -300,6 +301,40 @@ export default function ReportSettingsSection({
                 <Label htmlFor="includePassFailSummary" className="font-normal">
                   Include pass/fail summary table
                 </Label>
+              </div>
+            </div>
+
+            {/* Signatures */}
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Signatures</h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label data-testid="label-testerSignature">Tester Signature</Label>
+                  <SignatureCapture
+                    value={report.testerSignature}
+                    onChange={(sig) => handleChange("testerSignature", sig)}
+                    label="Sign here"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label data-testid="label-witnessSignature">Witness Signature</Label>
+                  <div className="space-y-2">
+                    <Input
+                      id="witnessName"
+                      data-testid="input-witnessName"
+                      value={report.witnessName || ""}
+                      onChange={(e) => handleChange("witnessName", e.target.value)}
+                      placeholder="Witness name"
+                    />
+                    <SignatureCapture
+                      value={report.witnessSignature}
+                      onChange={(sig) => handleChange("witnessSignature", sig)}
+                      label="Witness sign here"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
