@@ -27,6 +27,7 @@ import PDFStairwellStandardsPage from "@/components/pdf/PDFStairwellStandardsPag
 import PDFStairwellSummaryTable from "@/components/pdf/PDFStairwellSummaryTable";
 import PDFStairwellTestPage from "@/components/pdf/PDFStairwellTestPage";
 import ReportSettingsSection from "@/components/ReportSettingsSection";
+import PressureClassDiagram from "@/components/PressureClassDiagram";
 
 interface StairwellPressureTabProps {
   storageData: StorageData | null;
@@ -731,6 +732,8 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
                 </SelectContent>
               </Select>
             </div>
+            
+            <PressureClassDiagram selectedClass={systemType} />
           </CardContent>
         </Card>
 
