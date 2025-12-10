@@ -114,3 +114,133 @@ export const testSchema = z.object({
 });
 
 export type Test = z.infer<typeof testSchema>;
+
+// ============================================
+// STAIRWELL DIFFERENTIAL PRESSURE TESTING
+// Compliant with BS 5588-4, BS 9999, BS 9991, BS EN 12101-6
+// ============================================
+
+export const pressureSystemTypeEnum = z.enum(["class_a", "class_b", "class_c", "class_d", "class_e", "class_f", ""]);
+export const testScenarioEnum = z.enum(["doors_closed", "single_door_open", "multiple_doors_open", "fire_service_override", ""]);
+
+// Compliance thresholds per BS EN 12101-6
+export const PRESSURE_COMPLIANCE = {
+  // Class A: Firefighting shaft - requires 50Pa nominal, 45-60Pa range
+  CLASS_A_MIN: 45,
+  CLASS_A_NOMINAL: 50,
+  CLASS_A_MAX: 60,
+  // Open door requirement: minimum 10Pa across single open door
+  OPEN_DOOR_MIN: 10,
+  // Door opening force limits
+  DOOR_FORCE_MAX: 100, // Newtons (≤100N per BS EN 12101-6)
+  DOOR_FORCE_WITH_CLOSER_MAX: 140, // With door closer
+  // Class B: Protected escape route
+  CLASS_B_MIN: 10,
+  CLASS_B_NOMINAL: 12.5,
+  CLASS_B_MAX: 25,
+  // Air velocity through open door (BS EN 12101-6)
+  MIN_AIRFLOW_VELOCITY: 0.75, // m/s through open door
+} as const;
+
+// Individual floor/level measurement
+export const levelMeasurementSchema = z.object({
+  id: z.string(),
+  floorNumber: z.string(),
+  floorDescription: z.string().optional(), // e.g., "Ground Floor", "Level 2 - Office"
+  
+  // Pressure readings (Pa)
+  lobbyPressure: z.number().optional(), // Pressure in lobby/landing
+  stairwellPressure: z.number().optional(), // Pressure in stairwell
+  differentialPressure: z.number().optional(), // Calculated: stairwell - lobby
+  
+  // Door force measurement (Newtons)
+  doorOpeningForce: z.number().optional(),
+  hasDoorCloser: z.boolean().default(false),
+  
+  // Door status
+  doorGapStatus: z.enum(["sealed", "normal_gap", "large_gap", ""]).default(""),
+  doorCondition: z.enum(["good", "fair", "poor", ""]).default(""),
+  
+  // Compliance results
+  pressureCompliant: z.boolean().optional(),
+  forceCompliant: z.boolean().optional(),
+  
+  // Notes
+  notes: z.string().optional(),
+});
+
+export type LevelMeasurement = z.infer<typeof levelMeasurementSchema>;
+
+// Main stairwell pressure test
+export const stairwellPressureTestSchema = z.object({
+  id: z.string(),
+  
+  // Test metadata
+  testDate: z.string(),
+  testTime: z.string().optional(),
+  testerName: z.string(),
+  
+  // Location identification
+  building: z.string(),
+  stairwellId: z.string(), // e.g., "Stair 1", "Core A Stairwell"
+  stairwellLocation: z.string().optional(), // e.g., "North Core", "East Wing"
+  
+  // System classification
+  systemType: pressureSystemTypeEnum,
+  systemDescription: z.string().optional(), // e.g., "Mechanical pressurization with roof-mounted fan"
+  
+  // Standards compliance
+  applicableStandards: z.array(z.string()).default(["BS EN 12101-6"]),
+  
+  // Test scenario
+  scenario: testScenarioEnum,
+  scenarioDescription: z.string().optional(), // e.g., "All doors closed, system in firefighting mode"
+  
+  // System status during test
+  fanRunning: z.boolean().default(true),
+  fanSpeed: z.number().optional(), // Percentage or RPM
+  fanSpeedUnit: z.enum(["percent", "rpm", ""]).default(""),
+  damperStates: z.string().optional(), // Description of damper positions
+  
+  // Floor measurements
+  levelMeasurements: z.array(levelMeasurementSchema).default([]),
+  
+  // Summary statistics (calculated)
+  averageDifferential: z.number().optional(),
+  minDifferential: z.number().optional(),
+  maxDifferential: z.number().optional(),
+  averageDoorForce: z.number().optional(),
+  maxDoorForce: z.number().optional(),
+  
+  // Overall compliance
+  overallPressureCompliant: z.boolean().optional(),
+  overallForceCompliant: z.boolean().optional(),
+  overallCompliant: z.boolean().optional(),
+  
+  // Environmental conditions
+  ambientTemperature: z.number().optional(), // °C
+  windConditions: z.enum(["calm", "light", "moderate", "strong", ""]).default(""),
+  
+  // Additional notes
+  notes: z.string().optional(),
+  recommendations: z.string().optional(),
+  
+  // Report linkage
+  reportId: z.string().optional(),
+  
+  // Metadata
+  createdAt: z.number(),
+  updatedAt: z.number().optional(),
+});
+
+export type StairwellPressureTest = z.infer<typeof stairwellPressureTestSchema>;
+
+export const insertStairwellPressureTestSchema = stairwellPressureTestSchema.omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  overallPressureCompliant: true,
+  overallForceCompliant: true,
+  overallCompliant: true,
+});
+export type InsertStairwellPressureTest = z.infer<typeof insertStairwellPressureTestSchema>;

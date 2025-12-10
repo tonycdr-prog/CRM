@@ -1,7 +1,7 @@
-import { Test, Damper, Report, damperSchema, reportSchema, testSchema } from "@shared/schema";
+import { Test, Damper, Report, StairwellPressureTest, damperSchema, reportSchema, testSchema, stairwellPressureTestSchema } from "@shared/schema";
 import { nanoid } from "nanoid";
 
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 4;
 const STORAGE_KEY = "airflow-data";
 const LEGACY_STORAGE_KEY = "airflow-tests";
 
@@ -10,6 +10,7 @@ export interface StorageData {
   tests: Record<string, Test>;
   dampers: Record<string, Damper>;
   reports: Record<string, Report>;
+  stairwellTests: Record<string, StairwellPressureTest>;
   lastUpdated: number;
 }
 
@@ -61,6 +62,7 @@ function initializeStorage(): StorageData {
     tests: {},
     dampers: {},
     reports: {},
+    stairwellTests: {},
     lastUpdated: Date.now(),
   };
 }
@@ -90,6 +92,9 @@ function migrateLegacyData(legacyTests: Test[]): StorageData {
   damperMap.forEach((damper, id) => {
     data.dampers[id] = damper;
   });
+  
+  // Initialize empty stairwell tests
+  data.stairwellTests = {};
   
   return data;
 }
@@ -163,6 +168,20 @@ function migrateV2ToV3(data: StorageData): StorageData {
 }
 
 /**
+ * Migrate from version 3 to version 4
+ * Adds stairwellTests collection for differential pressure testing
+ */
+function migrateV3ToV4(data: StorageData): StorageData {
+  console.log('Adding stairwellTests collection for differential pressure testing');
+  
+  return {
+    ...data,
+    version: 4,
+    stairwellTests: data.stairwellTests || {},
+  };
+}
+
+/**
  * Load data from LocalStorage with automatic migration
  */
 export function loadStorageData(): StorageData {
@@ -180,9 +199,17 @@ export function loadStorageData(): StorageData {
         if (data.version === 2) {
           data = migrateV2ToV3(data);
         }
+        if (data.version === 3) {
+          data = migrateV3ToV4(data);
+        }
         
         // Save migrated data
         saveStorageData(data);
+      }
+      
+      // Ensure stairwellTests exists (defensive)
+      if (!data.stairwellTests) {
+        data.stairwellTests = {};
       }
       
       return data;
@@ -245,6 +272,11 @@ export function importData(jsonString: string): StorageData {
       throw new Error('Invalid data structure');
     }
     
+    // Ensure stairwellTests exists
+    if (!imported.stairwellTests) {
+      imported.stairwellTests = {};
+    }
+    
     // Validate schemas
     Object.values(imported.tests).forEach(test => {
       testSchema.parse(test);
@@ -254,6 +286,9 @@ export function importData(jsonString: string): StorageData {
     });
     Object.values(imported.reports).forEach(report => {
       reportSchema.parse(report);
+    });
+    Object.values(imported.stairwellTests).forEach(stairwellTest => {
+      stairwellPressureTestSchema.parse(stairwellTest);
     });
     
     // Save imported data
