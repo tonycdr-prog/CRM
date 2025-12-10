@@ -24,6 +24,7 @@ The frontend is a single-page application built with **React 18+** and **TypeScr
 -   **Grouped Test History**: Tests are organized by building and date into expandable site visit cards, offering summary statistics and visit-level selection for bulk operations.
 -   **Four-Tab Interface**: Report Setup, Damper Testing, Stairwell Pressure Testing, and Test History.
 -   **Stairwell Differential Pressure Testing**: Compliant with BS EN 12101-6 and other relevant standards, supporting various system classifications and test scenarios. Features floor-by-floor measurements, live compliance checking, pressure thresholds, door opening force validation, and environmental condition tracking.
+-   **Multi-Standard Support**: Support for multiple UK building standard versions (BS 5588-4:1978, BS 5588-4:1998, BS EN 12101-6:2022) to accommodate systems installed under different regulatory periods. Automatic class availability filtering based on selected standard, with superseded standard warnings. "Per design" class handling for BS EN 12101-6 Classes D-F.
 
 ### Backend
 
