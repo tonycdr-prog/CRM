@@ -10,7 +10,7 @@ import { toPng, toJpeg } from "html-to-image";
 import { useToast } from "@/hooks/use-toast";
 import TestVisualization from "@/components/TestVisualization";
 import GroupedTestHistory from "@/components/GroupedTestHistory";
-import ReportSetupForm from "@/components/ReportSetupForm";
+import ReportSettingsSection from "@/components/ReportSettingsSection";
 import TrendChart from "@/components/TrendChart";
 import { ImageUpload } from "@/components/ImageUpload";
 import PDFCoverPage from "@/components/pdf/PDFCoverPage";
@@ -1313,10 +1313,7 @@ export default function AirflowTester() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4" data-testid="tabs-main">
-            <TabsTrigger value="report-setup" data-testid="tab-report-setup">
-              Report Setup
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3" data-testid="tabs-main">
             <TabsTrigger value="testing" data-testid="tab-testing">
               Damper Testing
             </TabsTrigger>
@@ -1328,61 +1325,13 @@ export default function AirflowTester() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="report-setup" className="space-y-6">
-            <ReportSetupForm 
+          <TabsContent value="testing" className="space-y-6">
+            <ReportSettingsSection
               report={currentReport}
               onUpdate={(updates) => setCurrentReport(prev => ({ ...prev, ...updates }))}
+              variant="damper"
             />
             
-            {savedTests.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Generate Professional Report</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Create a comprehensive PDF report with cover page, standards, summary tables, individual test pages, and trend analysis
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-sm mb-2">Report Contents</h4>
-                        <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                          <li>• Cover page with project details</li>
-                          <li>• Testing standards and methodology</li>
-                          <li>• Summary table ({savedTests.length} test{savedTests.length !== 1 ? 's' : ''})</li>
-                          <li>• Individual test pages with visualizations</li>
-                          {Object.values(dampers).filter(d => {
-                            const history = getDamperHistory(d.id, savedTests, dampers, minVelocityThreshold);
-                            return history?.hasMultipleYears;
-                          }).length > 0 && (
-                            <li>• Trend analysis charts for repeat visits</li>
-                          )}
-                        </ul>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          onClick={generateComprehensivePDF}
-                          disabled={isGeneratingPDF}
-                          data-testid="button-generate-comprehensive-pdf"
-                        >
-                          <FileDown className="w-4 h-4 mr-2" />
-                          {isGeneratingPDF ? "Generating..." : "Generate Professional Report PDF"}
-                        </Button>
-                        {isGeneratingPDF && (
-                          <p className="text-xs text-muted-foreground">
-                            This may take a moment...
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="testing">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
             {editingId && (
@@ -1830,6 +1779,7 @@ export default function AirflowTester() {
               storageData={storageData}
               setStorageData={setStorageData}
               report={currentReport}
+              onReportUpdate={(updates) => setCurrentReport(prev => ({ ...prev, ...updates }))}
             />
           </TabsContent>
 

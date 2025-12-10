@@ -26,11 +26,13 @@ import PDFCoverPage from "@/components/pdf/PDFCoverPage";
 import PDFStairwellStandardsPage from "@/components/pdf/PDFStairwellStandardsPage";
 import PDFStairwellSummaryTable from "@/components/pdf/PDFStairwellSummaryTable";
 import PDFStairwellTestPage from "@/components/pdf/PDFStairwellTestPage";
+import ReportSettingsSection from "@/components/ReportSettingsSection";
 
 interface StairwellPressureTabProps {
   storageData: StorageData | null;
   setStorageData: (data: StorageData) => void;
   report?: Partial<Report>;
+  onReportUpdate?: (updates: Partial<Report>) => void;
 }
 
 const SYSTEM_TYPE_LABELS: Record<string, string> = {
@@ -56,7 +58,7 @@ const WIND_LABELS: Record<string, string> = {
   "strong": "Strong Wind",
 };
 
-export default function StairwellPressureTab({ storageData, setStorageData, report }: StairwellPressureTabProps) {
+export default function StairwellPressureTab({ storageData, setStorageData, report, onReportUpdate }: StairwellPressureTabProps) {
   const { toast } = useToast();
   const pdfCaptureRef = useRef<HTMLDivElement>(null);
   
@@ -585,6 +587,15 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
 
   return (
     <div className="space-y-6">
+      {/* Report Settings Section */}
+      {onReportUpdate && (
+        <ReportSettingsSection
+          report={report || {}}
+          onUpdate={onReportUpdate}
+          variant="stairwell"
+        />
+      )}
+
       {/* Header with Standards Info */}
       <Card>
         <CardHeader className="pb-3">
