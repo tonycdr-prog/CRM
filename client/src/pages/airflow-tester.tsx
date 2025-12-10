@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera, AlertTriangle, FileSpreadsheet, ChevronDown, LayoutGrid, Package, Home } from "lucide-react";
 import { toPng, toJpeg } from "html-to-image";
+import { Link } from "wouter";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import AutoSaveIndicator from "@/components/AutoSaveIndicator";
 import DataBackupRestore from "@/components/DataBackupRestore";
@@ -24,6 +26,11 @@ import PDFStandardsPage from "@/components/pdf/PDFStandardsPage";
 import PDFSummaryTable from "@/components/pdf/PDFSummaryTable";
 import PDFTrendPage from "@/components/pdf/PDFTrendPage";
 import PDFCertificationPage from "@/components/pdf/PDFCertificationPage";
+import { SyncIndicator } from "@/components/SyncIndicator";
+import { FloorSequencing } from "@/components/FloorSequencing";
+import { BulkTestPacks } from "@/components/BulkTestPacks";
+import { DeviationNarrative } from "@/components/DeviationNarrative";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { testSchema, type Test, type Report, type Damper, type DamperTemplate, type Project } from "@shared/schema";
 import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
 import { getDamperHistory, getDampersWithRepeatVisits, getTestYear, type DamperHistory } from "@/lib/trendAnalysis";
@@ -134,6 +141,18 @@ export default function AirflowTester() {
   const [damperOpenImage, setDamperOpenImage] = useState<string | undefined>(undefined);
   const [damperClosedImage, setDamperClosedImage] = useState<string | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Deviation narrative state
+  const [failureReasonCode, setFailureReasonCode] = useState<string | undefined>(undefined);
+  const [failureNarrative, setFailureNarrative] = useState<string | undefined>(undefined);
+  const [correctiveAction, setCorrectiveAction] = useState<string | undefined>(undefined);
+  
+  // Advanced features state
+  const [showFloorSequencing, setShowFloorSequencing] = useState(false);
+  const [showBulkTestPacks, setShowBulkTestPacks] = useState(false);
+  
+  // Offline sync
+  const syncState = useOfflineSync();
   
   // UI state
   const [activeTab, setActiveTab] = useState<string>("testing");
@@ -317,6 +336,10 @@ export default function AirflowTester() {
     setGridSize(5);
     setTestDate(new Date().toISOString().split('T')[0]);
     setEditingId(null);
+    // Clear failure fields
+    setFailureReasonCode(undefined);
+    setFailureNarrative(undefined);
+    setCorrectiveAction(undefined);
   };
 
   // Template handlers - update both local state and storageData for immediate persistence
@@ -455,6 +478,9 @@ export default function AirflowTester() {
       freeArea,
       damperOpenImage,
       damperClosedImage,
+      failureReasonCode,
+      failureNarrative,
+      correctiveAction,
       createdAt: editingId ? (savedTests.find(t => t.id === editingId)?.createdAt || Date.now()) : Date.now(),
     };
     
@@ -513,6 +539,9 @@ export default function AirflowTester() {
         freeArea,
         damperOpenImage,
         damperClosedImage,
+        failureReasonCode,
+        failureNarrative,
+        correctiveAction,
         createdAt: editingId ? (savedTests.find(t => t.id === editingId)?.createdAt || Date.now()) : Date.now(),
       };
       
@@ -541,6 +570,11 @@ export default function AirflowTester() {
         description: "Moving to next floor",
       });
     }
+
+    // Clear failure fields for next floor
+    setFailureReasonCode(undefined);
+    setFailureNarrative(undefined);
+    setCorrectiveAction(undefined);
 
     const currentFloor = floorNumber.match(/\d+/)?.[0];
     const nextFloorNum = currentFloor ? parseInt(currentFloor) + 1 : "";
@@ -1616,6 +1650,11 @@ export default function AirflowTester() {
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-4 md:p-6">
         <div className="flex items-center gap-3 pb-6 border-b mb-6">
+          <Link href="/">
+            <Button variant="ghost" size="icon" data-testid="button-back-dashboard">
+              <Home className="w-5 h-5" />
+            </Button>
+          </Link>
           <Gauge className="w-8 h-8 text-primary" />
           <div className="flex-1">
             <h1 className="text-2xl font-semibold" data-testid="text-title">
@@ -1627,6 +1666,14 @@ export default function AirflowTester() {
               </p>
               <OfflineIndicator />
               <AutoSaveIndicator lastSaved={lastSavedTime} isSaving={isSaving} />
+              <SyncIndicator
+                isOnline={syncState.isOnline}
+                isSyncing={syncState.isSyncing}
+                pendingChanges={syncState.pendingChanges}
+                lastSyncTime={syncState.lastSyncTime}
+                syncError={syncState.syncError}
+                onSync={syncState.syncToServer}
+              />
             </div>
           </div>
           {savedTests.length > 0 && (
@@ -1681,6 +1728,76 @@ export default function AirflowTester() {
               onUpdate={(updates) => setCurrentReport(prev => ({ ...prev, ...updates }))}
               variant="damper"
             />
+            
+            {/* Advanced Testing Tools */}
+            <div className="flex gap-2">
+              <Collapsible open={showFloorSequencing} onOpenChange={setShowFloorSequencing}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="button-toggle-floor-sequencing">
+                    <LayoutGrid className="h-4 w-4 mr-2" />
+                    Floor Sequencing
+                    <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showFloorSequencing ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
+              
+              <Collapsible open={showBulkTestPacks} onOpenChange={setShowBulkTestPacks}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="button-toggle-bulk-packs">
+                    <Package className="h-4 w-4 mr-2" />
+                    Test Packs
+                    <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showBulkTestPacks ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
+            </div>
+            
+            {showFloorSequencing && (
+              <Card>
+                <CardContent className="pt-6">
+                  <FloorSequencing
+                    projects={Object.values(projects)}
+                    onStartTest={(damper, session) => {
+                      setBuilding(session.building);
+                      setFloorNumber(damper.floorNumber);
+                      setLocation(damper.location);
+                      setShaftId(damper.shaftId);
+                      toast({
+                        title: "Test Ready",
+                        description: `Floor ${damper.floorNumber} - ${damper.location}`,
+                      });
+                    }}
+                    onSessionComplete={(session) => {
+                      toast({
+                        title: "Session Complete",
+                        description: `Completed ${session.completedDampers} of ${session.totalDampers} dampers`,
+                      });
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            )}
+            
+            {showBulkTestPacks && (
+              <Card>
+                <CardContent className="pt-6">
+                  <BulkTestPacks
+                    onApplyPack={(pack) => {
+                      setDamperWidth(pack.damperConfig.width);
+                      setDamperHeight(pack.damperConfig.height);
+                      setSystemType(pack.damperConfig.systemType as any);
+                      if (pack.damperConfig.locations.length > 0) {
+                        setLocation(pack.damperConfig.locations[0]);
+                      }
+                      toast({
+                        title: "Pack Applied",
+                        description: `Applied "${pack.name}" configuration`,
+                      });
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            )}
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
@@ -1997,6 +2114,23 @@ export default function AirflowTester() {
                 threshold={minVelocityThreshold}
               />
             </div>
+
+            {/* Deviation Narrative for failures */}
+            {average !== null && (
+              <DeviationNarrative
+                testId={editingId || "new-test"}
+                average={average}
+                threshold={1.0}
+                failureReasonCode={failureReasonCode}
+                failureNarrative={failureNarrative}
+                correctiveAction={correctiveAction}
+                onChange={(data) => {
+                  setFailureReasonCode(data.failureReasonCode);
+                  setFailureNarrative(data.failureNarrative);
+                  setCorrectiveAction(data.correctiveAction);
+                }}
+              />
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Button

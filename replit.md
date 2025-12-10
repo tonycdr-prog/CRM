@@ -37,10 +37,31 @@ The frontend is a single-page application built with **React 18+** and **TypeScr
 -   **CSV Export**: Export test data to CSV format for spreadsheet analysis and external reporting.
 -   **Project Management**: Full UI for creating and managing projects that group multiple buildings. Projects auto-fill report settings (address, client, postcode, contractor) and support adding/editing/deleting buildings. Data persists to localStorage.
 -   **Photo Annotation**: Canvas-based annotation system for damper images. Supports arrows, circles, rectangles, freehand drawing, and text annotations with color selection and stroke width control. Touch-friendly for mobile devices. Annotated images replace originals and are included in PDF exports.
+-   **Dashboard Overview**: Central hub showing project statistics, pass rates, upcoming annual tests, and predictive maintenance alerts for dampers with declining performance trends.
+-   **Floor Sequencing Mode**: Pre-define damper testing sequences for buildings. Create test sessions with building, floor range, and dampers per floor, then step through tests in order with progress tracking.
+-   **Bulk Test Packs**: Pre-configured building templates (residential high-rise, commercial office, hotel, etc.) with quick-apply damper configurations. Supports custom pack creation and saving.
+-   **Compliance Checklists**: BS EN 12101-8 compliance verification with categorized checklist items, progress tracking, and notes per item. Supports commissioning, annual, and remedial inspection types.
+-   **Deviation Narratives**: Automatic prompting for failure reason codes, detailed narratives, and corrective actions when tests fail. Includes predefined failure categories and corrective action templates.
+-   **Offline Delta Sync**: Change queue system that tracks modifications while offline and syncs to server when connectivity returns. SyncIndicator component shows sync status, pending changes, and last sync time.
+-   **Predictive Maintenance**: Trend analysis across damper test history to identify declining performance. Uses linear regression on velocity trends to flag dampers requiring attention before failures occur.
 
 ### Backend
 
-The backend is an **Express.js** application with **TypeScript**. It follows a **RESTful API** design, with routes defined in `server/routes.ts`. It uses `tsx` for development and `esbuild` for production bundling. The data layer uses an abstract storage interface, currently with an in-memory implementation (`MemStorage`) and prepared for database integration via **Drizzle ORM**.
+The backend is an **Express.js** application with **TypeScript**. It follows a **RESTful API** design, with routes defined in `server/routes.ts`. It uses `tsx` for development and `esbuild` for production bundling. The data layer uses the **DatabaseStorage** class implementing the `IStorage` interface with **Drizzle ORM** for PostgreSQL database access.
+
+**API Routes** (`server/routes.ts`):
+-   `/api/sync/:userId` - GET all data for initial sync, POST to upload changes
+-   `/api/sync/:userId/status` - GET pending changes count and last sync time
+-   `/api/projects/:userId` - GET all projects, POST to create
+-   `/api/projects/:id` - PATCH to update, DELETE to remove
+-   `/api/tests/:userId` - GET all tests, POST to create
+-   `/api/tests/:id` - PATCH to update, DELETE to remove
+-   `/api/test-packs/:userId` - GET all test packs, POST to create, DELETE by id
+-   `/api/test-sessions/:userId` - GET all sessions, POST to create
+-   `/api/test-sessions/:id` - PATCH to update, DELETE to remove
+-   `/api/compliance-checklists/:userId` - GET all checklists, POST to create, PATCH to update
+-   `/api/damper-templates/:userId` - GET templates, POST to create, DELETE by id
+-   `/api/stairwell-tests/:userId` - GET tests, POST to create, DELETE by id
 
 ### Mobile App Platform
 
