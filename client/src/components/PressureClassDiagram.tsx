@@ -11,148 +11,89 @@ import {
   Users,
   Shield,
   CheckCircle,
-  Info
+  Info,
+  AlertTriangle,
+  Calendar
 } from "lucide-react";
+import { 
+  StandardVersion, 
+  SystemClass, 
+  STANDARD_VERSIONS, 
+  getClassRequirements,
+  getAvailableClasses,
+  isClassAvailableForStandard
+} from "@/lib/pressureStandards";
 
 interface PressureClassDiagramProps {
   selectedClass?: string;
+  selectedStandard?: string;
 }
 
-const CLASS_DATA = {
+const CLASS_STYLING: Record<string, {
+  color: string;
+  borderColor: string;
+  textColor: string;
+  bgLight: string;
+  icon: typeof Flame;
+}> = {
   class_a: {
-    name: "Class A",
-    title: "Firefighting Shaft",
-    description: "Provides protected access for firefighting operations with maximum smoke protection",
-    pressureRange: "45-60 Pa",
-    nominalPressure: "50 Pa",
-    openDoorMin: "10 Pa",
-    doorForce: "100 N (without closer)",
-    doorForceCloser: "67 N (with door closer)",
     color: "bg-red-500",
     borderColor: "border-red-500",
     textColor: "text-red-600 dark:text-red-400",
     bgLight: "bg-red-50 dark:bg-red-950/30",
     icon: Flame,
-    scenarios: [
-      { name: "All Doors Closed", pressure: "45-60 Pa", required: true },
-      { name: "Single Door Open", pressure: "≥10 Pa", required: true },
-      { name: "Door Force Test", pressure: "≤100 N", required: true },
-    ],
-    standards: ["BS EN 12101-6", "BS 5588-4"],
-    purpose: "Firefighter access & smoke-free zone",
   },
   class_b: {
-    name: "Class B",
-    title: "Protected Escape Route",
-    description: "Maintains safe evacuation conditions with lower pressure differential",
-    pressureRange: "10-25 Pa",
-    nominalPressure: "12.5 Pa",
-    openDoorMin: "10 Pa",
-    doorForce: "100 N (without closer)",
-    doorForceCloser: "67 N (with door closer)",
     color: "bg-blue-500",
     borderColor: "border-blue-500",
     textColor: "text-blue-600 dark:text-blue-400",
     bgLight: "bg-blue-50 dark:bg-blue-950/30",
     icon: Users,
-    scenarios: [
-      { name: "All Doors Closed", pressure: "10-25 Pa", required: true },
-      { name: "Single Door Open", pressure: "≥10 Pa", required: true },
-      { name: "Door Force Test", pressure: "≤100 N", required: true },
-    ],
-    standards: ["BS EN 12101-6", "BS 9999", "BS 9991"],
-    purpose: "Occupant evacuation route",
   },
   class_c: {
-    name: "Class C",
-    title: "Smoke Clearance",
-    description: "Clears smoke from protected areas after fire event",
-    pressureRange: "Variable",
-    nominalPressure: "As designed",
-    openDoorMin: "N/A",
-    doorForce: "N/A",
-    doorForceCloser: "N/A",
     color: "bg-amber-500",
     borderColor: "border-amber-500",
     textColor: "text-amber-600 dark:text-amber-400",
     bgLight: "bg-amber-50 dark:bg-amber-950/30",
     icon: Wind,
-    scenarios: [
-      { name: "Smoke Extraction", pressure: "Per design", required: true },
-      { name: "Air Changes", pressure: "Per design", required: true },
-    ],
-    standards: ["BS EN 12101-6", "BS 7346"],
-    purpose: "Post-fire smoke clearance",
   },
   class_d: {
-    name: "Class D",
-    title: "External Air Curtain",
-    description: "Creates air barrier at openings to prevent smoke spread",
-    pressureRange: "Variable",
-    nominalPressure: "As designed",
-    openDoorMin: "N/A",
-    doorForce: "N/A",
-    doorForceCloser: "N/A",
     color: "bg-green-500",
     borderColor: "border-green-500",
     textColor: "text-green-600 dark:text-green-400",
     bgLight: "bg-green-50 dark:bg-green-950/30",
     icon: Wind,
-    scenarios: [
-      { name: "Air Velocity", pressure: "Per design", required: true },
-      { name: "Curtain Coverage", pressure: "Per design", required: true },
-    ],
-    standards: ["BS EN 12101-6"],
-    purpose: "External smoke barrier",
   },
   class_e: {
-    name: "Class E",
-    title: "Smoke Control Lobby",
-    description: "Maintains lobby pressure to prevent smoke ingress",
-    pressureRange: "10-50 Pa",
-    nominalPressure: "Variable",
-    openDoorMin: "10 Pa",
-    doorForce: "100 N",
-    doorForceCloser: "67 N",
     color: "bg-purple-500",
     borderColor: "border-purple-500",
     textColor: "text-purple-600 dark:text-purple-400",
     bgLight: "bg-purple-50 dark:bg-purple-950/30",
     icon: Shield,
-    scenarios: [
-      { name: "All Doors Closed", pressure: "10-50 Pa", required: true },
-      { name: "Lobby Integrity", pressure: "Per design", required: true },
-    ],
-    standards: ["BS EN 12101-6", "BS 9999"],
-    purpose: "Protected lobby zone",
   },
   class_f: {
-    name: "Class F",
-    title: "Protected Lift Shaft",
-    description: "Pressurizes lift shaft to prevent smoke spread via elevator",
-    pressureRange: "25-50 Pa",
-    nominalPressure: "Variable",
-    openDoorMin: "10 Pa",
-    doorForce: "N/A (lift doors)",
-    doorForceCloser: "N/A",
     color: "bg-cyan-500",
     borderColor: "border-cyan-500",
     textColor: "text-cyan-600 dark:text-cyan-400",
     bgLight: "bg-cyan-50 dark:bg-cyan-950/30",
     icon: Building2,
-    scenarios: [
-      { name: "All Doors Closed", pressure: "25-50 Pa", required: true },
-      { name: "Lift at Ground", pressure: "Per design", required: true },
-    ],
-    standards: ["BS EN 12101-6", "BS EN 81-72"],
-    purpose: "Smoke-free lift access",
   },
 };
 
-export default function PressureClassDiagram({ selectedClass }: PressureClassDiagramProps) {
-  const classData = selectedClass ? CLASS_DATA[selectedClass as keyof typeof CLASS_DATA] : null;
-
-  if (!classData) {
+export default function PressureClassDiagram({ selectedClass, selectedStandard }: PressureClassDiagramProps) {
+  const standardVersion = (selectedStandard || "bs_en_12101_6_2022") as StandardVersion;
+  const standard = STANDARD_VERSIONS[standardVersion];
+  const systemClass = selectedClass as SystemClass;
+  
+  const classRequirements = selectedClass 
+    ? getClassRequirements(standardVersion, systemClass) 
+    : null;
+  const styling = selectedClass ? CLASS_STYLING[selectedClass] : null;
+  
+  const availableClasses = getAvailableClasses(standardVersion);
+  const isClassAvailable = selectedClass ? isClassAvailableForStandard(standardVersion, systemClass) : false;
+  
+  if (!selectedClass || !classRequirements || !styling) {
     return (
       <Card className="mt-4" data-testid="card-class-diagram-empty">
         <CardHeader className="pb-2">
@@ -162,55 +103,109 @@ export default function PressureClassDiagram({ selectedClass }: PressureClassDia
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>Standard: <strong>{standard?.shortName || "BS EN 12101-6 (Current)"}</strong></span>
+          </div>
+          
           <p className="text-sm text-muted-foreground">
-            Select a system type above to view the testing requirements diagram
+            Select a system classification above to view the testing requirements
           </p>
           
           <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
-            {Object.entries(CLASS_DATA).map(([key, data]) => (
-              <div 
-                key={key}
-                className={`p-2 rounded-md border ${data.bgLight} ${data.borderColor}/30`}
-                data-testid={`preview-${key}`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${data.color}`} />
-                  <span className={`text-xs font-medium ${data.textColor}`}>{data.name}</span>
+            {availableClasses.map((classKey) => {
+              const classReq = getClassRequirements(standardVersion, classKey);
+              const style = CLASS_STYLING[classKey];
+              if (!classReq || !style) return null;
+              
+              return (
+                <div 
+                  key={classKey}
+                  className={`p-2 rounded-md border ${style.bgLight} ${style.borderColor}/30`}
+                  data-testid={`preview-${classKey}`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${style.color}`} />
+                    <span className={`text-xs font-medium ${style.textColor}`}>{classReq.name}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{classReq.title}</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{data.title}</p>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+          
+          {standard?.supersededBy && (
+            <div className="mt-4 flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+              <p>This standard has been superseded. Use only for testing systems installed before {standard.year + 10}.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!isClassAvailable) {
+    return (
+      <Card className="mt-4 border-l-4 border-amber-500" data-testid="card-class-diagram-unavailable">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            Class Not Available
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            <strong>{selectedClass?.replace("_", " ").toUpperCase()}</strong> is not defined in <strong>{standard?.shortName}</strong>.
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            This classification was introduced in a later version of the standard. 
+            Please select a different system class or update the applicable standard.
+          </p>
+          <div className="mt-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Classes available in {standard?.shortName}:</p>
+            <div className="flex gap-2 flex-wrap">
+              {availableClasses.map((classKey) => {
+                const classReq = getClassRequirements(standardVersion, classKey);
+                const style = CLASS_STYLING[classKey];
+                if (!classReq || !style) return null;
+                return (
+                  <Badge key={classKey} variant="outline" className={`${style.textColor}`}>
+                    {classReq.name}
+                  </Badge>
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const IconComponent = classData.icon;
+  const IconComponent = styling.icon;
 
   return (
-    <Card className={`mt-4 border-l-4 ${classData.borderColor}`} data-testid={`card-class-diagram-${selectedClass}`}>
+    <Card className={`mt-4 border-l-4 ${styling.borderColor}`} data-testid={`card-class-diagram-${selectedClass}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <div className={`p-1.5 rounded ${classData.color} text-white`}>
+            <div className={`p-1.5 rounded ${styling.color} text-white`}>
               <IconComponent className="h-4 w-4" />
             </div>
-            <span>{classData.name}: {classData.title}</span>
+            <span>{classRequirements.name}: {classRequirements.title}</span>
           </CardTitle>
-          <div className="flex gap-1 flex-wrap">
-            {classData.standards.map((std) => (
-              <Badge key={std} variant="outline" className="text-xs">
-                {std}
-              </Badge>
-            ))}
-          </div>
+          <Badge variant="secondary" className="text-xs">
+            {standard?.shortName}
+          </Badge>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">{classData.description}</p>
+        <p className="text-sm text-muted-foreground mt-1">{classRequirements.description}</p>
+        {classRequirements.notes && (
+          <p className="text-xs text-muted-foreground italic mt-1">{classRequirements.notes}</p>
+        )}
       </CardHeader>
       
       <CardContent className="space-y-4">
-        <div className={`p-4 rounded-lg ${classData.bgLight} border ${classData.borderColor}/20`}>
+        <div className={`p-4 rounded-lg ${styling.bgLight} border ${styling.borderColor}/20`}>
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <div className="text-center mb-3">
@@ -233,26 +228,26 @@ export default function PressureClassDiagram({ selectedClass }: PressureClassDia
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium">Doors Closed</span>
-                        <ArrowRight className={`h-3 w-3 ${classData.textColor}`} />
-                        <Badge className={`${classData.color} text-white text-[10px] px-1.5`}>
-                          {classData.pressureRange}
+                        <ArrowRight className={`h-3 w-3 ${styling.textColor}`} />
+                        <Badge className={`${styling.color} text-white text-[10px] px-1.5`}>
+                          {classRequirements.pressureRange}
                         </Badge>
                       </div>
                       <p className="text-[10px] text-muted-foreground">
-                        Nominal: {classData.nominalPressure}
+                        Nominal: {classRequirements.nominalPressure}
                       </p>
                     </div>
                   </div>
                   
-                  {classData.openDoorMin !== "N/A" && (
+                  {classRequirements.openDoorMin !== "N/A" && (
                     <div className="flex items-center gap-2 p-2 bg-muted/30 rounded border">
                       <DoorOpen className="h-4 w-4 text-muted-foreground" />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium">Door Open</span>
-                          <ArrowRight className={`h-3 w-3 ${classData.textColor}`} />
+                          <ArrowRight className={`h-3 w-3 ${styling.textColor}`} />
                           <Badge variant="secondary" className="text-[10px] px-1.5">
-                            ≥{classData.openDoorMin}
+                            ≥{classRequirements.openDoorMin}
                           </Badge>
                         </div>
                         <p className="text-[10px] text-muted-foreground">
@@ -262,26 +257,28 @@ export default function PressureClassDiagram({ selectedClass }: PressureClassDia
                     </div>
                   )}
                   
-                  {classData.doorForce !== "N/A" && classData.doorForce !== "N/A (lift doors)" && (
+                  {classRequirements.doorForce !== "N/A" && classRequirements.doorForce !== "N/A (lift doors)" && (
                     <div className="flex items-center gap-2 p-2 bg-muted/30 rounded border">
                       <ArrowLeft className="h-4 w-4 text-muted-foreground" />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-medium">Door Force</span>
                           <Badge variant="outline" className="text-[10px] px-1.5">
-                            ≤{classData.doorForce}
+                            ≤{classRequirements.doorForce}
                           </Badge>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          With closer: ≤{classData.doorForceCloser}
-                        </p>
+                        {classRequirements.doorForceCloser && classRequirements.doorForceCloser !== "N/A" && (
+                          <p className="text-[10px] text-muted-foreground">
+                            With closer: ≤{classRequirements.doorForceCloser}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
                 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center">
-                  <Wind className={`h-5 w-5 ${classData.textColor}`} />
+                  <Wind className={`h-5 w-5 ${styling.textColor}`} />
                   <span className="text-[9px] text-muted-foreground mt-0.5">Pressurized</span>
                 </div>
               </div>
@@ -293,13 +290,13 @@ export default function PressureClassDiagram({ selectedClass }: PressureClassDia
                   Test Scenarios
                 </span>
                 <div className="mt-2 space-y-1.5">
-                  {classData.scenarios.map((scenario, idx) => (
+                  {classRequirements.scenarios.map((scenario, idx) => (
                     <div 
                       key={idx}
                       className="flex items-center gap-2 text-xs"
                       data-testid={`scenario-${idx}`}
                     >
-                      <CheckCircle className={`h-3.5 w-3.5 ${classData.textColor}`} />
+                      <CheckCircle className={`h-3.5 w-3.5 ${styling.textColor}`} />
                       <span className="flex-1">{scenario.name}</span>
                       <Badge variant="secondary" className="text-[10px]">
                         {scenario.pressure}
@@ -308,18 +305,19 @@ export default function PressureClassDiagram({ selectedClass }: PressureClassDia
                   ))}
                 </div>
               </div>
-              
-              <div className="pt-2 border-t">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Purpose
-                </span>
-                <p className={`text-xs mt-1 ${classData.textColor} font-medium`}>
-                  {classData.purpose}
-                </p>
-              </div>
             </div>
           </div>
         </div>
+        
+        {standard?.supersededBy && (
+          <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+            <p>
+              <strong>{standard.shortName}</strong> has been superseded by a newer version. 
+              Use these requirements only for systems originally designed to this standard.
+            </p>
+          </div>
+        )}
         
         <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded">
           <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />

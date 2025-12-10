@@ -16,9 +16,19 @@ import {
   PRESSURE_COMPLIANCE,
   pressureSystemTypeEnum,
   testScenarioEnum,
+  standardVersionEnum,
   Report
 } from "@shared/schema";
 import { StorageData, saveStorageData, loadStorageData } from "@/lib/storage";
+import { 
+  StandardVersion, 
+  SystemClass,
+  STANDARD_OPTIONS,
+  STANDARD_VERSIONS,
+  getClassRequirements,
+  getAvailableClasses,
+  isClassAvailableForStandard
+} from "@/lib/pressureStandards";
 import { nanoid } from "nanoid";
 import { toPng, toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
@@ -77,6 +87,7 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
   const [stairwellId, setStairwellId] = useState<string>("");
   const [stairwellLocation, setStairwellLocation] = useState<string>("");
   const [systemType, setSystemType] = useState<string>("");
+  const [standardVersion, setStandardVersion] = useState<string>("bs_en_12101_6_2022");
   const [systemDescription, setSystemDescription] = useState<string>("");
   const [scenario, setScenario] = useState<string>("");
   const [scenarioDescription, setScenarioDescription] = useState<string>("");
@@ -103,28 +114,55 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
     }
   }, [storageData]);
 
-  // Get compliance thresholds based on system type
+  // Get compliance thresholds based on system type and standard version
   const getComplianceThresholds = () => {
+    const classReq = getClassRequirements(
+      (standardVersion || "bs_en_12101_6_2022") as StandardVersion, 
+      systemType as SystemClass
+    );
+    
+    if (classReq && classReq.minPressure !== null && classReq.maxPressure !== null) {
+      return {
+        minPressure: classReq.minPressure,
+        maxPressure: classReq.maxPressure,
+        nominalPressure: parseFloat(classReq.nominalPressure) || classReq.minPressure,
+        label: `${classReq.nominalPressure} (${classReq.pressureRange})`,
+        doorForceMax: classReq.doorForceValue || PRESSURE_COMPLIANCE.DOOR_FORCE_MAX,
+        doorForceCloserMax: classReq.doorForceCloserValue || PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX,
+        openDoorMin: classReq.openDoorMinValue || PRESSURE_COMPLIANCE.OPEN_DOOR_MIN,
+      };
+    }
+    
+    // Fallback to default values
     if (systemType === "class_a") {
       return {
         minPressure: PRESSURE_COMPLIANCE.CLASS_A_MIN,
         maxPressure: PRESSURE_COMPLIANCE.CLASS_A_MAX,
         nominalPressure: PRESSURE_COMPLIANCE.CLASS_A_NOMINAL,
-        label: "50 Pa (45-60 Pa range)"
+        label: "50 Pa (45-60 Pa range)",
+        doorForceMax: PRESSURE_COMPLIANCE.DOOR_FORCE_MAX,
+        doorForceCloserMax: PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX,
+        openDoorMin: PRESSURE_COMPLIANCE.OPEN_DOOR_MIN,
       };
     } else if (systemType === "class_b") {
       return {
         minPressure: PRESSURE_COMPLIANCE.CLASS_B_MIN,
         maxPressure: PRESSURE_COMPLIANCE.CLASS_B_MAX,
         nominalPressure: PRESSURE_COMPLIANCE.CLASS_B_NOMINAL,
-        label: "12.5 Pa (10-25 Pa range)"
+        label: "12.5 Pa (10-25 Pa range)",
+        doorForceMax: PRESSURE_COMPLIANCE.DOOR_FORCE_MAX,
+        doorForceCloserMax: PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX,
+        openDoorMin: PRESSURE_COMPLIANCE.OPEN_DOOR_MIN,
       };
     }
     return {
       minPressure: PRESSURE_COMPLIANCE.CLASS_A_MIN,
       maxPressure: PRESSURE_COMPLIANCE.CLASS_A_MAX,
       nominalPressure: PRESSURE_COMPLIANCE.CLASS_A_NOMINAL,
-      label: "50 Pa (default)"
+      label: "50 Pa (default)",
+      doorForceMax: PRESSURE_COMPLIANCE.DOOR_FORCE_MAX,
+      doorForceCloserMax: PRESSURE_COMPLIANCE.DOOR_FORCE_WITH_CLOSER_MAX,
+      openDoorMin: PRESSURE_COMPLIANCE.OPEN_DOOR_MIN,
     };
   };
 
@@ -250,6 +288,7 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
     setStairwellId("");
     setStairwellLocation("");
     setSystemType("");
+    setStandardVersion("bs_en_12101_6_2022");
     setSystemDescription("");
     setScenario("");
     setScenarioDescription("");
@@ -296,8 +335,9 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
       stairwellId,
       stairwellLocation: stairwellLocation || undefined,
       systemType: (systemType || "") as any,
+      standardVersion: (standardVersion || "bs_en_12101_6_2022") as any,
       systemDescription: systemDescription || undefined,
-      applicableStandards: ["BS EN 12101-6"],
+      applicableStandards: [STANDARD_VERSIONS[standardVersion as StandardVersion]?.name || "BS EN 12101-6"],
       scenario: (scenario || "") as any,
       scenarioDescription: scenarioDescription || undefined,
       fanRunning,
@@ -350,6 +390,7 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
     setStairwellId(test.stairwellId);
     setStairwellLocation(test.stairwellLocation || "");
     setSystemType(test.systemType);
+    setStandardVersion(test.standardVersion || "bs_en_12101_6_2022");
     setSystemDescription(test.systemDescription || "");
     setScenario(test.scenario);
     setScenarioDescription(test.scenarioDescription || "");
@@ -706,15 +747,59 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="standardVersion">Applicable Standard</Label>
+              <Select value={standardVersion} onValueChange={setStandardVersion}>
+                <SelectTrigger data-testid="select-standard-version">
+                  <SelectValue placeholder="Select applicable standard" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STANDARD_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-2">
+                        <span>{option.label}</span>
+                        {option.supersededBy && (
+                          <span className="text-xs text-muted-foreground">(superseded)</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {STANDARD_VERSIONS[standardVersion as StandardVersion]?.supersededBy && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  This standard has been superseded - use for older installations only
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="systemType">System Classification</Label>
               <Select value={systemType} onValueChange={setSystemType}>
                 <SelectTrigger data-testid="select-system-type">
                   <SelectValue placeholder="Select system class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(SYSTEM_TYPE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                  ))}
+                  {Object.entries(SYSTEM_TYPE_LABELS).map(([value, label]) => {
+                    const isAvailable = isClassAvailableForStandard(
+                      standardVersion as StandardVersion, 
+                      value as SystemClass
+                    );
+                    return (
+                      <SelectItem 
+                        key={value} 
+                        value={value}
+                        disabled={!isAvailable}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={!isAvailable ? "text-muted-foreground" : ""}>{label}</span>
+                          {!isAvailable && (
+                            <span className="text-xs text-muted-foreground">(not in standard)</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -733,7 +818,7 @@ export default function StairwellPressureTab({ storageData, setStorageData, repo
               </Select>
             </div>
             
-            <PressureClassDiagram selectedClass={systemType} />
+            <PressureClassDiagram selectedClass={systemType} selectedStandard={standardVersion} />
           </CardContent>
         </Card>
 
