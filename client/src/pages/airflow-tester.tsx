@@ -20,6 +20,7 @@ import PDFCoverPage from "@/components/pdf/PDFCoverPage";
 import PDFStandardsPage from "@/components/pdf/PDFStandardsPage";
 import PDFSummaryTable from "@/components/pdf/PDFSummaryTable";
 import PDFTrendPage from "@/components/pdf/PDFTrendPage";
+import PDFCertificationPage from "@/components/pdf/PDFCertificationPage";
 import { testSchema, type Test, type Report, type Damper } from "@shared/schema";
 import { loadStorageData, saveStorageData, getOrCreateDamper, generateDamperKey, type StorageData } from "@/lib/storage";
 import { getDamperHistory, getDampersWithRepeatVisits, getTestYear, type DamperHistory } from "@/lib/trendAnalysis";
@@ -136,7 +137,7 @@ export default function AirflowTester() {
   const [showPassFailConfig, setShowPassFailConfig] = useState<boolean>(false);
   const [showRepeatVisitsOnly, setShowRepeatVisitsOnly] = useState<boolean>(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
-  const [pdfRenderState, setPdfRenderState] = useState<'cover' | 'standards' | 'summary' | 'test' | 'trends' | null>(null);
+  const [pdfRenderState, setPdfRenderState] = useState<'cover' | 'standards' | 'summary' | 'test' | 'trends' | 'certification' | null>(null);
   const [pdfCurrentTestIndex, setPdfCurrentTestIndex] = useState<number>(0);
   const [pdfTestsToExport, setPdfTestsToExport] = useState<Test[]>([]);
   const [pdfDamperHistories, setPdfDamperHistories] = useState<DamperHistory[]>([]);
@@ -1233,6 +1234,18 @@ export default function AirflowTester() {
         });
       }
 
+      // 6. Certification Page with signatures
+      pdf.addPage();
+      flushSync(() => {
+        setPdfRenderState('certification');
+      });
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const certDataUrl = await capturePDFSection(true); // PNG for signatures
+      addFullPageImage(certDataUrl);
+      flushSync(() => {
+        setPdfRenderState(null);
+      });
+
       // Clean up PDF render state
       setPdfRenderState(null);
       setPdfCurrentTestIndex(0);
@@ -2243,6 +2256,20 @@ export default function AirflowTester() {
             minVelocityThreshold={minVelocityThreshold}
           />
         )}
+        {pdfRenderState === 'certification' && currentReport && (() => {
+          const testCount = pdfTestsToExport.length;
+          const passCount = pdfTestsToExport.filter(t => t.average >= minVelocityThreshold).length;
+          const failCount = testCount - passCount;
+          return (
+            <PDFCertificationPage
+              report={currentReport}
+              reportId={currentReport.projectNumber || `RPT-${Date.now()}`}
+              testCount={testCount}
+              passCount={passCount}
+              failCount={failCount}
+            />
+          );
+        })()}
         {pdfRenderState === 'test' && pdfCurrentTestIndex >= 0 && pdfTestsToExport[pdfCurrentTestIndex] && (() => {
           const test = pdfTestsToExport[pdfCurrentTestIndex];
           const avg = test.average;
