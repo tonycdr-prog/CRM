@@ -11,6 +11,8 @@ export interface StorageData {
   dampers: Record<string, Damper>;
   reports: Record<string, Report>;
   stairwellTests: Record<string, StairwellPressureTest>;
+  damperReportSettings?: Partial<Report>;
+  stairwellReportSettings?: Partial<Report>;
   lastUpdated: number;
 }
 

@@ -83,7 +83,8 @@ export default function AirflowTester() {
   const [dampers, setDampers] = useState<Record<string, Damper>>({});
   const [savedTests, setSavedTests] = useState<Test[]>([]);
   const [currentReportId, setCurrentReportId] = useState<string>('default-report');
-  const [currentReport, setCurrentReport] = useState<Partial<Report>>({
+  // Separate report settings for damper and stairwell tabs
+  const [damperReport, setDamperReport] = useState<Partial<Report>>({
     reportDate: new Date().toISOString().split('T')[0],
     testingStandards: "BS EN 12101-8:2020, BSRIA BG 49/2024",
     reportTitle: "Smoke Control Damper Testing Report",
@@ -91,6 +92,19 @@ export default function AirflowTester() {
     includeExecutiveSummary: true,
     includePassFailSummary: true,
   });
+  
+  const [stairwellReport, setStairwellReport] = useState<Partial<Report>>({
+    reportDate: new Date().toISOString().split('T')[0],
+    testingStandards: "BS EN 12101-6:2022, BS 5588-4, BS 9999, BS 9991",
+    reportTitle: "Stairwell Differential Pressure Testing Report",
+    reportType: "commissioning",
+    includeExecutiveSummary: true,
+    includePassFailSummary: true,
+  });
+  
+  // Legacy alias for backwards compatibility
+  const currentReport = damperReport;
+  const setCurrentReport = setDamperReport;
   
   // Test form state
   const [damperWidth, setDamperWidth] = useState<number | "">("");
@@ -164,13 +178,21 @@ export default function AirflowTester() {
       setDampers(data.dampers);
       setSavedTests(Object.values(data.tests));
       
-      // Load the first report if it exists
+      // Load separate report settings for each tab
+      if (data.damperReportSettings) {
+        setDamperReport(prev => ({ ...prev, ...data.damperReportSettings }));
+      }
+      if (data.stairwellReportSettings) {
+        setStairwellReport(prev => ({ ...prev, ...data.stairwellReportSettings }));
+      }
+      
+      // Legacy: Load the first report if it exists (for backwards compatibility)
       const reportIds = Object.keys(data.reports);
-      if (reportIds.length > 0) {
+      if (reportIds.length > 0 && !data.damperReportSettings) {
         const firstReportId = reportIds[0];
         const firstReport = data.reports[firstReportId];
         setCurrentReportId(firstReportId);
-        setCurrentReport(firstReport);
+        setDamperReport(prev => ({ ...prev, ...firstReport }));
       }
       
       if (Object.keys(data.tests).length > 0) {
@@ -199,7 +221,7 @@ export default function AirflowTester() {
           [currentReportId]: {
             id: currentReportId,
             ...(storageData.reports[currentReportId] ?? {}), // Preserve existing fields (empty object if new)
-            ...currentReport, // Overlay with current changes
+            ...damperReport, // Overlay with current changes
           } as Partial<Report> & {id: string},
         };
         
@@ -208,6 +230,8 @@ export default function AirflowTester() {
           tests: Object.fromEntries(savedTests.map(t => [t.id, t])),
           dampers,
           reports: updatedReports,
+          damperReportSettings: damperReport,
+          stairwellReportSettings: stairwellReport,
         };
         saveStorageData(updatedData);
         setStorageData(updatedData);
@@ -215,7 +239,7 @@ export default function AirflowTester() {
         console.error('Error saving storage data:', error);
       }
     }
-  }, [savedTests, dampers, currentReport, currentReportId]);
+  }, [savedTests, dampers, damperReport, stairwellReport, currentReportId]);
 
   const handleReadingChange = (index: number, value: string) => {
     const numValue = value === "" ? "" : parseFloat(value);
@@ -1778,8 +1802,8 @@ export default function AirflowTester() {
             <StairwellPressureTab 
               storageData={storageData}
               setStorageData={setStorageData}
-              report={currentReport}
-              onReportUpdate={(updates) => setCurrentReport(prev => ({ ...prev, ...updates }))}
+              report={stairwellReport}
+              onReportUpdate={(updates) => setStairwellReport(prev => ({ ...prev, ...updates }))}
             />
           </TabsContent>
 
