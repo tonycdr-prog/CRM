@@ -122,6 +122,13 @@ export type Test = z.infer<typeof testSchema>;
 
 export const pressureSystemTypeEnum = z.enum(["class_a", "class_b", "class_c", "class_d", "class_e", "class_f", ""]);
 export const testScenarioEnum = z.enum(["doors_closed", "single_door_open", "multiple_doors_open", "fire_service_override", ""]);
+export const standardVersionEnum = z.enum([
+  "bs_5588_4_1978",
+  "bs_5588_4_1998", 
+  "bs_en_12101_6_2005",
+  "bs_en_12101_6_2022",
+  ""
+]);
 
 // Compliance thresholds per BS EN 12101-6
 export const PRESSURE_COMPLIANCE = {
@@ -190,6 +197,7 @@ export const stairwellPressureTestSchema = z.object({
   systemDescription: z.string().optional(), // e.g., "Mechanical pressurization with roof-mounted fan"
   
   // Standards compliance
+  standardVersion: standardVersionEnum.default("bs_en_12101_6_2022"), // Version system was designed to
   applicableStandards: z.array(z.string()).default(["BS EN 12101-6"]),
   
   // Test scenario
