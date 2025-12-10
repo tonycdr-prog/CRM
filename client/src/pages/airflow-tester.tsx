@@ -517,7 +517,7 @@ export default function AirflowTester() {
     if (!captureRef.current) {
       toast({
         title: "Export failed",
-        description: "Visualization component not ready",
+        description: "Visualisation component not ready",
         variant: "destructive",
       });
       return;
@@ -778,7 +778,7 @@ export default function AirflowTester() {
           const dataUrl = await captureTestImage(captureRef.current!);
           
           if (!dataUrl || dataUrl.length < 100) {
-            throw new Error('Failed to capture test visualization');
+            throw new Error('Failed to capture test visualisation');
           }
           
           if (successCount > 0) pdf.addPage();
@@ -790,7 +790,7 @@ export default function AirflowTester() {
           const maxPdfWidth = pageWidth - 20; // 10mm margins on each side
           const aspectRatio = imgProps.height / imgProps.width;
           
-          // Add test visualization at top - adjust height based on whether images exist
+          // Add test visualisation at top - adjust height based on whether images exist
           const hasImages = test.damperOpenImage || test.damperClosedImage;
           
           let finalWidth: number;
@@ -834,7 +834,7 @@ export default function AirflowTester() {
           
           // Add damper images side by side below the test if they exist
           if (hasImages) {
-            const imageY = 160; // Position below test visualization (140mm test + 20mm spacing)
+            const imageY = 160; // Position below test visualisation (140mm test + 20mm spacing)
             const imageWidth = 90; // Width for each image
             const imageHeight = 80; // Height for images
             
@@ -1103,7 +1103,7 @@ export default function AirflowTester() {
         // Capture using the same reliable method
         const dataUrl = await capturePDFSection();
 
-        // Add test visualization - calculate proper dimensions
+        // Add test visualisation - calculate proper dimensions
         const imgProps = pdf.getImageProperties(dataUrl);
         const maxPdfWidth = pageWidth - 20;
         const aspectRatio = imgProps.height / imgProps.width;
@@ -1848,7 +1848,7 @@ export default function AirflowTester() {
                         <li>• Cover page with project details</li>
                         <li>• Testing standards and methodology</li>
                         <li>• Summary table ({selectedTestIds.size > 0 ? selectedTestIds.size : savedTests.length} test{(selectedTestIds.size > 0 ? selectedTestIds.size : savedTests.length) !== 1 ? 's' : ''})</li>
-                        <li>• Individual test pages with visualizations</li>
+                        <li>• Individual test pages with visualisations</li>
                         {(() => {
                           const testsForReport = selectedTestIds.size > 0
                             ? savedTests.filter(t => selectedTestIds.has(t.id))
@@ -2056,7 +2056,7 @@ export default function AirflowTester() {
         })()}
       </div>
       
-      {/* Hidden test visualization for batch exports from any tab */}
+      {/* Hidden test visualisation for batch exports from any tab */}
       <div 
         ref={captureRef} 
         style={{ 

@@ -1,13 +1,13 @@
-# Design Guidelines: Airflow Reading Visualization Tool
+# Design Guidelines: Airflow Reading Visualisation Tool
 
 ## Design Approach
 
 **Selected System:** Material Design with technical/engineering focus
-**Justification:** This is a utility-focused professional tool requiring clear data entry, precise visualization, and reliable export functionality. Material Design provides excellent patterns for data-dense interfaces while maintaining mobile responsiveness for field use.
+**Justification:** This is a utility-focused professional tool requiring clear data entry, precise visualisation, and reliable export functionality. Material Design provides excellent patterns for data-dense interfaces while maintaining mobile responsiveness for field use.
 
 **Key Design Principles:**
 - Precision and clarity over decorative elements
-- Single-page interface optimized for quick field testing workflow
+- Single-page interface optimised for quick field testing workflow
 - Touch-friendly controls for on-site use
 - Professional appearance suitable for compliance documentation
 
@@ -55,9 +55,9 @@
 - Card styling: p-4, rounded-lg border
 - Focus state: prominent border highlight
 
-#### 3. Damper Visualization Canvas
+#### 3. Damper Visualisation Canvas
 **Interactive Diagram:**
-- Central visualization showing smoke control damper schematic
+- Central visualisation showing smoke control damper schematic
 - Rectangular representation (landscape orientation)
 - 8 position markers mapped to input grid:
   - Top row: 4 positions (left to right)
@@ -105,7 +105,7 @@
 
 **Status Indicators:**
 - Progress display: "X of 8 readings entered"
-- Position: Below data entry grid, above visualization
+- Position: Below data entry grid, above visualisation
 - Small text, 12px, medium weight
 
 ## D. Animations
@@ -119,9 +119,9 @@
 ## Images
 
 **Damper Diagram Base:**
-While the visualization will be code-generated, consider including a technical diagram reference:
+While the visualisation will be code-generated, consider including a technical diagram reference:
 - Optional background image: Subtle outline of a standard smoke control damper
-- Placement: Within visualization canvas, at 10% opacity
+- Placement: Within visualisation canvas, at 10% opacity
 - Purpose: Provides technical context for non-specialists
 - Format: Simple line drawing showing damper mechanism
 
@@ -133,7 +133,7 @@ While the visualization will be code-generated, consider including a technical d
 - Numeric keyboard auto-triggers for input fields
 - Save button positioned in thumb-reach zone on mobile
 - Canvas zooming disabled (user-scalable=no for this tool)
-- Horizontal scrolling prevented on visualization
+- Horizontal scrolling prevented on visualisation
 
 ## Export Functionality Requirements
 
@@ -141,4 +141,4 @@ When "Save to Image" is triggered:
 - Capture entire interface including all readings and average
 - Include timestamp and optional metadata in image
 - Generate high-resolution PNG suitable for documentation
-- Optimize for portrait orientation (typical report format)
+- Optimise for portrait orientation (typical report format)

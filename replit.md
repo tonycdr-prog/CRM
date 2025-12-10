@@ -2,7 +2,7 @@
 
 ## Overview
 
-This application is a professional, UK regulation-compliant utility for visualizing and documenting airflow velocity readings across smoke control dampers. It enables field technicians to perform compliant testing with automatic grid size calculation (5×5, 6×6, or 7×7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The tool supports on-site use with touch-friendly controls and is available as a web application and native mobile app (iOS/Android). The project aims to provide comprehensive reporting, trend analysis, and efficient workflow for commissioning, annual inspection, and reactive testing of smoke control systems.
+This application is a professional, UK regulation-compliant utility for visualising and documenting airflow velocity readings across smoke control dampers. It enables field technicians to perform compliant testing with automatic grid size calculation (5×5, 6×6, or 7×7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The tool supports on-site use with touch-friendly controls and is available as a web application and native mobile app (iOS/Android). The project aims to provide comprehensive reporting, trend analysis, and efficient workflow for commissioning, annual inspection, and reactive testing of smoke control systems.
 
 ## User Preferences
 
@@ -18,10 +18,10 @@ The frontend is a single-page application built with **React 18+** and **TypeScr
 
 -   **UK Regulation Compliance**: Automatic grid size calculation (5x5, 6x6, 7x7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024.
 -   **Professional Report System**: Comprehensive project documentation including company details, scope of works, system description, testing standards, executive summary, and pass/fail statistics.
--   **Trend Analysis & Historical Tracking**: Year-over-year velocity trend visualization using Recharts, historical data grouping, and pass/fail trend indicators for floor-level dampers.
--   **Enhanced PDF Export**: Professional, selection-aware PDF generation with cover pages, standards sections, summary tables, individual test pages with grid visualizations, and trend charts for historical data. Optimized for performance and file size.
+-   **Trend Analysis & Historical Tracking**: Year-over-year velocity trend visualisation using Recharts, historical data grouping, and pass/fail trend indicators for floor-level dampers.
+-   **Enhanced PDF Export**: Professional, selection-aware PDF generation with cover pages, standards sections, summary tables, individual test pages with grid visualisations, and trend charts for historical data. Optimised for performance and file size.
 -   **Damper Image Documentation**: Camera integration for capturing damper conditions (open/closed positions), with images stored as base64 data URLs and included in PDF exports.
--   **Grouped Test History**: Tests are organized by building and date into expandable site visit cards, offering summary statistics and visit-level selection for bulk operations.
+-   **Grouped Test History**: Tests are organised by building and date into expandable site visit cards, offering summary statistics and visit-level selection for bulk operations.
 -   **Four-Tab Interface**: Report Setup, Damper Testing, Stairwell Pressure Testing, and Test History.
 -   **Stairwell Differential Pressure Testing**: Compliant with BS EN 12101-6 and other relevant standards, supporting various system classifications and test scenarios. Features floor-by-floor measurements, live compliance checking, pressure thresholds, door opening force validation, and environmental condition tracking.
 -   **Multi-Standard Support**: Support for multiple UK building standard versions (BS 5588-4:1978, BS 5588-4:1998, BS EN 12101-6:2022) to accommodate systems installed under different regulatory periods. Automatic class availability filtering based on selected standard, with superseded standard warnings. "Per design" class handling for BS EN 12101-6 Classes D-F.
