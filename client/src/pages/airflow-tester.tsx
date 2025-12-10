@@ -502,12 +502,14 @@ export default function AirflowTester() {
 
     if (editingId) {
       setSavedTests(prev => prev.map(t => t.id === editingId ? test : t));
+      syncState.queueChange("test", test.id, "update", test);
       toast({
         title: "Test updated",
         description: "Your changes have been saved",
       });
     } else {
       setSavedTests(prev => [...prev, test]);
+      syncState.queueChange("test", test.id, "create", test);
       toast({
         title: "Test saved",
         description: "Test added to history",
@@ -563,8 +565,10 @@ export default function AirflowTester() {
 
       if (editingId) {
         setSavedTests(prev => prev.map(t => t.id === editingId ? test : t));
+        syncState.queueChange("test", test.id, "update", test);
       } else {
         setSavedTests(prev => [...prev, test]);
+        syncState.queueChange("test", test.id, "create", test);
       }
       
       toast({
@@ -616,6 +620,7 @@ export default function AirflowTester() {
 
   const handleDelete = (id: string) => {
     setSavedTests(prev => prev.filter(t => t.id !== id));
+    syncState.queueChange("test", id, "delete", { id });
     if (editingId === id) {
       handleClear();
     }
@@ -1490,6 +1495,10 @@ export default function AirflowTester() {
 
   const handleDeleteSelected = () => {
     if (selectedTestIds.size === 0) return;
+    
+    selectedTestIds.forEach(id => {
+      syncState.queueChange("test", id, "delete", { id });
+    });
     
     setSavedTests(prev => prev.filter(test => !selectedTestIds.has(test.id)));
     setSelectedTestIds(new Set());
