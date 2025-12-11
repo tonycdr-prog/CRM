@@ -38,6 +38,9 @@ import TrainingRecords from "@/pages/training-records";
 import Inventory from "@/pages/inventory";
 import Defects from "@/pages/defects";
 import DocumentRegister from "@/pages/document-register";
+import MileageClaims from "@/pages/mileage-claims";
+import WorkNotes from "@/pages/work-notes";
+import Callbacks from "@/pages/callbacks";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -87,6 +90,9 @@ function AuthenticatedRoutes() {
         <Route path="/inventory" component={Inventory} />
         <Route path="/defects" component={Defects} />
         <Route path="/document-register" component={DocumentRegister} />
+        <Route path="/mileage-claims" component={MileageClaims} />
+        <Route path="/work-notes" component={WorkNotes} />
+        <Route path="/callbacks" component={Callbacks} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>

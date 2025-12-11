@@ -46,7 +46,10 @@ import {
   ShoppingCart,
   GraduationCap,
   Boxes,
-  AlertOctagon
+  AlertOctagon,
+  Car,
+  StickyNote,
+  PhoneCall
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -66,9 +69,11 @@ const businessMenuItems = [
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Quotes & Invoices", url: "/finance", icon: Receipt },
   { title: "Expenses", url: "/expenses", icon: DollarSign },
+  { title: "Mileage Claims", url: "/mileage-claims", icon: Car },
   { title: "Profitability", url: "/profitability", icon: TrendingUp },
   { title: "Suppliers", url: "/suppliers", icon: Building2 },
   { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
+  { title: "Callbacks", url: "/callbacks", icon: PhoneCall },
 ];
 
 const operationsMenuItems = [
@@ -80,6 +85,7 @@ const operationsMenuItems = [
   { title: "Certifications", url: "/certifications", icon: Award },
   { title: "Training Records", url: "/training-records", icon: GraduationCap },
   { title: "Inventory", url: "/inventory", icon: Boxes },
+  { title: "Work Notes", url: "/work-notes", icon: StickyNote },
   { title: "Job Templates", url: "/job-templates", icon: Copy },
   { title: "Recurring Jobs", url: "/recurring-jobs", icon: RefreshCw },
 ];
