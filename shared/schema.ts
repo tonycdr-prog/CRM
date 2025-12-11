@@ -1770,3 +1770,70 @@ export const callbacks = pgTable("callbacks", {
 export const insertCallbackSchema = createInsertSchema(callbacks).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCallback = z.infer<typeof insertCallbackSchema>;
 export type DbCallback = typeof callbacks.$inferSelect;
+
+// Staff Directory - Employee management
+export const staffDirectory = pgTable("staff_directory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  employeeNumber: text("employee_number"),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  mobile: text("mobile"),
+  jobTitle: text("job_title"),
+  department: text("department"),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
+  employmentType: text("employment_type").default("full_time"), // full_time, part_time, contractor, apprentice
+  lineManager: text("line_manager"),
+  emergencyContactName: text("emergency_contact_name"),
+  emergencyContactPhone: text("emergency_contact_phone"),
+  emergencyContactRelation: text("emergency_contact_relation"),
+  address: text("address"),
+  postcode: text("postcode"),
+  niNumber: text("ni_number"),
+  drivingLicence: boolean("driving_licence").default(false),
+  drivingLicenceExpiry: text("driving_licence_expiry"),
+  skills: text("skills").array(),
+  qualifications: text("qualifications").array(),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertStaffDirectorySchema = createInsertSchema(staffDirectory).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertStaffDirectory = z.infer<typeof insertStaffDirectorySchema>;
+export type DbStaffDirectory = typeof staffDirectory.$inferSelect;
+
+// Price Lists - Service pricing
+export const priceLists = pgTable("price_lists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  code: text("code"),
+  category: text("category").default("service"), // service, product, labour, materials, call_out
+  description: text("description"),
+  unit: text("unit").default("each"), // each, hour, day, meter, m2, kg
+  costPrice: real("cost_price"),
+  sellPrice: real("sell_price").notNull(),
+  marginPercent: real("margin_percent"),
+  vatRate: real("vat_rate").default(20),
+  vatIncluded: boolean("vat_included").default(false),
+  minimumCharge: real("minimum_charge"),
+  discountable: boolean("discountable").default(true),
+  maxDiscountPercent: real("max_discount_percent"),
+  effectiveFrom: text("effective_from"),
+  effectiveTo: text("effective_to"),
+  supplierRef: text("supplier_ref"),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPriceListSchema = createInsertSchema(priceLists).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPriceList = z.infer<typeof insertPriceListSchema>;
+export type DbPriceList = typeof priceLists.$inferSelect;

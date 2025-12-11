@@ -1891,6 +1891,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // STAFF DIRECTORY ROUTES
+  // ============================================
+
+  app.get("/api/staff-directory/:userId", async (req, res) => {
+    try {
+      const staff = await storage.getStaffDirectory(req.params.userId);
+      res.json(staff);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch staff directory" });
+    }
+  });
+
+  app.post("/api/staff-directory", async (req, res) => {
+    try {
+      const member = await storage.createStaffMember(req.body);
+      res.json(member);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create staff member" });
+    }
+  });
+
+  app.patch("/api/staff-directory/:id", async (req, res) => {
+    try {
+      const member = await storage.updateStaffMember(req.params.id, req.body);
+      res.json(member);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update staff member" });
+    }
+  });
+
+  app.delete("/api/staff-directory/:id", async (req, res) => {
+    try {
+      await storage.deleteStaffMember(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete staff member" });
+    }
+  });
+
+  // ============================================
+  // PRICE LISTS ROUTES
+  // ============================================
+
+  app.get("/api/price-lists/:userId", async (req, res) => {
+    try {
+      const items = await storage.getPriceLists(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch price lists" });
+    }
+  });
+
+  app.post("/api/price-lists", async (req, res) => {
+    try {
+      const item = await storage.createPriceList(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create price list item" });
+    }
+  });
+
+  app.patch("/api/price-lists/:id", async (req, res) => {
+    try {
+      const item = await storage.updatePriceList(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update price list item" });
+    }
+  });
+
+  app.delete("/api/price-lists/:id", async (req, res) => {
+    try {
+      await storage.deletePriceList(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete price list item" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -4,7 +4,7 @@ import {
   clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
   jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
   recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister,
-  mileageClaims, workNotes, callbacks
+  mileageClaims, workNotes, callbacks, staffDirectory, priceLists
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -106,6 +106,10 @@ type DbWorkNote = typeof workNotes.$inferSelect;
 type NewWorkNote = typeof workNotes.$inferInsert;
 type DbCallback = typeof callbacks.$inferSelect;
 type NewCallback = typeof callbacks.$inferInsert;
+type DbStaffMember = typeof staffDirectory.$inferSelect;
+type NewStaffMember = typeof staffDirectory.$inferInsert;
+type DbPriceList = typeof priceLists.$inferSelect;
+type NewPriceList = typeof priceLists.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -1358,6 +1362,46 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCallback(id: string): Promise<boolean> {
     await db.delete(callbacks).where(eq(callbacks.id, id));
+    return true;
+  }
+
+  // Staff Directory
+  async getStaffDirectory(userId: string): Promise<DbStaffMember[]> {
+    return db.select().from(staffDirectory).where(eq(staffDirectory.userId, userId)).orderBy(desc(staffDirectory.createdAt));
+  }
+
+  async createStaffMember(member: NewStaffMember): Promise<DbStaffMember> {
+    const [newMember] = await db.insert(staffDirectory).values(member).returning();
+    return newMember;
+  }
+
+  async updateStaffMember(id: string, member: Partial<NewStaffMember>): Promise<DbStaffMember | undefined> {
+    const [updated] = await db.update(staffDirectory).set({ ...member, updatedAt: new Date() }).where(eq(staffDirectory.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteStaffMember(id: string): Promise<boolean> {
+    await db.delete(staffDirectory).where(eq(staffDirectory.id, id));
+    return true;
+  }
+
+  // Price Lists
+  async getPriceLists(userId: string): Promise<DbPriceList[]> {
+    return db.select().from(priceLists).where(eq(priceLists.userId, userId)).orderBy(desc(priceLists.createdAt));
+  }
+
+  async createPriceList(item: NewPriceList): Promise<DbPriceList> {
+    const [newItem] = await db.insert(priceLists).values(item).returning();
+    return newItem;
+  }
+
+  async updatePriceList(id: string, item: Partial<NewPriceList>): Promise<DbPriceList | undefined> {
+    const [updated] = await db.update(priceLists).set({ ...item, updatedAt: new Date() }).where(eq(priceLists.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deletePriceList(id: string): Promise<boolean> {
+    await db.delete(priceLists).where(eq(priceLists.id, id));
     return true;
   }
 }
