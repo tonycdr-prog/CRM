@@ -333,6 +333,624 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // BUSINESS MANAGEMENT - CLIENTS
+  // ============================================
+
+  app.get("/api/clients/:userId", async (req, res) => {
+    try {
+      const clients = await storage.getClients(req.params.userId);
+      res.json(clients);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
+  app.get("/api/clients/detail/:id", async (req, res) => {
+    try {
+      const client = await storage.getClient(req.params.id);
+      res.json(client);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch client" });
+    }
+  });
+
+  app.post("/api/clients", async (req, res) => {
+    try {
+      const client = await storage.createClient(req.body);
+      res.json(client);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create client" });
+    }
+  });
+
+  app.patch("/api/clients/:id", async (req, res) => {
+    try {
+      const client = await storage.updateClient(req.params.id, req.body);
+      res.json(client);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update client" });
+    }
+  });
+
+  app.delete("/api/clients/:id", async (req, res) => {
+    try {
+      await storage.deleteClient(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete client" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - CONTRACTS
+  // ============================================
+
+  app.get("/api/contracts/:userId", async (req, res) => {
+    try {
+      const contracts = await storage.getContracts(req.params.userId);
+      res.json(contracts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch contracts" });
+    }
+  });
+
+  app.get("/api/contracts/detail/:id", async (req, res) => {
+    try {
+      const contract = await storage.getContract(req.params.id);
+      res.json(contract);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch contract" });
+    }
+  });
+
+  app.post("/api/contracts", async (req, res) => {
+    try {
+      const contract = await storage.createContract(req.body);
+      res.json(contract);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create contract" });
+    }
+  });
+
+  app.patch("/api/contracts/:id", async (req, res) => {
+    try {
+      const contract = await storage.updateContract(req.params.id, req.body);
+      res.json(contract);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update contract" });
+    }
+  });
+
+  app.delete("/api/contracts/:id", async (req, res) => {
+    try {
+      await storage.deleteContract(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete contract" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - JOBS
+  // ============================================
+
+  app.get("/api/jobs/:userId", async (req, res) => {
+    try {
+      const jobs = await storage.getJobs(req.params.userId);
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch jobs" });
+    }
+  });
+
+  app.get("/api/jobs/detail/:id", async (req, res) => {
+    try {
+      const job = await storage.getJob(req.params.id);
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job" });
+    }
+  });
+
+  app.post("/api/jobs", async (req, res) => {
+    try {
+      const job = await storage.createJob(req.body);
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create job" });
+    }
+  });
+
+  app.patch("/api/jobs/:id", async (req, res) => {
+    try {
+      const job = await storage.updateJob(req.params.id, req.body);
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update job" });
+    }
+  });
+
+  app.delete("/api/jobs/:id", async (req, res) => {
+    try {
+      await storage.deleteJob(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete job" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - QUOTES
+  // ============================================
+
+  app.get("/api/quotes/:userId", async (req, res) => {
+    try {
+      const quotes = await storage.getQuotes(req.params.userId);
+      res.json(quotes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  app.get("/api/quotes/detail/:id", async (req, res) => {
+    try {
+      const quote = await storage.getQuote(req.params.id);
+      res.json(quote);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quote" });
+    }
+  });
+
+  app.post("/api/quotes", async (req, res) => {
+    try {
+      const quote = await storage.createQuote(req.body);
+      res.json(quote);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create quote" });
+    }
+  });
+
+  app.patch("/api/quotes/:id", async (req, res) => {
+    try {
+      const quote = await storage.updateQuote(req.params.id, req.body);
+      res.json(quote);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update quote" });
+    }
+  });
+
+  app.delete("/api/quotes/:id", async (req, res) => {
+    try {
+      await storage.deleteQuote(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete quote" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - INVOICES
+  // ============================================
+
+  app.get("/api/invoices/:userId", async (req, res) => {
+    try {
+      const invoices = await storage.getInvoices(req.params.userId);
+      res.json(invoices);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invoices" });
+    }
+  });
+
+  app.get("/api/invoices/detail/:id", async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      res.json(invoice);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invoice" });
+    }
+  });
+
+  app.post("/api/invoices", async (req, res) => {
+    try {
+      const invoice = await storage.createInvoice(req.body);
+      res.json(invoice);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create invoice" });
+    }
+  });
+
+  app.patch("/api/invoices/:id", async (req, res) => {
+    try {
+      const invoice = await storage.updateInvoice(req.params.id, req.body);
+      res.json(invoice);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update invoice" });
+    }
+  });
+
+  app.delete("/api/invoices/:id", async (req, res) => {
+    try {
+      await storage.deleteInvoice(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete invoice" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - EXPENSES
+  // ============================================
+
+  app.get("/api/expenses/:userId", async (req, res) => {
+    try {
+      const expenses = await storage.getExpenses(req.params.userId);
+      res.json(expenses);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch expenses" });
+    }
+  });
+
+  app.post("/api/expenses", async (req, res) => {
+    try {
+      const expense = await storage.createExpense(req.body);
+      res.json(expense);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create expense" });
+    }
+  });
+
+  app.patch("/api/expenses/:id", async (req, res) => {
+    try {
+      const expense = await storage.updateExpense(req.params.id, req.body);
+      res.json(expense);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update expense" });
+    }
+  });
+
+  app.delete("/api/expenses/:id", async (req, res) => {
+    try {
+      await storage.deleteExpense(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete expense" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - TIMESHEETS
+  // ============================================
+
+  app.get("/api/timesheets/:userId", async (req, res) => {
+    try {
+      const timesheets = await storage.getTimesheets(req.params.userId);
+      res.json(timesheets);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch timesheets" });
+    }
+  });
+
+  app.post("/api/timesheets", async (req, res) => {
+    try {
+      const timesheet = await storage.createTimesheet(req.body);
+      res.json(timesheet);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create timesheet" });
+    }
+  });
+
+  app.patch("/api/timesheets/:id", async (req, res) => {
+    try {
+      const timesheet = await storage.updateTimesheet(req.params.id, req.body);
+      res.json(timesheet);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update timesheet" });
+    }
+  });
+
+  app.delete("/api/timesheets/:id", async (req, res) => {
+    try {
+      await storage.deleteTimesheet(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete timesheet" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - VEHICLES
+  // ============================================
+
+  app.get("/api/vehicles/:userId", async (req, res) => {
+    try {
+      const vehicles = await storage.getVehicles(req.params.userId);
+      res.json(vehicles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vehicles" });
+    }
+  });
+
+  app.post("/api/vehicles", async (req, res) => {
+    try {
+      const vehicle = await storage.createVehicle(req.body);
+      res.json(vehicle);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create vehicle" });
+    }
+  });
+
+  app.patch("/api/vehicles/:id", async (req, res) => {
+    try {
+      const vehicle = await storage.updateVehicle(req.params.id, req.body);
+      res.json(vehicle);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update vehicle" });
+    }
+  });
+
+  app.delete("/api/vehicles/:id", async (req, res) => {
+    try {
+      await storage.deleteVehicle(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vehicle" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - VEHICLE BOOKINGS
+  // ============================================
+
+  app.get("/api/vehicle-bookings/:userId", async (req, res) => {
+    try {
+      const bookings = await storage.getVehicleBookings(req.params.userId);
+      res.json(bookings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vehicle bookings" });
+    }
+  });
+
+  app.post("/api/vehicle-bookings", async (req, res) => {
+    try {
+      const booking = await storage.createVehicleBooking(req.body);
+      res.json(booking);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create vehicle booking" });
+    }
+  });
+
+  app.patch("/api/vehicle-bookings/:id", async (req, res) => {
+    try {
+      const booking = await storage.updateVehicleBooking(req.params.id, req.body);
+      res.json(booking);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update vehicle booking" });
+    }
+  });
+
+  app.delete("/api/vehicle-bookings/:id", async (req, res) => {
+    try {
+      await storage.deleteVehicleBooking(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vehicle booking" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - SUBCONTRACTORS
+  // ============================================
+
+  app.get("/api/subcontractors/:userId", async (req, res) => {
+    try {
+      const subcontractors = await storage.getSubcontractors(req.params.userId);
+      res.json(subcontractors);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch subcontractors" });
+    }
+  });
+
+  app.post("/api/subcontractors", async (req, res) => {
+    try {
+      const subcontractor = await storage.createSubcontractor(req.body);
+      res.json(subcontractor);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create subcontractor" });
+    }
+  });
+
+  app.patch("/api/subcontractors/:id", async (req, res) => {
+    try {
+      const subcontractor = await storage.updateSubcontractor(req.params.id, req.body);
+      res.json(subcontractor);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update subcontractor" });
+    }
+  });
+
+  app.delete("/api/subcontractors/:id", async (req, res) => {
+    try {
+      await storage.deleteSubcontractor(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete subcontractor" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - DOCUMENTS
+  // ============================================
+
+  app.get("/api/documents/:userId", async (req, res) => {
+    try {
+      const documents = await storage.getDocuments(req.params.userId);
+      res.json(documents);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch documents" });
+    }
+  });
+
+  app.post("/api/documents", async (req, res) => {
+    try {
+      const document = await storage.createDocument(req.body);
+      res.json(document);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create document" });
+    }
+  });
+
+  app.patch("/api/documents/:id", async (req, res) => {
+    try {
+      const document = await storage.updateDocument(req.params.id, req.body);
+      res.json(document);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update document" });
+    }
+  });
+
+  app.delete("/api/documents/:id", async (req, res) => {
+    try {
+      await storage.deleteDocument(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete document" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - COMMUNICATION LOGS
+  // ============================================
+
+  app.get("/api/communication-logs/:userId", async (req, res) => {
+    try {
+      const logs = await storage.getCommunicationLogs(req.params.userId);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch communication logs" });
+    }
+  });
+
+  app.post("/api/communication-logs", async (req, res) => {
+    try {
+      const log = await storage.createCommunicationLog(req.body);
+      res.json(log);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create communication log" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - SURVEYS
+  // ============================================
+
+  app.get("/api/surveys/:userId", async (req, res) => {
+    try {
+      const surveys = await storage.getSurveys(req.params.userId);
+      res.json(surveys);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch surveys" });
+    }
+  });
+
+  app.post("/api/surveys", async (req, res) => {
+    try {
+      const survey = await storage.createSurvey(req.body);
+      res.json(survey);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create survey" });
+    }
+  });
+
+  app.patch("/api/surveys/:id", async (req, res) => {
+    try {
+      const survey = await storage.updateSurvey(req.params.id, req.body);
+      res.json(survey);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update survey" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - ABSENCES (Holidays)
+  // ============================================
+
+  app.get("/api/absences/:userId", async (req, res) => {
+    try {
+      const absences = await storage.getAbsences(req.params.userId);
+      res.json(absences);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch absences" });
+    }
+  });
+
+  app.post("/api/absences", async (req, res) => {
+    try {
+      const absence = await storage.createAbsence(req.body);
+      res.json(absence);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create absence" });
+    }
+  });
+
+  app.patch("/api/absences/:id", async (req, res) => {
+    try {
+      const absence = await storage.updateAbsence(req.params.id, req.body);
+      res.json(absence);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update absence" });
+    }
+  });
+
+  app.delete("/api/absences/:id", async (req, res) => {
+    try {
+      await storage.deleteAbsence(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete absence" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - REMINDERS
+  // ============================================
+
+  app.get("/api/reminders/:userId", async (req, res) => {
+    try {
+      const reminders = await storage.getReminders(req.params.userId);
+      res.json(reminders);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reminders" });
+    }
+  });
+
+  app.post("/api/reminders", async (req, res) => {
+    try {
+      const reminder = await storage.createReminder(req.body);
+      res.json(reminder);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create reminder" });
+    }
+  });
+
+  app.patch("/api/reminders/:id", async (req, res) => {
+    try {
+      const reminder = await storage.updateReminder(req.params.id, req.body);
+      res.json(reminder);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update reminder" });
+    }
+  });
+
+  app.delete("/api/reminders/:id", async (req, res) => {
+    try {
+      await storage.deleteReminder(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete reminder" });
+    }
+  });
+
+  // ============================================
   // CUSTOM AUTH ROUTES (Optional - for username/password auth)
   // ============================================
 
