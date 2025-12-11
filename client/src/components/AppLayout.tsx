@@ -49,7 +49,10 @@ import {
   AlertOctagon,
   Car,
   StickyNote,
-  PhoneCall
+  PhoneCall,
+  MapPinned,
+  UsersRound,
+  Tags
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -79,6 +82,7 @@ const businessMenuItems = [
 const operationsMenuItems = [
   { title: "Timesheets", url: "/timesheets", icon: Clock },
   { title: "Vehicles", url: "/vehicles", icon: Truck },
+  { title: "Staff Directory", url: "/staff-directory", icon: UsersRound },
   { title: "Subcontractors", url: "/subcontractors", icon: UserCheck },
   { title: "Holidays", url: "/holidays", icon: Calendar },
   { title: "Equipment", url: "/equipment", icon: Wrench },
@@ -86,6 +90,7 @@ const operationsMenuItems = [
   { title: "Training Records", url: "/training-records", icon: GraduationCap },
   { title: "Inventory", url: "/inventory", icon: Boxes },
   { title: "Work Notes", url: "/work-notes", icon: StickyNote },
+  { title: "Site Access Notes", url: "/site-access-notes", icon: MapPinned },
   { title: "Job Templates", url: "/job-templates", icon: Copy },
   { title: "Recurring Jobs", url: "/recurring-jobs", icon: RefreshCw },
 ];
@@ -93,6 +98,7 @@ const operationsMenuItems = [
 const salesMenuItems = [
   { title: "Leads", url: "/leads", icon: Target },
   { title: "Tenders", url: "/tenders", icon: FileCheck },
+  { title: "Price Lists", url: "/price-lists", icon: Tags },
 ];
 
 const complianceMenuItems = [

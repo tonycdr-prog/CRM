@@ -41,6 +41,9 @@ import DocumentRegister from "@/pages/document-register";
 import MileageClaims from "@/pages/mileage-claims";
 import WorkNotes from "@/pages/work-notes";
 import Callbacks from "@/pages/callbacks";
+import SiteAccessNotesPage from "@/pages/site-access-notes";
+import StaffDirectory from "@/pages/staff-directory";
+import PriceLists from "@/pages/price-lists";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -93,6 +96,9 @@ function AuthenticatedRoutes() {
         <Route path="/mileage-claims" component={MileageClaims} />
         <Route path="/work-notes" component={WorkNotes} />
         <Route path="/callbacks" component={Callbacks} />
+        <Route path="/site-access-notes" component={SiteAccessNotesPage} />
+        <Route path="/staff-directory" component={StaffDirectory} />
+        <Route path="/price-lists" component={PriceLists} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>
