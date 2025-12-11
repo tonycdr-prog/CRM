@@ -595,3 +595,527 @@ export type ComplianceChecklistItem = {
   notes: string;
   reference: string;
 };
+
+// ============================================
+// BUSINESS MANAGEMENT TABLES
+// ============================================
+
+// Clients table - customer database
+export const clients = pgTable("clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  companyName: text("company_name").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  postcode: text("postcode"),
+  city: text("city"),
+  notes: text("notes"),
+  clientType: text("client_type").default("commercial"), // commercial, residential, public_sector
+  status: text("status").default("active"), // active, inactive, prospect
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertClient = z.infer<typeof insertClientSchema>;
+export type DbClient = typeof clients.$inferSelect;
+
+// Contracts table - service agreements
+export const contracts = pgTable("contracts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  contractNumber: text("contract_number").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  value: real("value"), // Total contract value
+  billingFrequency: text("billing_frequency").default("annual"), // monthly, quarterly, annual, one_time
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  renewalDate: text("renewal_date"),
+  autoRenew: boolean("auto_renew").default(false),
+  slaLevel: text("sla_level").default("standard"), // basic, standard, premium
+  slaResponseTime: integer("sla_response_time"), // Hours
+  slaResolutionTime: integer("sla_resolution_time"), // Hours
+  terms: text("terms"),
+  status: text("status").default("active"), // draft, active, expired, cancelled
+  signedByClient: boolean("signed_by_client").default(false),
+  signedByCompany: boolean("signed_by_company").default(false),
+  clientSignature: text("client_signature"),
+  companySignature: text("company_signature"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type DbContract = typeof contracts.$inferSelect;
+
+// Jobs table - work orders
+export const jobs = pgTable("jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  contractId: varchar("contract_id").references(() => contracts.id),
+  projectId: varchar("project_id").references(() => projects.id),
+  jobNumber: text("job_number").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  siteAddress: text("site_address"),
+  scheduledDate: text("scheduled_date"),
+  scheduledTime: text("scheduled_time"),
+  estimatedDuration: real("estimated_duration"), // Hours
+  actualDuration: real("actual_duration"), // Hours
+  assignedTechnicianId: varchar("assigned_technician_id"),
+  assignedSubcontractorId: varchar("assigned_subcontractor_id"),
+  priority: text("priority").default("normal"), // low, normal, high, urgent
+  status: text("status").default("pending"), // pending, scheduled, in_progress, completed, cancelled
+  jobType: text("job_type").default("testing"), // testing, installation, repair, maintenance
+  quotedAmount: real("quoted_amount"),
+  actualCost: real("actual_cost"),
+  materialsCost: real("materials_cost"),
+  labourCost: real("labour_cost"),
+  profitMargin: real("profit_margin"),
+  notes: text("notes"),
+  completionNotes: text("completion_notes"),
+  customerSignature: text("customer_signature"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true });
+export type InsertJob = z.infer<typeof insertJobSchema>;
+export type DbJob = typeof jobs.$inferSelect;
+
+// Quotes table
+export const quotes = pgTable("quotes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  quoteNumber: text("quote_number").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  lineItems: jsonb("line_items").$type<{
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }[]>().default([]),
+  subtotal: real("subtotal"),
+  vatRate: real("vat_rate").default(20),
+  vatAmount: real("vat_amount"),
+  total: real("total"),
+  validUntil: text("valid_until"),
+  terms: text("terms"),
+  status: text("status").default("draft"), // draft, sent, accepted, rejected, expired
+  sentAt: timestamp("sent_at"),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertQuoteSchema = createInsertSchema(quotes).omit({ id: true, createdAt: true, updatedAt: true, sentAt: true, acceptedAt: true });
+export type InsertQuote = z.infer<typeof insertQuoteSchema>;
+export type DbQuote = typeof quotes.$inferSelect;
+
+// Invoices table
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  contractId: varchar("contract_id").references(() => contracts.id),
+  quoteId: varchar("quote_id").references(() => quotes.id),
+  invoiceNumber: text("invoice_number").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  lineItems: jsonb("line_items").$type<{
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }[]>().default([]),
+  subtotal: real("subtotal"),
+  vatRate: real("vat_rate").default(20),
+  vatAmount: real("vat_amount"),
+  total: real("total"),
+  dueDate: text("due_date"),
+  terms: text("terms"),
+  status: text("status").default("draft"), // draft, sent, paid, overdue, cancelled
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeInvoiceId: text("stripe_invoice_id"),
+  paidAmount: real("paid_amount").default(0),
+  paidAt: timestamp("paid_at"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true, updatedAt: true, paidAt: true, sentAt: true });
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type DbInvoice = typeof invoices.$inferSelect;
+
+// Expenses table
+export const expenses = pgTable("expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  category: text("category").notNull(), // mileage, materials, accommodation, fuel, tools, other
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  date: text("date").notNull(),
+  mileage: real("mileage"), // For mileage expenses
+  mileageRate: real("mileage_rate").default(0.45), // £/mile
+  receiptImage: text("receipt_image"),
+  reimbursable: boolean("reimbursable").default(true),
+  reimbursed: boolean("reimbursed").default(false),
+  reimbursedAt: timestamp("reimbursed_at"),
+  approvedBy: varchar("approved_by"),
+  status: text("status").default("pending"), // pending, approved, rejected, reimbursed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true, updatedAt: true, reimbursedAt: true });
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type DbExpense = typeof expenses.$inferSelect;
+
+// Timesheets table
+export const timesheets = pgTable("timesheets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  technicianId: varchar("technician_id"),
+  date: text("date").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time"),
+  breakDuration: real("break_duration").default(0), // Minutes
+  totalHours: real("total_hours"),
+  hourlyRate: real("hourly_rate"),
+  overtimeHours: real("overtime_hours").default(0),
+  overtimeRate: real("overtime_rate"),
+  description: text("description"),
+  status: text("status").default("pending"), // pending, submitted, approved, rejected
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTimesheetSchema = createInsertSchema(timesheets).omit({ id: true, createdAt: true, updatedAt: true, approvedAt: true });
+export type InsertTimesheet = z.infer<typeof insertTimesheetSchema>;
+export type DbTimesheet = typeof timesheets.$inferSelect;
+
+// Vehicles table
+export const vehicles = pgTable("vehicles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  registration: text("registration").notNull(),
+  make: text("make"),
+  model: text("model"),
+  year: integer("year"),
+  color: text("color"),
+  mileage: real("mileage"),
+  fuelType: text("fuel_type").default("diesel"), // diesel, petrol, electric, hybrid
+  insuranceExpiry: text("insurance_expiry"),
+  motExpiry: text("mot_expiry"),
+  serviceDate: text("service_date"),
+  nextServiceDate: text("next_service_date"),
+  status: text("status").default("available"), // available, in_use, maintenance, out_of_service
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
+export type DbVehicle = typeof vehicles.$inferSelect;
+
+// Vehicle bookings table
+export const vehicleBookings = pgTable("vehicle_bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  technicianId: varchar("technician_id"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  startMileage: real("start_mileage"),
+  endMileage: real("end_mileage"),
+  purpose: text("purpose"),
+  status: text("status").default("confirmed"), // pending, confirmed, cancelled, completed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertVehicleBookingSchema = createInsertSchema(vehicleBookings).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertVehicleBooking = z.infer<typeof insertVehicleBookingSchema>;
+export type DbVehicleBooking = typeof vehicleBookings.$inferSelect;
+
+// Subcontractors table
+export const subcontractors = pgTable("subcontractors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  companyName: text("company_name").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  specializations: jsonb("specializations").$type<string[]>().default([]),
+  hourlyRate: real("hourly_rate"),
+  dayRate: real("day_rate"),
+  insuranceExpiry: text("insurance_expiry"),
+  certifications: jsonb("certifications").$type<{
+    name: string;
+    number: string;
+    expiry: string;
+  }[]>().default([]),
+  rating: real("rating"),
+  status: text("status").default("active"), // active, inactive, blacklisted
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSubcontractorSchema = createInsertSchema(subcontractors).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSubcontractor = z.infer<typeof insertSubcontractorSchema>;
+export type DbSubcontractor = typeof subcontractors.$inferSelect;
+
+// Documents table - RAMS, risk assessments, method statements, certificates
+export const documents = pgTable("documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  documentType: text("document_type").notNull(), // rams, risk_assessment, method_statement, insurance_certificate, contract, quote, invoice, report
+  title: text("title").notNull(),
+  description: text("description"),
+  fileUrl: text("file_url"),
+  fileData: text("file_data"), // Base64 for small files
+  content: jsonb("content").$type<any>(), // For generated documents
+  version: integer("version").default(1),
+  expiryDate: text("expiry_date"),
+  status: text("status").default("draft"), // draft, active, expired, archived
+  signedBy: jsonb("signed_by").$type<{
+    name: string;
+    signature: string;
+    date: string;
+    role: string;
+  }[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type DbDocument = typeof documents.$inferSelect;
+
+// Communication logs table
+export const communicationLogs = pgTable("communication_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  type: text("type").notNull(), // email, phone, meeting, site_visit, note
+  subject: text("subject"),
+  content: text("content").notNull(),
+  contactName: text("contact_name"),
+  direction: text("direction").default("outbound"), // inbound, outbound
+  followUpRequired: boolean("follow_up_required").default(false),
+  followUpDate: text("follow_up_date"),
+  followUpCompleted: boolean("follow_up_completed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCommunicationLogSchema = createInsertSchema(communicationLogs).omit({ id: true, createdAt: true });
+export type InsertCommunicationLog = z.infer<typeof insertCommunicationLogSchema>;
+export type DbCommunicationLog = typeof communicationLogs.$inferSelect;
+
+// Customer satisfaction surveys table
+export const surveys = pgTable("surveys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  sentAt: timestamp("sent_at"),
+  completedAt: timestamp("completed_at"),
+  overallRating: integer("overall_rating"), // 1-5
+  qualityRating: integer("quality_rating"),
+  timelinessRating: integer("timeliness_rating"),
+  communicationRating: integer("communication_rating"),
+  valueRating: integer("value_rating"),
+  wouldRecommend: boolean("would_recommend"),
+  feedback: text("feedback"),
+  followUpRequired: boolean("follow_up_required").default(false),
+  followUpNotes: text("follow_up_notes"),
+  status: text("status").default("pending"), // pending, sent, completed, expired
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSurveySchema = createInsertSchema(surveys).omit({ id: true, createdAt: true, sentAt: true, completedAt: true });
+export type InsertSurvey = z.infer<typeof insertSurveySchema>;
+export type DbSurvey = typeof surveys.$inferSelect;
+
+// Holiday/absence calendar table
+export const absences = pgTable("absences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  technicianId: varchar("technician_id"),
+  technicianName: text("technician_name").notNull(),
+  type: text("type").notNull(), // holiday, sick, training, other
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  halfDay: boolean("half_day").default(false),
+  halfDayPeriod: text("half_day_period"), // morning, afternoon
+  notes: text("notes"),
+  status: text("status").default("pending"), // pending, approved, rejected, cancelled
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAbsenceSchema = createInsertSchema(absences).omit({ id: true, createdAt: true, updatedAt: true, approvedAt: true });
+export type InsertAbsence = z.infer<typeof insertAbsenceSchema>;
+export type DbAbsence = typeof absences.$inferSelect;
+
+// Reminders table - automated follow-ups, contract renewals, payment reminders
+export const reminders = pgTable("reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  entityType: text("entity_type").notNull(), // contract, invoice, job, client, survey
+  entityId: varchar("entity_id").notNull(),
+  reminderType: text("reminder_type").notNull(), // contract_renewal, payment_due, follow_up, survey, annual_test
+  title: text("title").notNull(),
+  description: text("description"),
+  dueDate: text("due_date").notNull(),
+  status: text("status").default("pending"), // pending, sent, completed, dismissed
+  sentAt: timestamp("sent_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true, sentAt: true, completedAt: true });
+export type InsertReminder = z.infer<typeof insertReminderSchema>;
+export type DbReminder = typeof reminders.$inferSelect;
+
+// ============================================
+// BUSINESS MANAGEMENT ZOD SCHEMAS (for client-side)
+// ============================================
+
+export const clientSchema = z.object({
+  id: z.string(),
+  companyName: z.string(),
+  contactName: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  postcode: z.string().optional(),
+  city: z.string().optional(),
+  notes: z.string().optional(),
+  clientType: z.enum(["commercial", "residential", "public_sector"]).default("commercial"),
+  status: z.enum(["active", "inactive", "prospect"]).default("active"),
+  createdAt: z.number(),
+  updatedAt: z.number().optional(),
+});
+
+export type Client = z.infer<typeof clientSchema>;
+
+export const contractSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  contractNumber: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  value: z.number().optional(),
+  billingFrequency: z.enum(["monthly", "quarterly", "annual", "one_time"]).default("annual"),
+  startDate: z.string(),
+  endDate: z.string().optional(),
+  renewalDate: z.string().optional(),
+  autoRenew: z.boolean().default(false),
+  slaLevel: z.enum(["basic", "standard", "premium"]).default("standard"),
+  slaResponseTime: z.number().optional(),
+  slaResolutionTime: z.number().optional(),
+  terms: z.string().optional(),
+  status: z.enum(["draft", "active", "expired", "cancelled"]).default("active"),
+  signedByClient: z.boolean().default(false),
+  signedByCompany: z.boolean().default(false),
+  createdAt: z.number(),
+  updatedAt: z.number().optional(),
+});
+
+export type Contract = z.infer<typeof contractSchema>;
+
+export const jobSchema = z.object({
+  id: z.string(),
+  clientId: z.string().optional(),
+  contractId: z.string().optional(),
+  projectId: z.string().optional(),
+  jobNumber: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  siteAddress: z.string().optional(),
+  scheduledDate: z.string().optional(),
+  scheduledTime: z.string().optional(),
+  estimatedDuration: z.number().optional(),
+  actualDuration: z.number().optional(),
+  assignedTechnicianId: z.string().optional(),
+  assignedSubcontractorId: z.string().optional(),
+  priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
+  status: z.enum(["pending", "scheduled", "in_progress", "completed", "cancelled"]).default("pending"),
+  jobType: z.enum(["testing", "installation", "repair", "maintenance"]).default("testing"),
+  quotedAmount: z.number().optional(),
+  actualCost: z.number().optional(),
+  materialsCost: z.number().optional(),
+  labourCost: z.number().optional(),
+  profitMargin: z.number().optional(),
+  notes: z.string().optional(),
+  completionNotes: z.string().optional(),
+  createdAt: z.number(),
+  updatedAt: z.number().optional(),
+});
+
+export type Job = z.infer<typeof jobSchema>;
+
+export const expenseSchema = z.object({
+  id: z.string(),
+  jobId: z.string().optional(),
+  category: z.enum(["mileage", "materials", "accommodation", "fuel", "tools", "other"]),
+  description: z.string(),
+  amount: z.number(),
+  date: z.string(),
+  mileage: z.number().optional(),
+  mileageRate: z.number().default(0.45),
+  receiptImage: z.string().optional(),
+  reimbursable: z.boolean().default(true),
+  reimbursed: z.boolean().default(false),
+  status: z.enum(["pending", "approved", "rejected", "reimbursed"]).default("pending"),
+  createdAt: z.number(),
+});
+
+export type Expense = z.infer<typeof expenseSchema>;
+
+export const timesheetSchema = z.object({
+  id: z.string(),
+  jobId: z.string().optional(),
+  technicianId: z.string().optional(),
+  date: z.string(),
+  startTime: z.string(),
+  endTime: z.string().optional(),
+  breakDuration: z.number().default(0),
+  totalHours: z.number().optional(),
+  hourlyRate: z.number().optional(),
+  overtimeHours: z.number().default(0),
+  overtimeRate: z.number().optional(),
+  description: z.string().optional(),
+  status: z.enum(["pending", "submitted", "approved", "rejected"]).default("pending"),
+  createdAt: z.number(),
+});
+
+export type Timesheet = z.infer<typeof timesheetSchema>;
