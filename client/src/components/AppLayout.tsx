@@ -39,7 +39,9 @@ import {
   MapPin,
   AlertTriangle,
   FileCheck,
-  ShieldCheck
+  ShieldCheck,
+  Copy,
+  RefreshCw
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -69,6 +71,8 @@ const operationsMenuItems = [
   { title: "Holidays", url: "/holidays", icon: Calendar },
   { title: "Equipment", url: "/equipment", icon: Wrench },
   { title: "Certifications", url: "/certifications", icon: Award },
+  { title: "Job Templates", url: "/job-templates", icon: Copy },
+  { title: "Recurring Jobs", url: "/recurring-jobs", icon: RefreshCw },
 ];
 
 const salesMenuItems = [

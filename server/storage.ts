@@ -2,7 +2,8 @@ import {
   type User, type InsertUser, type UpsertUser,
   users, projects, damperTemplates, dampers, tests, stairwellTests, testPacks, complianceChecklists, testSessions, syncQueue,
   clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
-  jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications
+  jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
+  recurringJobs, jobChecklists
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -82,6 +83,10 @@ type NewRecurringSchedule = typeof recurringSchedules.$inferInsert;
 type NewRiskAssessment = typeof riskAssessments.$inferInsert;
 type NewPerformanceMetric = typeof performanceMetrics.$inferInsert;
 type NewNotification = typeof notifications.$inferInsert;
+type DbRecurringJob = typeof recurringJobs.$inferSelect;
+type NewRecurringJob = typeof recurringJobs.$inferInsert;
+type DbJobChecklist = typeof jobChecklists.$inferSelect;
+type NewJobChecklist = typeof jobChecklists.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -1073,6 +1078,51 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNotification(id: string): Promise<boolean> {
     await db.delete(notifications).where(eq(notifications.id, id));
+    return true;
+  }
+
+  // Recurring Jobs
+  async getRecurringJobs(userId: string): Promise<DbRecurringJob[]> {
+    return db.select().from(recurringJobs).where(eq(recurringJobs.userId, userId)).orderBy(desc(recurringJobs.createdAt));
+  }
+
+  async createRecurringJob(job: NewRecurringJob): Promise<DbRecurringJob> {
+    const [newJob] = await db.insert(recurringJobs).values(job).returning();
+    return newJob;
+  }
+
+  async updateRecurringJob(id: string, job: Partial<NewRecurringJob>): Promise<DbRecurringJob | undefined> {
+    const [updated] = await db.update(recurringJobs).set({ ...job, updatedAt: new Date() }).where(eq(recurringJobs.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteRecurringJob(id: string): Promise<boolean> {
+    await db.delete(recurringJobs).where(eq(recurringJobs.id, id));
+    return true;
+  }
+
+  // Job Checklists
+  async getJobChecklists(userId: string): Promise<DbJobChecklist[]> {
+    return db.select().from(jobChecklists).where(eq(jobChecklists.userId, userId)).orderBy(desc(jobChecklists.createdAt));
+  }
+
+  async getJobChecklistByJobId(jobId: string): Promise<DbJobChecklist | undefined> {
+    const [checklist] = await db.select().from(jobChecklists).where(eq(jobChecklists.jobId, jobId));
+    return checklist || undefined;
+  }
+
+  async createJobChecklist(checklist: NewJobChecklist): Promise<DbJobChecklist> {
+    const [newChecklist] = await db.insert(jobChecklists).values(checklist).returning();
+    return newChecklist;
+  }
+
+  async updateJobChecklist(id: string, checklist: Partial<NewJobChecklist>): Promise<DbJobChecklist | undefined> {
+    const [updated] = await db.update(jobChecklists).set({ ...checklist, updatedAt: new Date() }).where(eq(jobChecklists.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteJobChecklist(id: string): Promise<boolean> {
+    await db.delete(jobChecklists).where(eq(jobChecklists.id, id));
     return true;
   }
 }

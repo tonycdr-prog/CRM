@@ -1431,3 +1431,62 @@ export const notifications = pgTable("notifications", {
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, readAt: true });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type DbNotification = typeof notifications.$inferSelect;
+
+// Recurring Jobs - scheduled repeat jobs
+export const recurringJobs = pgTable("recurring_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  templateId: varchar("template_id").references(() => jobTemplates.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  frequency: text("frequency").notNull(), // daily, weekly, monthly, quarterly, biannually, annually
+  interval: integer("interval").default(1), // e.g., every 2 weeks
+  dayOfWeek: integer("day_of_week"), // 0-6 for weekly
+  dayOfMonth: integer("day_of_month"), // 1-31 for monthly
+  monthOfYear: integer("month_of_year"), // 1-12 for annually
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"), // null = no end
+  nextDueDate: text("next_due_date"),
+  lastGeneratedDate: text("last_generated_date"),
+  siteAddress: text("site_address"),
+  assignedTechnician: text("assigned_technician"),
+  priority: text("priority").default("medium"),
+  autoCreateDays: integer("auto_create_days").default(14), // days before due to create job
+  isActive: boolean("is_active").default(true),
+  jobsGenerated: integer("jobs_generated").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRecurringJobSchema = createInsertSchema(recurringJobs).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertRecurringJob = z.infer<typeof insertRecurringJobSchema>;
+export type DbRecurringJob = typeof recurringJobs.$inferSelect;
+
+// Job Checklists - completion tracking for jobs
+export const jobChecklists = pgTable("job_checklists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  templateId: varchar("template_id").references(() => jobTemplates.id),
+  items: jsonb("items").$type<{
+    id: string;
+    description: string;
+    required: boolean;
+    completed: boolean;
+    completedAt?: string;
+    completedBy?: string;
+    notes?: string;
+    category?: string;
+  }[]>().default([]),
+  completedCount: integer("completed_count").default(0),
+  totalCount: integer("total_count").default(0),
+  status: text("status").default("pending"), // pending, in_progress, completed
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobChecklistSchema = createInsertSchema(jobChecklists).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true });
+export type InsertJobChecklist = z.infer<typeof insertJobChecklistSchema>;
+export type DbJobChecklist = typeof jobChecklists.$inferSelect;

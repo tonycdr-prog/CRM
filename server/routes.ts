@@ -1442,6 +1442,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // RECURRING JOBS ROUTES
+  // ============================================
+
+  app.get("/api/recurring-jobs/:userId", async (req, res) => {
+    try {
+      const jobs = await storage.getRecurringJobs(req.params.userId);
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch recurring jobs" });
+    }
+  });
+
+  app.post("/api/recurring-jobs", async (req, res) => {
+    try {
+      const job = await storage.createRecurringJob(req.body);
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create recurring job" });
+    }
+  });
+
+  app.patch("/api/recurring-jobs/:id", async (req, res) => {
+    try {
+      const job = await storage.updateRecurringJob(req.params.id, req.body);
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update recurring job" });
+    }
+  });
+
+  app.delete("/api/recurring-jobs/:id", async (req, res) => {
+    try {
+      await storage.deleteRecurringJob(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete recurring job" });
+    }
+  });
+
+  // ============================================
+  // JOB CHECKLISTS ROUTES
+  // ============================================
+
+  app.get("/api/job-checklists/:userId", async (req, res) => {
+    try {
+      const checklists = await storage.getJobChecklists(req.params.userId);
+      res.json(checklists);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job checklists" });
+    }
+  });
+
+  app.get("/api/job-checklists/job/:jobId", async (req, res) => {
+    try {
+      const checklist = await storage.getJobChecklistByJobId(req.params.jobId);
+      res.json(checklist || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job checklist" });
+    }
+  });
+
+  app.post("/api/job-checklists", async (req, res) => {
+    try {
+      const checklist = await storage.createJobChecklist(req.body);
+      res.json(checklist);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create job checklist" });
+    }
+  });
+
+  app.patch("/api/job-checklists/:id", async (req, res) => {
+    try {
+      const checklist = await storage.updateJobChecklist(req.params.id, req.body);
+      res.json(checklist);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update job checklist" });
+    }
+  });
+
+  app.delete("/api/job-checklists/:id", async (req, res) => {
+    try {
+      await storage.deleteJobChecklist(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete job checklist" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
