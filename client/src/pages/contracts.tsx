@@ -423,7 +423,7 @@ export default function Contracts() {
                   </TableCell>
                   <TableCell>{getClientName(contract.clientId)}</TableCell>
                   <TableCell className="hidden md:table-cell">
-                    <Badge variant="outline">{contract.contractType.replace(/_/g, " ")}</Badge>
+                    <Badge variant="outline">{(contract.contractType || "N/A").replace(/_/g, " ")}</Badge>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     {parseFloat(contract.value) > 0 && (
