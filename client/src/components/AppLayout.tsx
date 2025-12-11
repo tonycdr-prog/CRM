@@ -31,7 +31,8 @@ import {
   Bell,
   BarChart3,
   LogOut,
-  Calendar
+  Calendar,
+  TrendingUp
 } from "lucide-react";
 
 interface AppLayoutProps {
@@ -49,6 +50,7 @@ const businessMenuItems = [
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Quotes & Invoices", url: "/finance", icon: Receipt },
   { title: "Expenses", url: "/expenses", icon: DollarSign },
+  { title: "Profitability", url: "/profitability", icon: TrendingUp },
 ];
 
 const operationsMenuItems = [

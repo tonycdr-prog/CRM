@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format, parseISO } from "date-fns";
 import { nanoid } from "nanoid";
+import { Link } from "wouter";
 
 interface Job {
   id: string;
@@ -77,11 +78,16 @@ interface Job {
 interface Client {
   id: string;
   companyName: string;
+  address: string | null;
+  city: string | null;
+  postcode: string | null;
 }
 
 interface Contract {
   id: string;
+  clientId: string | null;
   title: string;
+  slaResponseTime: number | null;
 }
 
 export default function Jobs() {
@@ -90,6 +96,38 @@ export default function Jobs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [selectedContractId, setSelectedContractId] = useState<string>("");
+  const [siteAddress, setSiteAddress] = useState("");
+  const [siteCity, setSiteCity] = useState("");
+  const [sitePostcode, setSitePostcode] = useState("");
+
+  const handleClientChange = (clientId: string) => {
+    setSelectedClientId(clientId);
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      if (client.address) setSiteAddress(client.address);
+      if (client.city) setSiteCity(client.city);
+      if (client.postcode) setSitePostcode(client.postcode);
+    }
+    setSelectedContractId("");
+  };
+
+  const handleContractChange = (contractId: string) => {
+    setSelectedContractId(contractId);
+    const contract = contracts.find(c => c.id === contractId);
+    if (contract?.clientId && contract.clientId !== selectedClientId) {
+      handleClientChange(contract.clientId);
+    }
+  };
+
+  const resetFormState = () => {
+    setSelectedClientId("");
+    setSelectedContractId("");
+    setSiteAddress("");
+    setSiteCity("");
+    setSitePostcode("");
+  };
 
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
     queryKey: ["/api/jobs", user?.id],
@@ -106,6 +144,10 @@ export default function Jobs() {
     enabled: !!user?.id,
   });
 
+  const filteredContracts = selectedClientId 
+    ? contracts.filter(c => c.clientId === selectedClientId)
+    : contracts;
+
   const createJobMutation = useMutation({
     mutationFn: async (data: Partial<Job>) => {
       return apiRequest("POST", "/api/jobs", data);
@@ -113,6 +155,7 @@ export default function Jobs() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
       setIsCreateDialogOpen(false);
+      resetFormState();
       toast({ title: "Job created successfully" });
     },
     onError: () => {
@@ -246,7 +289,7 @@ export default function Jobs() {
           <h1 className="text-2xl font-bold" data-testid="text-jobs-title">Jobs</h1>
           <p className="text-muted-foreground">Manage work orders and job scheduling</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetFormState(); }}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-job">
               <Plus className="h-4 w-4 mr-2" />
@@ -273,7 +316,7 @@ export default function Jobs() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="clientId">Client</Label>
-                    <Select name="clientId">
+                    <Select name="clientId" value={selectedClientId} onValueChange={handleClientChange}>
                       <SelectTrigger data-testid="select-job-client">
                         <SelectValue placeholder="Select client" />
                       </SelectTrigger>
@@ -287,13 +330,13 @@ export default function Jobs() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contractId">Contract</Label>
-                    <Select name="contractId">
+                    <Label htmlFor="contractId">Contract {selectedClientId && filteredContracts.length > 0 && `(${filteredContracts.length})`}</Label>
+                    <Select name="contractId" value={selectedContractId} onValueChange={handleContractChange}>
                       <SelectTrigger data-testid="select-job-contract">
-                        <SelectValue placeholder="Select contract" />
+                        <SelectValue placeholder={selectedClientId && filteredContracts.length === 0 ? "No contracts for this client" : "Select contract"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {contracts.map((contract) => (
+                        {filteredContracts.map((contract) => (
                           <SelectItem key={contract.id} value={contract.id}>
                             {contract.title}
                           </SelectItem>
@@ -334,17 +377,17 @@ export default function Jobs() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="siteAddress">Site Address</Label>
-                  <Input id="siteAddress" name="siteAddress" data-testid="input-site-address" />
+                  <Label htmlFor="siteAddress">Site Address {selectedClientId && "(Auto-filled from client)"}</Label>
+                  <Input id="siteAddress" name="siteAddress" value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} data-testid="input-site-address" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="siteCity">City</Label>
-                    <Input id="siteCity" name="siteCity" data-testid="input-site-city" />
+                    <Input id="siteCity" name="siteCity" value={siteCity} onChange={(e) => setSiteCity(e.target.value)} data-testid="input-site-city" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sitePostcode">Postcode</Label>
-                    <Input id="sitePostcode" name="sitePostcode" data-testid="input-site-postcode" />
+                    <Input id="sitePostcode" name="sitePostcode" value={sitePostcode} onChange={(e) => setSitePostcode(e.target.value)} data-testid="input-site-postcode" />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -477,7 +520,7 @@ export default function Jobs() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-lg">{job.title}</CardTitle>
+                      <Link href={`/jobs/${job.id}`}><CardTitle className="text-lg hover:underline cursor-pointer" data-testid={`link-job-${job.id}`}>{job.title}</CardTitle></Link>
                       {getStatusBadge(job.status)}
                       {getPriorityBadge(job.priority)}
                     </div>

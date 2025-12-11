@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { nanoid } from "nanoid";
+import { Link } from "wouter";
 
 interface Client {
   id: string;
@@ -367,7 +368,9 @@ export default function Clients() {
               {filteredClients.map((client) => (
                 <TableRow key={client.id} data-testid={`row-client-${client.id}`}>
                   <TableCell>
-                    <div className="font-medium">{client.companyName}</div>
+                    <Link href={`/clients/${client.id}`}>
+                      <div className="font-medium hover:underline cursor-pointer" data-testid={`link-client-${client.id}`}>{client.companyName}</div>
+                    </Link>
                     {client.email && (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Mail className="h-3 w-3" />

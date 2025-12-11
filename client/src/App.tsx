@@ -17,6 +17,10 @@ import Timesheets from "@/pages/timesheets";
 import Vehicles from "@/pages/vehicles";
 import Subcontractors from "@/pages/subcontractors";
 import Holidays from "@/pages/holidays";
+import ClientDetail from "@/pages/client-detail";
+import JobDetail from "@/pages/job-detail";
+import Profitability from "@/pages/profitability";
+import Reports from "@/pages/reports";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -37,17 +41,20 @@ function AuthenticatedRoutes() {
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/test" component={AirflowTester} />
         <Route path="/clients" component={Clients} />
+        <Route path="/clients/:id" component={ClientDetail} />
         <Route path="/contracts" component={Contracts} />
         <Route path="/jobs" component={Jobs} />
+        <Route path="/jobs/:id" component={JobDetail} />
         <Route path="/finance" component={Finance} />
         <Route path="/expenses" component={Expenses} />
         <Route path="/timesheets" component={Timesheets} />
         <Route path="/vehicles" component={Vehicles} />
         <Route path="/subcontractors" component={Subcontractors} />
         <Route path="/holidays" component={Holidays} />
+        <Route path="/profitability" component={Profitability} />
+        <Route path="/reports" component={Reports} />
         <Route path="/documents">{() => <PlaceholderPage title="Documents" />}</Route>
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
-        <Route path="/reports">{() => <PlaceholderPage title="Reports" />}</Route>
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
