@@ -3,7 +3,8 @@ import {
   users, projects, damperTemplates, dampers, tests, stairwellTests, testPacks, complianceChecklists, testSessions, syncQueue,
   clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
   jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
-  recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister
+  recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister,
+  mileageClaims, workNotes, callbacks
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -99,6 +100,12 @@ type DbDefect = typeof defects.$inferSelect;
 type NewDefect = typeof defects.$inferInsert;
 type DbDocumentRegister = typeof documentRegister.$inferSelect;
 type NewDocumentRegister = typeof documentRegister.$inferInsert;
+type DbMileageClaim = typeof mileageClaims.$inferSelect;
+type NewMileageClaim = typeof mileageClaims.$inferInsert;
+type DbWorkNote = typeof workNotes.$inferSelect;
+type NewWorkNote = typeof workNotes.$inferInsert;
+type DbCallback = typeof callbacks.$inferSelect;
+type NewCallback = typeof callbacks.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -1291,6 +1298,66 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDocumentRegisterItem(id: string): Promise<boolean> {
     await db.delete(documentRegister).where(eq(documentRegister.id, id));
+    return true;
+  }
+
+  // Mileage Claims
+  async getMileageClaims(userId: string): Promise<DbMileageClaim[]> {
+    return db.select().from(mileageClaims).where(eq(mileageClaims.userId, userId)).orderBy(desc(mileageClaims.createdAt));
+  }
+
+  async createMileageClaim(claim: NewMileageClaim): Promise<DbMileageClaim> {
+    const [newClaim] = await db.insert(mileageClaims).values(claim).returning();
+    return newClaim;
+  }
+
+  async updateMileageClaim(id: string, claim: Partial<NewMileageClaim>): Promise<DbMileageClaim | undefined> {
+    const [updated] = await db.update(mileageClaims).set({ ...claim, updatedAt: new Date() }).where(eq(mileageClaims.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteMileageClaim(id: string): Promise<boolean> {
+    await db.delete(mileageClaims).where(eq(mileageClaims.id, id));
+    return true;
+  }
+
+  // Work Notes
+  async getWorkNotes(userId: string): Promise<DbWorkNote[]> {
+    return db.select().from(workNotes).where(eq(workNotes.userId, userId)).orderBy(desc(workNotes.createdAt));
+  }
+
+  async createWorkNote(note: NewWorkNote): Promise<DbWorkNote> {
+    const [newNote] = await db.insert(workNotes).values(note).returning();
+    return newNote;
+  }
+
+  async updateWorkNote(id: string, note: Partial<NewWorkNote>): Promise<DbWorkNote | undefined> {
+    const [updated] = await db.update(workNotes).set({ ...note, updatedAt: new Date() }).where(eq(workNotes.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteWorkNote(id: string): Promise<boolean> {
+    await db.delete(workNotes).where(eq(workNotes.id, id));
+    return true;
+  }
+
+  // Callbacks
+  async getCallbacks(userId: string): Promise<DbCallback[]> {
+    return db.select().from(callbacks).where(eq(callbacks.userId, userId)).orderBy(desc(callbacks.createdAt));
+  }
+
+  async createCallback(callback: NewCallback): Promise<DbCallback> {
+    const [newCallback] = await db.insert(callbacks).values(callback).returning();
+    return newCallback;
+  }
+
+  async updateCallback(id: string, callback: Partial<NewCallback>): Promise<DbCallback | undefined> {
+    const [updated] = await db.update(callbacks).set({ ...callback, updatedAt: new Date() }).where(eq(callbacks.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCallback(id: string): Promise<boolean> {
+    await db.delete(callbacks).where(eq(callbacks.id, id));
     return true;
   }
 }

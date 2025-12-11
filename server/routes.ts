@@ -1771,6 +1771,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // MILEAGE CLAIMS ROUTES
+  // ============================================
+
+  app.get("/api/mileage-claims/:userId", async (req, res) => {
+    try {
+      const claims = await storage.getMileageClaims(req.params.userId);
+      res.json(claims);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch mileage claims" });
+    }
+  });
+
+  app.post("/api/mileage-claims", async (req, res) => {
+    try {
+      const claim = await storage.createMileageClaim(req.body);
+      res.json(claim);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create mileage claim" });
+    }
+  });
+
+  app.patch("/api/mileage-claims/:id", async (req, res) => {
+    try {
+      const claim = await storage.updateMileageClaim(req.params.id, req.body);
+      res.json(claim);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update mileage claim" });
+    }
+  });
+
+  app.delete("/api/mileage-claims/:id", async (req, res) => {
+    try {
+      await storage.deleteMileageClaim(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete mileage claim" });
+    }
+  });
+
+  // ============================================
+  // WORK NOTES ROUTES
+  // ============================================
+
+  app.get("/api/work-notes/:userId", async (req, res) => {
+    try {
+      const notes = await storage.getWorkNotes(req.params.userId);
+      res.json(notes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch work notes" });
+    }
+  });
+
+  app.post("/api/work-notes", async (req, res) => {
+    try {
+      const note = await storage.createWorkNote(req.body);
+      res.json(note);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create work note" });
+    }
+  });
+
+  app.patch("/api/work-notes/:id", async (req, res) => {
+    try {
+      const note = await storage.updateWorkNote(req.params.id, req.body);
+      res.json(note);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update work note" });
+    }
+  });
+
+  app.delete("/api/work-notes/:id", async (req, res) => {
+    try {
+      await storage.deleteWorkNote(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete work note" });
+    }
+  });
+
+  // ============================================
+  // CALLBACKS ROUTES
+  // ============================================
+
+  app.get("/api/callbacks/:userId", async (req, res) => {
+    try {
+      const callbacks = await storage.getCallbacks(req.params.userId);
+      res.json(callbacks);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch callbacks" });
+    }
+  });
+
+  app.post("/api/callbacks", async (req, res) => {
+    try {
+      const callback = await storage.createCallback(req.body);
+      res.json(callback);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create callback" });
+    }
+  });
+
+  app.patch("/api/callbacks/:id", async (req, res) => {
+    try {
+      const callback = await storage.updateCallback(req.params.id, req.body);
+      res.json(callback);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update callback" });
+    }
+  });
+
+  app.delete("/api/callbacks/:id", async (req, res) => {
+    try {
+      await storage.deleteCallback(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete callback" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
