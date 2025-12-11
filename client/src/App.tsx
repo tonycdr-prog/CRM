@@ -4,11 +4,55 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { AppLayout } from "@/components/AppLayout";
 import AirflowTester from "@/pages/airflow-tester";
 import Dashboard from "@/pages/dashboard";
 import Landing from "@/pages/landing";
+import Clients from "@/pages/clients";
+import Contracts from "@/pages/contracts";
+import Jobs from "@/pages/jobs";
+import Finance from "@/pages/finance";
+import Expenses from "@/pages/expenses";
+import Timesheets from "@/pages/timesheets";
+import Vehicles from "@/pages/vehicles";
+import Subcontractors from "@/pages/subcontractors";
+import Holidays from "@/pages/holidays";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
+
+function PlaceholderPage({ title }: { title: string }) {
+  return (
+    <div className="container mx-auto p-4 md:p-6">
+      <h1 className="text-2xl font-bold mb-4">{title}</h1>
+      <p className="text-muted-foreground">This page is under development.</p>
+    </div>
+  );
+}
+
+function AuthenticatedRoutes() {
+  return (
+    <AppLayout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/test" component={AirflowTester} />
+        <Route path="/clients" component={Clients} />
+        <Route path="/contracts" component={Contracts} />
+        <Route path="/jobs" component={Jobs} />
+        <Route path="/finance" component={Finance} />
+        <Route path="/expenses" component={Expenses} />
+        <Route path="/timesheets" component={Timesheets} />
+        <Route path="/vehicles" component={Vehicles} />
+        <Route path="/subcontractors" component={Subcontractors} />
+        <Route path="/holidays" component={Holidays} />
+        <Route path="/documents">{() => <PlaceholderPage title="Documents" />}</Route>
+        <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
+        <Route path="/reports">{() => <PlaceholderPage title="Reports" />}</Route>
+        <Route component={NotFound} />
+      </Switch>
+    </AppLayout>
+  );
+}
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -21,20 +65,16 @@ function Router() {
     );
   }
 
-  return (
-    <Switch>
-      {!isAuthenticated ? (
+  if (!isAuthenticated) {
+    return (
+      <Switch>
         <Route path="/" component={Landing} />
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/test" component={AirflowTester} />
-          <Route path="/dashboard" component={Dashboard} />
-        </>
-      )}
-      <Route component={NotFound} />
-    </Switch>
-  );
+        <Route component={Landing} />
+      </Switch>
+    );
+  }
+
+  return <AuthenticatedRoutes />;
 }
 
 function App() {

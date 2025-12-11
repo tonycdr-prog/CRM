@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 import type { User } from "@shared/schema";
 
 export function useAuth() {
@@ -7,9 +8,14 @@ export function useAuth() {
     retry: false,
   });
 
+  const logout = useCallback(() => {
+    window.location.href = "/api/logout";
+  }, []);
+
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
+    logout,
   };
 }

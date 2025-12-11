@@ -45,6 +45,21 @@ The frontend is a single-page application built with **React 18+** and **TypeScr
 -   **Offline Delta Sync**: Change queue system that tracks modifications while offline and syncs to server when connectivity returns. SyncIndicator component shows sync status, pending changes, and last sync time.
 -   **Predictive Maintenance**: Trend analysis across damper test history to identify declining performance. Uses linear regression on velocity trends to flag dampers requiring attention before failures occur.
 
+### Business Management Platform
+
+The application includes a comprehensive business management layer for smoke control service companies:
+
+-   **Client Management**: Full CRM with company and contact details, communication logs, status tracking.
+-   **Contract Management**: Service agreements, SLA tracking, auto-renewal alerts, contract value tracking.
+-   **Job Scheduling**: Work order management with scheduling, priority levels, site details, and job status workflow.
+-   **Quotes & Invoices**: Financial document management with VAT calculations, status tracking, overdue alerts.
+-   **Expense Tracking**: Site costs, mileage claims (with HMRC rate), materials, and category-based filtering.
+-   **Timesheets**: Working hours tracking with job assignment, hourly rates, and weekly summaries.
+-   **Vehicle Fleet**: Fleet management with MOT/tax/insurance expiry tracking and maintenance schedules.
+-   **Subcontractor Network**: Approved subcontractor database with insurance/accreditation expiry alerts.
+-   **Holiday Management**: Leave requests with approval workflow and annual allowance tracking.
+-   **Sidebar Navigation**: Organised navigation with Testing, Business, and Operations sections.
+
 ### Backend
 
 The backend is an **Express.js** application with **TypeScript**. It follows a **RESTful API** design, with routes defined in `server/routes.ts`. It uses `tsx` for development and `esbuild` for production bundling. The data layer uses the **DatabaseStorage** class implementing the `IStorage` interface with **Drizzle ORM** for PostgreSQL database access.
