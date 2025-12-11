@@ -44,6 +44,9 @@ import Callbacks from "@/pages/callbacks";
 import SiteAccessNotesPage from "@/pages/site-access-notes";
 import StaffDirectory from "@/pages/staff-directory";
 import PriceLists from "@/pages/price-lists";
+import CustomerFeedback from "@/pages/customer-feedback";
+import SLAs from "@/pages/slas";
+import PartsCatalog from "@/pages/parts-catalog";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -99,6 +102,9 @@ function AuthenticatedRoutes() {
         <Route path="/site-access-notes" component={SiteAccessNotesPage} />
         <Route path="/staff-directory" component={StaffDirectory} />
         <Route path="/price-lists" component={PriceLists} />
+        <Route path="/customer-feedback" component={CustomerFeedback} />
+        <Route path="/slas" component={SLAs} />
+        <Route path="/parts-catalog" component={PartsCatalog} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>

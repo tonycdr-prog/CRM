@@ -1837,3 +1837,105 @@ export const priceLists = pgTable("price_lists", {
 export const insertPriceListSchema = createInsertSchema(priceLists).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertPriceList = z.infer<typeof insertPriceListSchema>;
 export type DbPriceList = typeof priceLists.$inferSelect;
+
+// Phase 7: Customer Feedback
+export const customerFeedback = pgTable("customer_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  feedbackDate: text("feedback_date").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  category: text("category").default("general"), // general, quality, timeliness, communication, value
+  feedbackType: text("feedback_type").default("positive"), // positive, negative, neutral, suggestion
+  summary: text("summary").notNull(),
+  details: text("details"),
+  actionTaken: text("action_taken"),
+  followUpRequired: boolean("follow_up_required").default(false),
+  followUpDate: text("follow_up_date"),
+  followUpNotes: text("follow_up_notes"),
+  resolvedDate: text("resolved_date"),
+  staffMember: text("staff_member"),
+  source: text("source").default("direct"), // direct, email, phone, survey, online
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
+export type DbCustomerFeedback = typeof customerFeedback.$inferSelect;
+
+// Phase 7: Service Level Agreements
+export const serviceLevelAgreements = pgTable("service_level_agreements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  contractId: varchar("contract_id").references(() => contracts.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  priority: text("priority").default("standard"), // emergency, urgent, standard, low
+  responseTimeHours: integer("response_time_hours").notNull(),
+  resolutionTimeHours: integer("resolution_time_hours"),
+  escalationLevel1Hours: integer("escalation_level1_hours"),
+  escalationLevel1Contact: text("escalation_level1_contact"),
+  escalationLevel2Hours: integer("escalation_level2_hours"),
+  escalationLevel2Contact: text("escalation_level2_contact"),
+  escalationLevel3Hours: integer("escalation_level3_hours"),
+  escalationLevel3Contact: text("escalation_level3_contact"),
+  serviceHours: text("service_hours").default("business"), // 24x7, business, extended
+  businessHoursStart: text("business_hours_start"),
+  businessHoursEnd: text("business_hours_end"),
+  excludeWeekends: boolean("exclude_weekends").default(true),
+  excludeHolidays: boolean("exclude_holidays").default(true),
+  penaltyClause: text("penalty_clause"),
+  penaltyAmount: real("penalty_amount"),
+  isActive: boolean("is_active").default(true),
+  effectiveFrom: text("effective_from"),
+  effectiveTo: text("effective_to"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSLASchema = createInsertSchema(serviceLevelAgreements).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSLA = z.infer<typeof insertSLASchema>;
+export type DbSLA = typeof serviceLevelAgreements.$inferSelect;
+
+// Phase 7: Parts Catalog
+export const partsCatalog = pgTable("parts_catalog", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  partNumber: text("part_number").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").default("general"), // damper, motor, sensor, actuator, control, fastener, seal, general
+  manufacturer: text("manufacturer"),
+  modelNumber: text("model_number"),
+  unitOfMeasure: text("unit_of_measure").default("each"), // each, box, pack, meter, kg
+  costPrice: real("cost_price").notNull(),
+  sellPrice: real("sell_price"),
+  markupPercent: real("markup_percent"),
+  stockQuantity: integer("stock_quantity").default(0),
+  minimumStock: integer("minimum_stock").default(0),
+  reorderQuantity: integer("reorder_quantity"),
+  leadTimeDays: integer("lead_time_days"),
+  location: text("location"), // warehouse location
+  barcode: text("barcode"),
+  weight: real("weight"),
+  dimensions: text("dimensions"),
+  compatibleWith: text("compatible_with"),
+  alternativeParts: text("alternative_parts"),
+  warrantyMonths: integer("warranty_months"),
+  isActive: boolean("is_active").default(true),
+  lastOrderDate: text("last_order_date"),
+  lastPriceUpdate: text("last_price_update"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPartsCatalogSchema = createInsertSchema(partsCatalog).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPartsCatalog = z.infer<typeof insertPartsCatalogSchema>;
+export type DbPartsCatalog = typeof partsCatalog.$inferSelect;

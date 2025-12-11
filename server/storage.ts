@@ -4,7 +4,8 @@ import {
   clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
   jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
   recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister,
-  mileageClaims, workNotes, callbacks, staffDirectory, priceLists
+  mileageClaims, workNotes, callbacks, staffDirectory, priceLists,
+  customerFeedback, serviceLevelAgreements, partsCatalog
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -110,6 +111,12 @@ type DbStaffMember = typeof staffDirectory.$inferSelect;
 type NewStaffMember = typeof staffDirectory.$inferInsert;
 type DbPriceList = typeof priceLists.$inferSelect;
 type NewPriceList = typeof priceLists.$inferInsert;
+type DbCustomerFeedback = typeof customerFeedback.$inferSelect;
+type NewCustomerFeedback = typeof customerFeedback.$inferInsert;
+type DbSLA = typeof serviceLevelAgreements.$inferSelect;
+type NewSLA = typeof serviceLevelAgreements.$inferInsert;
+type DbPartsCatalog = typeof partsCatalog.$inferSelect;
+type NewPartsCatalog = typeof partsCatalog.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -362,6 +369,24 @@ export interface IStorage {
   createDocumentRegisterItem(doc: NewDocumentRegister): Promise<DbDocumentRegister>;
   updateDocumentRegisterItem(id: string, doc: Partial<NewDocumentRegister>): Promise<DbDocumentRegister | undefined>;
   deleteDocumentRegisterItem(id: string): Promise<boolean>;
+  
+  // Customer Feedback
+  getCustomerFeedback(userId: string): Promise<DbCustomerFeedback[]>;
+  createCustomerFeedback(feedback: NewCustomerFeedback): Promise<DbCustomerFeedback>;
+  updateCustomerFeedback(id: string, feedback: Partial<NewCustomerFeedback>): Promise<DbCustomerFeedback | undefined>;
+  deleteCustomerFeedback(id: string): Promise<boolean>;
+  
+  // Service Level Agreements
+  getSLAs(userId: string): Promise<DbSLA[]>;
+  createSLA(sla: NewSLA): Promise<DbSLA>;
+  updateSLA(id: string, sla: Partial<NewSLA>): Promise<DbSLA | undefined>;
+  deleteSLA(id: string): Promise<boolean>;
+  
+  // Parts Catalog
+  getPartsCatalog(userId: string): Promise<DbPartsCatalog[]>;
+  createPart(part: NewPartsCatalog): Promise<DbPartsCatalog>;
+  updatePart(id: string, part: Partial<NewPartsCatalog>): Promise<DbPartsCatalog | undefined>;
+  deletePart(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1402,6 +1427,66 @@ export class DatabaseStorage implements IStorage {
 
   async deletePriceList(id: string): Promise<boolean> {
     await db.delete(priceLists).where(eq(priceLists.id, id));
+    return true;
+  }
+
+  // Customer Feedback
+  async getCustomerFeedback(userId: string): Promise<DbCustomerFeedback[]> {
+    return db.select().from(customerFeedback).where(eq(customerFeedback.userId, userId)).orderBy(desc(customerFeedback.createdAt));
+  }
+
+  async createCustomerFeedback(feedback: NewCustomerFeedback): Promise<DbCustomerFeedback> {
+    const [newItem] = await db.insert(customerFeedback).values(feedback).returning();
+    return newItem;
+  }
+
+  async updateCustomerFeedback(id: string, feedback: Partial<NewCustomerFeedback>): Promise<DbCustomerFeedback | undefined> {
+    const [updated] = await db.update(customerFeedback).set({ ...feedback, updatedAt: new Date() }).where(eq(customerFeedback.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCustomerFeedback(id: string): Promise<boolean> {
+    await db.delete(customerFeedback).where(eq(customerFeedback.id, id));
+    return true;
+  }
+
+  // Service Level Agreements
+  async getSLAs(userId: string): Promise<DbSLA[]> {
+    return db.select().from(serviceLevelAgreements).where(eq(serviceLevelAgreements.userId, userId)).orderBy(desc(serviceLevelAgreements.createdAt));
+  }
+
+  async createSLA(sla: NewSLA): Promise<DbSLA> {
+    const [newItem] = await db.insert(serviceLevelAgreements).values(sla).returning();
+    return newItem;
+  }
+
+  async updateSLA(id: string, sla: Partial<NewSLA>): Promise<DbSLA | undefined> {
+    const [updated] = await db.update(serviceLevelAgreements).set({ ...sla, updatedAt: new Date() }).where(eq(serviceLevelAgreements.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteSLA(id: string): Promise<boolean> {
+    await db.delete(serviceLevelAgreements).where(eq(serviceLevelAgreements.id, id));
+    return true;
+  }
+
+  // Parts Catalog
+  async getPartsCatalog(userId: string): Promise<DbPartsCatalog[]> {
+    return db.select().from(partsCatalog).where(eq(partsCatalog.userId, userId)).orderBy(desc(partsCatalog.createdAt));
+  }
+
+  async createPart(part: NewPartsCatalog): Promise<DbPartsCatalog> {
+    const [newItem] = await db.insert(partsCatalog).values(part).returning();
+    return newItem;
+  }
+
+  async updatePart(id: string, part: Partial<NewPartsCatalog>): Promise<DbPartsCatalog | undefined> {
+    const [updated] = await db.update(partsCatalog).set({ ...part, updatedAt: new Date() }).where(eq(partsCatalog.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deletePart(id: string): Promise<boolean> {
+    await db.delete(partsCatalog).where(eq(partsCatalog.id, id));
     return true;
   }
 }

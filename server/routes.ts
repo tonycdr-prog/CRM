@@ -1971,6 +1971,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Customer Feedback routes
+  app.get("/api/customer-feedback/:userId", async (req, res) => {
+    try {
+      const items = await storage.getCustomerFeedback(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch customer feedback" });
+    }
+  });
+
+  app.post("/api/customer-feedback", async (req, res) => {
+    try {
+      const item = await storage.createCustomerFeedback(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create customer feedback" });
+    }
+  });
+
+  app.patch("/api/customer-feedback/:id", async (req, res) => {
+    try {
+      const item = await storage.updateCustomerFeedback(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update customer feedback" });
+    }
+  });
+
+  app.delete("/api/customer-feedback/:id", async (req, res) => {
+    try {
+      await storage.deleteCustomerFeedback(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete customer feedback" });
+    }
+  });
+
+  // SLA routes
+  app.get("/api/slas/:userId", async (req, res) => {
+    try {
+      const items = await storage.getSLAs(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch SLAs" });
+    }
+  });
+
+  app.post("/api/slas", async (req, res) => {
+    try {
+      const item = await storage.createSLA(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create SLA" });
+    }
+  });
+
+  app.patch("/api/slas/:id", async (req, res) => {
+    try {
+      const item = await storage.updateSLA(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update SLA" });
+    }
+  });
+
+  app.delete("/api/slas/:id", async (req, res) => {
+    try {
+      await storage.deleteSLA(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete SLA" });
+    }
+  });
+
+  // Parts Catalog routes
+  app.get("/api/parts-catalog/:userId", async (req, res) => {
+    try {
+      const items = await storage.getPartsCatalog(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch parts catalog" });
+    }
+  });
+
+  app.post("/api/parts-catalog", async (req, res) => {
+    try {
+      const item = await storage.createPart(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create part" });
+    }
+  });
+
+  app.patch("/api/parts-catalog/:id", async (req, res) => {
+    try {
+      const item = await storage.updatePart(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update part" });
+    }
+  });
+
+  app.delete("/api/parts-catalog/:id", async (req, res) => {
+    try {
+      await storage.deletePart(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete part" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

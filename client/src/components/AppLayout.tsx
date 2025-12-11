@@ -52,7 +52,9 @@ import {
   PhoneCall,
   MapPinned,
   UsersRound,
-  Tags
+  Tags,
+  MessageSquareText,
+  Cog
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -77,6 +79,8 @@ const businessMenuItems = [
   { title: "Suppliers", url: "/suppliers", icon: Building2 },
   { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
   { title: "Callbacks", url: "/callbacks", icon: PhoneCall },
+  { title: "Customer Feedback", url: "/customer-feedback", icon: MessageSquareText },
+  { title: "SLAs", url: "/slas", icon: ShieldCheck },
 ];
 
 const operationsMenuItems = [
@@ -89,6 +93,7 @@ const operationsMenuItems = [
   { title: "Certifications", url: "/certifications", icon: Award },
   { title: "Training Records", url: "/training-records", icon: GraduationCap },
   { title: "Inventory", url: "/inventory", icon: Boxes },
+  { title: "Parts Catalog", url: "/parts-catalog", icon: Cog },
   { title: "Work Notes", url: "/work-notes", icon: StickyNote },
   { title: "Site Access Notes", url: "/site-access-notes", icon: MapPinned },
   { title: "Job Templates", url: "/job-templates", icon: Copy },
