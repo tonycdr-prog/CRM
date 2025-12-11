@@ -1682,3 +1682,91 @@ export const documentRegister = pgTable("document_register", {
 export const insertDocumentRegisterSchema = createInsertSchema(documentRegister).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertDocumentRegister = z.infer<typeof insertDocumentRegisterSchema>;
 export type DbDocumentRegister = typeof documentRegister.$inferSelect;
+
+// Mileage Claims - HMRC compliant mileage tracking
+export const mileageClaims = pgTable("mileage_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id),
+  claimDate: text("claim_date").notNull(),
+  startLocation: text("start_location").notNull(),
+  endLocation: text("end_location").notNull(),
+  purpose: text("purpose"),
+  distanceMiles: real("distance_miles").notNull(),
+  ratePerMile: real("rate_per_mile").default(0.45), // HMRC approved rate
+  totalAmount: real("total_amount"),
+  isBusinessMiles: boolean("is_business_miles").default(true),
+  vehicleType: text("vehicle_type").default("car"), // car, motorcycle, bicycle
+  passengerCount: integer("passenger_count").default(0),
+  passengerRate: real("passenger_rate").default(0.05), // extra per passenger per mile
+  status: text("status").default("pending"), // pending, approved, rejected, paid
+  approvedBy: text("approved_by"),
+  approvedDate: text("approved_date"),
+  paidDate: text("paid_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMileageClaimSchema = createInsertSchema(mileageClaims).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertMileageClaim = z.infer<typeof insertMileageClaimSchema>;
+export type DbMileageClaim = typeof mileageClaims.$inferSelect;
+
+// Work Notes - Job-related communication log
+export const workNotes = pgTable("work_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  noteDate: text("note_date").notNull(),
+  noteType: text("note_type").default("general"), // general, site_visit, phone_call, email, meeting, issue
+  subject: text("subject"),
+  content: text("content").notNull(),
+  authorName: text("author_name"),
+  contactPerson: text("contact_person"),
+  isInternal: boolean("is_internal").default(false),
+  priority: text("priority").default("normal"), // low, normal, high, urgent
+  followUpRequired: boolean("follow_up_required").default(false),
+  followUpDate: text("follow_up_date"),
+  followUpCompleted: boolean("follow_up_completed").default(false),
+  attachments: jsonb("attachments").$type<{
+    name: string;
+    url: string;
+  }[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWorkNoteSchema = createInsertSchema(workNotes).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertWorkNote = z.infer<typeof insertWorkNoteSchema>;
+export type DbWorkNote = typeof workNotes.$inferSelect;
+
+// Callbacks - Customer follow-up tracking
+export const callbacks = pgTable("callbacks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  contactName: text("contact_name").notNull(),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  reason: text("reason").notNull(),
+  category: text("category").default("general"), // general, quote_request, complaint, warranty, booking, emergency
+  priority: text("priority").default("normal"), // low, normal, high, urgent
+  requestedDate: text("requested_date").notNull(),
+  preferredTime: text("preferred_time"),
+  assignedTo: text("assigned_to"),
+  status: text("status").default("pending"), // pending, attempted, completed, cancelled, escalated
+  attemptCount: integer("attempt_count").default(0),
+  lastAttemptDate: text("last_attempt_date"),
+  completedDate: text("completed_date"),
+  outcome: text("outcome"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCallbackSchema = createInsertSchema(callbacks).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCallback = z.infer<typeof insertCallbackSchema>;
+export type DbCallback = typeof callbacks.$inferSelect;
