@@ -3,7 +3,7 @@ import {
   users, projects, damperTemplates, dampers, tests, stairwellTests, testPacks, complianceChecklists, testSessions, syncQueue,
   clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
   jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
-  recurringJobs, jobChecklists
+  recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -87,6 +87,12 @@ type DbRecurringJob = typeof recurringJobs.$inferSelect;
 type NewRecurringJob = typeof recurringJobs.$inferInsert;
 type DbJobChecklist = typeof jobChecklists.$inferSelect;
 type NewJobChecklist = typeof jobChecklists.$inferInsert;
+type DbSupplier = typeof suppliers.$inferSelect;
+type NewSupplier = typeof suppliers.$inferInsert;
+type DbPurchaseOrder = typeof purchaseOrders.$inferSelect;
+type NewPurchaseOrder = typeof purchaseOrders.$inferInsert;
+type DbTrainingRecord = typeof trainingRecords.$inferSelect;
+type NewTrainingRecord = typeof trainingRecords.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -303,6 +309,24 @@ export interface IStorage {
   createNotification(notification: NewNotification): Promise<DbNotification>;
   updateNotification(id: string, notification: Partial<NewNotification>): Promise<DbNotification | undefined>;
   deleteNotification(id: string): Promise<boolean>;
+  
+  // Suppliers
+  getSuppliers(userId: string): Promise<DbSupplier[]>;
+  createSupplier(supplier: NewSupplier): Promise<DbSupplier>;
+  updateSupplier(id: string, supplier: Partial<NewSupplier>): Promise<DbSupplier | undefined>;
+  deleteSupplier(id: string): Promise<boolean>;
+  
+  // Purchase Orders
+  getPurchaseOrders(userId: string): Promise<DbPurchaseOrder[]>;
+  createPurchaseOrder(po: NewPurchaseOrder): Promise<DbPurchaseOrder>;
+  updatePurchaseOrder(id: string, po: Partial<NewPurchaseOrder>): Promise<DbPurchaseOrder | undefined>;
+  deletePurchaseOrder(id: string): Promise<boolean>;
+  
+  // Training Records
+  getTrainingRecords(userId: string): Promise<DbTrainingRecord[]>;
+  createTrainingRecord(record: NewTrainingRecord): Promise<DbTrainingRecord>;
+  updateTrainingRecord(id: string, record: Partial<NewTrainingRecord>): Promise<DbTrainingRecord | undefined>;
+  deleteTrainingRecord(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1123,6 +1147,66 @@ export class DatabaseStorage implements IStorage {
 
   async deleteJobChecklist(id: string): Promise<boolean> {
     await db.delete(jobChecklists).where(eq(jobChecklists.id, id));
+    return true;
+  }
+
+  // Suppliers
+  async getSuppliers(userId: string): Promise<DbSupplier[]> {
+    return db.select().from(suppliers).where(eq(suppliers.userId, userId)).orderBy(desc(suppliers.createdAt));
+  }
+
+  async createSupplier(supplier: NewSupplier): Promise<DbSupplier> {
+    const [newSupplier] = await db.insert(suppliers).values(supplier).returning();
+    return newSupplier;
+  }
+
+  async updateSupplier(id: string, supplier: Partial<NewSupplier>): Promise<DbSupplier | undefined> {
+    const [updated] = await db.update(suppliers).set({ ...supplier, updatedAt: new Date() }).where(eq(suppliers.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteSupplier(id: string): Promise<boolean> {
+    await db.delete(suppliers).where(eq(suppliers.id, id));
+    return true;
+  }
+
+  // Purchase Orders
+  async getPurchaseOrders(userId: string): Promise<DbPurchaseOrder[]> {
+    return db.select().from(purchaseOrders).where(eq(purchaseOrders.userId, userId)).orderBy(desc(purchaseOrders.createdAt));
+  }
+
+  async createPurchaseOrder(po: NewPurchaseOrder): Promise<DbPurchaseOrder> {
+    const [newPO] = await db.insert(purchaseOrders).values(po).returning();
+    return newPO;
+  }
+
+  async updatePurchaseOrder(id: string, po: Partial<NewPurchaseOrder>): Promise<DbPurchaseOrder | undefined> {
+    const [updated] = await db.update(purchaseOrders).set({ ...po, updatedAt: new Date() }).where(eq(purchaseOrders.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deletePurchaseOrder(id: string): Promise<boolean> {
+    await db.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
+    return true;
+  }
+
+  // Training Records
+  async getTrainingRecords(userId: string): Promise<DbTrainingRecord[]> {
+    return db.select().from(trainingRecords).where(eq(trainingRecords.userId, userId)).orderBy(desc(trainingRecords.createdAt));
+  }
+
+  async createTrainingRecord(record: NewTrainingRecord): Promise<DbTrainingRecord> {
+    const [newRecord] = await db.insert(trainingRecords).values(record).returning();
+    return newRecord;
+  }
+
+  async updateTrainingRecord(id: string, record: Partial<NewTrainingRecord>): Promise<DbTrainingRecord | undefined> {
+    const [updated] = await db.update(trainingRecords).set({ ...record, updatedAt: new Date() }).where(eq(trainingRecords.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteTrainingRecord(id: string): Promise<boolean> {
+    await db.delete(trainingRecords).where(eq(trainingRecords.id, id));
     return true;
   }
 }

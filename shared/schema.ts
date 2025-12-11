@@ -1490,3 +1490,99 @@ export const jobChecklists = pgTable("job_checklists", {
 export const insertJobChecklistSchema = createInsertSchema(jobChecklists).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true });
 export type InsertJobChecklist = z.infer<typeof insertJobChecklistSchema>;
 export type DbJobChecklist = typeof jobChecklists.$inferSelect;
+
+// Suppliers/Vendors
+export const suppliers = pgTable("suppliers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  postcode: text("postcode"),
+  website: text("website"),
+  category: text("category"), // parts, equipment, services, consumables
+  accountNumber: text("account_number"),
+  paymentTerms: text("payment_terms"), // net30, net60, cod
+  taxId: text("tax_id"),
+  rating: integer("rating"), // 1-5 stars
+  notes: text("notes"),
+  isPreferred: boolean("is_preferred").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type DbSupplier = typeof suppliers.$inferSelect;
+
+// Purchase Orders
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  poNumber: text("po_number").notNull(),
+  orderDate: text("order_date").notNull(),
+  expectedDeliveryDate: text("expected_delivery_date"),
+  actualDeliveryDate: text("actual_delivery_date"),
+  status: text("status").default("draft"), // draft, sent, confirmed, partially_received, received, cancelled
+  items: jsonb("items").$type<{
+    id: string;
+    description: string;
+    partNumber?: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    received?: number;
+  }[]>().default([]),
+  subtotal: real("subtotal").default(0),
+  vatRate: real("vat_rate").default(20),
+  vatAmount: real("vat_amount").default(0),
+  totalAmount: real("total_amount").default(0),
+  shippingAddress: text("shipping_address"),
+  notes: text("notes"),
+  internalNotes: text("internal_notes"),
+  jobId: varchar("job_id").references(() => jobs.id),
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({ id: true, createdAt: true, updatedAt: true, approvedAt: true });
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
+export type DbPurchaseOrder = typeof purchaseOrders.$inferSelect;
+
+// Training Records
+export const trainingRecords = pgTable("training_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  employeeName: text("employee_name").notNull(),
+  employeeId: text("employee_id"),
+  courseName: text("course_name").notNull(),
+  courseType: text("course_type"), // internal, external, online, practical
+  provider: text("provider"),
+  completedDate: text("completed_date"),
+  expiryDate: text("expiry_date"),
+  certificateNumber: text("certificate_number"),
+  status: text("status").default("scheduled"), // scheduled, in_progress, completed, expired, failed
+  score: real("score"),
+  passingScore: real("passing_score"),
+  duration: text("duration"), // hours
+  cost: real("cost"),
+  reimbursed: boolean("reimbursed").default(false),
+  notes: text("notes"),
+  attachments: jsonb("attachments").$type<{
+    name: string;
+    url: string;
+    type: string;
+  }[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTrainingRecordSchema = createInsertSchema(trainingRecords).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTrainingRecord = z.infer<typeof insertTrainingRecordSchema>;
+export type DbTrainingRecord = typeof trainingRecords.$inferSelect;

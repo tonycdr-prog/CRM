@@ -32,6 +32,9 @@ import RiskAssessments from "@/pages/risk-assessments";
 import JobTemplates from "@/pages/job-templates";
 import RecurringJobs from "@/pages/recurring-jobs";
 import NotificationsPage from "@/pages/notifications";
+import Suppliers from "@/pages/suppliers";
+import PurchaseOrders from "@/pages/purchase-orders";
+import TrainingRecords from "@/pages/training-records";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -75,6 +78,9 @@ function AuthenticatedRoutes() {
         <Route path="/job-templates" component={JobTemplates} />
         <Route path="/recurring-jobs" component={RecurringJobs} />
         <Route path="/notifications" component={NotificationsPage} />
+        <Route path="/suppliers" component={Suppliers} />
+        <Route path="/purchase-orders" component={PurchaseOrders} />
+        <Route path="/training-records" component={TrainingRecords} />
         <Route path="/documents">{() => <PlaceholderPage title="Documents" />}</Route>
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />

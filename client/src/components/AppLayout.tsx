@@ -41,7 +41,10 @@ import {
   FileCheck,
   ShieldCheck,
   Copy,
-  RefreshCw
+  RefreshCw,
+  Building2,
+  ShoppingCart,
+  GraduationCap
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -62,6 +65,8 @@ const businessMenuItems = [
   { title: "Quotes & Invoices", url: "/finance", icon: Receipt },
   { title: "Expenses", url: "/expenses", icon: DollarSign },
   { title: "Profitability", url: "/profitability", icon: TrendingUp },
+  { title: "Suppliers", url: "/suppliers", icon: Building2 },
+  { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
 ];
 
 const operationsMenuItems = [
@@ -71,6 +76,7 @@ const operationsMenuItems = [
   { title: "Holidays", url: "/holidays", icon: Calendar },
   { title: "Equipment", url: "/equipment", icon: Wrench },
   { title: "Certifications", url: "/certifications", icon: Award },
+  { title: "Training Records", url: "/training-records", icon: GraduationCap },
   { title: "Job Templates", url: "/job-templates", icon: Copy },
   { title: "Recurring Jobs", url: "/recurring-jobs", icon: RefreshCw },
 ];

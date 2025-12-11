@@ -1531,6 +1531,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // SUPPLIERS ROUTES
+  // ============================================
+
+  app.get("/api/suppliers/:userId", async (req, res) => {
+    try {
+      const suppliersList = await storage.getSuppliers(req.params.userId);
+      res.json(suppliersList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch suppliers" });
+    }
+  });
+
+  app.post("/api/suppliers", async (req, res) => {
+    try {
+      const supplier = await storage.createSupplier(req.body);
+      res.json(supplier);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create supplier" });
+    }
+  });
+
+  app.patch("/api/suppliers/:id", async (req, res) => {
+    try {
+      const supplier = await storage.updateSupplier(req.params.id, req.body);
+      res.json(supplier);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update supplier" });
+    }
+  });
+
+  app.delete("/api/suppliers/:id", async (req, res) => {
+    try {
+      await storage.deleteSupplier(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete supplier" });
+    }
+  });
+
+  // ============================================
+  // PURCHASE ORDERS ROUTES
+  // ============================================
+
+  app.get("/api/purchase-orders/:userId", async (req, res) => {
+    try {
+      const orders = await storage.getPurchaseOrders(req.params.userId);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch purchase orders" });
+    }
+  });
+
+  app.post("/api/purchase-orders", async (req, res) => {
+    try {
+      const order = await storage.createPurchaseOrder(req.body);
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create purchase order" });
+    }
+  });
+
+  app.patch("/api/purchase-orders/:id", async (req, res) => {
+    try {
+      const order = await storage.updatePurchaseOrder(req.params.id, req.body);
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update purchase order" });
+    }
+  });
+
+  app.delete("/api/purchase-orders/:id", async (req, res) => {
+    try {
+      await storage.deletePurchaseOrder(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete purchase order" });
+    }
+  });
+
+  // ============================================
+  // TRAINING RECORDS ROUTES
+  // ============================================
+
+  app.get("/api/training-records/:userId", async (req, res) => {
+    try {
+      const records = await storage.getTrainingRecords(req.params.userId);
+      res.json(records);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch training records" });
+    }
+  });
+
+  app.post("/api/training-records", async (req, res) => {
+    try {
+      const record = await storage.createTrainingRecord(req.body);
+      res.json(record);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create training record" });
+    }
+  });
+
+  app.patch("/api/training-records/:id", async (req, res) => {
+    try {
+      const record = await storage.updateTrainingRecord(req.params.id, req.body);
+      res.json(record);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update training record" });
+    }
+  });
+
+  app.delete("/api/training-records/:id", async (req, res) => {
+    try {
+      await storage.deleteTrainingRecord(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete training record" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
