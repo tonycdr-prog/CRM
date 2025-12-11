@@ -88,6 +88,7 @@ const complianceMenuItems = [
 
 const documentMenuItems = [
   { title: "Documents", url: "/documents", icon: FolderOpen },
+  { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Reminders", url: "/reminders", icon: Bell },
   { title: "Reports", url: "/reports", icon: BarChart3 },
 ];

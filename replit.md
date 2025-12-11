@@ -69,6 +69,9 @@ The application includes a comprehensive business management layer for smoke con
 -   **Site Access Notes**: Store parking instructions, access codes, key safe locations, building manager contacts, security details, and induction requirements per site.
 -   **Incident Reporting**: Accident and near-miss logging with severity levels, RIDDOR reporting flags, root cause analysis, and corrective action tracking.
 -   **Risk Assessments**: RAMS (Risk Assessment and Method Statement) creation with method statements, emergency procedures, and approval workflow.
+-   **Job Templates**: Reusable job configurations with checklist items, estimated durations, default pricing, and equipment requirements.
+-   **Recurring Jobs**: Scheduled automatic job creation with frequency options (daily, weekly, monthly, quarterly, biannually, annually), interval control, and auto-create days configuration.
+-   **Notifications Center**: Internal notification system with read/unread tracking, category filtering, mark all read, and bulk operations.
 
 ### Backend
 
