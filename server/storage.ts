@@ -3,7 +3,7 @@ import {
   users, projects, damperTemplates, dampers, tests, stairwellTests, testPacks, complianceChecklists, testSessions, syncQueue,
   clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
   jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
-  recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords
+  recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -93,6 +93,12 @@ type DbPurchaseOrder = typeof purchaseOrders.$inferSelect;
 type NewPurchaseOrder = typeof purchaseOrders.$inferInsert;
 type DbTrainingRecord = typeof trainingRecords.$inferSelect;
 type NewTrainingRecord = typeof trainingRecords.$inferInsert;
+type DbInventory = typeof inventory.$inferSelect;
+type NewInventory = typeof inventory.$inferInsert;
+type DbDefect = typeof defects.$inferSelect;
+type NewDefect = typeof defects.$inferInsert;
+type DbDocumentRegister = typeof documentRegister.$inferSelect;
+type NewDocumentRegister = typeof documentRegister.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -327,6 +333,24 @@ export interface IStorage {
   createTrainingRecord(record: NewTrainingRecord): Promise<DbTrainingRecord>;
   updateTrainingRecord(id: string, record: Partial<NewTrainingRecord>): Promise<DbTrainingRecord | undefined>;
   deleteTrainingRecord(id: string): Promise<boolean>;
+  
+  // Inventory
+  getInventory(userId: string): Promise<DbInventory[]>;
+  createInventoryItem(item: NewInventory): Promise<DbInventory>;
+  updateInventoryItem(id: string, item: Partial<NewInventory>): Promise<DbInventory | undefined>;
+  deleteInventoryItem(id: string): Promise<boolean>;
+  
+  // Defects
+  getDefects(userId: string): Promise<DbDefect[]>;
+  createDefect(defect: NewDefect): Promise<DbDefect>;
+  updateDefect(id: string, defect: Partial<NewDefect>): Promise<DbDefect | undefined>;
+  deleteDefect(id: string): Promise<boolean>;
+  
+  // Document Register
+  getDocumentRegister(userId: string): Promise<DbDocumentRegister[]>;
+  createDocumentRegisterItem(doc: NewDocumentRegister): Promise<DbDocumentRegister>;
+  updateDocumentRegisterItem(id: string, doc: Partial<NewDocumentRegister>): Promise<DbDocumentRegister | undefined>;
+  deleteDocumentRegisterItem(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1207,6 +1231,66 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTrainingRecord(id: string): Promise<boolean> {
     await db.delete(trainingRecords).where(eq(trainingRecords.id, id));
+    return true;
+  }
+
+  // Inventory
+  async getInventory(userId: string): Promise<DbInventory[]> {
+    return db.select().from(inventory).where(eq(inventory.userId, userId)).orderBy(desc(inventory.createdAt));
+  }
+
+  async createInventoryItem(item: NewInventory): Promise<DbInventory> {
+    const [newItem] = await db.insert(inventory).values(item).returning();
+    return newItem;
+  }
+
+  async updateInventoryItem(id: string, item: Partial<NewInventory>): Promise<DbInventory | undefined> {
+    const [updated] = await db.update(inventory).set({ ...item, updatedAt: new Date() }).where(eq(inventory.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteInventoryItem(id: string): Promise<boolean> {
+    await db.delete(inventory).where(eq(inventory.id, id));
+    return true;
+  }
+
+  // Defects
+  async getDefects(userId: string): Promise<DbDefect[]> {
+    return db.select().from(defects).where(eq(defects.userId, userId)).orderBy(desc(defects.createdAt));
+  }
+
+  async createDefect(defect: NewDefect): Promise<DbDefect> {
+    const [newDefect] = await db.insert(defects).values(defect).returning();
+    return newDefect;
+  }
+
+  async updateDefect(id: string, defect: Partial<NewDefect>): Promise<DbDefect | undefined> {
+    const [updated] = await db.update(defects).set({ ...defect, updatedAt: new Date() }).where(eq(defects.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteDefect(id: string): Promise<boolean> {
+    await db.delete(defects).where(eq(defects.id, id));
+    return true;
+  }
+
+  // Document Register
+  async getDocumentRegister(userId: string): Promise<DbDocumentRegister[]> {
+    return db.select().from(documentRegister).where(eq(documentRegister.userId, userId)).orderBy(desc(documentRegister.createdAt));
+  }
+
+  async createDocumentRegisterItem(doc: NewDocumentRegister): Promise<DbDocumentRegister> {
+    const [newDoc] = await db.insert(documentRegister).values(doc).returning();
+    return newDoc;
+  }
+
+  async updateDocumentRegisterItem(id: string, doc: Partial<NewDocumentRegister>): Promise<DbDocumentRegister | undefined> {
+    const [updated] = await db.update(documentRegister).set({ ...doc, updatedAt: new Date() }).where(eq(documentRegister.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteDocumentRegisterItem(id: string): Promise<boolean> {
+    await db.delete(documentRegister).where(eq(documentRegister.id, id));
     return true;
   }
 }

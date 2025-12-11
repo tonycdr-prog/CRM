@@ -35,6 +35,9 @@ import NotificationsPage from "@/pages/notifications";
 import Suppliers from "@/pages/suppliers";
 import PurchaseOrders from "@/pages/purchase-orders";
 import TrainingRecords from "@/pages/training-records";
+import Inventory from "@/pages/inventory";
+import Defects from "@/pages/defects";
+import DocumentRegister from "@/pages/document-register";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -81,7 +84,9 @@ function AuthenticatedRoutes() {
         <Route path="/suppliers" component={Suppliers} />
         <Route path="/purchase-orders" component={PurchaseOrders} />
         <Route path="/training-records" component={TrainingRecords} />
-        <Route path="/documents">{() => <PlaceholderPage title="Documents" />}</Route>
+        <Route path="/inventory" component={Inventory} />
+        <Route path="/defects" component={Defects} />
+        <Route path="/document-register" component={DocumentRegister} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>

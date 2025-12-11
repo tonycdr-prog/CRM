@@ -44,7 +44,9 @@ import {
   RefreshCw,
   Building2,
   ShoppingCart,
-  GraduationCap
+  GraduationCap,
+  Boxes,
+  AlertOctagon
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -77,6 +79,7 @@ const operationsMenuItems = [
   { title: "Equipment", url: "/equipment", icon: Wrench },
   { title: "Certifications", url: "/certifications", icon: Award },
   { title: "Training Records", url: "/training-records", icon: GraduationCap },
+  { title: "Inventory", url: "/inventory", icon: Boxes },
   { title: "Job Templates", url: "/job-templates", icon: Copy },
   { title: "Recurring Jobs", url: "/recurring-jobs", icon: RefreshCw },
 ];
@@ -90,10 +93,11 @@ const complianceMenuItems = [
   { title: "Site Access", url: "/site-access", icon: MapPin },
   { title: "Incidents", url: "/incidents", icon: AlertTriangle },
   { title: "Risk Assessments", url: "/risk-assessments", icon: ShieldCheck },
+  { title: "Defect Register", url: "/defects", icon: AlertOctagon },
 ];
 
 const documentMenuItems = [
-  { title: "Documents", url: "/documents", icon: FolderOpen },
+  { title: "Document Register", url: "/document-register", icon: FileText },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Reminders", url: "/reminders", icon: Bell },
   { title: "Reports", url: "/reports", icon: BarChart3 },

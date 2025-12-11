@@ -1651,6 +1651,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // INVENTORY ROUTES
+  // ============================================
+
+  app.get("/api/inventory/:userId", async (req, res) => {
+    try {
+      const items = await storage.getInventory(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch inventory" });
+    }
+  });
+
+  app.post("/api/inventory", async (req, res) => {
+    try {
+      const item = await storage.createInventoryItem(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create inventory item" });
+    }
+  });
+
+  app.patch("/api/inventory/:id", async (req, res) => {
+    try {
+      const item = await storage.updateInventoryItem(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update inventory item" });
+    }
+  });
+
+  app.delete("/api/inventory/:id", async (req, res) => {
+    try {
+      await storage.deleteInventoryItem(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete inventory item" });
+    }
+  });
+
+  // ============================================
+  // DEFECTS ROUTES
+  // ============================================
+
+  app.get("/api/defects/:userId", async (req, res) => {
+    try {
+      const defects = await storage.getDefects(req.params.userId);
+      res.json(defects);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch defects" });
+    }
+  });
+
+  app.post("/api/defects", async (req, res) => {
+    try {
+      const defect = await storage.createDefect(req.body);
+      res.json(defect);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create defect" });
+    }
+  });
+
+  app.patch("/api/defects/:id", async (req, res) => {
+    try {
+      const defect = await storage.updateDefect(req.params.id, req.body);
+      res.json(defect);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update defect" });
+    }
+  });
+
+  app.delete("/api/defects/:id", async (req, res) => {
+    try {
+      await storage.deleteDefect(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete defect" });
+    }
+  });
+
+  // ============================================
+  // DOCUMENT REGISTER ROUTES
+  // ============================================
+
+  app.get("/api/document-register/:userId", async (req, res) => {
+    try {
+      const docs = await storage.getDocumentRegister(req.params.userId);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch document register" });
+    }
+  });
+
+  app.post("/api/document-register", async (req, res) => {
+    try {
+      const doc = await storage.createDocumentRegisterItem(req.body);
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create document" });
+    }
+  });
+
+  app.patch("/api/document-register/:id", async (req, res) => {
+    try {
+      const doc = await storage.updateDocumentRegisterItem(req.params.id, req.body);
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update document" });
+    }
+  });
+
+  app.delete("/api/document-register/:id", async (req, res) => {
+    try {
+      await storage.deleteDocumentRegisterItem(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete document" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

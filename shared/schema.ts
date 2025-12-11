@@ -1586,3 +1586,99 @@ export const trainingRecords = pgTable("training_records", {
 export const insertTrainingRecordSchema = createInsertSchema(trainingRecords).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTrainingRecord = z.infer<typeof insertTrainingRecordSchema>;
 export type DbTrainingRecord = typeof trainingRecords.$inferSelect;
+
+// Inventory/Stock
+export const inventory = pgTable("inventory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  itemName: text("item_name").notNull(),
+  partNumber: text("part_number"),
+  description: text("description"),
+  category: text("category"), // dampers, actuators, controls, ductwork, fixings, consumables
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  location: text("location"), // warehouse, van, site
+  quantityInStock: integer("quantity_in_stock").default(0),
+  minimumStock: integer("minimum_stock").default(0),
+  reorderPoint: integer("reorder_point").default(0),
+  reorderQuantity: integer("reorder_quantity"),
+  unitCost: real("unit_cost"),
+  sellPrice: real("sell_price"),
+  unit: text("unit").default("each"), // each, box, pack, metre
+  lastPurchaseDate: text("last_purchase_date"),
+  lastStockCheck: text("last_stock_check"),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInventorySchema = createInsertSchema(inventory).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertInventory = z.infer<typeof insertInventorySchema>;
+export type DbInventory = typeof inventory.$inferSelect;
+
+// Defect Register
+export const defects = pgTable("defects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  defectNumber: text("defect_number").notNull(),
+  jobId: varchar("job_id").references(() => jobs.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  siteAddress: text("site_address"),
+  location: text("location"), // floor, zone, room
+  damperRef: text("damper_ref"),
+  category: text("category"), // damper, actuator, controls, ductwork, access, other
+  severity: text("severity").default("medium"), // critical, high, medium, low
+  description: text("description").notNull(),
+  discoveredDate: text("discovered_date").notNull(),
+  discoveredBy: text("discovered_by"),
+  status: text("status").default("open"), // open, quoted, scheduled, in_progress, resolved, closed
+  resolution: text("resolution"),
+  resolvedDate: text("resolved_date"),
+  resolvedBy: text("resolved_by"),
+  estimatedCost: real("estimated_cost"),
+  actualCost: real("actual_cost"),
+  quoteId: varchar("quote_id").references(() => quotes.id),
+  remedialJobId: varchar("remedial_job_id").references(() => jobs.id),
+  photos: jsonb("photos").$type<{
+    url: string;
+    caption: string;
+  }[]>().default([]),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDefectSchema = createInsertSchema(defects).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDefect = z.infer<typeof insertDefectSchema>;
+export type DbDefect = typeof defects.$inferSelect;
+
+// Document Register (controlled documents)
+export const documentRegister = pgTable("document_register", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  documentNumber: text("document_number").notNull(),
+  title: text("title").notNull(),
+  category: text("category"), // certificate, report, drawing, manual, policy, insurance, contract
+  documentType: text("document_type"), // pdf, word, excel, image, cad
+  description: text("description"),
+  version: text("version").default("1.0"),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  projectId: varchar("project_id").references(() => projects.id),
+  issueDate: text("issue_date"),
+  expiryDate: text("expiry_date"),
+  reviewDate: text("review_date"),
+  status: text("status").default("current"), // draft, current, superseded, archived
+  fileReference: text("file_reference"), // external file reference/path
+  issuedBy: text("issued_by"),
+  approvedBy: text("approved_by"),
+  tags: text("tags").array(),
+  notes: text("notes"),
+  isConfidential: boolean("is_confidential").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDocumentRegisterSchema = createInsertSchema(documentRegister).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDocumentRegister = z.infer<typeof insertDocumentRegisterSchema>;
+export type DbDocumentRegister = typeof documentRegister.$inferSelect;
