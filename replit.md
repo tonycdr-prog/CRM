@@ -58,10 +58,17 @@ The application includes a comprehensive business management layer for smoke con
 -   **Vehicle Fleet**: Fleet management with MOT/tax/insurance expiry tracking and maintenance schedules.
 -   **Subcontractor Network**: Approved subcontractor database with insurance/accreditation expiry alerts.
 -   **Holiday Management**: Leave requests with approval workflow and annual allowance tracking.
--   **Sidebar Navigation**: Organised navigation with Testing, Business, and Operations sections.
+-   **Sidebar Navigation**: Organised navigation with Testing, Business, Operations, Sales, Compliance, and Documentation sections.
 -   **Global Search**: Header-mounted search dialog (Cmd/Ctrl+K) for cross-entity searching across clients, contracts, jobs, and invoices with instant navigation to results.
 -   **CSV Data Export**: Export button on jobs page for downloading job data to CSV format for spreadsheet analysis.
 -   **Contract Renewal Badges**: Visual warning indicators on contracts list showing renewal urgency with color-coded badges for overdue (red), 7-day (red), 30-day (amber), 60-day (orange), and 90-day (yellow) warnings.
+-   **Equipment & Asset Tracking**: Asset register with calibration due dates, maintenance schedules, purchase values, and status indicators. Categories include tools, meters, PPE, and vehicles.
+-   **Technician Certifications**: Track staff qualifications (CSCS, IPAF, PASMA, First Aid, etc.) with expiry monitoring and renewal alerts.
+-   **Sales Pipeline (Leads)**: Kanban-style lead tracking with stages (new, contacted, qualified, proposal, negotiation, won, lost), estimated values, win probability, and weighted pipeline calculations.
+-   **Tender Management**: Full tender register with submission deadlines, contract values, bid amounts, win rate tracking, and status workflow.
+-   **Site Access Notes**: Store parking instructions, access codes, key safe locations, building manager contacts, security details, and induction requirements per site.
+-   **Incident Reporting**: Accident and near-miss logging with severity levels, RIDDOR reporting flags, root cause analysis, and corrective action tracking.
+-   **Risk Assessments**: RAMS (Risk Assessment and Method Statement) creation with method statements, emergency procedures, and approval workflow.
 
 ### Backend
 

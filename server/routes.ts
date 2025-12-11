@@ -1007,6 +1007,441 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // JOB TEMPLATES ROUTES
+  // ============================================
+
+  app.get("/api/job-templates/:userId", async (req, res) => {
+    try {
+      const templates = await storage.getJobTemplates(req.params.userId);
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job templates" });
+    }
+  });
+
+  app.post("/api/job-templates", async (req, res) => {
+    try {
+      const template = await storage.createJobTemplate(req.body);
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create job template" });
+    }
+  });
+
+  app.delete("/api/job-templates/:id", async (req, res) => {
+    try {
+      await storage.deleteJobTemplate(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete job template" });
+    }
+  });
+
+  // ============================================
+  // SITE ACCESS NOTES ROUTES
+  // ============================================
+
+  app.get("/api/site-access/:userId", async (req, res) => {
+    try {
+      const notes = await storage.getSiteAccessNotes(req.params.userId);
+      res.json(notes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch site access notes" });
+    }
+  });
+
+  app.post("/api/site-access", async (req, res) => {
+    try {
+      const note = await storage.createSiteAccessNote(req.body);
+      res.json(note);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create site access note" });
+    }
+  });
+
+  app.patch("/api/site-access/:id", async (req, res) => {
+    try {
+      const note = await storage.updateSiteAccessNote(req.params.id, req.body);
+      res.json(note);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update site access note" });
+    }
+  });
+
+  app.delete("/api/site-access/:id", async (req, res) => {
+    try {
+      await storage.deleteSiteAccessNote(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete site access note" });
+    }
+  });
+
+  // ============================================
+  // EQUIPMENT ROUTES
+  // ============================================
+
+  app.get("/api/equipment/:userId", async (req, res) => {
+    try {
+      const items = await storage.getEquipment(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch equipment" });
+    }
+  });
+
+  app.post("/api/equipment", async (req, res) => {
+    try {
+      const item = await storage.createEquipment(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create equipment" });
+    }
+  });
+
+  app.patch("/api/equipment/:id", async (req, res) => {
+    try {
+      const item = await storage.updateEquipment(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update equipment" });
+    }
+  });
+
+  app.delete("/api/equipment/:id", async (req, res) => {
+    try {
+      await storage.deleteEquipment(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete equipment" });
+    }
+  });
+
+  // ============================================
+  // CERTIFICATIONS ROUTES
+  // ============================================
+
+  app.get("/api/certifications/:userId", async (req, res) => {
+    try {
+      const certs = await storage.getCertifications(req.params.userId);
+      res.json(certs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch certifications" });
+    }
+  });
+
+  app.post("/api/certifications", async (req, res) => {
+    try {
+      const cert = await storage.createCertification(req.body);
+      res.json(cert);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create certification" });
+    }
+  });
+
+  app.patch("/api/certifications/:id", async (req, res) => {
+    try {
+      const cert = await storage.updateCertification(req.params.id, req.body);
+      res.json(cert);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update certification" });
+    }
+  });
+
+  app.delete("/api/certifications/:id", async (req, res) => {
+    try {
+      await storage.deleteCertification(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete certification" });
+    }
+  });
+
+  // ============================================
+  // INCIDENTS ROUTES
+  // ============================================
+
+  app.get("/api/incidents/:userId", async (req, res) => {
+    try {
+      const incidents = await storage.getIncidents(req.params.userId);
+      res.json(incidents);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch incidents" });
+    }
+  });
+
+  app.post("/api/incidents", async (req, res) => {
+    try {
+      const incident = await storage.createIncident(req.body);
+      res.json(incident);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create incident" });
+    }
+  });
+
+  app.patch("/api/incidents/:id", async (req, res) => {
+    try {
+      const incident = await storage.updateIncident(req.params.id, req.body);
+      res.json(incident);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update incident" });
+    }
+  });
+
+  app.delete("/api/incidents/:id", async (req, res) => {
+    try {
+      await storage.deleteIncident(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete incident" });
+    }
+  });
+
+  // ============================================
+  // AUDIT LOGS ROUTES
+  // ============================================
+
+  app.get("/api/audit-logs/:userId", async (req, res) => {
+    try {
+      const logs = await storage.getAuditLogs(req.params.userId);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch audit logs" });
+    }
+  });
+
+  app.post("/api/audit-logs", async (req, res) => {
+    try {
+      const log = await storage.createAuditLog(req.body);
+      res.json(log);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create audit log" });
+    }
+  });
+
+  // ============================================
+  // LEADS ROUTES
+  // ============================================
+
+  app.get("/api/leads/:userId", async (req, res) => {
+    try {
+      const leads = await storage.getLeads(req.params.userId);
+      res.json(leads);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  app.post("/api/leads", async (req, res) => {
+    try {
+      const lead = await storage.createLead(req.body);
+      res.json(lead);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create lead" });
+    }
+  });
+
+  app.patch("/api/leads/:id", async (req, res) => {
+    try {
+      const lead = await storage.updateLead(req.params.id, req.body);
+      res.json(lead);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update lead" });
+    }
+  });
+
+  app.delete("/api/leads/:id", async (req, res) => {
+    try {
+      await storage.deleteLead(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete lead" });
+    }
+  });
+
+  // ============================================
+  // TENDERS ROUTES
+  // ============================================
+
+  app.get("/api/tenders/:userId", async (req, res) => {
+    try {
+      const tenders = await storage.getTenders(req.params.userId);
+      res.json(tenders);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch tenders" });
+    }
+  });
+
+  app.post("/api/tenders", async (req, res) => {
+    try {
+      const tender = await storage.createTender(req.body);
+      res.json(tender);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create tender" });
+    }
+  });
+
+  app.patch("/api/tenders/:id", async (req, res) => {
+    try {
+      const tender = await storage.updateTender(req.params.id, req.body);
+      res.json(tender);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update tender" });
+    }
+  });
+
+  app.delete("/api/tenders/:id", async (req, res) => {
+    try {
+      await storage.deleteTender(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete tender" });
+    }
+  });
+
+  // ============================================
+  // RECURRING SCHEDULES ROUTES
+  // ============================================
+
+  app.get("/api/recurring-schedules/:userId", async (req, res) => {
+    try {
+      const schedules = await storage.getRecurringSchedules(req.params.userId);
+      res.json(schedules);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch recurring schedules" });
+    }
+  });
+
+  app.post("/api/recurring-schedules", async (req, res) => {
+    try {
+      const schedule = await storage.createRecurringSchedule(req.body);
+      res.json(schedule);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create recurring schedule" });
+    }
+  });
+
+  app.patch("/api/recurring-schedules/:id", async (req, res) => {
+    try {
+      const schedule = await storage.updateRecurringSchedule(req.params.id, req.body);
+      res.json(schedule);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update recurring schedule" });
+    }
+  });
+
+  app.delete("/api/recurring-schedules/:id", async (req, res) => {
+    try {
+      await storage.deleteRecurringSchedule(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete recurring schedule" });
+    }
+  });
+
+  // ============================================
+  // RISK ASSESSMENTS ROUTES
+  // ============================================
+
+  app.get("/api/risk-assessments/:userId", async (req, res) => {
+    try {
+      const assessments = await storage.getRiskAssessments(req.params.userId);
+      res.json(assessments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch risk assessments" });
+    }
+  });
+
+  app.post("/api/risk-assessments", async (req, res) => {
+    try {
+      const assessment = await storage.createRiskAssessment(req.body);
+      res.json(assessment);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create risk assessment" });
+    }
+  });
+
+  app.patch("/api/risk-assessments/:id", async (req, res) => {
+    try {
+      const assessment = await storage.updateRiskAssessment(req.params.id, req.body);
+      res.json(assessment);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update risk assessment" });
+    }
+  });
+
+  app.delete("/api/risk-assessments/:id", async (req, res) => {
+    try {
+      await storage.deleteRiskAssessment(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete risk assessment" });
+    }
+  });
+
+  // ============================================
+  // PERFORMANCE METRICS ROUTES
+  // ============================================
+
+  app.get("/api/performance-metrics/:userId", async (req, res) => {
+    try {
+      const metrics = await storage.getPerformanceMetrics(req.params.userId);
+      res.json(metrics);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch performance metrics" });
+    }
+  });
+
+  app.post("/api/performance-metrics", async (req, res) => {
+    try {
+      const metric = await storage.createPerformanceMetric(req.body);
+      res.json(metric);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create performance metric" });
+    }
+  });
+
+  // ============================================
+  // NOTIFICATIONS ROUTES
+  // ============================================
+
+  app.get("/api/notifications/:userId", async (req, res) => {
+    try {
+      const notifications = await storage.getNotifications(req.params.userId);
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post("/api/notifications", async (req, res) => {
+    try {
+      const notification = await storage.createNotification(req.body);
+      res.json(notification);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create notification" });
+    }
+  });
+
+  app.patch("/api/notifications/:id", async (req, res) => {
+    try {
+      const notification = await storage.updateNotification(req.params.id, req.body);
+      res.json(notification);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update notification" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", async (req, res) => {
+    try {
+      await storage.deleteNotification(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete notification" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,7 +1,8 @@
 import { 
   type User, type InsertUser, type UpsertUser,
   users, projects, damperTemplates, dampers, tests, stairwellTests, testPacks, complianceChecklists, testSessions, syncQueue,
-  clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders
+  clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
+  jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -54,6 +55,33 @@ type NewCommunicationLog = typeof communicationLogs.$inferInsert;
 type NewSurvey = typeof surveys.$inferInsert;
 type NewAbsence = typeof absences.$inferInsert;
 type NewReminder = typeof reminders.$inferInsert;
+
+// New Phase 1-8 types
+type DbJobTemplate = typeof jobTemplates.$inferSelect;
+type DbSiteAccessNote = typeof siteAccessNotes.$inferSelect;
+type DbEquipment = typeof equipment.$inferSelect;
+type DbCertification = typeof certifications.$inferSelect;
+type DbIncident = typeof incidents.$inferSelect;
+type DbAuditLog = typeof auditLogs.$inferSelect;
+type DbLead = typeof leads.$inferSelect;
+type DbTender = typeof tenders.$inferSelect;
+type DbRecurringSchedule = typeof recurringSchedules.$inferSelect;
+type DbRiskAssessment = typeof riskAssessments.$inferSelect;
+type DbPerformanceMetric = typeof performanceMetrics.$inferSelect;
+type DbNotification = typeof notifications.$inferSelect;
+
+type NewJobTemplate = typeof jobTemplates.$inferInsert;
+type NewSiteAccessNote = typeof siteAccessNotes.$inferInsert;
+type NewEquipment = typeof equipment.$inferInsert;
+type NewCertification = typeof certifications.$inferInsert;
+type NewIncident = typeof incidents.$inferInsert;
+type NewAuditLog = typeof auditLogs.$inferInsert;
+type NewLead = typeof leads.$inferInsert;
+type NewTender = typeof tenders.$inferInsert;
+type NewRecurringSchedule = typeof recurringSchedules.$inferInsert;
+type NewRiskAssessment = typeof riskAssessments.$inferInsert;
+type NewPerformanceMetric = typeof performanceMetrics.$inferInsert;
+type NewNotification = typeof notifications.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -203,6 +231,73 @@ export interface IStorage {
   createReminder(reminder: NewReminder): Promise<DbReminder>;
   updateReminder(id: string, reminder: Partial<NewReminder>): Promise<DbReminder | undefined>;
   deleteReminder(id: string): Promise<boolean>;
+  
+  // Job Templates
+  getJobTemplates(userId: string): Promise<DbJobTemplate[]>;
+  createJobTemplate(template: NewJobTemplate): Promise<DbJobTemplate>;
+  deleteJobTemplate(id: string): Promise<boolean>;
+  
+  // Site Access Notes
+  getSiteAccessNotes(userId: string): Promise<DbSiteAccessNote[]>;
+  createSiteAccessNote(note: NewSiteAccessNote): Promise<DbSiteAccessNote>;
+  updateSiteAccessNote(id: string, note: Partial<NewSiteAccessNote>): Promise<DbSiteAccessNote | undefined>;
+  deleteSiteAccessNote(id: string): Promise<boolean>;
+  
+  // Equipment
+  getEquipment(userId: string): Promise<DbEquipment[]>;
+  createEquipment(item: NewEquipment): Promise<DbEquipment>;
+  updateEquipment(id: string, item: Partial<NewEquipment>): Promise<DbEquipment | undefined>;
+  deleteEquipment(id: string): Promise<boolean>;
+  
+  // Certifications
+  getCertifications(userId: string): Promise<DbCertification[]>;
+  createCertification(cert: NewCertification): Promise<DbCertification>;
+  updateCertification(id: string, cert: Partial<NewCertification>): Promise<DbCertification | undefined>;
+  deleteCertification(id: string): Promise<boolean>;
+  
+  // Incidents
+  getIncidents(userId: string): Promise<DbIncident[]>;
+  createIncident(incident: NewIncident): Promise<DbIncident>;
+  updateIncident(id: string, incident: Partial<NewIncident>): Promise<DbIncident | undefined>;
+  deleteIncident(id: string): Promise<boolean>;
+  
+  // Audit Logs
+  getAuditLogs(userId: string): Promise<DbAuditLog[]>;
+  createAuditLog(log: NewAuditLog): Promise<DbAuditLog>;
+  
+  // Leads
+  getLeads(userId: string): Promise<DbLead[]>;
+  createLead(lead: NewLead): Promise<DbLead>;
+  updateLead(id: string, lead: Partial<NewLead>): Promise<DbLead | undefined>;
+  deleteLead(id: string): Promise<boolean>;
+  
+  // Tenders
+  getTenders(userId: string): Promise<DbTender[]>;
+  createTender(tender: NewTender): Promise<DbTender>;
+  updateTender(id: string, tender: Partial<NewTender>): Promise<DbTender | undefined>;
+  deleteTender(id: string): Promise<boolean>;
+  
+  // Recurring Schedules
+  getRecurringSchedules(userId: string): Promise<DbRecurringSchedule[]>;
+  createRecurringSchedule(schedule: NewRecurringSchedule): Promise<DbRecurringSchedule>;
+  updateRecurringSchedule(id: string, schedule: Partial<NewRecurringSchedule>): Promise<DbRecurringSchedule | undefined>;
+  deleteRecurringSchedule(id: string): Promise<boolean>;
+  
+  // Risk Assessments
+  getRiskAssessments(userId: string): Promise<DbRiskAssessment[]>;
+  createRiskAssessment(assessment: NewRiskAssessment): Promise<DbRiskAssessment>;
+  updateRiskAssessment(id: string, assessment: Partial<NewRiskAssessment>): Promise<DbRiskAssessment | undefined>;
+  deleteRiskAssessment(id: string): Promise<boolean>;
+  
+  // Performance Metrics
+  getPerformanceMetrics(userId: string): Promise<DbPerformanceMetric[]>;
+  createPerformanceMetric(metric: NewPerformanceMetric): Promise<DbPerformanceMetric>;
+  
+  // Notifications
+  getNotifications(userId: string): Promise<DbNotification[]>;
+  createNotification(notification: NewNotification): Promise<DbNotification>;
+  updateNotification(id: string, notification: Partial<NewNotification>): Promise<DbNotification | undefined>;
+  deleteNotification(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -763,6 +858,221 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReminder(id: string): Promise<boolean> {
     await db.delete(reminders).where(eq(reminders.id, id));
+    return true;
+  }
+
+  // Job Templates
+  async getJobTemplates(userId: string): Promise<DbJobTemplate[]> {
+    return db.select().from(jobTemplates).where(eq(jobTemplates.userId, userId)).orderBy(desc(jobTemplates.createdAt));
+  }
+
+  async createJobTemplate(template: NewJobTemplate): Promise<DbJobTemplate> {
+    const [newTemplate] = await db.insert(jobTemplates).values(template).returning();
+    return newTemplate;
+  }
+
+  async deleteJobTemplate(id: string): Promise<boolean> {
+    await db.delete(jobTemplates).where(eq(jobTemplates.id, id));
+    return true;
+  }
+
+  // Site Access Notes
+  async getSiteAccessNotes(userId: string): Promise<DbSiteAccessNote[]> {
+    return db.select().from(siteAccessNotes).where(eq(siteAccessNotes.userId, userId)).orderBy(desc(siteAccessNotes.createdAt));
+  }
+
+  async createSiteAccessNote(note: NewSiteAccessNote): Promise<DbSiteAccessNote> {
+    const [newNote] = await db.insert(siteAccessNotes).values(note).returning();
+    return newNote;
+  }
+
+  async updateSiteAccessNote(id: string, note: Partial<NewSiteAccessNote>): Promise<DbSiteAccessNote | undefined> {
+    const [updated] = await db.update(siteAccessNotes).set({ ...note, updatedAt: new Date() }).where(eq(siteAccessNotes.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteSiteAccessNote(id: string): Promise<boolean> {
+    await db.delete(siteAccessNotes).where(eq(siteAccessNotes.id, id));
+    return true;
+  }
+
+  // Equipment
+  async getEquipment(userId: string): Promise<DbEquipment[]> {
+    return db.select().from(equipment).where(eq(equipment.userId, userId)).orderBy(desc(equipment.createdAt));
+  }
+
+  async createEquipment(item: NewEquipment): Promise<DbEquipment> {
+    const [newItem] = await db.insert(equipment).values(item).returning();
+    return newItem;
+  }
+
+  async updateEquipment(id: string, item: Partial<NewEquipment>): Promise<DbEquipment | undefined> {
+    const [updated] = await db.update(equipment).set({ ...item, updatedAt: new Date() }).where(eq(equipment.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteEquipment(id: string): Promise<boolean> {
+    await db.delete(equipment).where(eq(equipment.id, id));
+    return true;
+  }
+
+  // Certifications
+  async getCertifications(userId: string): Promise<DbCertification[]> {
+    return db.select().from(certifications).where(eq(certifications.userId, userId)).orderBy(desc(certifications.createdAt));
+  }
+
+  async createCertification(cert: NewCertification): Promise<DbCertification> {
+    const [newCert] = await db.insert(certifications).values(cert).returning();
+    return newCert;
+  }
+
+  async updateCertification(id: string, cert: Partial<NewCertification>): Promise<DbCertification | undefined> {
+    const [updated] = await db.update(certifications).set({ ...cert, updatedAt: new Date() }).where(eq(certifications.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCertification(id: string): Promise<boolean> {
+    await db.delete(certifications).where(eq(certifications.id, id));
+    return true;
+  }
+
+  // Incidents
+  async getIncidents(userId: string): Promise<DbIncident[]> {
+    return db.select().from(incidents).where(eq(incidents.userId, userId)).orderBy(desc(incidents.createdAt));
+  }
+
+  async createIncident(incident: NewIncident): Promise<DbIncident> {
+    const [newIncident] = await db.insert(incidents).values(incident).returning();
+    return newIncident;
+  }
+
+  async updateIncident(id: string, incident: Partial<NewIncident>): Promise<DbIncident | undefined> {
+    const [updated] = await db.update(incidents).set({ ...incident, updatedAt: new Date() }).where(eq(incidents.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteIncident(id: string): Promise<boolean> {
+    await db.delete(incidents).where(eq(incidents.id, id));
+    return true;
+  }
+
+  // Audit Logs
+  async getAuditLogs(userId: string): Promise<DbAuditLog[]> {
+    return db.select().from(auditLogs).where(eq(auditLogs.userId, userId)).orderBy(desc(auditLogs.createdAt));
+  }
+
+  async createAuditLog(log: NewAuditLog): Promise<DbAuditLog> {
+    const [newLog] = await db.insert(auditLogs).values(log).returning();
+    return newLog;
+  }
+
+  // Leads
+  async getLeads(userId: string): Promise<DbLead[]> {
+    return db.select().from(leads).where(eq(leads.userId, userId)).orderBy(desc(leads.createdAt));
+  }
+
+  async createLead(lead: NewLead): Promise<DbLead> {
+    const [newLead] = await db.insert(leads).values(lead).returning();
+    return newLead;
+  }
+
+  async updateLead(id: string, lead: Partial<NewLead>): Promise<DbLead | undefined> {
+    const [updated] = await db.update(leads).set({ ...lead, updatedAt: new Date() }).where(eq(leads.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteLead(id: string): Promise<boolean> {
+    await db.delete(leads).where(eq(leads.id, id));
+    return true;
+  }
+
+  // Tenders
+  async getTenders(userId: string): Promise<DbTender[]> {
+    return db.select().from(tenders).where(eq(tenders.userId, userId)).orderBy(desc(tenders.createdAt));
+  }
+
+  async createTender(tender: NewTender): Promise<DbTender> {
+    const [newTender] = await db.insert(tenders).values(tender).returning();
+    return newTender;
+  }
+
+  async updateTender(id: string, tender: Partial<NewTender>): Promise<DbTender | undefined> {
+    const [updated] = await db.update(tenders).set({ ...tender, updatedAt: new Date() }).where(eq(tenders.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteTender(id: string): Promise<boolean> {
+    await db.delete(tenders).where(eq(tenders.id, id));
+    return true;
+  }
+
+  // Recurring Schedules
+  async getRecurringSchedules(userId: string): Promise<DbRecurringSchedule[]> {
+    return db.select().from(recurringSchedules).where(eq(recurringSchedules.userId, userId)).orderBy(desc(recurringSchedules.createdAt));
+  }
+
+  async createRecurringSchedule(schedule: NewRecurringSchedule): Promise<DbRecurringSchedule> {
+    const [newSchedule] = await db.insert(recurringSchedules).values(schedule).returning();
+    return newSchedule;
+  }
+
+  async updateRecurringSchedule(id: string, schedule: Partial<NewRecurringSchedule>): Promise<DbRecurringSchedule | undefined> {
+    const [updated] = await db.update(recurringSchedules).set({ ...schedule, updatedAt: new Date() }).where(eq(recurringSchedules.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteRecurringSchedule(id: string): Promise<boolean> {
+    await db.delete(recurringSchedules).where(eq(recurringSchedules.id, id));
+    return true;
+  }
+
+  // Risk Assessments
+  async getRiskAssessments(userId: string): Promise<DbRiskAssessment[]> {
+    return db.select().from(riskAssessments).where(eq(riskAssessments.userId, userId)).orderBy(desc(riskAssessments.createdAt));
+  }
+
+  async createRiskAssessment(assessment: NewRiskAssessment): Promise<DbRiskAssessment> {
+    const [newAssessment] = await db.insert(riskAssessments).values(assessment).returning();
+    return newAssessment;
+  }
+
+  async updateRiskAssessment(id: string, assessment: Partial<NewRiskAssessment>): Promise<DbRiskAssessment | undefined> {
+    const [updated] = await db.update(riskAssessments).set({ ...assessment, updatedAt: new Date() }).where(eq(riskAssessments.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteRiskAssessment(id: string): Promise<boolean> {
+    await db.delete(riskAssessments).where(eq(riskAssessments.id, id));
+    return true;
+  }
+
+  // Performance Metrics
+  async getPerformanceMetrics(userId: string): Promise<DbPerformanceMetric[]> {
+    return db.select().from(performanceMetrics).where(eq(performanceMetrics.userId, userId)).orderBy(desc(performanceMetrics.createdAt));
+  }
+
+  async createPerformanceMetric(metric: NewPerformanceMetric): Promise<DbPerformanceMetric> {
+    const [newMetric] = await db.insert(performanceMetrics).values(metric).returning();
+    return newMetric;
+  }
+
+  // Notifications
+  async getNotifications(userId: string): Promise<DbNotification[]> {
+    return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notification: NewNotification): Promise<DbNotification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async updateNotification(id: string, notification: Partial<NewNotification>): Promise<DbNotification | undefined> {
+    const [updated] = await db.update(notifications).set(notification).where(eq(notifications.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    await db.delete(notifications).where(eq(notifications.id, id));
     return true;
   }
 }

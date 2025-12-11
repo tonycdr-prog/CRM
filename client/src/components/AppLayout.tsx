@@ -32,7 +32,14 @@ import {
   BarChart3,
   LogOut,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  Wrench,
+  Award,
+  Target,
+  MapPin,
+  AlertTriangle,
+  FileCheck,
+  ShieldCheck
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -60,6 +67,19 @@ const operationsMenuItems = [
   { title: "Vehicles", url: "/vehicles", icon: Truck },
   { title: "Subcontractors", url: "/subcontractors", icon: UserCheck },
   { title: "Holidays", url: "/holidays", icon: Calendar },
+  { title: "Equipment", url: "/equipment", icon: Wrench },
+  { title: "Certifications", url: "/certifications", icon: Award },
+];
+
+const salesMenuItems = [
+  { title: "Leads", url: "/leads", icon: Target },
+  { title: "Tenders", url: "/tenders", icon: FileCheck },
+];
+
+const complianceMenuItems = [
+  { title: "Site Access", url: "/site-access", icon: MapPin },
+  { title: "Incidents", url: "/incidents", icon: AlertTriangle },
+  { title: "Risk Assessments", url: "/risk-assessments", icon: ShieldCheck },
 ];
 
 const documentMenuItems = [
@@ -135,6 +155,42 @@ export function AppLayout({ children }: AppLayoutProps) {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {operationsMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={location === item.url}>
+                        <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Sales</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {salesMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={location === item.url}>
+                        <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Compliance</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {complianceMenuItems.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild isActive={location === item.url}>
                         <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>

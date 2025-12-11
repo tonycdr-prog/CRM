@@ -1119,3 +1119,315 @@ export const timesheetSchema = z.object({
 });
 
 export type Timesheet = z.infer<typeof timesheetSchema>;
+
+// ============================================
+// PHASE 1-8 ADDITIONAL TABLES
+// ============================================
+
+// Job templates - reusable job configurations
+export const jobTemplates = pgTable("job_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  jobType: text("job_type").default("testing"),
+  estimatedDuration: real("estimated_duration"),
+  defaultPrice: real("default_price"),
+  checklist: jsonb("checklist").$type<{ id: string; item: string; required: boolean }[]>().default([]),
+  equipmentRequired: jsonb("equipment_required").$type<string[]>().default([]),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobTemplateSchema = createInsertSchema(jobTemplates).omit({ id: true, createdAt: true });
+export type InsertJobTemplate = z.infer<typeof insertJobTemplateSchema>;
+export type DbJobTemplate = typeof jobTemplates.$inferSelect;
+
+// Site access notes - parking, keys, contacts per building
+export const siteAccessNotes = pgTable("site_access_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  siteName: text("site_name").notNull(),
+  siteAddress: text("site_address"),
+  parkingInstructions: text("parking_instructions"),
+  accessCode: text("access_code"),
+  keySafeLocation: text("key_safe_location"),
+  keySafeCode: text("key_safe_code"),
+  buildingManagerName: text("building_manager_name"),
+  buildingManagerPhone: text("building_manager_phone"),
+  securityContact: text("security_contact"),
+  accessHours: text("access_hours"),
+  specialRequirements: text("special_requirements"),
+  inductionRequired: boolean("induction_required").default(false),
+  inductionNotes: text("induction_notes"),
+  photos: jsonb("photos").$type<string[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSiteAccessNoteSchema = createInsertSchema(siteAccessNotes).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSiteAccessNote = z.infer<typeof insertSiteAccessNoteSchema>;
+export type DbSiteAccessNote = typeof siteAccessNotes.$inferSelect;
+
+// Equipment/assets tracking
+export const equipment = pgTable("equipment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  assetTag: text("asset_tag").notNull(),
+  name: text("name").notNull(),
+  category: text("category").default("tool"), // tool, meter, ppe, vehicle, other
+  manufacturer: text("manufacturer"),
+  model: text("model"),
+  serialNumber: text("serial_number"),
+  purchaseDate: text("purchase_date"),
+  purchasePrice: real("purchase_price"),
+  currentValue: real("current_value"),
+  calibrationDue: text("calibration_due"),
+  lastCalibrated: text("last_calibrated"),
+  calibrationCertificate: text("calibration_certificate"),
+  maintenanceDue: text("maintenance_due"),
+  lastMaintenance: text("last_maintenance"),
+  assignedTo: varchar("assigned_to"),
+  location: text("location"),
+  status: text("status").default("available"), // available, in_use, maintenance, retired
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
+export type DbEquipment = typeof equipment.$inferSelect;
+
+// Technician certifications
+export const certifications = pgTable("certifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  technicianId: varchar("technician_id"),
+  technicianName: text("technician_name").notNull(),
+  certificationType: text("certification_type").notNull(), // cscs, ipaf, pasma, first_aid, asbestos, electrical
+  certificationName: text("certification_name").notNull(),
+  issuingBody: text("issuing_body"),
+  certificateNumber: text("certificate_number"),
+  issueDate: text("issue_date"),
+  expiryDate: text("expiry_date"),
+  certificateFile: text("certificate_file"),
+  status: text("status").default("valid"), // valid, expiring_soon, expired
+  reminderSent: boolean("reminder_sent").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCertificationSchema = createInsertSchema(certifications).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCertification = z.infer<typeof insertCertificationSchema>;
+export type DbCertification = typeof certifications.$inferSelect;
+
+// Incidents and safety reports
+export const incidents = pgTable("incidents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  incidentDate: text("incident_date").notNull(),
+  incidentTime: text("incident_time"),
+  location: text("location").notNull(),
+  type: text("type").notNull(), // accident, near_miss, unsafe_condition, damage
+  severity: text("severity").default("low"), // low, medium, high, critical
+  description: text("description").notNull(),
+  immediateActions: text("immediate_actions"),
+  personsInvolved: jsonb("persons_involved").$type<{ name: string; role: string; injured: boolean }[]>().default([]),
+  witnesses: jsonb("witnesses").$type<{ name: string; contact: string }[]>().default([]),
+  photos: jsonb("photos").$type<string[]>().default([]),
+  rootCause: text("root_cause"),
+  correctiveActions: text("corrective_actions"),
+  preventiveMeasures: text("preventive_measures"),
+  reportedTo: text("reported_to"),
+  reportedAt: timestamp("reported_at"),
+  investigatedBy: text("investigated_by"),
+  investigatedAt: timestamp("investigated_at"),
+  closedBy: text("closed_by"),
+  closedAt: timestamp("closed_at"),
+  status: text("status").default("open"), // open, investigating, closed
+  riddorReportable: boolean("riddor_reportable").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertIncidentSchema = createInsertSchema(incidents).omit({ id: true, createdAt: true, updatedAt: true, reportedAt: true, investigatedAt: true, closedAt: true });
+export type InsertIncident = z.infer<typeof insertIncidentSchema>;
+export type DbIncident = typeof incidents.$inferSelect;
+
+// Audit logs - track all changes
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  entityType: text("entity_type").notNull(), // job, client, contract, invoice, etc
+  entityId: varchar("entity_id").notNull(),
+  action: text("action").notNull(), // create, update, delete, view, export
+  changes: jsonb("changes").$type<{ field: string; oldValue: any; newValue: any }[]>(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type DbAuditLog = typeof auditLogs.$inferSelect;
+
+// Leads/sales pipeline
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  companyName: text("company_name").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  source: text("source"), // website, referral, cold_call, trade_show, advertising
+  estimatedValue: real("estimated_value"),
+  probability: integer("probability"), // 0-100
+  stage: text("stage").default("new"), // new, contacted, qualified, proposal, negotiation, won, lost
+  assignedTo: varchar("assigned_to"),
+  nextFollowUp: text("next_follow_up"),
+  notes: text("notes"),
+  lostReason: text("lost_reason"),
+  convertedToClientId: varchar("converted_to_client_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type DbLead = typeof leads.$inferSelect;
+
+// Tenders/bids
+export const tenders = pgTable("tenders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  tenderNumber: text("tender_number").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  issuer: text("issuer"),
+  receivedDate: text("received_date"),
+  submissionDeadline: text("submission_deadline"),
+  contractValue: real("contract_value"),
+  contractDuration: text("contract_duration"),
+  bidAmount: real("bid_amount"),
+  bidSubmittedDate: text("bid_submitted_date"),
+  competitors: jsonb("competitors").$type<{ name: string; notes: string }[]>().default([]),
+  winProbability: integer("win_probability"),
+  documents: jsonb("documents").$type<{ name: string; url: string }[]>().default([]),
+  status: text("status").default("received"), // received, preparing, submitted, won, lost, withdrawn
+  outcome: text("outcome"),
+  debriefNotes: text("debrief_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTenderSchema = createInsertSchema(tenders).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTender = z.infer<typeof insertTenderSchema>;
+export type DbTender = typeof tenders.$inferSelect;
+
+// Recurring job schedules
+export const recurringSchedules = pgTable("recurring_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  contractId: varchar("contract_id").references(() => contracts.id),
+  templateId: varchar("template_id").references(() => jobTemplates.id),
+  title: text("title").notNull(),
+  frequency: text("frequency").notNull(), // daily, weekly, monthly, quarterly, annual
+  dayOfWeek: integer("day_of_week"), // 0-6 for weekly
+  dayOfMonth: integer("day_of_month"), // 1-31 for monthly
+  monthOfYear: integer("month_of_year"), // 1-12 for annual
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  nextRunDate: text("next_run_date"),
+  lastRunDate: text("last_run_date"),
+  autoCreate: boolean("auto_create").default(true),
+  advanceNoticeDays: integer("advance_notice_days").default(7),
+  siteAddress: text("site_address"),
+  assignedTo: varchar("assigned_to"),
+  notes: text("notes"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRecurringScheduleSchema = createInsertSchema(recurringSchedules).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertRecurringSchedule = z.infer<typeof insertRecurringScheduleSchema>;
+export type DbRecurringSchedule = typeof recurringSchedules.$inferSelect;
+
+// Risk assessments / RAMS templates
+export const riskAssessments = pgTable("risk_assessments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  title: text("title").notNull(),
+  siteAddress: text("site_address"),
+  assessmentDate: text("assessment_date"),
+  assessedBy: text("assessed_by"),
+  reviewDate: text("review_date"),
+  hazards: jsonb("hazards").$type<{
+    id: string;
+    hazard: string;
+    whoAtRisk: string;
+    initialRisk: string;
+    controls: string;
+    residualRisk: string;
+  }[]>().default([]),
+  methodStatement: text("method_statement"),
+  ppe: jsonb("ppe").$type<string[]>().default([]),
+  emergencyProcedures: text("emergency_procedures"),
+  signatures: jsonb("signatures").$type<{
+    name: string;
+    role: string;
+    signature: string;
+    date: string;
+  }[]>().default([]),
+  status: text("status").default("draft"), // draft, approved, active, expired
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRiskAssessmentSchema = createInsertSchema(riskAssessments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertRiskAssessment = z.infer<typeof insertRiskAssessmentSchema>;
+export type DbRiskAssessment = typeof riskAssessments.$inferSelect;
+
+// Performance KPIs
+export const performanceMetrics = pgTable("performance_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  metricDate: text("metric_date").notNull(),
+  metricType: text("metric_type").notNull(), // revenue, jobs_completed, customer_satisfaction, first_time_fix, response_time
+  value: real("value").notNull(),
+  target: real("target"),
+  technicianId: varchar("technician_id"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPerformanceMetricSchema = createInsertSchema(performanceMetrics).omit({ id: true, createdAt: true });
+export type InsertPerformanceMetric = z.infer<typeof insertPerformanceMetricSchema>;
+export type DbPerformanceMetric = typeof performanceMetrics.$inferSelect;
+
+// Notifications/alerts
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").default("info"), // info, warning, error, success
+  category: text("category"), // contract, invoice, job, certification, equipment
+  entityType: text("entity_type"),
+  entityId: varchar("entity_id"),
+  read: boolean("read").default(false),
+  readAt: timestamp("read_at"),
+  actionUrl: text("action_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, readAt: true });
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type DbNotification = typeof notifications.$inferSelect;

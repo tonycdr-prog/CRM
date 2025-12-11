@@ -22,6 +22,13 @@ import JobDetail from "@/pages/job-detail";
 import Profitability from "@/pages/profitability";
 import Reports from "@/pages/reports";
 import Schedule from "@/pages/schedule";
+import Equipment from "@/pages/equipment";
+import Certifications from "@/pages/certifications";
+import Leads from "@/pages/leads";
+import SiteAccess from "@/pages/site-access";
+import Incidents from "@/pages/incidents";
+import Tenders from "@/pages/tenders";
+import RiskAssessments from "@/pages/risk-assessments";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -55,6 +62,13 @@ function AuthenticatedRoutes() {
         <Route path="/profitability" component={Profitability} />
         <Route path="/reports" component={Reports} />
         <Route path="/schedule" component={Schedule} />
+        <Route path="/equipment" component={Equipment} />
+        <Route path="/certifications" component={Certifications} />
+        <Route path="/leads" component={Leads} />
+        <Route path="/tenders" component={Tenders} />
+        <Route path="/site-access" component={SiteAccess} />
+        <Route path="/incidents" component={Incidents} />
+        <Route path="/risk-assessments" component={RiskAssessments} />
         <Route path="/documents">{() => <PlaceholderPage title="Documents" />}</Route>
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
