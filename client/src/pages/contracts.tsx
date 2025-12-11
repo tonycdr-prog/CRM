@@ -42,8 +42,10 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Briefcase
 } from "lucide-react";
+import { Link } from "wouter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -177,6 +179,19 @@ export default function Contracts() {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const getRenewalBadge = (contract: Contract) => {
+    if (!contract.renewalDate && !contract.endDate) return null;
+    const checkDate = contract.renewalDate || contract.endDate;
+    if (!checkDate) return null;
+    const daysUntil = differenceInDays(parseISO(checkDate), new Date());
+    if (daysUntil < 0) return <Badge variant="destructive" className="text-xs">Overdue</Badge>;
+    if (daysUntil <= 7) return <Badge variant="destructive" className="text-xs">Due in {daysUntil}d</Badge>;
+    if (daysUntil <= 30) return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 text-xs">Due in {daysUntil}d</Badge>;
+    if (daysUntil <= 60) return <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-100 text-xs">60d warning</Badge>;
+    if (daysUntil <= 90) return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100 text-xs">90d warning</Badge>;
+    return null;
   };
 
   const getClientName = (clientId: string | null) => {
@@ -440,7 +455,12 @@ export default function Contracts() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {getStatusBadge(contract.status)}
+                      {getRenewalBadge(contract)}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -449,6 +469,12 @@ export default function Contracts() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <Link href={`/jobs?createJob=true&contractId=${contract.id}&clientId=${contract.clientId}`}>
+                          <DropdownMenuItem data-testid={`button-create-job-${contract.id}`}>
+                            <Briefcase className="h-4 w-4 mr-2" />
+                            Create Job
+                          </DropdownMenuItem>
+                        </Link>
                         <DropdownMenuItem>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit

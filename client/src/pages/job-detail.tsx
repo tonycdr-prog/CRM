@@ -244,6 +244,14 @@ export default function JobDetail() {
               Complete
             </Button>
           )}
+          {job.status === "completed" && jobInvoices.length === 0 && (
+            <Link href={`/finance?createInvoice=true&jobId=${job.id}&clientId=${job.clientId}&amount=${totalCost > 0 ? Math.round(totalCost * 1.2) : job.quotedAmount || 0}&title=${encodeURIComponent(`Invoice for ${job.title}`)}`}>
+              <Button data-testid="button-create-invoice">
+                <Receipt className="h-4 w-4 mr-2" />
+                Create Invoice
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 

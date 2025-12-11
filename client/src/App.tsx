@@ -21,6 +21,7 @@ import ClientDetail from "@/pages/client-detail";
 import JobDetail from "@/pages/job-detail";
 import Profitability from "@/pages/profitability";
 import Reports from "@/pages/reports";
+import Schedule from "@/pages/schedule";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -53,6 +54,7 @@ function AuthenticatedRoutes() {
         <Route path="/holidays" component={Holidays} />
         <Route path="/profitability" component={Profitability} />
         <Route path="/reports" component={Reports} />
+        <Route path="/schedule" component={Schedule} />
         <Route path="/documents">{() => <PlaceholderPage title="Documents" />}</Route>
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />

@@ -59,6 +59,9 @@ The application includes a comprehensive business management layer for smoke con
 -   **Subcontractor Network**: Approved subcontractor database with insurance/accreditation expiry alerts.
 -   **Holiday Management**: Leave requests with approval workflow and annual allowance tracking.
 -   **Sidebar Navigation**: Organised navigation with Testing, Business, and Operations sections.
+-   **Global Search**: Header-mounted search dialog (Cmd/Ctrl+K) for cross-entity searching across clients, contracts, jobs, and invoices with instant navigation to results.
+-   **CSV Data Export**: Export button on jobs page for downloading job data to CSV format for spreadsheet analysis.
+-   **Contract Renewal Badges**: Visual warning indicators on contracts list showing renewal urgency with color-coded badges for overdue (red), 7-day (red), 30-day (amber), 60-day (orange), and 90-day (yellow) warnings.
 
 ### Backend
 

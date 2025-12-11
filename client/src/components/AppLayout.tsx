@@ -34,6 +34,7 @@ import {
   Calendar,
   TrendingUp
 } from "lucide-react";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ interface AppLayoutProps {
 
 const testingMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Schedule", url: "/schedule", icon: Calendar },
   { title: "Airflow Testing", url: "/test", icon: Wind },
 ];
 
@@ -194,8 +196,11 @@ export function AppLayout({ children }: AppLayoutProps) {
         </Sidebar>
 
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center gap-2 p-2 border-b h-12 bg-background">
+          <header className="flex items-center gap-4 p-2 border-b h-12 bg-background">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex-1">
+              <GlobalSearch />
+            </div>
           </header>
           <main className="flex-1 overflow-auto">
             {children}

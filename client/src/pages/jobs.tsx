@@ -37,7 +37,8 @@ import {
   Edit,
   Trash2,
   Play,
-  CheckCircle
+  CheckCircle,
+  Download
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,7 +48,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format, parseISO } from "date-fns";
 import { nanoid } from "nanoid";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
+import { useEffect } from "react";
+import { exportToCSV } from "@/lib/exportUtils";
 
 interface Job {
   id: string;
@@ -93,6 +96,7 @@ interface Contract {
 export default function Jobs() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearch();
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -101,6 +105,20 @@ export default function Jobs() {
   const [siteAddress, setSiteAddress] = useState("");
   const [siteCity, setSiteCity] = useState("");
   const [sitePostcode, setSitePostcode] = useState("");
+
+  // Handle URL parameters for creating a job from contract
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.get("createJob") === "true") {
+      const contractId = params.get("contractId");
+      const clientId = params.get("clientId");
+      if (contractId) setSelectedContractId(contractId);
+      if (clientId) setSelectedClientId(clientId);
+      setIsCreateDialogOpen(true);
+      // Clean up URL
+      window.history.replaceState({}, "", "/jobs");
+    }
+  }, [searchParams]);
 
   const handleClientChange = (clientId: string) => {
     setSelectedClientId(clientId);
@@ -289,13 +307,37 @@ export default function Jobs() {
           <h1 className="text-2xl font-bold" data-testid="text-jobs-title">Jobs</h1>
           <p className="text-muted-foreground">Manage work orders and job scheduling</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetFormState(); }}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-job">
-              <Plus className="h-4 w-4 mr-2" />
-              New Job
-            </Button>
-          </DialogTrigger>
+      </div>
+      <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => exportToCSV(
+              jobs,
+              "jobs_export",
+              [
+                { key: "jobNumber", header: "Job Number" },
+                { key: "title", header: "Title" },
+                { key: "status", header: "Status" },
+                { key: "priority", header: "Priority" },
+                { key: "jobType", header: "Type" },
+                { key: "scheduledDate", header: "Scheduled Date" },
+                { key: "siteAddress", header: "Site Address" },
+                { key: "siteCity", header: "City" },
+                { key: "sitePostcode", header: "Postcode" },
+              ]
+            )}
+            data-testid="button-export-jobs"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetFormState(); }}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-job">
+                <Plus className="h-4 w-4 mr-2" />
+                New Job
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Job</DialogTitle>

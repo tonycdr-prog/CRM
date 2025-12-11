@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useQuery } from "@tanstack/react-query";
 import { 
   BarChart3, 
   Building2, 
@@ -13,15 +14,65 @@ import {
   Clock,
   FileText,
   Plus,
-  ArrowRight
+  ArrowRight,
+  Briefcase,
+  Receipt,
+  DollarSign,
+  Users,
+  AlertCircle
 } from "lucide-react";
 import { Link } from "wouter";
 import { loadStorageData, type StorageData } from "@/lib/storage";
 import { useState, useEffect, useMemo } from "react";
-import { format, parseISO, differenceInDays, addYears } from "date-fns";
+import { format, parseISO, differenceInDays, addYears, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { SyncIndicator } from "@/components/SyncIndicator";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useAuth } from "@/hooks/useAuth";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+
+interface Client {
+  id: string;
+  companyName: string;
+  status: string;
+}
+
+interface Contract {
+  id: string;
+  clientId: string | null;
+  title: string;
+  value: string;
+  endDate: string | null;
+  renewalDate: string | null;
+  status: string;
+}
+
+interface Job {
+  id: string;
+  clientId: string | null;
+  title: string;
+  status: string;
+  scheduledDate: string | null;
+  quotedAmount: number | null;
+  actualCost: number | null;
+}
+
+interface Invoice {
+  id: string;
+  clientId: string | null;
+  invoiceNumber: string;
+  title: string;
+  total: number | null;
+  dueDate: string | null;
+  status: string;
+  createdAt: string;
+}
+
+interface Expense {
+  id: string;
+  amount: number;
+  date: string;
+  category: string;
+}
 
 interface DashboardStats {
   totalProjects: number;
@@ -60,9 +111,114 @@ export default function Dashboard() {
   const { user } = useAuth();
   const syncState = useOfflineSync(user?.id);
 
+  // Fetch business data
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients", user?.id],
+    enabled: !!user?.id,
+  });
+
+  const { data: contracts = [] } = useQuery<Contract[]>({
+    queryKey: ["/api/contracts", user?.id],
+    enabled: !!user?.id,
+  });
+
+  const { data: jobs = [] } = useQuery<Job[]>({
+    queryKey: ["/api/jobs", user?.id],
+    enabled: !!user?.id,
+  });
+
+  const { data: invoices = [] } = useQuery<Invoice[]>({
+    queryKey: ["/api/invoices", user?.id],
+    enabled: !!user?.id,
+  });
+
+  const { data: expenses = [] } = useQuery<Expense[]>({
+    queryKey: ["/api/expenses", user?.id],
+    enabled: !!user?.id,
+  });
+
   useEffect(() => {
     setStorageData(loadStorageData());
   }, []);
+
+  // Business metrics calculations
+  const businessMetrics = useMemo(() => {
+    const now = new Date();
+    const thisMonth = { start: startOfMonth(now), end: endOfMonth(now) };
+    const lastMonth = { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)) };
+
+    // Revenue calculations
+    const paidInvoices = invoices.filter(i => i.status === "paid");
+    const thisMonthRevenue = paidInvoices
+      .filter(i => i.createdAt && isWithinInterval(parseISO(i.createdAt), thisMonth))
+      .reduce((sum, i) => sum + (i.total || 0), 0);
+    const lastMonthRevenue = paidInvoices
+      .filter(i => i.createdAt && isWithinInterval(parseISO(i.createdAt), lastMonth))
+      .reduce((sum, i) => sum + (i.total || 0), 0);
+    const revenueChange = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
+
+    // Outstanding invoices
+    const outstandingInvoices = invoices.filter(i => i.status === "sent" || i.status === "overdue");
+    const outstandingAmount = outstandingInvoices.reduce((sum, i) => sum + (i.total || 0), 0);
+    const overdueInvoices = invoices.filter(i => {
+      if (i.status !== "sent" || !i.dueDate) return false;
+      return parseISO(i.dueDate) < now;
+    });
+
+    // Job stats
+    const activeJobs = jobs.filter(j => j.status === "in_progress" || j.status === "scheduled");
+    const pendingJobs = jobs.filter(j => j.status === "pending");
+    const completedThisMonth = jobs.filter(j => 
+      j.status === "completed" && j.scheduledDate && 
+      isWithinInterval(parseISO(j.scheduledDate), thisMonth)
+    );
+
+    // Contract renewals
+    const upcomingRenewals = contracts.filter(c => {
+      if (c.status !== "active") return false;
+      const renewDate = c.renewalDate || c.endDate;
+      if (!renewDate) return false;
+      const daysUntil = differenceInDays(parseISO(renewDate), now);
+      return daysUntil >= 0 && daysUntil <= 30;
+    });
+
+    // Active clients
+    const activeClients = clients.filter(c => c.status === "active").length;
+
+    // Monthly revenue chart data (last 6 months)
+    const monthlyData = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = subMonths(now, i);
+      const monthInterval = { start: startOfMonth(monthDate), end: endOfMonth(monthDate) };
+      const revenue = paidInvoices
+        .filter(inv => inv.createdAt && isWithinInterval(parseISO(inv.createdAt), monthInterval))
+        .reduce((sum, inv) => sum + (inv.total || 0), 0);
+      const expenseTotal = expenses
+        .filter(exp => isWithinInterval(parseISO(exp.date), monthInterval))
+        .reduce((sum, exp) => sum + exp.amount, 0);
+      monthlyData.push({
+        month: format(monthDate, "MMM"),
+        revenue,
+        expenses: expenseTotal,
+        profit: revenue - expenseTotal,
+      });
+    }
+
+    return {
+      thisMonthRevenue,
+      lastMonthRevenue,
+      revenueChange,
+      outstandingAmount,
+      overdueCount: overdueInvoices.length,
+      activeJobs: activeJobs.length,
+      pendingJobs: pendingJobs.length,
+      completedThisMonth: completedThisMonth.length,
+      upcomingRenewals,
+      activeClients,
+      overdueInvoices,
+      monthlyData,
+    };
+  }, [clients, contracts, jobs, invoices, expenses]);
 
   const stats = useMemo<DashboardStats>(() => {
     if (!storageData) {
@@ -82,7 +238,6 @@ export default function Dashboard() {
     const passedTests = tests.filter(t => t.average >= 1.0);
     const passRate = tests.length > 0 ? (passedTests.length / tests.length) * 100 : 0;
 
-    // Calculate upcoming tests (annual inspections due within 30 days)
     const now = new Date();
     let upcomingCount = 0;
     const testsByDamper = new Map<string, typeof tests>();
@@ -105,7 +260,6 @@ export default function Dashboard() {
       }
     });
 
-    // Recent activity
     const recentActivity = tests
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 5)
@@ -120,7 +274,7 @@ export default function Dashboard() {
       totalTests: tests.length,
       passRate,
       upcomingTests: upcomingCount,
-      flaggedDampers: 0, // Will be calculated by predictive maintenance
+      flaggedDampers: 0,
       recentActivity,
     };
   }, [storageData]);
@@ -169,7 +323,6 @@ export default function Dashboard() {
     const tests = Object.values(storageData.tests);
     const damperTests = new Map<string, typeof tests>();
 
-    // Group tests by damper
     tests.forEach(test => {
       const key = `${test.building}_${test.location}_${test.floorNumber}_${test.shaftId}`;
       if (!damperTests.has(key)) {
@@ -181,12 +334,11 @@ export default function Dashboard() {
     const flagged: FlaggedDamper[] = [];
 
     damperTests.forEach((damperTestList, key) => {
-      if (damperTestList.length < 2) return; // Need at least 2 tests for trend
+      if (damperTestList.length < 2) return;
 
       const sorted = damperTestList.sort((a, b) => a.createdAt - b.createdAt);
       const velocities = sorted.map(t => t.average);
       
-      // Calculate trend using simple linear regression
       const n = velocities.length;
       const sumX = (n * (n - 1)) / 2;
       const sumY = velocities.reduce((a, b) => a + b, 0);
@@ -200,7 +352,6 @@ export default function Dashboard() {
       const velocityChange = ((lastVelocity - firstVelocity) / firstVelocity) * 100;
       const avgVelocity = sumY / n;
 
-      // Flag if declining more than 10% or below threshold
       if (slope < -0.1 || lastVelocity < 1.0) {
         const latestTest = sorted[sorted.length - 1];
         
@@ -237,7 +388,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your smoke control testing</p>
+          <p className="text-muted-foreground">Business overview and key metrics</p>
         </div>
         <div className="flex items-center gap-2">
           <SyncIndicator
@@ -248,16 +399,222 @@ export default function Dashboard() {
             syncError={syncState.syncError}
             onSync={syncState.syncToServer}
           />
-          <Link href="/test">
-            <Button data-testid="button-new-test">
-              <Plus className="h-4 w-4 mr-2" />
-              New Test
-            </Button>
-          </Link>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Quick Actions */}
+      <Card data-testid="card-quick-actions">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/jobs">
+              <Button size="sm" data-testid="button-quick-new-job">
+                <Plus className="h-4 w-4 mr-1" />
+                New Job
+              </Button>
+            </Link>
+            <Link href="/finance">
+              <Button size="sm" variant="outline" data-testid="button-quick-new-invoice">
+                <Receipt className="h-4 w-4 mr-1" />
+                New Invoice
+              </Button>
+            </Link>
+            <Link href="/clients">
+              <Button size="sm" variant="outline" data-testid="button-quick-new-client">
+                <Users className="h-4 w-4 mr-1" />
+                New Client
+              </Button>
+            </Link>
+            <Link href="/test">
+              <Button size="sm" variant="outline" data-testid="button-quick-new-test">
+                <FileText className="h-4 w-4 mr-1" />
+                New Test
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Business Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card data-testid="card-stat-revenue">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">This Month</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">£{businessMetrics.thisMonthRevenue.toLocaleString()}</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              {businessMetrics.revenueChange !== 0 && (
+                <>
+                  {businessMetrics.revenueChange > 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
+                  )}
+                  <span className={businessMetrics.revenueChange > 0 ? "text-green-600" : "text-red-600"}>
+                    {businessMetrics.revenueChange > 0 ? "+" : ""}{businessMetrics.revenueChange.toFixed(1)}%
+                  </span>
+                  <span className="ml-1">vs last month</span>
+                </>
+              )}
+              {businessMetrics.revenueChange === 0 && <span>Revenue</span>}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-stat-outstanding">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">£{businessMetrics.outstandingAmount.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {businessMetrics.overdueCount > 0 && (
+                <span className="text-red-600">{businessMetrics.overdueCount} overdue</span>
+              )}
+              {businessMetrics.overdueCount === 0 && "Awaiting payment"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-stat-active-jobs">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{businessMetrics.activeJobs}</div>
+            <p className="text-xs text-muted-foreground">
+              {businessMetrics.pendingJobs} pending · {businessMetrics.completedThisMonth} completed this month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-stat-clients">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{businessMetrics.activeClients}</div>
+            <p className="text-xs text-muted-foreground">Total clients</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Alerts Section */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Contract Renewals Alert */}
+        {businessMetrics.upcomingRenewals.length > 0 && (
+          <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950" data-testid="card-renewals-alert">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-amber-600" />
+                <CardTitle className="text-base">Contract Renewals Due</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {businessMetrics.upcomingRenewals.slice(0, 3).map((contract) => {
+                  const client = clients.find(c => c.id === contract.clientId);
+                  const renewDate = contract.renewalDate || contract.endDate;
+                  const daysUntil = renewDate ? differenceInDays(parseISO(renewDate), new Date()) : 0;
+                  return (
+                    <div key={contract.id} className="flex items-center justify-between p-2 bg-background rounded border">
+                      <div>
+                        <div className="font-medium text-sm">{contract.title}</div>
+                        <div className="text-xs text-muted-foreground">{client?.companyName}</div>
+                      </div>
+                      <Badge variant={daysUntil <= 7 ? "destructive" : "outline"} className="text-xs">
+                        {daysUntil} days
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+              {businessMetrics.upcomingRenewals.length > 3 && (
+                <Link href="/contracts">
+                  <Button variant="ghost" size="sm" className="w-full mt-2">
+                    View all {businessMetrics.upcomingRenewals.length} renewals
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Overdue Invoices Alert */}
+        {businessMetrics.overdueInvoices.length > 0 && (
+          <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950" data-testid="card-overdue-alert">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <CardTitle className="text-base">Overdue Invoices</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {businessMetrics.overdueInvoices.slice(0, 3).map((invoice) => {
+                  const client = clients.find(c => c.id === invoice.clientId);
+                  const daysOverdue = invoice.dueDate ? differenceInDays(new Date(), parseISO(invoice.dueDate)) : 0;
+                  return (
+                    <div key={invoice.id} className="flex items-center justify-between p-2 bg-background rounded border">
+                      <div>
+                        <div className="font-medium text-sm">{invoice.invoiceNumber}</div>
+                        <div className="text-xs text-muted-foreground">{client?.companyName}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-sm">£{(invoice.total || 0).toLocaleString()}</div>
+                        <div className="text-xs text-red-600">{daysOverdue} days overdue</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {businessMetrics.overdueInvoices.length > 3 && (
+                <Link href="/finance">
+                  <Button variant="ghost" size="sm" className="w-full mt-2">
+                    View all {businessMetrics.overdueInvoices.length} overdue
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Revenue Chart */}
+      <Card data-testid="card-revenue-chart">
+        <CardHeader>
+          <CardTitle>Revenue & Profit Trend</CardTitle>
+          <CardDescription>Last 6 months performance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={businessMetrics.monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="month" className="text-xs" />
+                <YAxis className="text-xs" tickFormatter={(value) => `£${value}`} />
+                <Tooltip 
+                  formatter={(value: number) => [`£${value.toLocaleString()}`, '']}
+                  contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                />
+                <Area type="monotone" dataKey="revenue" stackId="1" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} name="Revenue" />
+                <Area type="monotone" dataKey="profit" stackId="2" stroke="hsl(142.1 76.2% 36.3%)" fill="hsl(142.1 76.2% 36.3%)" fillOpacity={0.3} name="Profit" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Testing Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card data-testid="card-stat-projects">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
