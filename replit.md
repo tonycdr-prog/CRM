@@ -72,6 +72,9 @@ The application includes a comprehensive business management layer for smoke con
 -   **Job Templates**: Reusable job configurations with checklist items, estimated durations, default pricing, and equipment requirements.
 -   **Recurring Jobs**: Scheduled automatic job creation with frequency options (daily, weekly, monthly, quarterly, biannually, annually), interval control, and auto-create days configuration.
 -   **Notifications Center**: Internal notification system with read/unread tracking, category filtering, mark all read, and bulk operations.
+-   **Supplier Management**: Vendor database with company details, contact info, star ratings (1-5), categories (parts, equipment, services, consumables), payment terms, preferred supplier flagging, and active/inactive status.
+-   **Purchase Orders**: Full PO workflow with line item management (JSONB storage), supplier linking, automatic VAT/subtotal/total calculations, status tracking (draft, sent, confirmed, received, cancelled), and expected delivery dates.
+-   **Training Records**: Employee training and certification tracking with course types (internal, external, online, practical), completion/expiry dates, certificate numbers, scores, cost tracking, and expiry warning badges.
 
 ### Backend
 
