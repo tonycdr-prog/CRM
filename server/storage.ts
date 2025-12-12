@@ -7,7 +7,8 @@ import {
   mileageClaims, workNotes, callbacks, staffDirectory, priceLists,
   customerFeedback, serviceLevelAgreements, partsCatalog,
   documentTemplates, warranties, competitors,
-  serviceHistory, qualityChecklists, timeOffRequests
+  serviceHistory, qualityChecklists, timeOffRequests,
+  visitTypes, serviceTemplates, siteAssets, assetBatches
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -131,6 +132,14 @@ type DbQualityChecklist = typeof qualityChecklists.$inferSelect;
 type NewQualityChecklist = typeof qualityChecklists.$inferInsert;
 type DbTimeOffRequest = typeof timeOffRequests.$inferSelect;
 type NewTimeOffRequest = typeof timeOffRequests.$inferInsert;
+type DbVisitType = typeof visitTypes.$inferSelect;
+type NewVisitType = typeof visitTypes.$inferInsert;
+type DbServiceTemplate = typeof serviceTemplates.$inferSelect;
+type NewServiceTemplate = typeof serviceTemplates.$inferInsert;
+type DbSiteAsset = typeof siteAssets.$inferSelect;
+type NewSiteAsset = typeof siteAssets.$inferInsert;
+type DbAssetBatch = typeof assetBatches.$inferSelect;
+type NewAssetBatch = typeof assetBatches.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -437,6 +446,33 @@ export interface IStorage {
   createTimeOffRequest(request: NewTimeOffRequest): Promise<DbTimeOffRequest>;
   updateTimeOffRequest(id: string, request: Partial<NewTimeOffRequest>): Promise<DbTimeOffRequest | undefined>;
   deleteTimeOffRequest(id: string): Promise<boolean>;
+
+  // Visit Types
+  getVisitTypes(userId: string): Promise<DbVisitType[]>;
+  createVisitType(visitType: NewVisitType): Promise<DbVisitType>;
+  updateVisitType(id: string, visitType: Partial<NewVisitType>): Promise<DbVisitType | undefined>;
+  deleteVisitType(id: string): Promise<boolean>;
+
+  // Service Templates
+  getServiceTemplates(userId: string): Promise<DbServiceTemplate[]>;
+  getServiceTemplatesByVisitType(visitTypeId: string): Promise<DbServiceTemplate[]>;
+  createServiceTemplate(template: NewServiceTemplate): Promise<DbServiceTemplate>;
+  updateServiceTemplate(id: string, template: Partial<NewServiceTemplate>): Promise<DbServiceTemplate | undefined>;
+  deleteServiceTemplate(id: string): Promise<boolean>;
+
+  // Site Assets
+  getSiteAssets(userId: string): Promise<DbSiteAsset[]>;
+  getSiteAssetsByProject(projectId: string): Promise<DbSiteAsset[]>;
+  createSiteAsset(asset: NewSiteAsset): Promise<DbSiteAsset>;
+  createSiteAssetsBulk(assets: NewSiteAsset[]): Promise<DbSiteAsset[]>;
+  updateSiteAsset(id: string, asset: Partial<NewSiteAsset>): Promise<DbSiteAsset | undefined>;
+  deleteSiteAsset(id: string): Promise<boolean>;
+
+  // Asset Batches
+  getAssetBatches(userId: string): Promise<DbAssetBatch[]>;
+  createAssetBatch(batch: NewAssetBatch): Promise<DbAssetBatch>;
+  updateAssetBatch(id: string, batch: Partial<NewAssetBatch>): Promise<DbAssetBatch | undefined>;
+  deleteAssetBatch(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1657,6 +1693,100 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTimeOffRequest(id: string): Promise<boolean> {
     await db.delete(timeOffRequests).where(eq(timeOffRequests.id, id));
+    return true;
+  }
+
+  // Visit Types
+  async getVisitTypes(userId: string): Promise<DbVisitType[]> {
+    return db.select().from(visitTypes).where(eq(visitTypes.userId, userId)).orderBy(visitTypes.sortOrder);
+  }
+
+  async createVisitType(visitType: NewVisitType): Promise<DbVisitType> {
+    const [newItem] = await db.insert(visitTypes).values(visitType).returning();
+    return newItem;
+  }
+
+  async updateVisitType(id: string, visitType: Partial<NewVisitType>): Promise<DbVisitType | undefined> {
+    const [updated] = await db.update(visitTypes).set({ ...visitType, updatedAt: new Date() }).where(eq(visitTypes.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteVisitType(id: string): Promise<boolean> {
+    await db.delete(visitTypes).where(eq(visitTypes.id, id));
+    return true;
+  }
+
+  // Service Templates
+  async getServiceTemplates(userId: string): Promise<DbServiceTemplate[]> {
+    return db.select().from(serviceTemplates).where(eq(serviceTemplates.userId, userId)).orderBy(serviceTemplates.sortOrder);
+  }
+
+  async getServiceTemplatesByVisitType(visitTypeId: string): Promise<DbServiceTemplate[]> {
+    return db.select().from(serviceTemplates).where(eq(serviceTemplates.visitTypeId, visitTypeId)).orderBy(serviceTemplates.sortOrder);
+  }
+
+  async createServiceTemplate(template: NewServiceTemplate): Promise<DbServiceTemplate> {
+    const [newItem] = await db.insert(serviceTemplates).values(template).returning();
+    return newItem;
+  }
+
+  async updateServiceTemplate(id: string, template: Partial<NewServiceTemplate>): Promise<DbServiceTemplate | undefined> {
+    const [updated] = await db.update(serviceTemplates).set({ ...template, updatedAt: new Date() }).where(eq(serviceTemplates.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteServiceTemplate(id: string): Promise<boolean> {
+    await db.delete(serviceTemplates).where(eq(serviceTemplates.id, id));
+    return true;
+  }
+
+  // Site Assets
+  async getSiteAssets(userId: string): Promise<DbSiteAsset[]> {
+    return db.select().from(siteAssets).where(eq(siteAssets.userId, userId)).orderBy(desc(siteAssets.createdAt));
+  }
+
+  async getSiteAssetsByProject(projectId: string): Promise<DbSiteAsset[]> {
+    return db.select().from(siteAssets).where(eq(siteAssets.projectId, projectId)).orderBy(siteAssets.floor, siteAssets.assetNumber);
+  }
+
+  async createSiteAsset(asset: NewSiteAsset): Promise<DbSiteAsset> {
+    const [newItem] = await db.insert(siteAssets).values(asset).returning();
+    return newItem;
+  }
+
+  async createSiteAssetsBulk(assets: NewSiteAsset[]): Promise<DbSiteAsset[]> {
+    if (assets.length === 0) return [];
+    const newItems = await db.insert(siteAssets).values(assets).returning();
+    return newItems;
+  }
+
+  async updateSiteAsset(id: string, asset: Partial<NewSiteAsset>): Promise<DbSiteAsset | undefined> {
+    const [updated] = await db.update(siteAssets).set({ ...asset, updatedAt: new Date() }).where(eq(siteAssets.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteSiteAsset(id: string): Promise<boolean> {
+    await db.delete(siteAssets).where(eq(siteAssets.id, id));
+    return true;
+  }
+
+  // Asset Batches
+  async getAssetBatches(userId: string): Promise<DbAssetBatch[]> {
+    return db.select().from(assetBatches).where(eq(assetBatches.userId, userId)).orderBy(desc(assetBatches.createdAt));
+  }
+
+  async createAssetBatch(batch: NewAssetBatch): Promise<DbAssetBatch> {
+    const [newItem] = await db.insert(assetBatches).values(batch).returning();
+    return newItem;
+  }
+
+  async updateAssetBatch(id: string, batch: Partial<NewAssetBatch>): Promise<DbAssetBatch | undefined> {
+    const [updated] = await db.update(assetBatches).set({ ...batch, updatedAt: new Date() }).where(eq(assetBatches.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteAssetBatch(id: string): Promise<boolean> {
+    await db.delete(assetBatches).where(eq(assetBatches.id, id));
     return true;
   }
 }
