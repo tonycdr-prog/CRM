@@ -80,7 +80,25 @@ interface Client {
   companyName: string;
 }
 
-type ViewMode = "month" | "week" | "day";
+type ViewMode = "month" | "week" | "day" | "timeline";
+
+interface StaffMember {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string | null;
+  department: string | null;
+  status: string | null;
+}
+
+interface JobAssignment {
+  id: string;
+  jobId: string;
+  staffId: string;
+  role: string | null;
+  isPrimary: boolean | null;
+  assignedAt: string | null;
+}
 
 const priorityColors: Record<string, string> = {
   urgent: "bg-red-500 text-white",
@@ -117,6 +135,16 @@ export default function Schedule() {
     enabled: !!user?.id,
   });
 
+  const { data: staffMembers = [] } = useQuery<StaffMember[]>({
+    queryKey: [`/api/staff-directory/${user?.id}`],
+    enabled: !!user?.id,
+  });
+
+  const { data: jobAssignments = [] } = useQuery<JobAssignment[]>({
+    queryKey: [`/api/job-assignments/${user?.id}`],
+    enabled: !!user?.id,
+  });
+
   const updateJobMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Job> }) => {
       return apiRequest("PATCH", `/api/jobs/${id}`, data);
@@ -146,7 +174,7 @@ export default function Schedule() {
   const navigatePrevious = () => {
     if (viewMode === "month") {
       setCurrentDate(subMonths(currentDate, 1));
-    } else if (viewMode === "week") {
+    } else if (viewMode === "week" || viewMode === "timeline") {
       setCurrentDate(subWeeks(currentDate, 1));
     } else {
       setCurrentDate(addDays(currentDate, -1));
@@ -156,7 +184,7 @@ export default function Schedule() {
   const navigateNext = () => {
     if (viewMode === "month") {
       setCurrentDate(addMonths(currentDate, 1));
-    } else if (viewMode === "week") {
+    } else if (viewMode === "week" || viewMode === "timeline") {
       setCurrentDate(addWeeks(currentDate, 1));
     } else {
       setCurrentDate(addDays(currentDate, 1));
@@ -392,6 +420,175 @@ export default function Schedule() {
     );
   };
 
+  // Get staff member name by ID
+  const getStaffName = (staffId: string) => {
+    const staff = staffMembers.find(s => s.id === staffId);
+    return staff?.name || "Unknown";
+  };
+
+  // Get jobs assigned to a specific staff member for the current week
+  const getJobsForStaff = (staffId: string) => {
+    const staffJobIds = jobAssignments
+      .filter(a => a.staffId === staffId)
+      .map(a => a.jobId);
+    
+    return jobs.filter(job => {
+      if (!job.scheduledDate) return false;
+      const jobDate = parseISO(job.scheduledDate);
+      const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const end = endOfWeek(currentDate, { weekStartsOn: 1 });
+      const isInWeek = isWithinInterval(jobDate, { start, end });
+      const isAssigned = staffJobIds.includes(job.id) || job.assignedTo === staffId;
+      return isInWeek && isAssigned;
+    });
+  };
+
+  // Calculate job bar position and width based on time
+  const getJobBarStyle = (job: Job, dayIndex: number) => {
+    const startHour = job.scheduledTime 
+      ? parseInt(job.scheduledTime.split(":")[0]) 
+      : 8;
+    const duration = job.estimatedDuration || 2;
+    
+    const hourWidth = 100 / 12;
+    const left = (startHour - 7) * hourWidth;
+    const width = duration * hourWidth;
+    
+    return {
+      left: `${Math.max(0, left)}%`,
+      width: `${Math.min(width, 100 - left)}%`,
+    };
+  };
+
+  const renderTimelineView = () => {
+    const activeStaff = staffMembers.filter(s => s.status !== "inactive");
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+    
+    if (activeStaff.length === 0) {
+      return (
+        <div className="border rounded-lg p-8 text-center">
+          <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">No Staff Members</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Add staff members to see the timeline view
+          </p>
+          <Link href="/staff">
+            <Button variant="outline" data-testid="button-add-staff-timeline">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Staff
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <div className="border rounded-lg overflow-hidden">
+        <div className="flex bg-muted border-b">
+          <div className="w-40 p-2 border-r flex-shrink-0 font-medium text-sm">
+            Staff Member
+          </div>
+          <div className="flex-1 grid grid-cols-7">
+            {weekDays.map(day => (
+              <div
+                key={day.toISOString()}
+                className={`p-2 text-center text-xs border-r ${isToday(day) ? "bg-primary/10" : ""}`}
+              >
+                <div className="font-medium">{format(day, "EEE")}</div>
+                <div className={isToday(day) ? "text-primary font-bold" : "text-muted-foreground"}>
+                  {format(day, "d")}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="max-h-[500px] overflow-y-auto">
+          {activeStaff.map(staff => {
+            const staffJobs = getJobsForStaff(staff.id);
+            
+            return (
+              <div key={staff.id} className="flex border-b min-h-[60px]">
+                <div className="w-40 p-2 border-r flex-shrink-0 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                    {staff.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{staff.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{staff.role || "Technician"}</div>
+                  </div>
+                </div>
+                <div className="flex-1 grid grid-cols-7">
+                  {weekDays.map((day, dayIndex) => {
+                    const dayJobsForStaff = staffJobs.filter(job => 
+                      job.scheduledDate && isSameDay(parseISO(job.scheduledDate), day)
+                    );
+                    
+                    return (
+                      <div
+                        key={`${staff.id}-${day.toISOString()}`}
+                        className={`relative border-r p-1 min-h-[60px] ${isToday(day) ? "bg-primary/5" : ""}`}
+                      >
+                        {dayJobsForStaff.map((job, idx) => (
+                          <div
+                            key={job.id}
+                            className={`text-xs p-1 mb-1 rounded cursor-pointer truncate ${priorityColors[job.priority]}`}
+                            style={{ marginTop: idx > 0 ? "2px" : "0" }}
+                            onClick={() => handleJobClick(job)}
+                            title={`${job.title} - ${job.scheduledTime || "All day"} (${job.estimatedDuration || 2}h)`}
+                            data-testid={`timeline-job-${job.id}`}
+                          >
+                            <div className="flex items-center gap-1">
+                              {job.scheduledTime && (
+                                <span className="font-mono text-[10px] opacity-80">
+                                  {job.scheduledTime.slice(0, 5)}
+                                </span>
+                              )}
+                              <span className="truncate font-medium">{job.title}</span>
+                            </div>
+                            {job.estimatedDuration && (
+                              <div className="text-[10px] opacity-80 flex items-center gap-1">
+                                <Clock className="h-2 w-2" />
+                                {job.estimatedDuration}h
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {dayJobsForStaff.length === 0 && (
+                          <div className="h-full flex items-center justify-center">
+                            <div className="w-full h-px bg-muted" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        <div className="p-2 bg-muted border-t text-xs text-muted-foreground flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span>{activeStaff.length} staff members</span>
+            <span>{jobs.filter(j => j.scheduledDate && isWithinInterval(parseISO(j.scheduledDate), { 
+              start: startOfWeek(currentDate, { weekStartsOn: 1 }), 
+              end: endOfWeek(currentDate, { weekStartsOn: 1 }) 
+            })).length} jobs this week</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {Object.entries(priorityColors).map(([priority, color]) => (
+              <div key={priority} className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded ${color}`} />
+                <span className="capitalize">{priority}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Jobs without scheduled dates
   const unscheduledJobs = jobs.filter(
     job => !job.scheduledDate && job.status !== "completed" && job.status !== "cancelled"
@@ -439,7 +636,9 @@ export default function Schedule() {
                   <h2 className="text-lg font-semibold ml-2">
                     {viewMode === "day" 
                       ? format(currentDate, "MMMM d, yyyy")
-                      : format(currentDate, "MMMM yyyy")
+                      : viewMode === "timeline" || viewMode === "week"
+                        ? `${format(startOfWeek(currentDate, { weekStartsOn: 1 }), "MMM d")} - ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), "MMM d, yyyy")}`
+                        : format(currentDate, "MMMM yyyy")
                     }
                   </h2>
                 </div>
@@ -448,6 +647,7 @@ export default function Schedule() {
                     <TabsTrigger value="month" data-testid="tab-month">Month</TabsTrigger>
                     <TabsTrigger value="week" data-testid="tab-week">Week</TabsTrigger>
                     <TabsTrigger value="day" data-testid="tab-day">Day</TabsTrigger>
+                    <TabsTrigger value="timeline" data-testid="tab-timeline">Timeline</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -456,6 +656,7 @@ export default function Schedule() {
               {viewMode === "month" && renderMonthView()}
               {viewMode === "week" && renderWeekView()}
               {viewMode === "day" && renderDayView()}
+              {viewMode === "timeline" && renderTimelineView()}
             </CardContent>
           </Card>
 
