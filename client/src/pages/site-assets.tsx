@@ -229,7 +229,7 @@ export default function SiteAssets() {
       const visitType = data.visitType === "none" ? null : data.visitType;
       const projectId = data.projectId === "none" ? null : data.projectId;
       
-      const batch = await apiRequest("POST", "/api/asset-batches", {
+      const batchResponse = await apiRequest("POST", "/api/asset-batches", {
         userId,
         batchName: data.batchName,
         assetType: data.assetType,
@@ -245,7 +245,7 @@ export default function SiteAssets() {
         notes: data.notes || null,
         status: "in_progress",
         createdAssetsCount: 0,
-      });
+      }) as unknown as DbAssetBatch;
 
       const assets: any[] = [];
       for (let i = 0; i < data.quantity; i++) {
@@ -263,19 +263,19 @@ export default function SiteAssets() {
           area: data.startingArea || null,
           status: "active",
           condition: "good",
-          batchId: batch.id,
+          batchId: batchResponse.id,
           notes: data.notes || null,
         });
       }
 
       await apiRequest("POST", "/api/site-assets/bulk", { assets });
       
-      await apiRequest("PATCH", `/api/asset-batches/${batch.id}`, {
+      await apiRequest("PATCH", `/api/asset-batches/${batchResponse.id}`, {
         status: "completed",
         createdAssetsCount: data.quantity,
       });
 
-      return batch;
+      return batchResponse;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/site-assets", userId] });
