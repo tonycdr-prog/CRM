@@ -134,7 +134,7 @@ export default function SiteAssets() {
     defaultValues: {
       assetNumber: "",
       assetType: "aov",
-      visitType: "",
+      visitType: "none",
       building: "",
       floor: "",
       area: "",
@@ -148,7 +148,7 @@ export default function SiteAssets() {
       status: "active",
       condition: "good",
       notes: "",
-      projectId: "",
+      projectId: "none",
     },
   });
 
@@ -157,8 +157,8 @@ export default function SiteAssets() {
     defaultValues: {
       batchName: "",
       assetType: "aov",
-      visitType: "",
-      projectId: "",
+      visitType: "none",
+      projectId: "none",
       building: "",
       startingFloor: "G",
       startingArea: "",
@@ -226,12 +226,15 @@ export default function SiteAssets() {
 
   const createBulkAssetsMutation = useMutation({
     mutationFn: async (data: BulkAssetFormValues) => {
+      const visitType = data.visitType === "none" ? null : data.visitType;
+      const projectId = data.projectId === "none" ? null : data.projectId;
+      
       const batch = await apiRequest("POST", "/api/asset-batches", {
         userId,
         batchName: data.batchName,
         assetType: data.assetType,
-        visitType: data.visitType || null,
-        projectId: data.projectId || null,
+        visitType: visitType || null,
+        projectId: projectId || null,
         building: data.building || null,
         startingFloor: data.startingFloor,
         startingArea: data.startingArea || null,
@@ -251,10 +254,10 @@ export default function SiteAssets() {
         
         assets.push({
           userId,
-          projectId: data.projectId || null,
+          projectId: projectId || null,
           assetNumber,
           assetType: data.assetType,
-          visitType: data.visitType || null,
+          visitType: visitType || null,
           building: data.building || null,
           floor,
           area: data.startingArea || null,
@@ -302,7 +305,7 @@ export default function SiteAssets() {
     assetForm.reset({
       assetNumber: asset.assetNumber,
       assetType: asset.assetType,
-      visitType: asset.visitType || "",
+      visitType: asset.visitType || "none",
       building: asset.building || "",
       floor: asset.floor || "",
       area: asset.area || "",
@@ -316,13 +319,18 @@ export default function SiteAssets() {
       status: asset.status || "active",
       condition: asset.condition || "good",
       notes: asset.notes || "",
-      projectId: asset.projectId || "",
+      projectId: asset.projectId || "none",
     });
     setDialogOpen(true);
   };
 
   const onAssetSubmit = (values: SiteAssetFormValues) => {
-    const data = { ...values, userId };
+    const data = { 
+      ...values, 
+      userId,
+      projectId: values.projectId === "none" ? null : values.projectId,
+      visitType: values.visitType === "none" ? null : values.visitType,
+    };
     if (editingAsset) {
       updateAssetMutation.mutate({ id: editingAsset.id, data });
     } else {
@@ -343,7 +351,7 @@ export default function SiteAssets() {
     assetForm.reset({
       assetNumber: "",
       assetType: "aov",
-      visitType: "",
+      visitType: "none",
       building: "",
       floor: "",
       area: "",
@@ -357,7 +365,7 @@ export default function SiteAssets() {
       status: "active",
       condition: "good",
       notes: "",
-      projectId: "",
+      projectId: "none",
     });
     setDialogOpen(true);
   };
@@ -366,8 +374,8 @@ export default function SiteAssets() {
     bulkForm.reset({
       batchName: "",
       assetType: "aov",
-      visitType: "",
-      projectId: "",
+      visitType: "none",
+      projectId: "none",
       building: "",
       startingFloor: "G",
       startingArea: "",
@@ -538,7 +546,7 @@ export default function SiteAssets() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">No project</SelectItem>
+                                <SelectItem value="none">No project</SelectItem>
                                 {projects.map((project) => (
                                   <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
                                 ))}
@@ -561,7 +569,7 @@ export default function SiteAssets() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Not specified</SelectItem>
+                                <SelectItem value="none">Not specified</SelectItem>
                                 {visitTypes.map((type) => (
                                   <SelectItem key={type.id} value={type.code}>{type.name}</SelectItem>
                                 ))}
@@ -836,7 +844,7 @@ export default function SiteAssets() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">No project</SelectItem>
+                                <SelectItem value="none">No project</SelectItem>
                                 {projects.map((project) => (
                                   <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
                                 ))}
@@ -859,7 +867,7 @@ export default function SiteAssets() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Not specified</SelectItem>
+                                <SelectItem value="none">Not specified</SelectItem>
                                 {visitTypes.map((type) => (
                                   <SelectItem key={type.id} value={type.code}>{type.name}</SelectItem>
                                 ))}
