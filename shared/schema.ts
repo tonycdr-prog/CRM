@@ -1939,3 +1939,105 @@ export const partsCatalog = pgTable("parts_catalog", {
 export const insertPartsCatalogSchema = createInsertSchema(partsCatalog).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertPartsCatalog = z.infer<typeof insertPartsCatalogSchema>;
 export type DbPartsCatalog = typeof partsCatalog.$inferSelect;
+
+// Phase 8: Document Templates
+export const documentTemplates = pgTable("document_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  templateType: text("template_type").default("quote"), // quote, invoice, contract, report, letter, certificate
+  category: text("category").default("general"), // general, smoke_control, fire_safety, maintenance, compliance
+  content: text("content").notNull(), // Template content with placeholders
+  placeholders: jsonb("placeholders").$type<string[]>().default([]), // List of placeholder variables
+  headerText: text("header_text"),
+  footerText: text("footer_text"),
+  termsAndConditions: text("terms_and_conditions"),
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  version: integer("version").default(1),
+  lastUsedDate: text("last_used_date"),
+  usageCount: integer("usage_count").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDocumentTemplateSchema = createInsertSchema(documentTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDocumentTemplate = z.infer<typeof insertDocumentTemplateSchema>;
+export type DbDocumentTemplate = typeof documentTemplates.$inferSelect;
+
+// Phase 8: Warranties
+export const warranties = pgTable("warranties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  equipmentDescription: text("equipment_description").notNull(),
+  manufacturer: text("manufacturer"),
+  modelNumber: text("model_number"),
+  serialNumber: text("serial_number"),
+  installationDate: text("installation_date").notNull(),
+  warrantyStartDate: text("warranty_start_date").notNull(),
+  warrantyEndDate: text("warranty_end_date").notNull(),
+  warrantyType: text("warranty_type").default("standard"), // standard, extended, manufacturer, parts_only, labour_only
+  warrantyProvider: text("warranty_provider"),
+  coverageDetails: text("coverage_details"),
+  exclusions: text("exclusions"),
+  claimProcess: text("claim_process"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  referenceNumber: text("reference_number"),
+  purchasePrice: real("purchase_price"),
+  warrantyCost: real("warranty_cost"),
+  claimsCount: integer("claims_count").default(0),
+  lastClaimDate: text("last_claim_date"),
+  status: text("status").default("active"), // active, expired, claimed, void
+  documentPath: text("document_path"),
+  reminderDays: integer("reminder_days").default(30),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWarrantySchema = createInsertSchema(warranties).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertWarranty = z.infer<typeof insertWarrantySchema>;
+export type DbWarranty = typeof warranties.$inferSelect;
+
+// Phase 8: Competitors
+export const competitors = pgTable("competitors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  companyName: text("company_name").notNull(),
+  tradingName: text("trading_name"),
+  website: text("website"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  postcode: text("postcode"),
+  region: text("region"),
+  specializations: text("specializations"), // Comma-separated services
+  marketPosition: text("market_position").default("direct"), // direct, indirect, potential
+  companySize: text("company_size").default("unknown"), // micro, small, medium, large, enterprise, unknown
+  estimatedRevenue: text("estimated_revenue"),
+  employeeCount: integer("employee_count"),
+  foundedYear: integer("founded_year"),
+  accreditations: text("accreditations"),
+  keyStrengths: text("key_strengths"),
+  keyWeaknesses: text("key_weaknesses"),
+  pricingLevel: text("pricing_level").default("unknown"), // budget, competitive, premium, unknown
+  averageQuoteVariance: real("average_quote_variance"), // % difference from our quotes
+  wonAgainst: integer("won_against").default(0),
+  lostTo: integer("lost_to").default(0),
+  lastEncounterDate: text("last_encounter_date"),
+  lastEncounterOutcome: text("last_encounter_outcome"),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  threatLevel: text("threat_level").default("medium"), // low, medium, high
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCompetitorSchema = createInsertSchema(competitors).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCompetitor = z.infer<typeof insertCompetitorSchema>;
+export type DbCompetitor = typeof competitors.$inferSelect;

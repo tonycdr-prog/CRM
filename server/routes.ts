@@ -2082,6 +2082,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // PHASE 8: DOCUMENT TEMPLATES, WARRANTIES, COMPETITORS
+  // ============================================
+
+  // Document Templates routes
+  app.get("/api/document-templates/:userId", async (req, res) => {
+    try {
+      const items = await storage.getDocumentTemplates(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch document templates" });
+    }
+  });
+
+  app.post("/api/document-templates", async (req, res) => {
+    try {
+      const item = await storage.createDocumentTemplate(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create document template" });
+    }
+  });
+
+  app.patch("/api/document-templates/:id", async (req, res) => {
+    try {
+      const item = await storage.updateDocumentTemplate(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update document template" });
+    }
+  });
+
+  app.delete("/api/document-templates/:id", async (req, res) => {
+    try {
+      await storage.deleteDocumentTemplate(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete document template" });
+    }
+  });
+
+  // Warranties routes
+  app.get("/api/warranties/:userId", async (req, res) => {
+    try {
+      const items = await storage.getWarranties(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch warranties" });
+    }
+  });
+
+  app.post("/api/warranties", async (req, res) => {
+    try {
+      const item = await storage.createWarranty(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create warranty" });
+    }
+  });
+
+  app.patch("/api/warranties/:id", async (req, res) => {
+    try {
+      const item = await storage.updateWarranty(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update warranty" });
+    }
+  });
+
+  app.delete("/api/warranties/:id", async (req, res) => {
+    try {
+      await storage.deleteWarranty(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete warranty" });
+    }
+  });
+
+  // Competitors routes
+  app.get("/api/competitors/:userId", async (req, res) => {
+    try {
+      const items = await storage.getCompetitors(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch competitors" });
+    }
+  });
+
+  app.post("/api/competitors", async (req, res) => {
+    try {
+      const item = await storage.createCompetitor(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create competitor" });
+    }
+  });
+
+  app.patch("/api/competitors/:id", async (req, res) => {
+    try {
+      const item = await storage.updateCompetitor(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update competitor" });
+    }
+  });
+
+  app.delete("/api/competitors/:id", async (req, res) => {
+    try {
+      await storage.deleteCompetitor(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete competitor" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

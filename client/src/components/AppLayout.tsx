@@ -98,12 +98,14 @@ const operationsMenuItems = [
   { title: "Site Access Notes", url: "/site-access-notes", icon: MapPinned },
   { title: "Job Templates", url: "/job-templates", icon: Copy },
   { title: "Recurring Jobs", url: "/recurring-jobs", icon: RefreshCw },
+  { title: "Warranties", url: "/warranties", icon: ShieldCheck },
 ];
 
 const salesMenuItems = [
   { title: "Leads", url: "/leads", icon: Target },
   { title: "Tenders", url: "/tenders", icon: FileCheck },
   { title: "Price Lists", url: "/price-lists", icon: Tags },
+  { title: "Competitors", url: "/competitors", icon: Target },
 ];
 
 const complianceMenuItems = [
@@ -115,6 +117,7 @@ const complianceMenuItems = [
 
 const documentMenuItems = [
   { title: "Document Register", url: "/document-register", icon: FileText },
+  { title: "Document Templates", url: "/document-templates", icon: Copy },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Reminders", url: "/reminders", icon: Bell },
   { title: "Reports", url: "/reports", icon: BarChart3 },

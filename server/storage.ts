@@ -5,7 +5,8 @@ import {
   jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
   recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister,
   mileageClaims, workNotes, callbacks, staffDirectory, priceLists,
-  customerFeedback, serviceLevelAgreements, partsCatalog
+  customerFeedback, serviceLevelAgreements, partsCatalog,
+  documentTemplates, warranties, competitors
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -117,6 +118,12 @@ type DbSLA = typeof serviceLevelAgreements.$inferSelect;
 type NewSLA = typeof serviceLevelAgreements.$inferInsert;
 type DbPartsCatalog = typeof partsCatalog.$inferSelect;
 type NewPartsCatalog = typeof partsCatalog.$inferInsert;
+type DbDocumentTemplate = typeof documentTemplates.$inferSelect;
+type NewDocumentTemplate = typeof documentTemplates.$inferInsert;
+type DbWarranty = typeof warranties.$inferSelect;
+type NewWarranty = typeof warranties.$inferInsert;
+type DbCompetitor = typeof competitors.$inferSelect;
+type NewCompetitor = typeof competitors.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -387,6 +394,24 @@ export interface IStorage {
   createPart(part: NewPartsCatalog): Promise<DbPartsCatalog>;
   updatePart(id: string, part: Partial<NewPartsCatalog>): Promise<DbPartsCatalog | undefined>;
   deletePart(id: string): Promise<boolean>;
+
+  // Document Templates
+  getDocumentTemplates(userId: string): Promise<DbDocumentTemplate[]>;
+  createDocumentTemplate(template: NewDocumentTemplate): Promise<DbDocumentTemplate>;
+  updateDocumentTemplate(id: string, template: Partial<NewDocumentTemplate>): Promise<DbDocumentTemplate | undefined>;
+  deleteDocumentTemplate(id: string): Promise<boolean>;
+
+  // Warranties
+  getWarranties(userId: string): Promise<DbWarranty[]>;
+  createWarranty(warranty: NewWarranty): Promise<DbWarranty>;
+  updateWarranty(id: string, warranty: Partial<NewWarranty>): Promise<DbWarranty | undefined>;
+  deleteWarranty(id: string): Promise<boolean>;
+
+  // Competitors
+  getCompetitors(userId: string): Promise<DbCompetitor[]>;
+  createCompetitor(competitor: NewCompetitor): Promise<DbCompetitor>;
+  updateCompetitor(id: string, competitor: Partial<NewCompetitor>): Promise<DbCompetitor | undefined>;
+  deleteCompetitor(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1487,6 +1512,66 @@ export class DatabaseStorage implements IStorage {
 
   async deletePart(id: string): Promise<boolean> {
     await db.delete(partsCatalog).where(eq(partsCatalog.id, id));
+    return true;
+  }
+
+  // Document Templates
+  async getDocumentTemplates(userId: string): Promise<DbDocumentTemplate[]> {
+    return db.select().from(documentTemplates).where(eq(documentTemplates.userId, userId)).orderBy(desc(documentTemplates.createdAt));
+  }
+
+  async createDocumentTemplate(template: NewDocumentTemplate): Promise<DbDocumentTemplate> {
+    const [newItem] = await db.insert(documentTemplates).values(template).returning();
+    return newItem;
+  }
+
+  async updateDocumentTemplate(id: string, template: Partial<NewDocumentTemplate>): Promise<DbDocumentTemplate | undefined> {
+    const [updated] = await db.update(documentTemplates).set({ ...template, updatedAt: new Date() }).where(eq(documentTemplates.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteDocumentTemplate(id: string): Promise<boolean> {
+    await db.delete(documentTemplates).where(eq(documentTemplates.id, id));
+    return true;
+  }
+
+  // Warranties
+  async getWarranties(userId: string): Promise<DbWarranty[]> {
+    return db.select().from(warranties).where(eq(warranties.userId, userId)).orderBy(desc(warranties.createdAt));
+  }
+
+  async createWarranty(warranty: NewWarranty): Promise<DbWarranty> {
+    const [newItem] = await db.insert(warranties).values(warranty).returning();
+    return newItem;
+  }
+
+  async updateWarranty(id: string, warranty: Partial<NewWarranty>): Promise<DbWarranty | undefined> {
+    const [updated] = await db.update(warranties).set({ ...warranty, updatedAt: new Date() }).where(eq(warranties.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteWarranty(id: string): Promise<boolean> {
+    await db.delete(warranties).where(eq(warranties.id, id));
+    return true;
+  }
+
+  // Competitors
+  async getCompetitors(userId: string): Promise<DbCompetitor[]> {
+    return db.select().from(competitors).where(eq(competitors.userId, userId)).orderBy(desc(competitors.createdAt));
+  }
+
+  async createCompetitor(competitor: NewCompetitor): Promise<DbCompetitor> {
+    const [newItem] = await db.insert(competitors).values(competitor).returning();
+    return newItem;
+  }
+
+  async updateCompetitor(id: string, competitor: Partial<NewCompetitor>): Promise<DbCompetitor | undefined> {
+    const [updated] = await db.update(competitors).set({ ...competitor, updatedAt: new Date() }).where(eq(competitors.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCompetitor(id: string): Promise<boolean> {
+    await db.delete(competitors).where(eq(competitors.id, id));
     return true;
   }
 }
