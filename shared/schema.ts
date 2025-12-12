@@ -2134,3 +2134,110 @@ export const timeOffRequests = pgTable("time_off_requests", {
 export const insertTimeOffRequestSchema = createInsertSchema(timeOffRequests).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTimeOffRequest = z.infer<typeof insertTimeOffRequestSchema>;
 export type DbTimeOffRequest = typeof timeOffRequests.$inferSelect;
+
+// Phase 10: Visit Types - System types that dictate service templates
+export const visitTypes = pgTable("visit_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: text("name").notNull(), // NSHEV, MSHEV, Electro-pneumatic, Pressurisation, Residential Stair AOV, Car Park
+  code: text("code").notNull(), // nshev, mshev, electro_pneumatic, pressurisation, residential_aov, car_park
+  description: text("description"),
+  category: text("category").default("smoke_control"), // smoke_control, ventilation, fire_safety
+  inspectionIntervals: jsonb("inspection_intervals").$type<{daily: boolean; weekly: boolean; monthly: boolean; quarterly: boolean; biannual: boolean; annual: boolean}>().default({daily: true, weekly: true, monthly: true, quarterly: true, biannual: true, annual: true}),
+  regulatoryStandard: text("regulatory_standard"), // BS EN 12101-6, BS EN 12101-8, BS 7346, etc.
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertVisitTypeSchema = createInsertSchema(visitTypes).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertVisitType = z.infer<typeof insertVisitTypeSchema>;
+export type DbVisitType = typeof visitTypes.$inferSelect;
+
+// Phase 10: Service Templates - Checklist templates based on visit type and interval
+export const serviceTemplates = pgTable("service_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  visitTypeId: varchar("visit_type_id").references(() => visitTypes.id),
+  name: text("name").notNull(),
+  intervalType: text("interval_type").notNull(), // daily, weekly, monthly, quarterly, biannual, annual
+  carriedOutBy: text("carried_out_by").default("competent_person"), // nominated_person, competent_person, competent_maintainer, certified_organisation
+  checklistItems: jsonb("checklist_items").$type<{id: string; item: string; category: string; isMandatory: boolean; guidance?: string}[]>().default([]),
+  guidelines: text("guidelines"),
+  equipmentRequired: text("equipment_required"),
+  estimatedDuration: integer("estimated_duration"), // minutes
+  regulatoryReference: text("regulatory_reference"),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceTemplateSchema = createInsertSchema(serviceTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertServiceTemplate = z.infer<typeof insertServiceTemplateSchema>;
+export type DbServiceTemplate = typeof serviceTemplates.$inferSelect;
+
+// Phase 10: Site Assets - Equipment/assets at a site with bulk add support
+export const siteAssets = pgTable("site_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  projectId: varchar("project_id").references(() => projects.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  assetNumber: text("asset_number").notNull(), // e.g., AOV-001, SCD-G01
+  assetType: text("asset_type").notNull(), // aov, smoke_damper, control_panel, detector, fan, duct, firefighter_switch
+  visitType: text("visit_type"), // links to visit type code
+  building: text("building"),
+  floor: text("floor"),
+  area: text("area"),
+  location: text("location"),
+  description: text("description"),
+  manufacturer: text("manufacturer"),
+  model: text("model"),
+  serialNumber: text("serial_number"),
+  installDate: text("install_date"),
+  warrantyExpiry: text("warranty_expiry"),
+  dimensions: jsonb("dimensions").$type<{width?: number; height?: number; depth?: number}>(),
+  specifications: jsonb("specifications").$type<Record<string, string>>(),
+  status: text("status").default("active"), // active, inactive, faulty, replaced, pending_inspection
+  lastInspectionDate: text("last_inspection_date"),
+  nextInspectionDue: text("next_inspection_due"),
+  condition: text("condition").default("good"), // good, fair, poor, critical
+  photos: jsonb("photos").$type<string[]>().default([]),
+  qrCode: text("qr_code"),
+  parentAssetId: varchar("parent_asset_id"), // for hierarchical assets (e.g., detector linked to control panel)
+  batchId: varchar("batch_id"), // for tracking bulk-added assets
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSiteAssetSchema = createInsertSchema(siteAssets).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSiteAsset = z.infer<typeof insertSiteAssetSchema>;
+export type DbSiteAsset = typeof siteAssets.$inferSelect;
+
+// Phase 10: Asset Batches - Track bulk asset creation operations
+export const assetBatches = pgTable("asset_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  projectId: varchar("project_id").references(() => projects.id),
+  batchName: text("batch_name").notNull(),
+  assetType: text("asset_type").notNull(),
+  visitType: text("visit_type"),
+  quantity: integer("quantity").notNull(),
+  startingFloor: text("starting_floor"),
+  startingArea: text("starting_area"),
+  numberingPrefix: text("numbering_prefix").notNull(), // e.g., AOV-, SCD-
+  startingNumber: integer("starting_number").notNull().default(1),
+  numberingFormat: text("numbering_format").default("###"), // 001, 01, 1
+  building: text("building"),
+  createdAssetsCount: integer("created_assets_count").default(0),
+  status: text("status").default("pending"), // pending, in_progress, completed, failed
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAssetBatchSchema = createInsertSchema(assetBatches).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAssetBatch = z.infer<typeof insertAssetBatchSchema>;
+export type DbAssetBatch = typeof assetBatches.$inferSelect;
