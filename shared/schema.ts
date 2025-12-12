@@ -2041,3 +2041,96 @@ export const competitors = pgTable("competitors", {
 export const insertCompetitorSchema = createInsertSchema(competitors).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCompetitor = z.infer<typeof insertCompetitorSchema>;
 export type DbCompetitor = typeof competitors.$inferSelect;
+
+// Phase 9: Service History
+export const serviceHistory = pgTable("service_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  equipmentId: text("equipment_id"),
+  serviceDate: text("service_date").notNull(),
+  serviceType: text("service_type").default("maintenance"), // maintenance, repair, installation, inspection, emergency
+  technicianName: text("technician_name"),
+  description: text("description").notNull(),
+  workPerformed: text("work_performed"),
+  partsUsed: text("parts_used"),
+  partsCost: real("parts_cost"),
+  labourHours: real("labour_hours"),
+  labourCost: real("labour_cost"),
+  totalCost: real("total_cost"),
+  outcome: text("outcome").default("completed"), // completed, partial, requires_followup, failed
+  nextServiceDue: text("next_service_due"),
+  recommendations: text("recommendations"),
+  customerSignature: text("customer_signature"),
+  signedDate: text("signed_date"),
+  documentPath: text("document_path"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceHistorySchema = createInsertSchema(serviceHistory).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertServiceHistory = z.infer<typeof insertServiceHistorySchema>;
+export type DbServiceHistory = typeof serviceHistory.$inferSelect;
+
+// Phase 9: Quality Checklists
+export const qualityChecklists = pgTable("quality_checklists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  name: text("name").notNull(),
+  checklistType: text("checklist_type").default("pre_work"), // pre_work, in_progress, completion, handover, safety
+  category: text("category").default("general"), // general, smoke_control, fire_safety, electrical, mechanical
+  completedBy: text("completed_by"),
+  completedDate: text("completed_date"),
+  status: text("status").default("pending"), // pending, in_progress, completed, failed
+  items: jsonb("items").$type<{item: string; checked: boolean; notes?: string}[]>().default([]),
+  overallScore: integer("overall_score"),
+  passThreshold: integer("pass_threshold").default(80),
+  isPassed: boolean("is_passed"),
+  supervisorApproval: text("supervisor_approval"),
+  supervisorDate: text("supervisor_date"),
+  nonConformances: text("non_conformances"),
+  correctiveActions: text("corrective_actions"),
+  attachments: text("attachments"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertQualityChecklistSchema = createInsertSchema(qualityChecklists).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertQualityChecklist = z.infer<typeof insertQualityChecklistSchema>;
+export type DbQualityChecklist = typeof qualityChecklists.$inferSelect;
+
+// Phase 9: Time Off Requests
+export const timeOffRequests = pgTable("time_off_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  employeeName: text("employee_name").notNull(),
+  employeeId: text("employee_id"),
+  requestType: text("request_type").default("annual_leave"), // annual_leave, sick_leave, unpaid, compassionate, training, other
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  totalDays: real("total_days").notNull(),
+  isHalfDay: boolean("is_half_day").default(false),
+  halfDayPeriod: text("half_day_period"), // morning, afternoon
+  reason: text("reason"),
+  status: text("status").default("pending"), // pending, approved, rejected, cancelled
+  approvedBy: text("approved_by"),
+  approvedDate: text("approved_date"),
+  rejectionReason: text("rejection_reason"),
+  coverArrangements: text("cover_arrangements"),
+  emergencyContact: text("emergency_contact"),
+  emergencyPhone: text("emergency_phone"),
+  affectsProjects: text("affects_projects"),
+  handoverNotes: text("handover_notes"),
+  returnConfirmed: boolean("return_confirmed").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTimeOffRequestSchema = createInsertSchema(timeOffRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTimeOffRequest = z.infer<typeof insertTimeOffRequestSchema>;
+export type DbTimeOffRequest = typeof timeOffRequests.$inferSelect;

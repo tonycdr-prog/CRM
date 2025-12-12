@@ -6,7 +6,8 @@ import {
   recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister,
   mileageClaims, workNotes, callbacks, staffDirectory, priceLists,
   customerFeedback, serviceLevelAgreements, partsCatalog,
-  documentTemplates, warranties, competitors
+  documentTemplates, warranties, competitors,
+  serviceHistory, qualityChecklists, timeOffRequests
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -124,6 +125,12 @@ type DbWarranty = typeof warranties.$inferSelect;
 type NewWarranty = typeof warranties.$inferInsert;
 type DbCompetitor = typeof competitors.$inferSelect;
 type NewCompetitor = typeof competitors.$inferInsert;
+type DbServiceHistory = typeof serviceHistory.$inferSelect;
+type NewServiceHistory = typeof serviceHistory.$inferInsert;
+type DbQualityChecklist = typeof qualityChecklists.$inferSelect;
+type NewQualityChecklist = typeof qualityChecklists.$inferInsert;
+type DbTimeOffRequest = typeof timeOffRequests.$inferSelect;
+type NewTimeOffRequest = typeof timeOffRequests.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -412,6 +419,24 @@ export interface IStorage {
   createCompetitor(competitor: NewCompetitor): Promise<DbCompetitor>;
   updateCompetitor(id: string, competitor: Partial<NewCompetitor>): Promise<DbCompetitor | undefined>;
   deleteCompetitor(id: string): Promise<boolean>;
+
+  // Service History
+  getServiceHistory(userId: string): Promise<DbServiceHistory[]>;
+  createServiceHistory(history: NewServiceHistory): Promise<DbServiceHistory>;
+  updateServiceHistory(id: string, history: Partial<NewServiceHistory>): Promise<DbServiceHistory | undefined>;
+  deleteServiceHistory(id: string): Promise<boolean>;
+
+  // Quality Checklists
+  getQualityChecklists(userId: string): Promise<DbQualityChecklist[]>;
+  createQualityChecklist(checklist: NewQualityChecklist): Promise<DbQualityChecklist>;
+  updateQualityChecklist(id: string, checklist: Partial<NewQualityChecklist>): Promise<DbQualityChecklist | undefined>;
+  deleteQualityChecklist(id: string): Promise<boolean>;
+
+  // Time Off Requests
+  getTimeOffRequests(userId: string): Promise<DbTimeOffRequest[]>;
+  createTimeOffRequest(request: NewTimeOffRequest): Promise<DbTimeOffRequest>;
+  updateTimeOffRequest(id: string, request: Partial<NewTimeOffRequest>): Promise<DbTimeOffRequest | undefined>;
+  deleteTimeOffRequest(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1572,6 +1597,66 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCompetitor(id: string): Promise<boolean> {
     await db.delete(competitors).where(eq(competitors.id, id));
+    return true;
+  }
+
+  // Service History
+  async getServiceHistory(userId: string): Promise<DbServiceHistory[]> {
+    return db.select().from(serviceHistory).where(eq(serviceHistory.userId, userId)).orderBy(desc(serviceHistory.createdAt));
+  }
+
+  async createServiceHistory(history: NewServiceHistory): Promise<DbServiceHistory> {
+    const [newItem] = await db.insert(serviceHistory).values(history).returning();
+    return newItem;
+  }
+
+  async updateServiceHistory(id: string, history: Partial<NewServiceHistory>): Promise<DbServiceHistory | undefined> {
+    const [updated] = await db.update(serviceHistory).set({ ...history, updatedAt: new Date() }).where(eq(serviceHistory.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteServiceHistory(id: string): Promise<boolean> {
+    await db.delete(serviceHistory).where(eq(serviceHistory.id, id));
+    return true;
+  }
+
+  // Quality Checklists
+  async getQualityChecklists(userId: string): Promise<DbQualityChecklist[]> {
+    return db.select().from(qualityChecklists).where(eq(qualityChecklists.userId, userId)).orderBy(desc(qualityChecklists.createdAt));
+  }
+
+  async createQualityChecklist(checklist: NewQualityChecklist): Promise<DbQualityChecklist> {
+    const [newItem] = await db.insert(qualityChecklists).values(checklist).returning();
+    return newItem;
+  }
+
+  async updateQualityChecklist(id: string, checklist: Partial<NewQualityChecklist>): Promise<DbQualityChecklist | undefined> {
+    const [updated] = await db.update(qualityChecklists).set({ ...checklist, updatedAt: new Date() }).where(eq(qualityChecklists.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteQualityChecklist(id: string): Promise<boolean> {
+    await db.delete(qualityChecklists).where(eq(qualityChecklists.id, id));
+    return true;
+  }
+
+  // Time Off Requests
+  async getTimeOffRequests(userId: string): Promise<DbTimeOffRequest[]> {
+    return db.select().from(timeOffRequests).where(eq(timeOffRequests.userId, userId)).orderBy(desc(timeOffRequests.createdAt));
+  }
+
+  async createTimeOffRequest(request: NewTimeOffRequest): Promise<DbTimeOffRequest> {
+    const [newItem] = await db.insert(timeOffRequests).values(request).returning();
+    return newItem;
+  }
+
+  async updateTimeOffRequest(id: string, request: Partial<NewTimeOffRequest>): Promise<DbTimeOffRequest | undefined> {
+    const [updated] = await db.update(timeOffRequests).set({ ...request, updatedAt: new Date() }).where(eq(timeOffRequests.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteTimeOffRequest(id: string): Promise<boolean> {
+    await db.delete(timeOffRequests).where(eq(timeOffRequests.id, id));
     return true;
   }
 }

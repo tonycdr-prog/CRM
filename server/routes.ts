@@ -2197,6 +2197,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // PHASE 9: SERVICE HISTORY, QUALITY CHECKLISTS, TIME OFF REQUESTS
+  // ============================================
+
+  // Service History routes
+  app.get("/api/service-history/:userId", async (req, res) => {
+    try {
+      const items = await storage.getServiceHistory(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch service history" });
+    }
+  });
+
+  app.post("/api/service-history", async (req, res) => {
+    try {
+      const item = await storage.createServiceHistory(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create service history" });
+    }
+  });
+
+  app.patch("/api/service-history/:id", async (req, res) => {
+    try {
+      const item = await storage.updateServiceHistory(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update service history" });
+    }
+  });
+
+  app.delete("/api/service-history/:id", async (req, res) => {
+    try {
+      await storage.deleteServiceHistory(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete service history" });
+    }
+  });
+
+  // Quality Checklists routes
+  app.get("/api/quality-checklists/:userId", async (req, res) => {
+    try {
+      const items = await storage.getQualityChecklists(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quality checklists" });
+    }
+  });
+
+  app.post("/api/quality-checklists", async (req, res) => {
+    try {
+      const item = await storage.createQualityChecklist(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create quality checklist" });
+    }
+  });
+
+  app.patch("/api/quality-checklists/:id", async (req, res) => {
+    try {
+      const item = await storage.updateQualityChecklist(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update quality checklist" });
+    }
+  });
+
+  app.delete("/api/quality-checklists/:id", async (req, res) => {
+    try {
+      await storage.deleteQualityChecklist(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete quality checklist" });
+    }
+  });
+
+  // Time Off Requests routes
+  app.get("/api/time-off-requests/:userId", async (req, res) => {
+    try {
+      const items = await storage.getTimeOffRequests(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch time off requests" });
+    }
+  });
+
+  app.post("/api/time-off-requests", async (req, res) => {
+    try {
+      const item = await storage.createTimeOffRequest(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create time off request" });
+    }
+  });
+
+  app.patch("/api/time-off-requests/:id", async (req, res) => {
+    try {
+      const item = await storage.updateTimeOffRequest(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update time off request" });
+    }
+  });
+
+  app.delete("/api/time-off-requests/:id", async (req, res) => {
+    try {
+      await storage.deleteTimeOffRequest(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete time off request" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

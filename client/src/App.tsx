@@ -50,6 +50,9 @@ import PartsCatalog from "@/pages/parts-catalog";
 import DocumentTemplates from "@/pages/document-templates";
 import Warranties from "@/pages/warranties";
 import Competitors from "@/pages/competitors";
+import ServiceHistoryPage from "@/pages/service-history";
+import QualityChecklists from "@/pages/quality-checklists";
+import TimeOffRequests from "@/pages/time-off-requests";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -111,6 +114,9 @@ function AuthenticatedRoutes() {
         <Route path="/document-templates" component={DocumentTemplates} />
         <Route path="/warranties" component={Warranties} />
         <Route path="/competitors" component={Competitors} />
+        <Route path="/service-history" component={ServiceHistoryPage} />
+        <Route path="/quality-checklists" component={QualityChecklists} />
+        <Route path="/time-off-requests" component={TimeOffRequests} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>

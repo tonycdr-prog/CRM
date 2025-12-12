@@ -99,6 +99,9 @@ const operationsMenuItems = [
   { title: "Job Templates", url: "/job-templates", icon: Copy },
   { title: "Recurring Jobs", url: "/recurring-jobs", icon: RefreshCw },
   { title: "Warranties", url: "/warranties", icon: ShieldCheck },
+  { title: "Service History", url: "/service-history", icon: Clock },
+  { title: "Quality Checklists", url: "/quality-checklists", icon: FileCheck },
+  { title: "Time Off Requests", url: "/time-off-requests", icon: Calendar },
 ];
 
 const salesMenuItems = [
