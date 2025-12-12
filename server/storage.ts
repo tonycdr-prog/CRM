@@ -8,7 +8,10 @@ import {
   customerFeedback, serviceLevelAgreements, partsCatalog,
   documentTemplates, warranties, competitors,
   serviceHistory, qualityChecklists, timeOffRequests,
-  visitTypes, serviceTemplates, siteAssets, assetBatches
+  visitTypes, serviceTemplates, siteAssets, assetBatches,
+  jobAssignments, jobSkillRequirements, jobEquipmentReservations, staffAvailability,
+  jobTimeWindows, shiftHandovers, dailyBriefings, serviceReminders,
+  locationCoordinates, schedulingConflicts, capacitySnapshots
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -140,6 +143,28 @@ type DbSiteAsset = typeof siteAssets.$inferSelect;
 type NewSiteAsset = typeof siteAssets.$inferInsert;
 type DbAssetBatch = typeof assetBatches.$inferSelect;
 type NewAssetBatch = typeof assetBatches.$inferInsert;
+type DbJobAssignment = typeof jobAssignments.$inferSelect;
+type NewJobAssignment = typeof jobAssignments.$inferInsert;
+type DbJobSkillRequirement = typeof jobSkillRequirements.$inferSelect;
+type NewJobSkillRequirement = typeof jobSkillRequirements.$inferInsert;
+type DbJobEquipmentReservation = typeof jobEquipmentReservations.$inferSelect;
+type NewJobEquipmentReservation = typeof jobEquipmentReservations.$inferInsert;
+type DbStaffAvailability = typeof staffAvailability.$inferSelect;
+type NewStaffAvailability = typeof staffAvailability.$inferInsert;
+type DbJobTimeWindow = typeof jobTimeWindows.$inferSelect;
+type NewJobTimeWindow = typeof jobTimeWindows.$inferInsert;
+type DbShiftHandover = typeof shiftHandovers.$inferSelect;
+type NewShiftHandover = typeof shiftHandovers.$inferInsert;
+type DbDailyBriefing = typeof dailyBriefings.$inferSelect;
+type NewDailyBriefing = typeof dailyBriefings.$inferInsert;
+type DbServiceReminder = typeof serviceReminders.$inferSelect;
+type NewServiceReminder = typeof serviceReminders.$inferInsert;
+type DbLocationCoordinate = typeof locationCoordinates.$inferSelect;
+type NewLocationCoordinate = typeof locationCoordinates.$inferInsert;
+type DbSchedulingConflict = typeof schedulingConflicts.$inferSelect;
+type NewSchedulingConflict = typeof schedulingConflicts.$inferInsert;
+type DbCapacitySnapshot = typeof capacitySnapshots.$inferSelect;
+type NewCapacitySnapshot = typeof capacitySnapshots.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -473,6 +498,76 @@ export interface IStorage {
   createAssetBatch(batch: NewAssetBatch): Promise<DbAssetBatch>;
   updateAssetBatch(id: string, batch: Partial<NewAssetBatch>): Promise<DbAssetBatch | undefined>;
   deleteAssetBatch(id: string): Promise<boolean>;
+
+  // Job Assignments
+  getJobAssignments(userId: string): Promise<DbJobAssignment[]>;
+  getJobAssignmentsByJob(jobId: string): Promise<DbJobAssignment[]>;
+  createJobAssignment(assignment: NewJobAssignment): Promise<DbJobAssignment>;
+  updateJobAssignment(id: string, assignment: Partial<NewJobAssignment>): Promise<DbJobAssignment | undefined>;
+  deleteJobAssignment(id: string): Promise<boolean>;
+
+  // Job Skill Requirements
+  getJobSkillRequirements(userId: string): Promise<DbJobSkillRequirement[]>;
+  getJobSkillRequirementsByJob(jobId: string): Promise<DbJobSkillRequirement[]>;
+  createJobSkillRequirement(requirement: NewJobSkillRequirement): Promise<DbJobSkillRequirement>;
+  updateJobSkillRequirement(id: string, requirement: Partial<NewJobSkillRequirement>): Promise<DbJobSkillRequirement | undefined>;
+  deleteJobSkillRequirement(id: string): Promise<boolean>;
+
+  // Job Equipment Reservations
+  getJobEquipmentReservations(userId: string): Promise<DbJobEquipmentReservation[]>;
+  getJobEquipmentReservationsByJob(jobId: string): Promise<DbJobEquipmentReservation[]>;
+  createJobEquipmentReservation(reservation: NewJobEquipmentReservation): Promise<DbJobEquipmentReservation>;
+  updateJobEquipmentReservation(id: string, reservation: Partial<NewJobEquipmentReservation>): Promise<DbJobEquipmentReservation | undefined>;
+  deleteJobEquipmentReservation(id: string): Promise<boolean>;
+
+  // Staff Availability
+  getStaffAvailability(userId: string): Promise<DbStaffAvailability[]>;
+  getStaffAvailabilityByStaff(staffId: string): Promise<DbStaffAvailability[]>;
+  createStaffAvailability(availability: NewStaffAvailability): Promise<DbStaffAvailability>;
+  updateStaffAvailability(id: string, availability: Partial<NewStaffAvailability>): Promise<DbStaffAvailability | undefined>;
+  deleteStaffAvailability(id: string): Promise<boolean>;
+
+  // Job Time Windows
+  getJobTimeWindows(userId: string): Promise<DbJobTimeWindow[]>;
+  getJobTimeWindowsByJob(jobId: string): Promise<DbJobTimeWindow[]>;
+  createJobTimeWindow(timeWindow: NewJobTimeWindow): Promise<DbJobTimeWindow>;
+  updateJobTimeWindow(id: string, timeWindow: Partial<NewJobTimeWindow>): Promise<DbJobTimeWindow | undefined>;
+  deleteJobTimeWindow(id: string): Promise<boolean>;
+
+  // Shift Handovers
+  getShiftHandovers(userId: string): Promise<DbShiftHandover[]>;
+  createShiftHandover(handover: NewShiftHandover): Promise<DbShiftHandover>;
+  updateShiftHandover(id: string, handover: Partial<NewShiftHandover>): Promise<DbShiftHandover | undefined>;
+  deleteShiftHandover(id: string): Promise<boolean>;
+
+  // Daily Briefings
+  getDailyBriefings(userId: string): Promise<DbDailyBriefing[]>;
+  createDailyBriefing(briefing: NewDailyBriefing): Promise<DbDailyBriefing>;
+  updateDailyBriefing(id: string, briefing: Partial<NewDailyBriefing>): Promise<DbDailyBriefing | undefined>;
+  deleteDailyBriefing(id: string): Promise<boolean>;
+
+  // Service Reminders
+  getServiceReminders(userId: string): Promise<DbServiceReminder[]>;
+  createServiceReminder(reminder: NewServiceReminder): Promise<DbServiceReminder>;
+  updateServiceReminder(id: string, reminder: Partial<NewServiceReminder>): Promise<DbServiceReminder | undefined>;
+  deleteServiceReminder(id: string): Promise<boolean>;
+
+  // Location Coordinates
+  getLocationCoordinates(userId: string): Promise<DbLocationCoordinate[]>;
+  createLocationCoordinate(coordinate: NewLocationCoordinate): Promise<DbLocationCoordinate>;
+  updateLocationCoordinate(id: string, coordinate: Partial<NewLocationCoordinate>): Promise<DbLocationCoordinate | undefined>;
+  deleteLocationCoordinate(id: string): Promise<boolean>;
+
+  // Scheduling Conflicts
+  getSchedulingConflicts(userId: string): Promise<DbSchedulingConflict[]>;
+  createSchedulingConflict(conflict: NewSchedulingConflict): Promise<DbSchedulingConflict>;
+  updateSchedulingConflict(id: string, conflict: Partial<NewSchedulingConflict>): Promise<DbSchedulingConflict | undefined>;
+  deleteSchedulingConflict(id: string): Promise<boolean>;
+
+  // Capacity Snapshots
+  getCapacitySnapshots(userId: string): Promise<DbCapacitySnapshot[]>;
+  createCapacitySnapshot(snapshot: NewCapacitySnapshot): Promise<DbCapacitySnapshot>;
+  deleteCapacitySnapshot(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1818,6 +1913,241 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAssetBatch(id: string): Promise<boolean> {
     await db.delete(assetBatches).where(eq(assetBatches.id, id));
+    return true;
+  }
+
+  // Job Assignments
+  async getJobAssignments(userId: string): Promise<DbJobAssignment[]> {
+    return db.select().from(jobAssignments).where(eq(jobAssignments.userId, userId)).orderBy(desc(jobAssignments.createdAt));
+  }
+
+  async getJobAssignmentsByJob(jobId: string): Promise<DbJobAssignment[]> {
+    return db.select().from(jobAssignments).where(eq(jobAssignments.jobId, jobId));
+  }
+
+  async createJobAssignment(assignment: NewJobAssignment): Promise<DbJobAssignment> {
+    const [newItem] = await db.insert(jobAssignments).values(assignment).returning();
+    return newItem;
+  }
+
+  async updateJobAssignment(id: string, assignment: Partial<NewJobAssignment>): Promise<DbJobAssignment | undefined> {
+    const [updated] = await db.update(jobAssignments).set({ ...assignment, updatedAt: new Date() }).where(eq(jobAssignments.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteJobAssignment(id: string): Promise<boolean> {
+    await db.delete(jobAssignments).where(eq(jobAssignments.id, id));
+    return true;
+  }
+
+  // Job Skill Requirements
+  async getJobSkillRequirements(userId: string): Promise<DbJobSkillRequirement[]> {
+    return db.select().from(jobSkillRequirements).where(eq(jobSkillRequirements.userId, userId)).orderBy(desc(jobSkillRequirements.createdAt));
+  }
+
+  async getJobSkillRequirementsByJob(jobId: string): Promise<DbJobSkillRequirement[]> {
+    return db.select().from(jobSkillRequirements).where(eq(jobSkillRequirements.jobId, jobId));
+  }
+
+  async createJobSkillRequirement(requirement: NewJobSkillRequirement): Promise<DbJobSkillRequirement> {
+    const [newItem] = await db.insert(jobSkillRequirements).values(requirement).returning();
+    return newItem;
+  }
+
+  async updateJobSkillRequirement(id: string, requirement: Partial<NewJobSkillRequirement>): Promise<DbJobSkillRequirement | undefined> {
+    const [updated] = await db.update(jobSkillRequirements).set(requirement).where(eq(jobSkillRequirements.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteJobSkillRequirement(id: string): Promise<boolean> {
+    await db.delete(jobSkillRequirements).where(eq(jobSkillRequirements.id, id));
+    return true;
+  }
+
+  // Job Equipment Reservations
+  async getJobEquipmentReservations(userId: string): Promise<DbJobEquipmentReservation[]> {
+    return db.select().from(jobEquipmentReservations).where(eq(jobEquipmentReservations.userId, userId)).orderBy(desc(jobEquipmentReservations.createdAt));
+  }
+
+  async getJobEquipmentReservationsByJob(jobId: string): Promise<DbJobEquipmentReservation[]> {
+    return db.select().from(jobEquipmentReservations).where(eq(jobEquipmentReservations.jobId, jobId));
+  }
+
+  async createJobEquipmentReservation(reservation: NewJobEquipmentReservation): Promise<DbJobEquipmentReservation> {
+    const [newItem] = await db.insert(jobEquipmentReservations).values(reservation).returning();
+    return newItem;
+  }
+
+  async updateJobEquipmentReservation(id: string, reservation: Partial<NewJobEquipmentReservation>): Promise<DbJobEquipmentReservation | undefined> {
+    const [updated] = await db.update(jobEquipmentReservations).set({ ...reservation, updatedAt: new Date() }).where(eq(jobEquipmentReservations.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteJobEquipmentReservation(id: string): Promise<boolean> {
+    await db.delete(jobEquipmentReservations).where(eq(jobEquipmentReservations.id, id));
+    return true;
+  }
+
+  // Staff Availability
+  async getStaffAvailability(userId: string): Promise<DbStaffAvailability[]> {
+    return db.select().from(staffAvailability).where(eq(staffAvailability.userId, userId)).orderBy(desc(staffAvailability.createdAt));
+  }
+
+  async getStaffAvailabilityByStaff(staffId: string): Promise<DbStaffAvailability[]> {
+    return db.select().from(staffAvailability).where(eq(staffAvailability.staffId, staffId));
+  }
+
+  async createStaffAvailability(availability: NewStaffAvailability): Promise<DbStaffAvailability> {
+    const [newItem] = await db.insert(staffAvailability).values(availability).returning();
+    return newItem;
+  }
+
+  async updateStaffAvailability(id: string, availability: Partial<NewStaffAvailability>): Promise<DbStaffAvailability | undefined> {
+    const [updated] = await db.update(staffAvailability).set(availability).where(eq(staffAvailability.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteStaffAvailability(id: string): Promise<boolean> {
+    await db.delete(staffAvailability).where(eq(staffAvailability.id, id));
+    return true;
+  }
+
+  // Job Time Windows
+  async getJobTimeWindows(userId: string): Promise<DbJobTimeWindow[]> {
+    return db.select().from(jobTimeWindows).where(eq(jobTimeWindows.userId, userId)).orderBy(desc(jobTimeWindows.createdAt));
+  }
+
+  async getJobTimeWindowsByJob(jobId: string): Promise<DbJobTimeWindow[]> {
+    return db.select().from(jobTimeWindows).where(eq(jobTimeWindows.jobId, jobId));
+  }
+
+  async createJobTimeWindow(timeWindow: NewJobTimeWindow): Promise<DbJobTimeWindow> {
+    const [newItem] = await db.insert(jobTimeWindows).values(timeWindow).returning();
+    return newItem;
+  }
+
+  async updateJobTimeWindow(id: string, timeWindow: Partial<NewJobTimeWindow>): Promise<DbJobTimeWindow | undefined> {
+    const [updated] = await db.update(jobTimeWindows).set({ ...timeWindow, updatedAt: new Date() }).where(eq(jobTimeWindows.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteJobTimeWindow(id: string): Promise<boolean> {
+    await db.delete(jobTimeWindows).where(eq(jobTimeWindows.id, id));
+    return true;
+  }
+
+  // Shift Handovers
+  async getShiftHandovers(userId: string): Promise<DbShiftHandover[]> {
+    return db.select().from(shiftHandovers).where(eq(shiftHandovers.userId, userId)).orderBy(desc(shiftHandovers.createdAt));
+  }
+
+  async createShiftHandover(handover: NewShiftHandover): Promise<DbShiftHandover> {
+    const [newItem] = await db.insert(shiftHandovers).values(handover).returning();
+    return newItem;
+  }
+
+  async updateShiftHandover(id: string, handover: Partial<NewShiftHandover>): Promise<DbShiftHandover | undefined> {
+    const [updated] = await db.update(shiftHandovers).set(handover).where(eq(shiftHandovers.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteShiftHandover(id: string): Promise<boolean> {
+    await db.delete(shiftHandovers).where(eq(shiftHandovers.id, id));
+    return true;
+  }
+
+  // Daily Briefings
+  async getDailyBriefings(userId: string): Promise<DbDailyBriefing[]> {
+    return db.select().from(dailyBriefings).where(eq(dailyBriefings.userId, userId)).orderBy(desc(dailyBriefings.createdAt));
+  }
+
+  async createDailyBriefing(briefing: NewDailyBriefing): Promise<DbDailyBriefing> {
+    const [newItem] = await db.insert(dailyBriefings).values(briefing).returning();
+    return newItem;
+  }
+
+  async updateDailyBriefing(id: string, briefing: Partial<NewDailyBriefing>): Promise<DbDailyBriefing | undefined> {
+    const [updated] = await db.update(dailyBriefings).set(briefing).where(eq(dailyBriefings.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteDailyBriefing(id: string): Promise<boolean> {
+    await db.delete(dailyBriefings).where(eq(dailyBriefings.id, id));
+    return true;
+  }
+
+  // Service Reminders
+  async getServiceReminders(userId: string): Promise<DbServiceReminder[]> {
+    return db.select().from(serviceReminders).where(eq(serviceReminders.userId, userId)).orderBy(desc(serviceReminders.createdAt));
+  }
+
+  async createServiceReminder(reminder: NewServiceReminder): Promise<DbServiceReminder> {
+    const [newItem] = await db.insert(serviceReminders).values(reminder).returning();
+    return newItem;
+  }
+
+  async updateServiceReminder(id: string, reminder: Partial<NewServiceReminder>): Promise<DbServiceReminder | undefined> {
+    const [updated] = await db.update(serviceReminders).set({ ...reminder, updatedAt: new Date() }).where(eq(serviceReminders.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteServiceReminder(id: string): Promise<boolean> {
+    await db.delete(serviceReminders).where(eq(serviceReminders.id, id));
+    return true;
+  }
+
+  // Location Coordinates
+  async getLocationCoordinates(userId: string): Promise<DbLocationCoordinate[]> {
+    return db.select().from(locationCoordinates).where(eq(locationCoordinates.userId, userId)).orderBy(desc(locationCoordinates.createdAt));
+  }
+
+  async createLocationCoordinate(coordinate: NewLocationCoordinate): Promise<DbLocationCoordinate> {
+    const [newItem] = await db.insert(locationCoordinates).values(coordinate).returning();
+    return newItem;
+  }
+
+  async updateLocationCoordinate(id: string, coordinate: Partial<NewLocationCoordinate>): Promise<DbLocationCoordinate | undefined> {
+    const [updated] = await db.update(locationCoordinates).set(coordinate).where(eq(locationCoordinates.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteLocationCoordinate(id: string): Promise<boolean> {
+    await db.delete(locationCoordinates).where(eq(locationCoordinates.id, id));
+    return true;
+  }
+
+  // Scheduling Conflicts
+  async getSchedulingConflicts(userId: string): Promise<DbSchedulingConflict[]> {
+    return db.select().from(schedulingConflicts).where(eq(schedulingConflicts.userId, userId)).orderBy(desc(schedulingConflicts.createdAt));
+  }
+
+  async createSchedulingConflict(conflict: NewSchedulingConflict): Promise<DbSchedulingConflict> {
+    const [newItem] = await db.insert(schedulingConflicts).values(conflict).returning();
+    return newItem;
+  }
+
+  async updateSchedulingConflict(id: string, conflict: Partial<NewSchedulingConflict>): Promise<DbSchedulingConflict | undefined> {
+    const [updated] = await db.update(schedulingConflicts).set(conflict).where(eq(schedulingConflicts.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteSchedulingConflict(id: string): Promise<boolean> {
+    await db.delete(schedulingConflicts).where(eq(schedulingConflicts.id, id));
+    return true;
+  }
+
+  // Capacity Snapshots
+  async getCapacitySnapshots(userId: string): Promise<DbCapacitySnapshot[]> {
+    return db.select().from(capacitySnapshots).where(eq(capacitySnapshots.userId, userId)).orderBy(desc(capacitySnapshots.createdAt));
+  }
+
+  async createCapacitySnapshot(snapshot: NewCapacitySnapshot): Promise<DbCapacitySnapshot> {
+    const [newItem] = await db.insert(capacitySnapshots).values(snapshot).returning();
+    return newItem;
+  }
+
+  async deleteCapacitySnapshot(id: string): Promise<boolean> {
+    await db.delete(capacitySnapshots).where(eq(capacitySnapshots.id, id));
     return true;
   }
 }

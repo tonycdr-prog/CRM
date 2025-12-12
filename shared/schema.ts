@@ -2241,3 +2241,250 @@ export const assetBatches = pgTable("asset_batches", {
 export const insertAssetBatchSchema = createInsertSchema(assetBatches).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertAssetBatch = z.infer<typeof insertAssetBatchSchema>;
 export type DbAssetBatch = typeof assetBatches.$inferSelect;
+
+// ============================================
+// SCHEDULING ENHANCEMENT TABLES
+// ============================================
+
+// Job Assignments - Multi-engineer assignments for jobs
+export const jobAssignments = pgTable("job_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  staffId: varchar("staff_id").references(() => staffDirectory.id),
+  subcontractorId: varchar("subcontractor_id").references(() => subcontractors.id),
+  role: text("role").default("technician"), // lead, technician, helper, supervisor
+  assignedDate: text("assigned_date"),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  status: text("status").default("assigned"), // assigned, confirmed, declined, completed
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertJobAssignment = z.infer<typeof insertJobAssignmentSchema>;
+export type DbJobAssignment = typeof jobAssignments.$inferSelect;
+
+// Job Skill Requirements - Skills/certifications required for jobs
+export const jobSkillRequirements = pgTable("job_skill_requirements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  skillType: text("skill_type").notNull(), // certification type: cscs, ipaf, pasma, first_aid, asbestos_awareness, etc.
+  skillLevel: text("skill_level").default("required"), // required, preferred, optional
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobSkillRequirementSchema = createInsertSchema(jobSkillRequirements).omit({ id: true, createdAt: true });
+export type InsertJobSkillRequirement = z.infer<typeof insertJobSkillRequirementSchema>;
+export type DbJobSkillRequirement = typeof jobSkillRequirements.$inferSelect;
+
+// Job Equipment Reservations - Equipment booked for jobs
+export const jobEquipmentReservations = pgTable("job_equipment_reservations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  equipmentId: varchar("equipment_id").references(() => equipment.id).notNull(),
+  reservedDate: text("reserved_date").notNull(),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  status: text("status").default("reserved"), // reserved, checked_out, returned, cancelled
+  checkedOutBy: varchar("checked_out_by"),
+  checkedOutAt: timestamp("checked_out_at"),
+  returnedAt: timestamp("returned_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobEquipmentReservationSchema = createInsertSchema(jobEquipmentReservations).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertJobEquipmentReservation = z.infer<typeof insertJobEquipmentReservationSchema>;
+export type DbJobEquipmentReservation = typeof jobEquipmentReservations.$inferSelect;
+
+// Staff Availability - Weekly availability patterns and time-off
+export const staffAvailability = pgTable("staff_availability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  staffId: varchar("staff_id").references(() => staffDirectory.id).notNull(),
+  dayOfWeek: integer("day_of_week"), // 0=Sunday, 1=Monday, etc. null = specific date
+  specificDate: text("specific_date"), // for one-off availability changes
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  availabilityType: text("availability_type").default("available"), // available, unavailable, on_call, holiday
+  isRecurring: boolean("is_recurring").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertStaffAvailabilitySchema = createInsertSchema(staffAvailability).omit({ id: true, createdAt: true });
+export type InsertStaffAvailability = z.infer<typeof insertStaffAvailabilitySchema>;
+export type DbStaffAvailability = typeof staffAvailability.$inferSelect;
+
+// Job Time Windows - Customer preferred appointment times
+export const jobTimeWindows = pgTable("job_time_windows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  preferredDate: text("preferred_date"),
+  preferredTimeStart: text("preferred_time_start"),
+  preferredTimeEnd: text("preferred_time_end"),
+  alternateDate: text("alternate_date"),
+  alternateTimeStart: text("alternate_time_start"),
+  alternateTimeEnd: text("alternate_time_end"),
+  customerNotes: text("customer_notes"),
+  accessRestrictions: text("access_restrictions"), // e.g., "No access before 9am", "Building closed weekends"
+  estimatedArrivalWindow: text("estimated_arrival_window"), // e.g., "08:00-10:00"
+  confirmationStatus: text("confirmation_status").default("pending"), // pending, confirmed, rescheduled, cancelled
+  confirmedAt: timestamp("confirmed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobTimeWindowSchema = createInsertSchema(jobTimeWindows).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertJobTimeWindow = z.infer<typeof insertJobTimeWindowSchema>;
+export type DbJobTimeWindow = typeof jobTimeWindows.$inferSelect;
+
+// Shift Handovers - Notes passed between shifts
+export const shiftHandovers = pgTable("shift_handovers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  handoverDate: text("handover_date").notNull(),
+  outgoingStaffId: varchar("outgoing_staff_id").references(() => staffDirectory.id),
+  incomingStaffId: varchar("incoming_staff_id").references(() => staffDirectory.id),
+  pendingJobs: jsonb("pending_jobs").$type<{jobId: string; jobNumber: string; notes: string}[]>().default([]),
+  completedJobs: jsonb("completed_jobs").$type<{jobId: string; jobNumber: string; notes: string}[]>().default([]),
+  issuesRaised: text("issues_raised"),
+  equipmentNotes: text("equipment_notes"),
+  safetyAlerts: text("safety_alerts"),
+  generalNotes: text("general_notes"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedBy: varchar("acknowledged_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertShiftHandoverSchema = createInsertSchema(shiftHandovers).omit({ id: true, createdAt: true });
+export type InsertShiftHandover = z.infer<typeof insertShiftHandoverSchema>;
+export type DbShiftHandover = typeof shiftHandovers.$inferSelect;
+
+// Daily Briefings - Daily job briefing summaries
+export const dailyBriefings = pgTable("daily_briefings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  briefingDate: text("briefing_date").notNull(),
+  staffId: varchar("staff_id").references(() => staffDirectory.id),
+  scheduledJobs: jsonb("scheduled_jobs").$type<{
+    jobId: string;
+    jobNumber: string;
+    clientName: string;
+    siteAddress: string;
+    scheduledTime: string;
+    estimatedDuration: number;
+    priority: string;
+    notes: string;
+  }[]>().default([]),
+  equipmentAssigned: jsonb("equipment_assigned").$type<{equipmentId: string; name: string; assetTag: string}[]>().default([]),
+  vehicleAssigned: varchar("vehicle_assigned"),
+  specialInstructions: text("special_instructions"),
+  safetyReminders: text("safety_reminders"),
+  viewedAt: timestamp("viewed_at"),
+  printedAt: timestamp("printed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertDailyBriefingSchema = createInsertSchema(dailyBriefings).omit({ id: true, createdAt: true });
+export type InsertDailyBriefing = z.infer<typeof insertDailyBriefingSchema>;
+export type DbDailyBriefing = typeof dailyBriefings.$inferSelect;
+
+// Service Reminders - Annual/periodic service reminders
+export const serviceReminders = pgTable("service_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  contractId: varchar("contract_id").references(() => contracts.id),
+  projectId: varchar("project_id").references(() => projects.id),
+  assetId: varchar("asset_id").references(() => siteAssets.id),
+  reminderType: text("reminder_type").notNull(), // annual_service, quarterly_check, calibration, warranty_expiry
+  dueDate: text("due_date").notNull(),
+  lastServiceDate: text("last_service_date"),
+  frequency: text("frequency").default("annual"), // daily, weekly, monthly, quarterly, biannual, annual
+  frequencyMonths: integer("frequency_months").default(12),
+  reminderLeadDays: integer("reminder_lead_days").default(30), // Days before due to trigger reminder
+  status: text("status").default("pending"), // pending, scheduled, completed, overdue, cancelled
+  priority: text("priority").default("normal"), // low, normal, high, urgent
+  scheduledJobId: varchar("scheduled_job_id").references(() => jobs.id),
+  notes: text("notes"),
+  autoSchedule: boolean("auto_schedule").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceReminderSchema = createInsertSchema(serviceReminders).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertServiceReminder = z.infer<typeof insertServiceReminderSchema>;
+export type DbServiceReminder = typeof serviceReminders.$inferSelect;
+
+// Location Coordinates - Store lat/long for sites for map view
+export const locationCoordinates = pgTable("location_coordinates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  entityType: text("entity_type").notNull(), // client, project, job
+  entityId: varchar("entity_id").notNull(),
+  latitude: real("latitude").notNull(),
+  longitude: real("longitude").notNull(),
+  address: text("address"),
+  postcode: text("postcode"),
+  geocodedAt: timestamp("geocoded_at").defaultNow(),
+  source: text("source").default("manual"), // manual, geocoded
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLocationCoordinateSchema = createInsertSchema(locationCoordinates).omit({ id: true, createdAt: true });
+export type InsertLocationCoordinate = z.infer<typeof insertLocationCoordinateSchema>;
+export type DbLocationCoordinate = typeof locationCoordinates.$inferSelect;
+
+// Scheduling Conflicts - Track and resolve scheduling conflicts
+export const schedulingConflicts = pgTable("scheduling_conflicts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  conflictType: text("conflict_type").notNull(), // staff_double_booking, equipment_overlap, vehicle_clash, skill_mismatch
+  job1Id: varchar("job1_id").references(() => jobs.id),
+  job2Id: varchar("job2_id").references(() => jobs.id),
+  resourceType: text("resource_type"), // staff, equipment, vehicle
+  resourceId: varchar("resource_id"),
+  conflictDate: text("conflict_date").notNull(),
+  conflictDetails: text("conflict_details"),
+  severity: text("severity").default("warning"), // info, warning, error
+  status: text("status").default("unresolved"), // unresolved, resolved, ignored
+  resolvedBy: varchar("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  resolution: text("resolution"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSchedulingConflictSchema = createInsertSchema(schedulingConflicts).omit({ id: true, createdAt: true });
+export type InsertSchedulingConflict = z.infer<typeof insertSchedulingConflictSchema>;
+export type DbSchedulingConflict = typeof schedulingConflicts.$inferSelect;
+
+// Capacity Planning - Weekly/monthly capacity snapshots
+export const capacitySnapshots = pgTable("capacity_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  periodType: text("period_type").notNull(), // daily, weekly, monthly
+  periodStart: text("period_start").notNull(),
+  periodEnd: text("period_end").notNull(),
+  totalAvailableHours: real("total_available_hours").default(0),
+  scheduledHours: real("scheduled_hours").default(0),
+  completedHours: real("completed_hours").default(0),
+  utilizationPercent: real("utilization_percent").default(0),
+  staffCount: integer("staff_count").default(0),
+  jobCount: integer("job_count").default(0),
+  breakdownByStaff: jsonb("breakdown_by_staff").$type<{staffId: string; name: string; available: number; scheduled: number}[]>().default([]),
+  breakdownByJobType: jsonb("breakdown_by_job_type").$type<{jobType: string; hours: number; count: number}[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCapacitySnapshotSchema = createInsertSchema(capacitySnapshots).omit({ id: true, createdAt: true });
+export type InsertCapacitySnapshot = z.infer<typeof insertCapacitySnapshotSchema>;
+export type DbCapacitySnapshot = typeof capacitySnapshots.$inferSelect;

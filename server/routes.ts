@@ -2495,6 +2495,453 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // PHASE 11: SCHEDULING ENHANCEMENTS
+  // ============================================
+
+  // Job Assignments routes
+  app.get("/api/job-assignments/:userId", async (req, res) => {
+    try {
+      const items = await storage.getJobAssignments(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job assignments" });
+    }
+  });
+
+  app.get("/api/job-assignments/by-job/:jobId", async (req, res) => {
+    try {
+      const items = await storage.getJobAssignmentsByJob(req.params.jobId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job assignments by job" });
+    }
+  });
+
+  app.post("/api/job-assignments", async (req, res) => {
+    try {
+      const item = await storage.createJobAssignment(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create job assignment" });
+    }
+  });
+
+  app.patch("/api/job-assignments/:id", async (req, res) => {
+    try {
+      const item = await storage.updateJobAssignment(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update job assignment" });
+    }
+  });
+
+  app.delete("/api/job-assignments/:id", async (req, res) => {
+    try {
+      await storage.deleteJobAssignment(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete job assignment" });
+    }
+  });
+
+  // Job Skill Requirements routes
+  app.get("/api/job-skill-requirements/:userId", async (req, res) => {
+    try {
+      const items = await storage.getJobSkillRequirements(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job skill requirements" });
+    }
+  });
+
+  app.get("/api/job-skill-requirements/by-job/:jobId", async (req, res) => {
+    try {
+      const items = await storage.getJobSkillRequirementsByJob(req.params.jobId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job skill requirements by job" });
+    }
+  });
+
+  app.post("/api/job-skill-requirements", async (req, res) => {
+    try {
+      const item = await storage.createJobSkillRequirement(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create job skill requirement" });
+    }
+  });
+
+  app.patch("/api/job-skill-requirements/:id", async (req, res) => {
+    try {
+      const item = await storage.updateJobSkillRequirement(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update job skill requirement" });
+    }
+  });
+
+  app.delete("/api/job-skill-requirements/:id", async (req, res) => {
+    try {
+      await storage.deleteJobSkillRequirement(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete job skill requirement" });
+    }
+  });
+
+  // Job Equipment Reservations routes
+  app.get("/api/job-equipment-reservations/:userId", async (req, res) => {
+    try {
+      const items = await storage.getJobEquipmentReservations(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job equipment reservations" });
+    }
+  });
+
+  app.get("/api/job-equipment-reservations/by-job/:jobId", async (req, res) => {
+    try {
+      const items = await storage.getJobEquipmentReservationsByJob(req.params.jobId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job equipment reservations by job" });
+    }
+  });
+
+  app.post("/api/job-equipment-reservations", async (req, res) => {
+    try {
+      const item = await storage.createJobEquipmentReservation(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create job equipment reservation" });
+    }
+  });
+
+  app.patch("/api/job-equipment-reservations/:id", async (req, res) => {
+    try {
+      const item = await storage.updateJobEquipmentReservation(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update job equipment reservation" });
+    }
+  });
+
+  app.delete("/api/job-equipment-reservations/:id", async (req, res) => {
+    try {
+      await storage.deleteJobEquipmentReservation(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete job equipment reservation" });
+    }
+  });
+
+  // Staff Availability routes
+  app.get("/api/staff-availability/:userId", async (req, res) => {
+    try {
+      const items = await storage.getStaffAvailability(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch staff availability" });
+    }
+  });
+
+  app.get("/api/staff-availability/by-staff/:staffId", async (req, res) => {
+    try {
+      const items = await storage.getStaffAvailabilityByStaff(req.params.staffId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch staff availability by staff" });
+    }
+  });
+
+  app.post("/api/staff-availability", async (req, res) => {
+    try {
+      const item = await storage.createStaffAvailability(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create staff availability" });
+    }
+  });
+
+  app.patch("/api/staff-availability/:id", async (req, res) => {
+    try {
+      const item = await storage.updateStaffAvailability(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update staff availability" });
+    }
+  });
+
+  app.delete("/api/staff-availability/:id", async (req, res) => {
+    try {
+      await storage.deleteStaffAvailability(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete staff availability" });
+    }
+  });
+
+  // Job Time Windows routes
+  app.get("/api/job-time-windows/:userId", async (req, res) => {
+    try {
+      const items = await storage.getJobTimeWindows(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job time windows" });
+    }
+  });
+
+  app.get("/api/job-time-windows/by-job/:jobId", async (req, res) => {
+    try {
+      const items = await storage.getJobTimeWindowsByJob(req.params.jobId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job time windows by job" });
+    }
+  });
+
+  app.post("/api/job-time-windows", async (req, res) => {
+    try {
+      const item = await storage.createJobTimeWindow(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create job time window" });
+    }
+  });
+
+  app.patch("/api/job-time-windows/:id", async (req, res) => {
+    try {
+      const item = await storage.updateJobTimeWindow(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update job time window" });
+    }
+  });
+
+  app.delete("/api/job-time-windows/:id", async (req, res) => {
+    try {
+      await storage.deleteJobTimeWindow(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete job time window" });
+    }
+  });
+
+  // Shift Handovers routes
+  app.get("/api/shift-handovers/:userId", async (req, res) => {
+    try {
+      const items = await storage.getShiftHandovers(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch shift handovers" });
+    }
+  });
+
+  app.post("/api/shift-handovers", async (req, res) => {
+    try {
+      const item = await storage.createShiftHandover(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create shift handover" });
+    }
+  });
+
+  app.patch("/api/shift-handovers/:id", async (req, res) => {
+    try {
+      const item = await storage.updateShiftHandover(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update shift handover" });
+    }
+  });
+
+  app.delete("/api/shift-handovers/:id", async (req, res) => {
+    try {
+      await storage.deleteShiftHandover(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete shift handover" });
+    }
+  });
+
+  // Daily Briefings routes
+  app.get("/api/daily-briefings/:userId", async (req, res) => {
+    try {
+      const items = await storage.getDailyBriefings(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch daily briefings" });
+    }
+  });
+
+  app.post("/api/daily-briefings", async (req, res) => {
+    try {
+      const item = await storage.createDailyBriefing(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create daily briefing" });
+    }
+  });
+
+  app.patch("/api/daily-briefings/:id", async (req, res) => {
+    try {
+      const item = await storage.updateDailyBriefing(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update daily briefing" });
+    }
+  });
+
+  app.delete("/api/daily-briefings/:id", async (req, res) => {
+    try {
+      await storage.deleteDailyBriefing(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete daily briefing" });
+    }
+  });
+
+  // Service Reminders routes
+  app.get("/api/service-reminders/:userId", async (req, res) => {
+    try {
+      const items = await storage.getServiceReminders(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch service reminders" });
+    }
+  });
+
+  app.post("/api/service-reminders", async (req, res) => {
+    try {
+      const item = await storage.createServiceReminder(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create service reminder" });
+    }
+  });
+
+  app.patch("/api/service-reminders/:id", async (req, res) => {
+    try {
+      const item = await storage.updateServiceReminder(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update service reminder" });
+    }
+  });
+
+  app.delete("/api/service-reminders/:id", async (req, res) => {
+    try {
+      await storage.deleteServiceReminder(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete service reminder" });
+    }
+  });
+
+  // Location Coordinates routes
+  app.get("/api/location-coordinates/:userId", async (req, res) => {
+    try {
+      const items = await storage.getLocationCoordinates(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch location coordinates" });
+    }
+  });
+
+  app.post("/api/location-coordinates", async (req, res) => {
+    try {
+      const item = await storage.createLocationCoordinate(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create location coordinate" });
+    }
+  });
+
+  app.patch("/api/location-coordinates/:id", async (req, res) => {
+    try {
+      const item = await storage.updateLocationCoordinate(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update location coordinate" });
+    }
+  });
+
+  app.delete("/api/location-coordinates/:id", async (req, res) => {
+    try {
+      await storage.deleteLocationCoordinate(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete location coordinate" });
+    }
+  });
+
+  // Scheduling Conflicts routes
+  app.get("/api/scheduling-conflicts/:userId", async (req, res) => {
+    try {
+      const items = await storage.getSchedulingConflicts(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch scheduling conflicts" });
+    }
+  });
+
+  app.post("/api/scheduling-conflicts", async (req, res) => {
+    try {
+      const item = await storage.createSchedulingConflict(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create scheduling conflict" });
+    }
+  });
+
+  app.patch("/api/scheduling-conflicts/:id", async (req, res) => {
+    try {
+      const item = await storage.updateSchedulingConflict(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update scheduling conflict" });
+    }
+  });
+
+  app.delete("/api/scheduling-conflicts/:id", async (req, res) => {
+    try {
+      await storage.deleteSchedulingConflict(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete scheduling conflict" });
+    }
+  });
+
+  // Capacity Snapshots routes
+  app.get("/api/capacity-snapshots/:userId", async (req, res) => {
+    try {
+      const items = await storage.getCapacitySnapshots(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch capacity snapshots" });
+    }
+  });
+
+  app.post("/api/capacity-snapshots", async (req, res) => {
+    try {
+      const item = await storage.createCapacitySnapshot(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create capacity snapshot" });
+    }
+  });
+
+  app.delete("/api/capacity-snapshots/:id", async (req, res) => {
+    try {
+      await storage.deleteCapacitySnapshot(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete capacity snapshot" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
