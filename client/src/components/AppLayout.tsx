@@ -54,7 +54,9 @@ import {
   UsersRound,
   Tags,
   MessageSquareText,
-  Cog
+  Cog,
+  ClipboardList,
+  Package
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -90,6 +92,8 @@ const operationsMenuItems = [
   { title: "Subcontractors", url: "/subcontractors", icon: UserCheck },
   { title: "Holidays", url: "/holidays", icon: Calendar },
   { title: "Equipment", url: "/equipment", icon: Wrench },
+  { title: "Site Assets", url: "/site-assets", icon: Package },
+  { title: "Visit Types", url: "/visit-types", icon: ClipboardList },
   { title: "Certifications", url: "/certifications", icon: Award },
   { title: "Training Records", url: "/training-records", icon: GraduationCap },
   { title: "Inventory", url: "/inventory", icon: Boxes },
