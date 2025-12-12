@@ -13,6 +13,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -30,10 +47,17 @@ import {
   CheckCircle,
   Play,
   Plus,
-  Car,
-  Wrench
+  Wrench,
+  Users,
+  Award,
+  Package,
+  X,
+  UserPlus,
+  Shield,
+  AlertCircle
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { useState } from "react";
 
 interface Job {
   id: string;
@@ -105,10 +129,102 @@ interface Timesheet {
   description: string | null;
 }
 
+interface StaffMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  mobile: string | null;
+  jobTitle: string | null;
+  department: string | null;
+  skills: string[] | null;
+  qualifications: string[] | null;
+  isActive: boolean;
+}
+
+interface Equipment {
+  id: string;
+  assetTag: string;
+  name: string;
+  category: string;
+  manufacturer: string | null;
+  model: string | null;
+  status: string;
+  location: string | null;
+}
+
+interface JobAssignment {
+  id: string;
+  jobId: string;
+  staffId: string | null;
+  subcontractorId: string | null;
+  role: string;
+  assignedDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  status: string;
+  notes: string | null;
+}
+
+interface JobSkillRequirement {
+  id: string;
+  jobId: string;
+  skillType: string;
+  skillLevel: string;
+  description: string | null;
+}
+
+interface JobEquipmentReservation {
+  id: string;
+  jobId: string;
+  equipmentId: string;
+  reservedDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  status: string;
+  notes: string | null;
+}
+
+const SKILL_TYPES = [
+  { value: "cscs", label: "CSCS Card" },
+  { value: "ipaf", label: "IPAF" },
+  { value: "pasma", label: "PASMA" },
+  { value: "first_aid", label: "First Aid" },
+  { value: "asbestos_awareness", label: "Asbestos Awareness" },
+  { value: "fire_safety", label: "Fire Safety" },
+  { value: "electrical", label: "Electrical" },
+  { value: "gas_safe", label: "Gas Safe" },
+  { value: "confined_space", label: "Confined Space" },
+  { value: "working_at_height", label: "Working at Height" },
+];
+
+const SKILL_LEVELS = [
+  { value: "required", label: "Required" },
+  { value: "preferred", label: "Preferred" },
+  { value: "optional", label: "Optional" },
+];
+
+const ASSIGNMENT_ROLES = [
+  { value: "lead", label: "Lead Technician" },
+  { value: "technician", label: "Technician" },
+  { value: "helper", label: "Helper" },
+  { value: "supervisor", label: "Supervisor" },
+];
+
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  const [showAddStaffDialog, setShowAddStaffDialog] = useState(false);
+  const [showAddSkillDialog, setShowAddSkillDialog] = useState(false);
+  const [showAddEquipmentDialog, setShowAddEquipmentDialog] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<string>("technician");
+  const [selectedSkillType, setSelectedSkillType] = useState<string>("");
+  const [selectedSkillLevel, setSelectedSkillLevel] = useState<string>("required");
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
 
   const { data: job, isLoading: jobLoading } = useQuery<Job>({
     queryKey: [`/api/jobs/detail/${id}`],
@@ -140,6 +256,32 @@ export default function JobDetail() {
     enabled: !!user?.id,
   });
 
+  // Scheduling enhancement queries
+  const { data: staffDirectory = [], isLoading: staffLoading } = useQuery<StaffMember[]>({
+    queryKey: ["/api/staff-directory", user?.id],
+    enabled: !!user?.id,
+  });
+
+  const { data: equipmentList = [], isLoading: equipmentLoading } = useQuery<Equipment[]>({
+    queryKey: ["/api/equipment", user?.id],
+    enabled: !!user?.id,
+  });
+
+  const { data: jobAssignments = [], isLoading: assignmentsLoading } = useQuery<JobAssignment[]>({
+    queryKey: ["/api/job-assignments/by-job", id],
+    enabled: !!id && !!user?.id,
+  });
+
+  const { data: jobSkillRequirements = [], isLoading: skillsLoading } = useQuery<JobSkillRequirement[]>({
+    queryKey: ["/api/job-skill-requirements/by-job", id],
+    enabled: !!id && !!user?.id,
+  });
+
+  const { data: jobEquipmentReservations = [], isLoading: reservationsLoading } = useQuery<JobEquipmentReservation[]>({
+    queryKey: ["/api/job-equipment-reservations/by-job", id],
+    enabled: !!id && !!user?.id,
+  });
+
   const updateJobMutation = useMutation({
     mutationFn: async (data: Partial<Job>) => {
       return apiRequest("PATCH", `/api/jobs/${id}`, data);
@@ -147,6 +289,110 @@ export default function JobDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       toast({ title: "Job updated" });
+    },
+  });
+
+  // Assignment mutations
+  const addAssignmentMutation = useMutation({
+    mutationFn: async (data: { staffId: string; role: string }) => {
+      return apiRequest("POST", `/api/job-assignments/${user?.id}`, {
+        jobId: id,
+        staffId: data.staffId,
+        role: data.role,
+        assignedDate: job?.scheduledDate || new Date().toISOString().split("T")[0],
+        status: "assigned",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-assignments/by-job", id] });
+      setShowAddStaffDialog(false);
+      setSelectedStaffId("");
+      setSelectedRole("technician");
+      toast({ title: "Staff assigned to job" });
+    },
+    onError: () => {
+      toast({ title: "Failed to assign staff", variant: "destructive" });
+    },
+  });
+
+  const removeAssignmentMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      return apiRequest("DELETE", `/api/job-assignments/${assignmentId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-assignments/by-job", id] });
+      toast({ title: "Staff removed from job" });
+    },
+    onError: () => {
+      toast({ title: "Failed to remove staff", variant: "destructive" });
+    },
+  });
+
+  // Skill requirement mutations
+  const addSkillMutation = useMutation({
+    mutationFn: async (data: { skillType: string; skillLevel: string }) => {
+      return apiRequest("POST", `/api/job-skill-requirements/${user?.id}`, {
+        jobId: id,
+        skillType: data.skillType,
+        skillLevel: data.skillLevel,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-skill-requirements/by-job", id] });
+      setShowAddSkillDialog(false);
+      setSelectedSkillType("");
+      setSelectedSkillLevel("required");
+      toast({ title: "Skill requirement added" });
+    },
+    onError: () => {
+      toast({ title: "Failed to add skill requirement", variant: "destructive" });
+    },
+  });
+
+  const removeSkillMutation = useMutation({
+    mutationFn: async (skillId: string) => {
+      return apiRequest("DELETE", `/api/job-skill-requirements/${skillId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-skill-requirements/by-job", id] });
+      toast({ title: "Skill requirement removed" });
+    },
+    onError: () => {
+      toast({ title: "Failed to remove skill requirement", variant: "destructive" });
+    },
+  });
+
+  // Equipment reservation mutations
+  const addEquipmentMutation = useMutation({
+    mutationFn: async (equipmentId: string) => {
+      return apiRequest("POST", `/api/job-equipment-reservations/${user?.id}`, {
+        jobId: id,
+        equipmentId: equipmentId,
+        reservedDate: job?.scheduledDate || new Date().toISOString().split("T")[0],
+        status: "reserved",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-equipment-reservations/by-job", id] });
+      setShowAddEquipmentDialog(false);
+      setSelectedEquipmentId("");
+      toast({ title: "Equipment reserved for job" });
+    },
+    onError: () => {
+      toast({ title: "Failed to reserve equipment", variant: "destructive" });
+    },
+  });
+
+  const removeEquipmentMutation = useMutation({
+    mutationFn: async (reservationId: string) => {
+      return apiRequest("DELETE", `/api/job-equipment-reservations/${reservationId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-equipment-reservations/by-job", id] });
+      toast({ title: "Equipment reservation cancelled" });
+    },
+    onError: () => {
+      toast({ title: "Failed to cancel reservation", variant: "destructive" });
     },
   });
 
@@ -163,6 +409,54 @@ export default function JobDetail() {
   const materialsCost = job?.materialsCost || jobExpenses.filter(e => e.category === "materials").reduce((sum, e) => sum + e.amount, 0);
   const totalCost = totalExpenses + labourCost;
   const profitMargin = totalInvoiced > 0 ? ((totalInvoiced - totalCost) / totalInvoiced * 100) : 0;
+
+  // Helper functions
+  const getStaffName = (staffId: string | null) => {
+    if (!staffId) return "Unknown";
+    const staff = staffDirectory.find(s => s.id === staffId);
+    return staff ? `${staff.firstName} ${staff.lastName}` : "Unknown";
+  };
+
+  const getEquipmentName = (equipmentId: string) => {
+    const equip = equipmentList.find(e => e.id === equipmentId);
+    return equip ? equip.name : "Unknown";
+  };
+
+  const getEquipmentDetails = (equipmentId: string) => {
+    return equipmentList.find(e => e.id === equipmentId);
+  };
+
+  const getSkillLabel = (skillType: string) => {
+    const skill = SKILL_TYPES.find(s => s.value === skillType);
+    return skill ? skill.label : skillType;
+  };
+
+  const getRoleLabel = (role: string) => {
+    const roleItem = ASSIGNMENT_ROLES.find(r => r.value === role);
+    return roleItem ? roleItem.label : role;
+  };
+
+  // Filter out already assigned staff
+  const availableStaff = staffDirectory.filter(
+    staff => staff.isActive && !jobAssignments.some(a => a.staffId === staff.id)
+  );
+
+  // Filter out already reserved equipment (handle undefined status gracefully)
+  const availableEquipment = equipmentList.filter(
+    equip => (equip.status === "available" || !equip.status) && !jobEquipmentReservations.some(r => r.equipmentId === equip.id)
+  );
+
+  // Filter out already added skills
+  const availableSkills = SKILL_TYPES.filter(
+    skill => !jobSkillRequirements.some(r => r.skillType === skill.value)
+  );
+
+  // Loading spinner component for tabs
+  const LoadingSpinner = () => (
+    <div className="flex items-center justify-center py-6" data-testid="loading-spinner">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+    </div>
+  );
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -183,6 +477,35 @@ export default function JobDetail() {
       low: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100",
     };
     return <Badge className={colors[priority] || ""} variant={colors[priority] ? undefined : "outline"}>{priority}</Badge>;
+  };
+
+  const getSkillLevelBadge = (level: string) => {
+    const colors: Record<string, string> = {
+      required: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+      preferred: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
+      optional: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100",
+    };
+    return <Badge className={colors[level] || ""} variant={colors[level] ? undefined : "outline"} size="sm">{level}</Badge>;
+  };
+
+  const getRoleBadge = (role: string) => {
+    const colors: Record<string, string> = {
+      lead: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100",
+      supervisor: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
+      technician: "",
+      helper: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100",
+    };
+    return <Badge className={colors[role] || ""} variant={colors[role] ? undefined : "outline"} size="sm">{getRoleLabel(role)}</Badge>;
+  };
+
+  const getEquipmentStatusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      reserved: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
+      checked_out: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
+      returned: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+      cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+    };
+    return <Badge className={colors[status] || ""} variant={colors[status] ? undefined : "outline"} size="sm">{status.replace(/_/g, " ")}</Badge>;
   };
 
   if (jobLoading) {
@@ -387,15 +710,358 @@ export default function JobDetail() {
         </Card>
 
         <Card className="md:col-span-2">
-          <Tabs defaultValue="expenses">
+          <Tabs defaultValue="team">
             <CardHeader className="pb-0">
-              <TabsList>
-                <TabsTrigger value="expenses">Expenses ({jobExpenses.length})</TabsTrigger>
-                <TabsTrigger value="timesheets">Time ({jobTimesheets.length})</TabsTrigger>
-                <TabsTrigger value="invoices">Invoices ({jobInvoices.length})</TabsTrigger>
+              <TabsList className="flex-wrap">
+                <TabsTrigger value="team" data-testid="tab-team">
+                  <Users className="h-4 w-4 mr-1" />
+                  Team ({jobAssignments.length})
+                </TabsTrigger>
+                <TabsTrigger value="skills" data-testid="tab-skills">
+                  <Award className="h-4 w-4 mr-1" />
+                  Skills ({jobSkillRequirements.length})
+                </TabsTrigger>
+                <TabsTrigger value="equipment" data-testid="tab-equipment">
+                  <Package className="h-4 w-4 mr-1" />
+                  Equipment ({jobEquipmentReservations.length})
+                </TabsTrigger>
+                <TabsTrigger value="expenses" data-testid="tab-expenses">Expenses ({jobExpenses.length})</TabsTrigger>
+                <TabsTrigger value="timesheets" data-testid="tab-timesheets">Time ({jobTimesheets.length})</TabsTrigger>
+                <TabsTrigger value="invoices" data-testid="tab-invoices">Invoices ({jobInvoices.length})</TabsTrigger>
               </TabsList>
             </CardHeader>
             <CardContent className="pt-4">
+              {/* Team Assignments Tab */}
+              <TabsContent value="team" className="mt-0">
+                {(assignmentsLoading || staffLoading) ? (
+                  <LoadingSpinner />
+                ) : (
+                <>
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-sm text-muted-foreground">Assign staff to this job</p>
+                  <Dialog open={showAddStaffDialog} onOpenChange={setShowAddStaffDialog}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" data-testid="button-add-staff">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Assign Staff
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Assign Staff to Job</DialogTitle>
+                        <DialogDescription>Select a staff member and their role for this job.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>Staff Member</Label>
+                          <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                            <SelectTrigger data-testid="select-staff">
+                              <SelectValue placeholder="Select staff member" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableStaff.length === 0 ? (
+                                <SelectItem value="none" disabled>No available staff</SelectItem>
+                              ) : (
+                                availableStaff.map(staff => (
+                                  <SelectItem key={staff.id} value={staff.id}>
+                                    {staff.firstName} {staff.lastName} - {staff.jobTitle || "Staff"}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Role</Label>
+                          <Select value={selectedRole} onValueChange={setSelectedRole}>
+                            <SelectTrigger data-testid="select-role">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ASSIGNMENT_ROLES.map(role => (
+                                <SelectItem key={role.value} value={role.value}>
+                                  {role.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAddStaffDialog(false)}>Cancel</Button>
+                        <Button 
+                          onClick={() => addAssignmentMutation.mutate({ staffId: selectedStaffId, role: selectedRole })}
+                          disabled={!selectedStaffId || addAssignmentMutation.isPending}
+                          data-testid="button-confirm-assign"
+                        >
+                          {addAssignmentMutation.isPending ? "Assigning..." : "Assign"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                
+                {jobAssignments.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No staff assigned yet</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {jobAssignments.map((assignment) => (
+                        <TableRow key={assignment.id} data-testid={`row-assignment-${assignment.id}`}>
+                          <TableCell className="font-medium">
+                            {getStaffName(assignment.staffId)}
+                          </TableCell>
+                          <TableCell>{getRoleBadge(assignment.role)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{assignment.status}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeAssignmentMutation.mutate(assignment.id)}
+                              disabled={removeAssignmentMutation.isPending}
+                              data-testid={`button-remove-assignment-${assignment.id}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                </>
+                )}
+              </TabsContent>
+
+              {/* Skills Requirements Tab */}
+              <TabsContent value="skills" className="mt-0">
+                {skillsLoading ? (
+                  <LoadingSpinner />
+                ) : (
+                <>
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-sm text-muted-foreground">Certifications required for this job</p>
+                  <Dialog open={showAddSkillDialog} onOpenChange={setShowAddSkillDialog}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" data-testid="button-add-skill">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Add Requirement
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Skill Requirement</DialogTitle>
+                        <DialogDescription>Specify a certification or skill required for this job.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>Skill/Certification</Label>
+                          <Select value={selectedSkillType} onValueChange={setSelectedSkillType}>
+                            <SelectTrigger data-testid="select-skill-type">
+                              <SelectValue placeholder="Select certification" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableSkills.length === 0 ? (
+                                <SelectItem value="none" disabled>All skills already added</SelectItem>
+                              ) : (
+                                availableSkills.map(skill => (
+                                  <SelectItem key={skill.value} value={skill.value}>
+                                    {skill.label}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Requirement Level</Label>
+                          <Select value={selectedSkillLevel} onValueChange={setSelectedSkillLevel}>
+                            <SelectTrigger data-testid="select-skill-level">
+                              <SelectValue placeholder="Select level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SKILL_LEVELS.map(level => (
+                                <SelectItem key={level.value} value={level.value}>
+                                  {level.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAddSkillDialog(false)}>Cancel</Button>
+                        <Button 
+                          onClick={() => addSkillMutation.mutate({ skillType: selectedSkillType, skillLevel: selectedSkillLevel })}
+                          disabled={!selectedSkillType || addSkillMutation.isPending}
+                          data-testid="button-confirm-skill"
+                        >
+                          {addSkillMutation.isPending ? "Adding..." : "Add"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                
+                {jobSkillRequirements.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Award className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No skill requirements specified</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Certification</TableHead>
+                        <TableHead>Level</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {jobSkillRequirements.map((skill) => (
+                        <TableRow key={skill.id} data-testid={`row-skill-${skill.id}`}>
+                          <TableCell className="font-medium">
+                            {getSkillLabel(skill.skillType)}
+                          </TableCell>
+                          <TableCell>{getSkillLevelBadge(skill.skillLevel)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeSkillMutation.mutate(skill.id)}
+                              disabled={removeSkillMutation.isPending}
+                              data-testid={`button-remove-skill-${skill.id}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                </>
+                )}
+              </TabsContent>
+
+              {/* Equipment Reservations Tab */}
+              <TabsContent value="equipment" className="mt-0">
+                {(reservationsLoading || equipmentLoading) ? (
+                  <LoadingSpinner />
+                ) : (
+                <>
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-sm text-muted-foreground">Equipment reserved for this job</p>
+                  <Dialog open={showAddEquipmentDialog} onOpenChange={setShowAddEquipmentDialog}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" data-testid="button-add-equipment">
+                        <Package className="h-4 w-4 mr-2" />
+                        Reserve Equipment
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Reserve Equipment</DialogTitle>
+                        <DialogDescription>Select equipment to reserve for this job.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>Equipment</Label>
+                          <Select value={selectedEquipmentId} onValueChange={setSelectedEquipmentId}>
+                            <SelectTrigger data-testid="select-equipment">
+                              <SelectValue placeholder="Select equipment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableEquipment.length === 0 ? (
+                                <SelectItem value="none" disabled>No available equipment</SelectItem>
+                              ) : (
+                                availableEquipment.map(equip => (
+                                  <SelectItem key={equip.id} value={equip.id}>
+                                    {equip.name} ({equip.assetTag}) - {equip.category}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAddEquipmentDialog(false)}>Cancel</Button>
+                        <Button 
+                          onClick={() => addEquipmentMutation.mutate(selectedEquipmentId)}
+                          disabled={!selectedEquipmentId || addEquipmentMutation.isPending}
+                          data-testid="button-confirm-equipment"
+                        >
+                          {addEquipmentMutation.isPending ? "Reserving..." : "Reserve"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                
+                {jobEquipmentReservations.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No equipment reserved</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Equipment</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {jobEquipmentReservations.map((reservation) => {
+                        const equipDetails = getEquipmentDetails(reservation.equipmentId);
+                        return (
+                          <TableRow key={reservation.id} data-testid={`row-equipment-${reservation.id}`}>
+                            <TableCell>
+                              <div className="font-medium">{getEquipmentName(reservation.equipmentId)}</div>
+                              <div className="text-xs text-muted-foreground">{equipDetails?.assetTag}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{equipDetails?.category || "N/A"}</Badge>
+                            </TableCell>
+                            <TableCell>{getEquipmentStatusBadge(reservation.status)}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeEquipmentMutation.mutate(reservation.id)}
+                                disabled={removeEquipmentMutation.isPending}
+                                data-testid={`button-remove-equipment-${reservation.id}`}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+                </>
+                )}
+              </TabsContent>
+
+              {/* Expenses Tab */}
               <TabsContent value="expenses" className="mt-0">
                 {jobExpenses.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
@@ -436,6 +1102,7 @@ export default function JobDetail() {
                 )}
               </TabsContent>
 
+              {/* Timesheets Tab */}
               <TabsContent value="timesheets" className="mt-0">
                 {jobTimesheets.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
@@ -474,6 +1141,7 @@ export default function JobDetail() {
                 )}
               </TabsContent>
 
+              {/* Invoices Tab */}
               <TabsContent value="invoices" className="mt-0">
                 {jobInvoices.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
