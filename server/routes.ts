@@ -2312,6 +2312,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // PHASE 10: VISIT TYPES & SERVICE TEMPLATES
+  // ============================================
+
+  // Visit Types routes
+  app.get("/api/visit-types/:userId", async (req, res) => {
+    try {
+      const items = await storage.getVisitTypes(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch visit types" });
+    }
+  });
+
+  app.post("/api/visit-types", async (req, res) => {
+    try {
+      const item = await storage.createVisitType(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create visit type" });
+    }
+  });
+
+  app.patch("/api/visit-types/:id", async (req, res) => {
+    try {
+      const item = await storage.updateVisitType(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update visit type" });
+    }
+  });
+
+  app.delete("/api/visit-types/:id", async (req, res) => {
+    try {
+      await storage.deleteVisitType(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete visit type" });
+    }
+  });
+
+  // Service Templates routes
+  app.get("/api/service-templates/:userId", async (req, res) => {
+    try {
+      const items = await storage.getServiceTemplates(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch service templates" });
+    }
+  });
+
+  app.get("/api/service-templates/by-visit-type/:visitTypeId", async (req, res) => {
+    try {
+      const items = await storage.getServiceTemplatesByVisitType(req.params.visitTypeId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch service templates by visit type" });
+    }
+  });
+
+  app.post("/api/service-templates", async (req, res) => {
+    try {
+      const item = await storage.createServiceTemplate(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create service template" });
+    }
+  });
+
+  app.patch("/api/service-templates/:id", async (req, res) => {
+    try {
+      const item = await storage.updateServiceTemplate(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update service template" });
+    }
+  });
+
+  app.delete("/api/service-templates/:id", async (req, res) => {
+    try {
+      await storage.deleteServiceTemplate(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete service template" });
+    }
+  });
+
+  // ============================================
+  // PHASE 10: SITE ASSETS & BULK ADD
+  // ============================================
+
+  // Site Assets routes
+  app.get("/api/site-assets/:userId", async (req, res) => {
+    try {
+      const items = await storage.getSiteAssets(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch site assets" });
+    }
+  });
+
+  app.get("/api/site-assets/by-project/:projectId", async (req, res) => {
+    try {
+      const items = await storage.getSiteAssetsByProject(req.params.projectId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch site assets by project" });
+    }
+  });
+
+  app.post("/api/site-assets", async (req, res) => {
+    try {
+      const item = await storage.createSiteAsset(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create site asset" });
+    }
+  });
+
+  app.post("/api/site-assets/bulk", async (req, res) => {
+    try {
+      const items = await storage.createSiteAssetsBulk(req.body.assets);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create bulk site assets" });
+    }
+  });
+
+  app.patch("/api/site-assets/:id", async (req, res) => {
+    try {
+      const item = await storage.updateSiteAsset(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update site asset" });
+    }
+  });
+
+  app.delete("/api/site-assets/:id", async (req, res) => {
+    try {
+      await storage.deleteSiteAsset(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete site asset" });
+    }
+  });
+
+  // Asset Batches routes
+  app.get("/api/asset-batches/:userId", async (req, res) => {
+    try {
+      const items = await storage.getAssetBatches(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch asset batches" });
+    }
+  });
+
+  app.post("/api/asset-batches", async (req, res) => {
+    try {
+      const item = await storage.createAssetBatch(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create asset batch" });
+    }
+  });
+
+  app.patch("/api/asset-batches/:id", async (req, res) => {
+    try {
+      const item = await storage.updateAssetBatch(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update asset batch" });
+    }
+  });
+
+  app.delete("/api/asset-batches/:id", async (req, res) => {
+    try {
+      await storage.deleteAssetBatch(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete asset batch" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
