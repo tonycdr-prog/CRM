@@ -38,8 +38,13 @@ import {
   Map,
   Palette,
   Columns,
-  AlertTriangle
+  AlertTriangle,
+  BarChart3,
+  Users,
+  TrendingUp,
+  Search
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import {
@@ -174,6 +179,41 @@ interface ConflictResponse {
   infoCount: number;
 }
 
+interface CapacityMetrics {
+  hasStaff?: boolean;
+  message?: string;
+  dateRange: { start: string; end: string; workingDays: number };
+  teamMetrics: {
+    totalStaff: number;
+    totalScheduledHours: number;
+    totalAvailableHours: number;
+    overallUtilization: number;
+    totalJobsScheduled: number;
+  };
+  staffCapacities: Array<{
+    staffId: string;
+    staffName: string;
+    role: string;
+    scheduledHours: number;
+    availableHours: number;
+    utilizationPercent: number;
+    jobCount: number;
+  }>;
+  alerts: {
+    overloadedStaff: Array<{ staffId: string; staffName: string; utilization: number }>;
+    underutilizedStaff: Array<{ staffId: string; staffName: string; utilization: number }>;
+  };
+}
+
+interface AvailableSlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+  staffId: string;
+  staffName: string;
+  durationHours: number;
+}
+
 const priorityColors: Record<string, string> = {
   urgent: "bg-red-500 text-white",
   high: "bg-orange-500 text-white",
@@ -200,6 +240,10 @@ export default function Schedule() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [colorScheme, setColorScheme] = useState<ColorScheme>("priority");
+  const [showCapacity, setShowCapacity] = useState(false);
+  const [slotDuration, setSlotDuration] = useState(2);
+  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [isSearchingSlots, setIsSearchingSlots] = useState(false);
 
   // Client-side only initialization for Leaflet map
   useEffect(() => {
@@ -236,6 +280,37 @@ export default function Schedule() {
     enabled: !!user?.id,
     refetchInterval: 60000,
   });
+
+  const { data: capacityMetrics } = useQuery<CapacityMetrics>({
+    queryKey: [`/api/capacity-metrics/${user?.id}`],
+    enabled: !!user?.id && showCapacity,
+  });
+
+  const findAvailableSlots = async () => {
+    if (!user?.id) return;
+    setIsSearchingSlots(true);
+    try {
+      const response = await fetch(`/api/find-available-slot/${user.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          durationHours: slotDuration,
+          maxResults: 10
+        })
+      });
+      const data = await response.json();
+      setAvailableSlots(data.slots || []);
+      
+      // Surface backend message to user if no slots found
+      if (data.message && (!data.slots || data.slots.length === 0)) {
+        toast({ title: data.message, variant: "default" });
+      }
+    } catch (error) {
+      toast({ title: "Failed to find slots", variant: "destructive" });
+    } finally {
+      setIsSearchingSlots(false);
+    }
+  };
 
   const getJobConflicts = (jobId: string): Conflict[] => {
     if (!conflictData?.conflicts) return [];
@@ -1237,6 +1312,148 @@ export default function Schedule() {
               </CardContent>
             </Card>
           )}
+
+          {/* Capacity Planning */}
+          <Card data-testid="card-capacity-planning">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Capacity Planning
+              </CardTitle>
+              <CardDescription>Staff workload overview</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                variant={showCapacity ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowCapacity(!showCapacity)}
+                className="w-full"
+                data-testid="button-toggle-capacity"
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                {showCapacity ? "Hide Metrics" : "Show Metrics"}
+              </Button>
+              
+              {showCapacity && capacityMetrics && (
+                <div className="space-y-3">
+                  {capacityMetrics.hasStaff === false ? (
+                    <div className="p-3 rounded bg-muted/50 text-center">
+                      <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {capacityMetrics.message || "No staff members found. Please add staff to view capacity metrics."}
+                      </p>
+                      <Link href="/staff">
+                        <Button variant="outline" size="sm" className="mt-2" data-testid="button-add-staff-capacity">
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Staff
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-2 rounded bg-muted/50">
+                        <div className="text-xs text-muted-foreground">Team Utilization</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Progress value={capacityMetrics.teamMetrics.overallUtilization} className="flex-1" />
+                          <span className="text-sm font-medium">{capacityMetrics.teamMetrics.overallUtilization}%</span>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 rounded bg-muted/30">
+                          <div className="text-muted-foreground">Staff</div>
+                          <div className="font-medium">{capacityMetrics.teamMetrics.totalStaff}</div>
+                        </div>
+                        <div className="p-2 rounded bg-muted/30">
+                          <div className="text-muted-foreground">Jobs This Week</div>
+                          <div className="font-medium">{capacityMetrics.teamMetrics.totalJobsScheduled}</div>
+                        </div>
+                      </div>
+
+                      {capacityMetrics.staffCapacities.slice(0, 4).map(staff => (
+                        <div key={staff.staffId} className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="truncate">{staff.staffName}</span>
+                            <span className={staff.utilizationPercent > 90 ? "text-red-500" : staff.utilizationPercent < 50 ? "text-amber-500" : ""}>{staff.utilizationPercent}%</span>
+                          </div>
+                          <Progress 
+                            value={staff.utilizationPercent} 
+                            className={`h-1 ${staff.utilizationPercent > 90 ? "[&>div]:bg-red-500" : staff.utilizationPercent < 50 ? "[&>div]:bg-amber-500" : ""}`}
+                          />
+                        </div>
+                      ))}
+
+                      {capacityMetrics.alerts.overloadedStaff.length > 0 && (
+                        <div className="p-2 rounded bg-red-500/10 text-xs">
+                          <div className="font-medium text-red-600 dark:text-red-400">Overloaded Staff</div>
+                          {capacityMetrics.alerts.overloadedStaff.map(s => (
+                            <div key={s.staffId} className="text-muted-foreground">{s.staffName}: {s.utilization}%</div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Find Available Slot */}
+          <Card data-testid="card-find-slot">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Find Available Slot
+              </CardTitle>
+              <CardDescription>Search for open time slots</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Select value={slotDuration.toString()} onValueChange={(v) => setSlotDuration(Number(v))}>
+                  <SelectTrigger className="flex-1" data-testid="select-duration">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 hour</SelectItem>
+                    <SelectItem value="2">2 hours</SelectItem>
+                    <SelectItem value="3">3 hours</SelectItem>
+                    <SelectItem value="4">4 hours</SelectItem>
+                    <SelectItem value="6">6 hours</SelectItem>
+                    <SelectItem value="8">Full day</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  size="sm" 
+                  onClick={findAvailableSlots}
+                  disabled={isSearchingSlots}
+                  data-testid="button-find-slots"
+                >
+                  {isSearchingSlots ? "..." : "Find"}
+                </Button>
+              </div>
+
+              {availableSlots.length > 0 && (
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {availableSlots.map((slot, idx) => (
+                    <div 
+                      key={idx}
+                      className="p-2 rounded border text-xs hover-elevate cursor-pointer"
+                      data-testid={`slot-${idx}`}
+                    >
+                      <div className="font-medium">{format(parseISO(slot.date), "EEE, MMM d")}</div>
+                      <div className="text-muted-foreground">
+                        {slot.startTime} - {slot.endTime}
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        <User className="h-3 w-3" />
+                        <span>{slot.staffName}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Color Legend */}
           <Card>

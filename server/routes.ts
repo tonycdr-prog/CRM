@@ -3170,6 +3170,336 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // NEXT AVAILABLE SLOT FINDER
+  // ============================================
+  
+  // Find next available time slots for scheduling a job
+  app.post("/api/find-available-slot/:userId", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const { 
+        durationHours = 2, 
+        preferredStaffId, 
+        startDate, 
+        endDate, 
+        maxResults = 10 
+      } = req.body;
+
+      const jobs = await storage.getJobs(userId);
+      const assignments = await storage.getJobAssignments(userId);
+      const staffMembers = await storage.getStaffDirectory(userId);
+
+      // Guard against null/empty staff directory
+      if (!staffMembers || staffMembers.length === 0) {
+        res.json({ slots: [], message: "No staff members found. Please add staff first." });
+        return;
+      }
+
+      // Filter active staff
+      const activeStaff = preferredStaffId 
+        ? staffMembers.filter(s => s.id === preferredStaffId && s.status !== "inactive")
+        : staffMembers.filter(s => s.status !== "inactive");
+
+      if (activeStaff.length === 0) {
+        res.json({ slots: [], message: "No active staff available" });
+        return;
+      }
+
+      // Parse date range
+      const rangeStart = startDate ? new Date(startDate) : new Date();
+      const rangeEnd = endDate ? new Date(endDate) : new Date(rangeStart.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+      // Working hours: 8 AM to 5 PM
+      const WORK_START = 8;
+      const WORK_END = 17;
+      const SLOT_INCREMENT = 30; // Check every 30 minutes
+
+      interface AvailableSlot {
+        date: string;
+        startTime: string;
+        endTime: string;
+        staffId: string;
+        staffName: string;
+        durationHours: number;
+      }
+
+      const availableSlots: AvailableSlot[] = [];
+
+      // Helper to get jobs for a staff member on a specific date
+      const getStaffJobsOnDate = (staffId: string, date: string) => {
+        const staffJobIds = assignments
+          .filter(a => a.staffId === staffId)
+          .map(a => a.jobId);
+        
+        return jobs.filter(job => {
+          if (job.scheduledDate !== date) return false;
+          if (job.status === "cancelled" || job.status === "completed") return false;
+          const isAssigned = staffJobIds.includes(job.id) || job.assignedTo === staffId;
+          return isAssigned;
+        });
+      };
+
+      // Helper to check if a slot is available
+      const isSlotAvailable = (staffId: string, date: string, startHour: number, startMinute: number, duration: number): boolean => {
+        const existingJobs = getStaffJobsOnDate(staffId, date);
+        const slotStart = startHour * 60 + startMinute;
+        const slotEnd = slotStart + duration * 60;
+
+        for (const job of existingJobs) {
+          const jobTime = job.scheduledTime || "08:00";
+          const [h, m] = jobTime.split(":").map(Number);
+          const jobStart = h * 60 + m;
+          const jobDuration = job.estimatedDuration || 2;
+          const jobEnd = jobStart + jobDuration * 60;
+
+          // Check for overlap (add 15 mins buffer for travel)
+          if (slotStart < jobEnd + 15 && slotEnd > jobStart - 15) {
+            return false;
+          }
+        }
+
+        return true;
+      };
+
+      // Iterate through date range
+      let currentDate = new Date(rangeStart);
+      while (currentDate <= rangeEnd && availableSlots.length < maxResults) {
+        // Skip weekends
+        const dayOfWeek = currentDate.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          const dateStr = currentDate.toISOString().split("T")[0];
+
+          // Check each staff member
+          for (const staff of activeStaff) {
+            if (availableSlots.length >= maxResults) break;
+
+            // Check each time slot
+            for (let hour = WORK_START; hour <= WORK_END - durationHours; hour++) {
+              for (let minute = 0; minute < 60; minute += SLOT_INCREMENT) {
+                if (availableSlots.length >= maxResults) break;
+
+                // Ensure slot doesn't go past work end
+                const slotEndHour = hour + durationHours + minute / 60;
+                if (slotEndHour > WORK_END) break;
+
+                if (isSlotAvailable(staff.id, dateStr, hour, minute, durationHours)) {
+                  const startTime = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+                  const endHour = Math.floor(hour + durationHours);
+                  const endMinute = minute;
+                  const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
+
+                  availableSlots.push({
+                    date: dateStr,
+                    startTime,
+                    endTime,
+                    staffId: staff.id,
+                    staffName: `${staff.firstName} ${staff.lastName}`,
+                    durationHours
+                  });
+                  
+                  // Move to next time block to avoid adjacent slots
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      res.json({
+        slots: availableSlots,
+        totalFound: availableSlots.length,
+        searchParams: {
+          durationHours,
+          preferredStaffId,
+          startDate: rangeStart.toISOString().split("T")[0],
+          endDate: rangeEnd.toISOString().split("T")[0]
+        }
+      });
+    } catch (error) {
+      console.error("Find available slot error:", error);
+      res.status(500).json({ error: "Failed to find available slots" });
+    }
+  });
+
+  // ============================================
+  // CAPACITY PLANNING
+  // ============================================
+  
+  // Get capacity metrics for staff workload analysis
+  app.get("/api/capacity-metrics/:userId", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const { startDate, endDate } = req.query;
+
+      const jobs = await storage.getJobs(userId);
+      const assignments = await storage.getJobAssignments(userId);
+      const staffMembers = await storage.getStaffDirectory(userId);
+
+      // Guard against null/empty staff directory - return structured empty response
+      if (!staffMembers || staffMembers.length === 0) {
+        const now = new Date();
+        const defaultStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
+        const defaultEnd = new Date(defaultStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+        res.json({
+          hasStaff: false,
+          message: "No staff members found. Please add staff to view capacity metrics.",
+          dateRange: { 
+            start: defaultStart.toISOString().split("T")[0], 
+            end: defaultEnd.toISOString().split("T")[0], 
+            workingDays: 5 
+          },
+          teamMetrics: {
+            totalStaff: 0,
+            totalScheduledHours: 0,
+            totalAvailableHours: 0,
+            overallUtilization: 0,
+            totalJobsScheduled: 0
+          },
+          staffCapacities: [],
+          alerts: { overloadedStaff: [], underutilizedStaff: [] }
+        });
+        return;
+      }
+
+      // Parse date range (default to current week)
+      const now = new Date();
+      const rangeStart = startDate 
+        ? new Date(startDate as string) 
+        : new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
+      const rangeEnd = endDate 
+        ? new Date(endDate as string) 
+        : new Date(rangeStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+      // Standard working hours per day (8 hours)
+      const HOURS_PER_DAY = 8;
+      
+      // Calculate working days in range (exclude weekends)
+      let workingDays = 0;
+      let checkDate = new Date(rangeStart);
+      while (checkDate <= rangeEnd) {
+        const day = checkDate.getDay();
+        if (day !== 0 && day !== 6) workingDays++;
+        checkDate.setDate(checkDate.getDate() + 1);
+      }
+
+      // Per-staff capacity for the period (e.g., 5 days * 8 hours = 40 hours per person)
+      const perStaffCapacityHours = workingDays * HOURS_PER_DAY;
+
+      interface StaffCapacity {
+        staffId: string;
+        staffName: string;
+        role: string;
+        scheduledHours: number;
+        availableHours: number;
+        utilizationPercent: number;
+        jobCount: number;
+        dailyBreakdown: Record<string, { hours: number; jobs: number }>;
+      }
+
+      const activeStaff = staffMembers.filter(s => s.status !== "inactive");
+      const staffCapacities: StaffCapacity[] = [];
+
+      // Filter jobs in date range
+      const rangeJobs = jobs.filter(job => {
+        if (!job.scheduledDate) return false;
+        if (job.status === "cancelled") return false;
+        const jobDate = new Date(job.scheduledDate);
+        return jobDate >= rangeStart && jobDate <= rangeEnd;
+      });
+
+      for (const staff of activeStaff) {
+        const staffJobIds = assignments
+          .filter(a => a.staffId === staff.id)
+          .map(a => a.jobId);
+
+        const staffJobs = rangeJobs.filter(job => 
+          staffJobIds.includes(job.id) || job.assignedTo === staff.id
+        );
+
+        // Calculate scheduled hours
+        let scheduledHours = 0;
+        const dailyBreakdown: Record<string, { hours: number; jobs: number }> = {};
+
+        for (const job of staffJobs) {
+          const duration = job.estimatedDuration || 2;
+          scheduledHours += duration;
+
+          const dateKey = job.scheduledDate!;
+          if (!dailyBreakdown[dateKey]) {
+            dailyBreakdown[dateKey] = { hours: 0, jobs: 0 };
+          }
+          dailyBreakdown[dateKey].hours += duration;
+          dailyBreakdown[dateKey].jobs++;
+        }
+
+        // Per-staff available = their individual capacity minus their scheduled hours
+        const availableHours = Math.max(0, perStaffCapacityHours - scheduledHours);
+        const utilizationPercent = perStaffCapacityHours > 0 
+          ? Math.round((scheduledHours / perStaffCapacityHours) * 100)
+          : 0;
+
+        staffCapacities.push({
+          staffId: staff.id,
+          staffName: `${staff.firstName} ${staff.lastName}`,
+          role: staff.role || "Technician",
+          scheduledHours,
+          availableHours,
+          utilizationPercent,
+          jobCount: staffJobs.length,
+          dailyBreakdown
+        });
+      }
+
+      // Calculate team totals (team capacity = staff count * per-staff capacity)
+      const totalScheduledHours = staffCapacities.reduce((sum, s) => sum + s.scheduledHours, 0);
+      const totalTeamCapacity = activeStaff.length * perStaffCapacityHours;
+      const overallUtilization = totalTeamCapacity > 0 
+        ? Math.round((totalScheduledHours / totalTeamCapacity) * 100)
+        : 0;
+
+      // Identify overloaded staff (>90% utilization)
+      const overloadedStaff = staffCapacities.filter(s => s.utilizationPercent > 90);
+      
+      // Identify underutilized staff (<50% utilization)
+      const underutilizedStaff = staffCapacities.filter(s => s.utilizationPercent < 50);
+
+      res.json({
+        dateRange: {
+          start: rangeStart.toISOString().split("T")[0],
+          end: rangeEnd.toISOString().split("T")[0],
+          workingDays
+        },
+        teamMetrics: {
+          totalStaff: activeStaff.length,
+          totalScheduledHours,
+          totalAvailableHours: totalTeamCapacity,
+          overallUtilization,
+          totalJobsScheduled: rangeJobs.length
+        },
+        staffCapacities: staffCapacities.sort((a, b) => b.utilizationPercent - a.utilizationPercent),
+        alerts: {
+          overloadedStaff: overloadedStaff.map(s => ({
+            staffId: s.staffId,
+            staffName: s.staffName,
+            utilization: s.utilizationPercent
+          })),
+          underutilizedStaff: underutilizedStaff.map(s => ({
+            staffId: s.staffId,
+            staffName: s.staffName,
+            utilization: s.utilizationPercent
+          }))
+        }
+      });
+    } catch (error) {
+      console.error("Capacity metrics error:", error);
+      res.status(500).json({ error: "Failed to calculate capacity metrics" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
