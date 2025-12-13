@@ -53,6 +53,7 @@ import { nanoid } from "nanoid";
 import { Link, useSearch } from "wouter";
 import { useEffect } from "react";
 import { exportToCSV } from "@/lib/exportUtils";
+import { SERVICE_VISIT_TYPES } from "@shared/schema";
 
 interface Engineer {
   name: string;
@@ -117,7 +118,7 @@ export default function Jobs() {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [selectedContractId, setSelectedContractId] = useState<string>("");
   const [siteAddress, setSiteAddress] = useState("");
-  const [worksheetType, setWorksheetType] = useState("annual_service");
+  const [worksheetType, setWorksheetType] = useState("routine_service");
   const [engineerCount, setEngineerCount] = useState(1);
   const [engineers, setEngineers] = useState<Engineer[]>([{ name: "", competency: "competent" }]);
 
@@ -309,15 +310,28 @@ export default function Jobs() {
   };
 
   const getWorksheetTypeBadge = (type: string) => {
+    const visitType = SERVICE_VISIT_TYPES.find(t => t.value === type);
     switch (type) {
-      case "annual_service":
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">Annual Service</Badge>;
-      case "interim":
-        return <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-100">Interim</Badge>;
-      case "remedial":
-        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">Remedial</Badge>;
-      case "emergency":
-        return <Badge variant="destructive">Emergency</Badge>;
+      case "condition_survey":
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100">{visitType?.label || type}</Badge>;
+      case "routine_service":
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">{visitType?.label || type}</Badge>;
+      case "interim_inspection":
+        return <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-100">{visitType?.label || type}</Badge>;
+      case "remediation":
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">{visitType?.label || type}</Badge>;
+      case "commissioning":
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">{visitType?.label || type}</Badge>;
+      case "verification":
+        return <Badge className="bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-100">{visitType?.label || type}</Badge>;
+      case "reactive_fault":
+        return <Badge variant="destructive">{visitType?.label || type}</Badge>;
+      case "access_enabling":
+        return <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100">{visitType?.label || type}</Badge>;
+      case "diagnostic_testing":
+        return <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100">{visitType?.label || type}</Badge>;
+      case "goodwill":
+        return <Badge className="bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100">{visitType?.label || type}</Badge>;
       default:
         return null;
     }
@@ -457,10 +471,9 @@ export default function Jobs() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="annual_service">Annual Service</SelectItem>
-                        <SelectItem value="interim">Interim</SelectItem>
-                        <SelectItem value="remedial">Remedial</SelectItem>
-                        <SelectItem value="emergency">Emergency</SelectItem>
+                        {SERVICE_VISIT_TYPES.map(type => (
+                          <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

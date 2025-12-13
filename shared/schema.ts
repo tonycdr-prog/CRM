@@ -724,7 +724,7 @@ export const jobs = pgTable("jobs", {
   priority: text("priority").default("normal"), // low, normal, high, urgent
   status: text("status").default("pending"), // pending, scheduled, in_progress, completed, cancelled
   jobType: text("job_type").default("testing"), // testing, installation, repair, maintenance
-  worksheetType: text("worksheet_type").default("annual_service"), // annual_service, interim, remedial, emergency
+  worksheetType: text("worksheet_type").default("routine_service"), // See SERVICE_VISIT_TYPES constant
   engineerCount: integer("engineer_count").default(1),
   engineerNames: jsonb("engineer_names").$type<{ name: string; competency: string }[]>().default([]),
   quotedAmount: real("quoted_amount"),
@@ -743,6 +743,20 @@ export const jobs = pgTable("jobs", {
 export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true });
 export type InsertJob = z.infer<typeof insertJobSchema>;
 export type DbJob = typeof jobs.$inferSelect;
+
+// Service Visit Types - purpose/type of each site visit
+export const SERVICE_VISIT_TYPES = [
+  { value: "condition_survey", label: "Condition / Compliance Survey Visit" },
+  { value: "routine_service", label: "Routine Service Visit" },
+  { value: "interim_inspection", label: "Interim Inspection Visit" },
+  { value: "remediation", label: "Remediation Visit" },
+  { value: "commissioning", label: "Commissioning Visit" },
+  { value: "verification", label: "Verification / Re-Commissioning Visit" },
+  { value: "reactive_fault", label: "Reactive / Fault Attendance Visit" },
+  { value: "access_enabling", label: "Access / Enabling Visit" },
+  { value: "diagnostic_testing", label: "Diagnostic Testing Visit" },
+  { value: "goodwill", label: "Free of Charge / Goodwill Visit" },
+] as const;
 
 // Quotes table
 export const quotes = pgTable("quotes", {
