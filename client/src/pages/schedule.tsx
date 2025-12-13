@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,8 +34,11 @@ import {
   User,
   Plus,
   ArrowRight,
-  Building2
+  Building2,
+  Map
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
 import {
   format,
   startOfMonth,
@@ -80,7 +83,35 @@ interface Client {
   companyName: string;
 }
 
-type ViewMode = "month" | "week" | "day" | "timeline";
+type ViewMode = "month" | "week" | "day" | "timeline" | "map";
+
+interface LocationCoordinate {
+  id: string;
+  entityType: string;
+  entityId: string;
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  postcode: string | null;
+}
+
+// Custom marker icons for different priorities
+const createMarkerIcon = (color: string) => {
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12],
+  });
+};
+
+const priorityMarkerColors: Record<string, string> = {
+  urgent: "#ef4444",
+  high: "#f97316",
+  normal: "#3b82f6",
+  low: "#9ca3af",
+};
 
 interface StaffMember {
   id: string;
@@ -124,6 +155,12 @@ export default function Schedule() {
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+
+  // Client-side only initialization for Leaflet map
+  useEffect(() => {
+    setIsMapReady(true);
+  }, []);
 
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
     queryKey: ["/api/jobs", user?.id],
@@ -142,6 +179,11 @@ export default function Schedule() {
 
   const { data: jobAssignments = [] } = useQuery<JobAssignment[]>({
     queryKey: [`/api/job-assignments/${user?.id}`],
+    enabled: !!user?.id,
+  });
+
+  const { data: locationCoordinates = [] } = useQuery<LocationCoordinate[]>({
+    queryKey: [`/api/location-coordinates/${user?.id}`],
     enabled: !!user?.id,
   });
 
@@ -589,6 +631,139 @@ export default function Schedule() {
     );
   };
 
+  // Get jobs with their coordinates for the map view
+  const getJobsWithCoordinates = () => {
+    return jobs
+      .filter(job => job.status !== "cancelled")
+      .map(job => {
+        const coord = locationCoordinates.find(
+          c => c.entityType === "job" && c.entityId === job.id
+        );
+        return {
+          ...job,
+          latitude: coord?.latitude,
+          longitude: coord?.longitude,
+        };
+      })
+      .filter(job => job.latitude && job.longitude);
+  };
+
+  const renderMapView = () => {
+    // Guard for client-side only rendering
+    if (!isMapReady) {
+      return (
+        <div className="border rounded-lg p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="text-sm text-muted-foreground mt-4">Loading map...</p>
+        </div>
+      );
+    }
+
+    const jobsWithCoords = getJobsWithCoordinates();
+    
+    // Default center: UK (London area)
+    const defaultCenter: [number, number] = [51.5074, -0.1278];
+    
+    // Calculate center from jobs if available
+    const center: [number, number] = jobsWithCoords.length > 0
+      ? [
+          jobsWithCoords.reduce((sum, j) => sum + (j.latitude || 0), 0) / jobsWithCoords.length,
+          jobsWithCoords.reduce((sum, j) => sum + (j.longitude || 0), 0) / jobsWithCoords.length,
+        ]
+      : defaultCenter;
+
+    if (jobsWithCoords.length === 0) {
+      return (
+        <div className="border rounded-lg p-8 text-center">
+          <Map className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">No Job Locations</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Jobs need location coordinates to appear on the map. Add coordinates to your jobs to see them here.
+          </p>
+          <Link href="/jobs">
+            <Button variant="outline" data-testid="button-view-jobs-map">
+              <ArrowRight className="h-4 w-4 mr-2" />
+              View Jobs
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <div className="border rounded-lg overflow-hidden">
+        <div className="h-[500px]">
+          <MapContainer
+            center={center}
+            zoom={10}
+            style={{ height: "100%", width: "100%" }}
+            data-testid="map-container"
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {jobsWithCoords.map(job => (
+              <Marker
+                key={job.id}
+                position={[job.latitude!, job.longitude!]}
+                icon={createMarkerIcon(priorityMarkerColors[job.priority] || priorityMarkerColors.normal)}
+              >
+                <Popup>
+                  <div className="min-w-[200px]">
+                    <div className="font-semibold text-sm">{job.title}</div>
+                    <div className="text-xs text-muted-foreground mb-2">{job.jobNumber}</div>
+                    <div className="flex items-center gap-1 text-xs mb-1">
+                      <MapPin className="h-3 w-3" />
+                      {job.siteAddress || "No address"}
+                    </div>
+                    {job.scheduledDate && (
+                      <div className="flex items-center gap-1 text-xs mb-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        {format(parseISO(job.scheduledDate), "MMM d, yyyy")}
+                        {job.scheduledTime && ` at ${job.scheduledTime}`}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge className={`text-xs ${priorityColors[job.priority]}`}>
+                        {job.priority}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {job.status.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="w-full mt-2"
+                      onClick={() => handleJobClick(job)}
+                      data-testid={`map-job-details-${job.id}`}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+        <div className="p-2 bg-muted border-t text-xs text-muted-foreground flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span>{jobsWithCoords.length} jobs on map</span>
+            <span>{jobs.filter(j => !locationCoordinates.find(c => c.entityType === "job" && c.entityId === j.id)).length} jobs without coordinates</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {Object.entries(priorityMarkerColors).map(([priority, color]) => (
+              <div key={priority} className="flex items-center gap-1">
+                <div style={{ backgroundColor: color }} className="w-3 h-3 rounded-full border border-white" />
+                <span className="capitalize">{priority}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Jobs without scheduled dates
   const unscheduledJobs = jobs.filter(
     job => !job.scheduledDate && job.status !== "completed" && job.status !== "cancelled"
@@ -648,6 +823,7 @@ export default function Schedule() {
                     <TabsTrigger value="week" data-testid="tab-week">Week</TabsTrigger>
                     <TabsTrigger value="day" data-testid="tab-day">Day</TabsTrigger>
                     <TabsTrigger value="timeline" data-testid="tab-timeline">Timeline</TabsTrigger>
+                    <TabsTrigger value="map" data-testid="tab-map">Map</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -657,6 +833,7 @@ export default function Schedule() {
               {viewMode === "week" && renderWeekView()}
               {viewMode === "day" && renderDayView()}
               {viewMode === "timeline" && renderTimelineView()}
+              {viewMode === "map" && renderMapView()}
             </CardContent>
           </Card>
 
