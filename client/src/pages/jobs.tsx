@@ -233,22 +233,24 @@ export default function Jobs() {
     setCompleteServiceStatement(job.serviceStatement || SERVICE_STATEMENTS.operational);
     setCompleteCompletionNotes(job.completionNotes || "");
     setCompleteActualDuration(job.actualDuration?.toString() || "");
-    // Initialize systems with checklists
+    // Initialize systems with checklists - deep clone to avoid mutations
     const systemsWithChecklists = (job.systems || []).map(sys => {
-      // If system already has checklist, use it; otherwise generate from template
+      // Deep clone the system to avoid mutating the original job data
+      const clonedSystem = { ...sys };
+      
+      // If system already has checklist, deep clone it; otherwise generate from template
       if (sys.checklist && sys.checklist.length > 0) {
-        return sys;
-      }
-      const template = SYSTEM_CHECKLIST_TEMPLATES[sys.systemType] || [];
-      return {
-        ...sys,
-        checklist: template.map(item => ({
+        clonedSystem.checklist = sys.checklist.map(item => ({ ...item }));
+      } else {
+        const template = SYSTEM_CHECKLIST_TEMPLATES[sys.systemType] || [];
+        clonedSystem.checklist = template.map(item => ({
           ...item,
           id: nanoid(),
           checked: false,
           notes: "",
-        })),
-      };
+        }));
+      }
+      return clonedSystem;
     });
     setCompleteSystems(systemsWithChecklists);
     setExpandedSystems({});
