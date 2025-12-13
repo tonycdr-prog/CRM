@@ -611,6 +611,10 @@ export const clients = pgTable("clients", {
   address: text("address"),
   postcode: text("postcode"),
   city: text("city"),
+  vatNumber: text("vat_number"),
+  accountNumber: text("account_number"),
+  paymentTerms: integer("payment_terms").default(30), // Payment terms in days
+  priority: text("priority").default("standard"), // standard, preferred, vip
   notes: text("notes"),
   clientType: text("client_type").default("commercial"), // commercial, residential, public_sector
   status: text("status").default("active"), // active, inactive, prospect
@@ -621,6 +625,53 @@ export const clients = pgTable("clients", {
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type DbClient = typeof clients.$inferSelect;
+
+// Customer contacts table - multiple contacts per client (regional offices, different departments)
+export const customerContacts = pgTable("customer_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  contactName: text("contact_name").notNull(),
+  jobTitle: text("job_title"),
+  department: text("department"),
+  email: text("email"),
+  phone: text("phone"),
+  mobile: text("mobile"),
+  isPrimary: boolean("is_primary").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCustomerContactSchema = createInsertSchema(customerContacts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCustomerContact = z.infer<typeof insertCustomerContactSchema>;
+export type DbCustomerContact = typeof customerContacts.$inferSelect;
+
+// Customer addresses table - multiple addresses per client (head office, regional offices, sites)
+export const customerAddresses = pgTable("customer_addresses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  addressType: text("address_type").default("site"), // head_office, regional_office, site, billing
+  addressName: text("address_name"), // e.g., "Manchester Office", "Building A"
+  address: text("address").notNull(),
+  city: text("city"),
+  county: text("county"),
+  postcode: text("postcode"),
+  country: text("country").default("United Kingdom"),
+  isPrimary: boolean("is_primary").default(false),
+  siteContactName: text("site_contact_name"),
+  siteContactPhone: text("site_contact_phone"),
+  accessNotes: text("access_notes"),
+  parkingInfo: text("parking_info"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCustomerAddressSchema = createInsertSchema(customerAddresses).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCustomerAddress = z.infer<typeof insertCustomerAddressSchema>;
+export type DbCustomerAddress = typeof customerAddresses.$inferSelect;
 
 // Contracts table - service agreements
 export const contracts = pgTable("contracts", {

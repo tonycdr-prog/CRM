@@ -1,7 +1,7 @@
 import { 
   type User, type InsertUser, type UpsertUser,
   users, projects, damperTemplates, dampers, tests, stairwellTests, testPacks, complianceChecklists, testSessions, syncQueue,
-  clients, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
+  clients, customerContacts, customerAddresses, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
   jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
   recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister,
   mileageClaims, workNotes, callbacks, staffDirectory, priceLists,
@@ -26,6 +26,8 @@ type DbTestPack = typeof testPacks.$inferSelect;
 type DbComplianceChecklist = typeof complianceChecklists.$inferSelect;
 type DbTestSession = typeof testSessions.$inferSelect;
 type DbClient = typeof clients.$inferSelect;
+type DbCustomerContact = typeof customerContacts.$inferSelect;
+type DbCustomerAddress = typeof customerAddresses.$inferSelect;
 type DbContract = typeof contracts.$inferSelect;
 type DbJob = typeof jobs.$inferSelect;
 type DbQuote = typeof quotes.$inferSelect;
@@ -50,6 +52,8 @@ type NewTestPack = typeof testPacks.$inferInsert;
 type NewComplianceChecklist = typeof complianceChecklists.$inferInsert;
 type NewTestSession = typeof testSessions.$inferInsert;
 type NewClient = typeof clients.$inferInsert;
+type NewCustomerContact = typeof customerContacts.$inferInsert;
+type NewCustomerAddress = typeof customerAddresses.$inferInsert;
 type NewContract = typeof contracts.$inferInsert;
 type NewJob = typeof jobs.$inferInsert;
 type NewQuote = typeof quotes.$inferInsert;
@@ -229,6 +233,18 @@ export interface IStorage {
   createClient(client: NewClient): Promise<DbClient>;
   updateClient(id: string, client: Partial<NewClient>): Promise<DbClient | undefined>;
   deleteClient(id: string): Promise<boolean>;
+  
+  // Customer Contacts
+  getCustomerContacts(clientId: string): Promise<DbCustomerContact[]>;
+  createCustomerContact(contact: NewCustomerContact): Promise<DbCustomerContact>;
+  updateCustomerContact(id: string, contact: Partial<NewCustomerContact>): Promise<DbCustomerContact | undefined>;
+  deleteCustomerContact(id: string): Promise<boolean>;
+  
+  // Customer Addresses
+  getCustomerAddresses(clientId: string): Promise<DbCustomerAddress[]>;
+  createCustomerAddress(address: NewCustomerAddress): Promise<DbCustomerAddress>;
+  updateCustomerAddress(id: string, address: Partial<NewCustomerAddress>): Promise<DbCustomerAddress | undefined>;
+  deleteCustomerAddress(id: string): Promise<boolean>;
   
   // Contracts
   getContracts(userId: string): Promise<DbContract[]>;
@@ -874,6 +890,46 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClient(id: string): Promise<boolean> {
     await db.delete(clients).where(eq(clients.id, id));
+    return true;
+  }
+
+  // Customer Contacts
+  async getCustomerContacts(clientId: string): Promise<DbCustomerContact[]> {
+    return db.select().from(customerContacts).where(eq(customerContacts.clientId, clientId)).orderBy(desc(customerContacts.createdAt));
+  }
+
+  async createCustomerContact(contact: NewCustomerContact): Promise<DbCustomerContact> {
+    const [newContact] = await db.insert(customerContacts).values(contact).returning();
+    return newContact;
+  }
+
+  async updateCustomerContact(id: string, contact: Partial<NewCustomerContact>): Promise<DbCustomerContact | undefined> {
+    const [updated] = await db.update(customerContacts).set({ ...contact, updatedAt: new Date() }).where(eq(customerContacts.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCustomerContact(id: string): Promise<boolean> {
+    await db.delete(customerContacts).where(eq(customerContacts.id, id));
+    return true;
+  }
+
+  // Customer Addresses
+  async getCustomerAddresses(clientId: string): Promise<DbCustomerAddress[]> {
+    return db.select().from(customerAddresses).where(eq(customerAddresses.clientId, clientId)).orderBy(desc(customerAddresses.createdAt));
+  }
+
+  async createCustomerAddress(address: NewCustomerAddress): Promise<DbCustomerAddress> {
+    const [newAddress] = await db.insert(customerAddresses).values(address).returning();
+    return newAddress;
+  }
+
+  async updateCustomerAddress(id: string, address: Partial<NewCustomerAddress>): Promise<DbCustomerAddress | undefined> {
+    const [updated] = await db.update(customerAddresses).set({ ...address, updatedAt: new Date() }).where(eq(customerAddresses.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCustomerAddress(id: string): Promise<boolean> {
+    await db.delete(customerAddresses).where(eq(customerAddresses.id, id));
     return true;
   }
 

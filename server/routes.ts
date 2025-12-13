@@ -397,6 +397,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // BUSINESS MANAGEMENT - CUSTOMER CONTACTS
+  // ============================================
+
+  app.get("/api/customer-contacts/:clientId", async (req, res) => {
+    try {
+      const contacts = await storage.getCustomerContacts(req.params.clientId);
+      res.json(contacts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch customer contacts" });
+    }
+  });
+
+  app.post("/api/customer-contacts", async (req, res) => {
+    try {
+      const contact = await storage.createCustomerContact(req.body);
+      res.json(contact);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create customer contact" });
+    }
+  });
+
+  app.patch("/api/customer-contacts/:id", async (req, res) => {
+    try {
+      const contact = await storage.updateCustomerContact(req.params.id, req.body);
+      res.json(contact);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update customer contact" });
+    }
+  });
+
+  app.delete("/api/customer-contacts/:id", async (req, res) => {
+    try {
+      await storage.deleteCustomerContact(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete customer contact" });
+    }
+  });
+
+  // ============================================
+  // BUSINESS MANAGEMENT - CUSTOMER ADDRESSES
+  // ============================================
+
+  app.get("/api/customer-addresses/:clientId", async (req, res) => {
+    try {
+      const addresses = await storage.getCustomerAddresses(req.params.clientId);
+      res.json(addresses);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch customer addresses" });
+    }
+  });
+
+  app.post("/api/customer-addresses", async (req, res) => {
+    try {
+      const address = await storage.createCustomerAddress(req.body);
+      res.json(address);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create customer address" });
+    }
+  });
+
+  app.patch("/api/customer-addresses/:id", async (req, res) => {
+    try {
+      const address = await storage.updateCustomerAddress(req.params.id, req.body);
+      res.json(address);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update customer address" });
+    }
+  });
+
+  app.delete("/api/customer-addresses/:id", async (req, res) => {
+    try {
+      await storage.deleteCustomerAddress(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete customer address" });
+    }
+  });
+
+  // ============================================
   // BUSINESS MANAGEMENT - CONTRACTS
   // ============================================
 

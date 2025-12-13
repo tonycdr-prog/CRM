@@ -47,7 +47,9 @@ import {
   Trash2,
   MessageSquare,
   FileText,
-  User
+  User,
+  Star,
+  Crown
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -72,6 +74,7 @@ interface Client {
   vatNumber: string | null;
   accountNumber: string | null;
   paymentTerms: number;
+  priority: string; // standard, preferred, vip
   notes: string | null;
   status: string;
   createdAt: string;
@@ -100,11 +103,13 @@ export default function Clients() {
   const [formAddress, setFormAddress] = useState("");
   const [formCity, setFormCity] = useState("");
   const [formPostcode, setFormPostcode] = useState("");
+  const [formPriority, setFormPriority] = useState("standard");
 
   const resetClientFormState = () => {
     setFormAddress("");
     setFormCity("");
     setFormPostcode("");
+    setFormPriority("standard");
   };
 
   const handleAddressFound = (address: { postcode: string; address1: string; address2: string; city: string; county: string; country: string }) => {
@@ -206,6 +211,7 @@ export default function Clients() {
       postcode: formPostcode || null,
       vatNumber: formData.get("vatNumber") as string || null,
       paymentTerms: parseInt(formData.get("paymentTerms") as string) || 30,
+      priority: formPriority,
       notes: formData.get("notes") as string || null,
       status: "active",
     });
@@ -239,6 +245,17 @@ export default function Clients() {
         return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">Prospect</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case "vip":
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100"><Crown className="h-3 w-3 mr-1" />VIP</Badge>;
+      case "preferred":
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100"><Star className="h-3 w-3 mr-1" />Preferred</Badge>;
+      default:
+        return null;
     }
   };
 
@@ -320,6 +337,19 @@ export default function Clients() {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="priority">Client Priority</Label>
+                  <Select value={formPriority} onValueChange={setFormPriority}>
+                    <SelectTrigger data-testid="select-priority">
+                      <SelectValue placeholder="Select priority level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard</SelectItem>
+                      <SelectItem value="preferred">Preferred</SelectItem>
+                      <SelectItem value="vip">VIP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea id="notes" name="notes" rows={3} data-testid="input-notes" />
                 </div>
@@ -391,9 +421,12 @@ export default function Clients() {
               {filteredClients.map((client) => (
                 <TableRow key={client.id} data-testid={`row-client-${client.id}`}>
                   <TableCell>
-                    <Link href={`/clients/${client.id}`}>
-                      <div className="font-medium hover:underline cursor-pointer" data-testid={`link-client-${client.id}`}>{client.companyName}</div>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/clients/${client.id}`}>
+                        <div className="font-medium hover:underline cursor-pointer" data-testid={`link-client-${client.id}`}>{client.companyName}</div>
+                      </Link>
+                      {getPriorityBadge(client.priority)}
+                    </div>
                     {client.email && (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Mail className="h-3 w-3" />
