@@ -3725,11 +3725,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validation = insertCheckSheetReadingSchema.safeParse(req.body);
       if (!validation.success) {
+        console.error("Check sheet validation error:", JSON.stringify(validation.error.errors, null, 2));
+        console.error("Request body:", JSON.stringify(req.body, null, 2));
         return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
       }
       const reading = await storage.createCheckSheetReading(validation.data);
       res.json(reading);
     } catch (error) {
+      console.error("Check sheet create error:", error);
       res.status(500).json({ error: "Failed to create check sheet reading" });
     }
   });

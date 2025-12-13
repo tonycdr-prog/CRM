@@ -96,7 +96,7 @@ export default function CheckSheetReadingsPage() {
   const [lastDraftSave, setLastDraftSave] = useState<Date | null>(null);
   const { toast } = useToast();
 
-  const userId = "demo-user";
+  const userId = "test-user-shared";
 
   const { data: checkSheetReadings = [], isLoading } = useQuery<DbCheckSheetReading[]>({
     queryKey: ["/api/check-sheet-readings", userId],
@@ -104,17 +104,24 @@ export default function CheckSheetReadingsPage() {
 
   const fields = formData.systemType ? (DEFAULT_TEMPLATE_FIELDS[formData.systemType] || []) : [];
 
-  useEffect(() => {
-    if (formData.systemType && !editingReading) {
-      const templateFields = DEFAULT_TEMPLATE_FIELDS[formData.systemType] || [];
-      setReadings(templateFields.map(field => ({
-        fieldId: field.id,
-        value: field.fieldType === "boolean" ? false : field.fieldType === "pass_fail" ? null : "",
-        passFail: undefined,
-        notes: "",
-      })));
+  // Reset readings whenever systemType changes
+  const initializeReadingsForSystemType = useCallback((systemType: string) => {
+    const templateFields = DEFAULT_TEMPLATE_FIELDS[systemType] || [];
+    setReadings(templateFields.map(field => ({
+      fieldId: field.id,
+      value: field.fieldType === "boolean" ? false : field.fieldType === "pass_fail" ? null : "",
+      passFail: undefined,
+      notes: "",
+    })));
+  }, []);
+
+  // Handle system type change - always reset fields
+  const handleSystemTypeChange = useCallback((newSystemType: string) => {
+    setFormData(prev => ({ ...prev, systemType: newSystemType }));
+    if (!editingReading) {
+      initializeReadingsForSystemType(newSystemType);
     }
-  }, [formData.systemType, editingReading]);
+  }, [editingReading, initializeReadingsForSystemType]);
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/check-sheet-readings", { ...data, userId }),
@@ -176,13 +183,21 @@ export default function CheckSheetReadingsPage() {
     setIsDialogOpen(true);
   };
 
-  const updateReading = (fieldId: string, key: keyof FormReading, value: any) => {
-    setReadings(prev => prev.map(r => 
-      r.fieldId === fieldId ? { ...r, [key]: value } : r
-    ));
-  };
+  const updateReading = useCallback((fieldId: string, key: keyof FormReading, value: any) => {
+    setReadings(prev => prev.map(r => {
+      if (r.fieldId !== fieldId) return r;
+      const updated = { ...r, [key]: value };
+      // Recalculate passFail whenever value changes
+      if (key === "value") {
+        const field = fields.find(f => f.id === fieldId);
+        updated.passFail = calculatePassFail(field, value);
+      }
+      return updated;
+    }));
+  }, [fields]);
 
-  const calculatePassFail = (field: CheckSheetFieldDefinition, value: any): "pass" | "fail" | "na" => {
+  const calculatePassFail = (field: CheckSheetFieldDefinition | undefined, value: any): "pass" | "fail" | "na" => {
+    if (!field) return "na";
     if (value === null || value === "" || value === undefined) return "na";
     
     if (field.fieldType === "pass_fail") {
@@ -191,9 +206,23 @@ export default function CheckSheetReadingsPage() {
       return "na";
     }
     
-    if (field.fieldType === "number" && typeof value === "number") {
-      if (field.failThreshold !== undefined && value > field.failThreshold) return "fail";
-      if (field.passThreshold !== undefined && value < field.passThreshold) return "fail";
+    if (field.fieldType === "number") {
+      const numValue = typeof value === "number" ? value : parseFloat(value);
+      if (isNaN(numValue)) return "na";
+      
+      // Check thresholds - failThreshold is the upper limit, passThreshold is the lower limit
+      const hasPassThreshold = field.passThreshold !== undefined;
+      const hasFailThreshold = field.failThreshold !== undefined;
+      
+      if (hasFailThreshold && numValue > field.failThreshold!) return "fail";
+      if (hasPassThreshold && numValue < field.passThreshold!) return "fail";
+      
+      // If value is within acceptable range or no thresholds defined, it passes
+      return "pass";
+    }
+    
+    // For text and other types, consider them passed if they have a value
+    if (field.fieldType === "text" || field.fieldType === "boolean" || field.fieldType === "select") {
       return "pass";
     }
     
@@ -353,7 +382,7 @@ export default function CheckSheetReadingsPage() {
                     <Label>System Type *</Label>
                     <Select 
                       value={formData.systemType} 
-                      onValueChange={(v) => setFormData({ ...formData, systemType: v })}
+                      onValueChange={handleSystemTypeChange}
                     >
                       <SelectTrigger data-testid="select-system-type">
                         <SelectValue placeholder="Select system type..." />
