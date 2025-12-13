@@ -11,7 +11,8 @@ import {
   visitTypes, serviceTemplates, siteAssets, assetBatches,
   jobAssignments, jobSkillRequirements, jobEquipmentReservations, staffAvailability,
   jobTimeWindows, shiftHandovers, dailyBriefings, serviceReminders,
-  locationCoordinates, schedulingConflicts, capacitySnapshots
+  locationCoordinates, schedulingConflicts, capacitySnapshots,
+  checkSheetTemplates, checkSheetReadings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -169,6 +170,10 @@ type DbSchedulingConflict = typeof schedulingConflicts.$inferSelect;
 type NewSchedulingConflict = typeof schedulingConflicts.$inferInsert;
 type DbCapacitySnapshot = typeof capacitySnapshots.$inferSelect;
 type NewCapacitySnapshot = typeof capacitySnapshots.$inferInsert;
+type DbCheckSheetTemplate = typeof checkSheetTemplates.$inferSelect;
+type NewCheckSheetTemplate = typeof checkSheetTemplates.$inferInsert;
+type DbCheckSheetReading = typeof checkSheetReadings.$inferSelect;
+type NewCheckSheetReading = typeof checkSheetReadings.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -584,6 +589,22 @@ export interface IStorage {
   getCapacitySnapshots(userId: string): Promise<DbCapacitySnapshot[]>;
   createCapacitySnapshot(snapshot: NewCapacitySnapshot): Promise<DbCapacitySnapshot>;
   deleteCapacitySnapshot(id: string): Promise<boolean>;
+
+  // Check Sheet Templates
+  getCheckSheetTemplates(userId: string): Promise<DbCheckSheetTemplate[]>;
+  getCheckSheetTemplate(id: string): Promise<DbCheckSheetTemplate | undefined>;
+  getCheckSheetTemplatesBySystemType(userId: string, systemType: string): Promise<DbCheckSheetTemplate[]>;
+  createCheckSheetTemplate(template: NewCheckSheetTemplate): Promise<DbCheckSheetTemplate>;
+  updateCheckSheetTemplate(id: string, template: Partial<NewCheckSheetTemplate>): Promise<DbCheckSheetTemplate | undefined>;
+  deleteCheckSheetTemplate(id: string): Promise<boolean>;
+
+  // Check Sheet Readings
+  getCheckSheetReadings(userId: string): Promise<DbCheckSheetReading[]>;
+  getCheckSheetReading(id: string): Promise<DbCheckSheetReading | undefined>;
+  getCheckSheetReadingsByJob(jobId: string): Promise<DbCheckSheetReading[]>;
+  createCheckSheetReading(reading: NewCheckSheetReading): Promise<DbCheckSheetReading>;
+  updateCheckSheetReading(id: string, reading: Partial<NewCheckSheetReading>): Promise<DbCheckSheetReading | undefined>;
+  deleteCheckSheetReading(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2204,6 +2225,64 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCapacitySnapshot(id: string): Promise<boolean> {
     await db.delete(capacitySnapshots).where(eq(capacitySnapshots.id, id));
+    return true;
+  }
+
+  // Check Sheet Templates
+  async getCheckSheetTemplates(userId: string): Promise<DbCheckSheetTemplate[]> {
+    return db.select().from(checkSheetTemplates).where(eq(checkSheetTemplates.userId, userId)).orderBy(desc(checkSheetTemplates.createdAt));
+  }
+
+  async getCheckSheetTemplate(id: string): Promise<DbCheckSheetTemplate | undefined> {
+    const [item] = await db.select().from(checkSheetTemplates).where(eq(checkSheetTemplates.id, id));
+    return item || undefined;
+  }
+
+  async getCheckSheetTemplatesBySystemType(userId: string, systemType: string): Promise<DbCheckSheetTemplate[]> {
+    return db.select().from(checkSheetTemplates).where(and(eq(checkSheetTemplates.userId, userId), eq(checkSheetTemplates.systemType, systemType)));
+  }
+
+  async createCheckSheetTemplate(template: NewCheckSheetTemplate): Promise<DbCheckSheetTemplate> {
+    const [newItem] = await db.insert(checkSheetTemplates).values(template).returning();
+    return newItem;
+  }
+
+  async updateCheckSheetTemplate(id: string, template: Partial<NewCheckSheetTemplate>): Promise<DbCheckSheetTemplate | undefined> {
+    const [updated] = await db.update(checkSheetTemplates).set({ ...template, updatedAt: new Date() }).where(eq(checkSheetTemplates.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCheckSheetTemplate(id: string): Promise<boolean> {
+    await db.delete(checkSheetTemplates).where(eq(checkSheetTemplates.id, id));
+    return true;
+  }
+
+  // Check Sheet Readings
+  async getCheckSheetReadings(userId: string): Promise<DbCheckSheetReading[]> {
+    return db.select().from(checkSheetReadings).where(eq(checkSheetReadings.userId, userId)).orderBy(desc(checkSheetReadings.createdAt));
+  }
+
+  async getCheckSheetReading(id: string): Promise<DbCheckSheetReading | undefined> {
+    const [item] = await db.select().from(checkSheetReadings).where(eq(checkSheetReadings.id, id));
+    return item || undefined;
+  }
+
+  async getCheckSheetReadingsByJob(jobId: string): Promise<DbCheckSheetReading[]> {
+    return db.select().from(checkSheetReadings).where(eq(checkSheetReadings.jobId, jobId)).orderBy(desc(checkSheetReadings.createdAt));
+  }
+
+  async createCheckSheetReading(reading: NewCheckSheetReading): Promise<DbCheckSheetReading> {
+    const [newItem] = await db.insert(checkSheetReadings).values(reading).returning();
+    return newItem;
+  }
+
+  async updateCheckSheetReading(id: string, reading: Partial<NewCheckSheetReading>): Promise<DbCheckSheetReading | undefined> {
+    const [updated] = await db.update(checkSheetReadings).set({ ...reading, updatedAt: new Date() }).where(eq(checkSheetReadings.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCheckSheetReading(id: string): Promise<boolean> {
+    await db.delete(checkSheetReadings).where(eq(checkSheetReadings.id, id));
     return true;
   }
 }

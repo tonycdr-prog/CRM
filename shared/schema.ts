@@ -2546,3 +2546,200 @@ export const capacitySnapshots = pgTable("capacity_snapshots", {
 export const insertCapacitySnapshotSchema = createInsertSchema(capacitySnapshots).omit({ id: true, createdAt: true });
 export type InsertCapacitySnapshot = z.infer<typeof insertCapacitySnapshotSchema>;
 export type DbCapacitySnapshot = typeof capacitySnapshots.$inferSelect;
+
+// ============================================
+// CHECK SHEET TEMPLATES & READINGS
+// ============================================
+
+// System types for check sheets
+export const CHECK_SHEET_SYSTEM_TYPES = [
+  { value: "pressurisation", label: "Pressurisation System" },
+  { value: "car_park", label: "Car Park Ventilation" },
+  { value: "mshev", label: "MSHEV (Mechanical Smoke & Heat Exhaust)" },
+  { value: "aov", label: "AOV (Automatic Opening Vent)" },
+  { value: "stairwell_pressurisation", label: "Stairwell Pressurisation" },
+  { value: "smoke_shaft", label: "Smoke Shaft" },
+  { value: "corridor_extract", label: "Corridor Extract" },
+  { value: "lobby_extract", label: "Lobby Extract" },
+  { value: "natural_vent", label: "Natural Ventilation" },
+  { value: "mixed_mode", label: "Mixed Mode System" },
+] as const;
+
+// Field types for check sheet template fields
+export const CHECK_SHEET_FIELD_TYPES = [
+  { value: "text", label: "Text" },
+  { value: "number", label: "Number" },
+  { value: "boolean", label: "Yes/No" },
+  { value: "select", label: "Dropdown" },
+  { value: "pass_fail", label: "Pass/Fail" },
+  { value: "reading", label: "Meter Reading" },
+] as const;
+
+// Field categories for grouping
+export const CHECK_SHEET_FIELD_CATEGORIES = [
+  { value: "general", label: "General Information" },
+  { value: "fan_readings", label: "Fan Readings" },
+  { value: "door_force", label: "Door Force Measurements" },
+  { value: "co_readings", label: "CO Readings" },
+  { value: "battery", label: "Battery Condition" },
+  { value: "voltages", label: "Voltage Readings" },
+  { value: "timings", label: "Timing Tests" },
+  { value: "pressure", label: "Pressure Readings" },
+  { value: "airflow", label: "Airflow Measurements" },
+  { value: "control_panel", label: "Control Panel" },
+  { value: "dampers", label: "Damper Operation" },
+  { value: "visual", label: "Visual Inspection" },
+] as const;
+
+// Check sheet template field definition
+export interface CheckSheetFieldDefinition {
+  id: string;
+  name: string;
+  fieldType: string;
+  category: string;
+  unit?: string;
+  options?: string[];
+  required: boolean;
+  minValue?: number;
+  maxValue?: number;
+  passThreshold?: number;
+  failThreshold?: number;
+  description?: string;
+  order: number;
+}
+
+// Check sheet templates table - defines templates for each system type
+export const checkSheetTemplates = pgTable("check_sheet_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  systemType: text("system_type").notNull(),
+  version: text("version").default("1.0"),
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  fields: jsonb("fields").$type<CheckSheetFieldDefinition[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCheckSheetTemplateSchema = createInsertSchema(checkSheetTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCheckSheetTemplate = z.infer<typeof insertCheckSheetTemplateSchema>;
+export type DbCheckSheetTemplate = typeof checkSheetTemplates.$inferSelect;
+
+// Check sheet reading value
+export interface CheckSheetReadingValue {
+  fieldId: string;
+  value: string | number | boolean | null;
+  passFail?: "pass" | "fail" | "na";
+  notes?: string;
+}
+
+// Check sheet readings table - stores actual readings
+export const checkSheetReadings = pgTable("check_sheet_readings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  templateId: varchar("template_id").references(() => checkSheetTemplates.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  projectId: varchar("project_id").references(() => projects.id),
+  building: text("building"),
+  floor: text("floor"),
+  location: text("location"),
+  systemType: text("system_type").notNull(),
+  systemId: text("system_id"),
+  testerName: text("tester_name").notNull(),
+  testDate: text("test_date").notNull(),
+  testTime: text("test_time"),
+  readings: jsonb("readings").$type<CheckSheetReadingValue[]>().default([]),
+  status: text("status").default("draft"),
+  overallResult: text("overall_result"),
+  passCount: integer("pass_count").default(0),
+  failCount: integer("fail_count").default(0),
+  naCount: integer("na_count").default(0),
+  notes: text("notes"),
+  recommendations: text("recommendations"),
+  images: jsonb("images").$type<string[]>().default([]),
+  signature: text("signature"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCheckSheetReadingSchema = createInsertSchema(checkSheetReadings).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCheckSheetReading = z.infer<typeof insertCheckSheetReadingSchema>;
+export type DbCheckSheetReading = typeof checkSheetReadings.$inferSelect;
+
+// Default template field definitions for each system type
+export const DEFAULT_TEMPLATE_FIELDS: Record<string, CheckSheetFieldDefinition[]> = {
+  pressurisation: [
+    { id: "fan_running", name: "Fan Running", fieldType: "pass_fail", category: "fan_readings", required: true, order: 1 },
+    { id: "fan_speed", name: "Fan Speed", fieldType: "number", category: "fan_readings", unit: "RPM", required: true, order: 2 },
+    { id: "fan_current", name: "Fan Current", fieldType: "number", category: "fan_readings", unit: "A", required: true, order: 3 },
+    { id: "supply_pressure", name: "Supply Pressure", fieldType: "number", category: "pressure", unit: "Pa", required: true, passThreshold: 50, order: 4 },
+    { id: "differential_pressure", name: "Differential Pressure", fieldType: "number", category: "pressure", unit: "Pa", required: true, passThreshold: 45, failThreshold: 60, order: 5 },
+    { id: "door_force", name: "Door Opening Force", fieldType: "number", category: "door_force", unit: "N", required: true, failThreshold: 100, order: 6 },
+    { id: "battery_condition", name: "Battery Condition", fieldType: "pass_fail", category: "battery", required: true, order: 7 },
+    { id: "battery_voltage", name: "Battery Voltage", fieldType: "number", category: "voltages", unit: "V", required: true, order: 8 },
+    { id: "control_panel", name: "Control Panel Status", fieldType: "pass_fail", category: "control_panel", required: true, order: 9 },
+    { id: "fault_indicators", name: "Fault Indicators Clear", fieldType: "pass_fail", category: "control_panel", required: true, order: 10 },
+  ],
+  car_park: [
+    { id: "co_level_ambient", name: "CO Level (Ambient)", fieldType: "number", category: "co_readings", unit: "ppm", required: true, failThreshold: 30, order: 1 },
+    { id: "co_level_peak", name: "CO Level (Peak)", fieldType: "number", category: "co_readings", unit: "ppm", required: true, failThreshold: 100, order: 2 },
+    { id: "extract_fan_running", name: "Extract Fan Running", fieldType: "pass_fail", category: "fan_readings", required: true, order: 3 },
+    { id: "extract_fan_speed", name: "Extract Fan Speed", fieldType: "number", category: "fan_readings", unit: "RPM", required: true, order: 4 },
+    { id: "supply_fan_running", name: "Supply Fan Running", fieldType: "pass_fail", category: "fan_readings", required: true, order: 5 },
+    { id: "supply_fan_speed", name: "Supply Fan Speed", fieldType: "number", category: "fan_readings", unit: "RPM", required: true, order: 6 },
+    { id: "damper_operation", name: "Damper Operation", fieldType: "pass_fail", category: "dampers", required: true, order: 7 },
+    { id: "control_response", name: "Control Response Time", fieldType: "number", category: "timings", unit: "sec", required: true, order: 8 },
+    { id: "emergency_mode", name: "Emergency Mode Test", fieldType: "pass_fail", category: "control_panel", required: true, order: 9 },
+    { id: "jet_fans", name: "Jet Fans Operational", fieldType: "pass_fail", category: "fan_readings", required: false, order: 10 },
+  ],
+  mshev: [
+    { id: "fan_running", name: "Extract Fan Running", fieldType: "pass_fail", category: "fan_readings", required: true, order: 1 },
+    { id: "fan_speed", name: "Fan Speed", fieldType: "number", category: "fan_readings", unit: "RPM", required: true, order: 2 },
+    { id: "airflow_velocity", name: "Airflow Velocity", fieldType: "number", category: "airflow", unit: "m/s", required: true, passThreshold: 1, order: 3 },
+    { id: "damper_open", name: "Damper Opens on Signal", fieldType: "pass_fail", category: "dampers", required: true, order: 4 },
+    { id: "damper_close", name: "Damper Closes on Signal", fieldType: "pass_fail", category: "dampers", required: true, order: 5 },
+    { id: "failsafe_position", name: "Failsafe Position Correct", fieldType: "pass_fail", category: "dampers", required: true, order: 6 },
+    { id: "activation_time", name: "Activation Time", fieldType: "number", category: "timings", unit: "sec", required: true, failThreshold: 60, order: 7 },
+    { id: "battery_condition", name: "Battery Condition", fieldType: "pass_fail", category: "battery", required: true, order: 8 },
+    { id: "control_panel", name: "Control Panel Status", fieldType: "pass_fail", category: "control_panel", required: true, order: 9 },
+    { id: "bms_integration", name: "BMS Integration", fieldType: "pass_fail", category: "control_panel", required: false, order: 10 },
+  ],
+  aov: [
+    { id: "vent_opens", name: "Vent Opens Fully", fieldType: "pass_fail", category: "dampers", required: true, order: 1 },
+    { id: "vent_closes", name: "Vent Closes Fully", fieldType: "pass_fail", category: "dampers", required: true, order: 2 },
+    { id: "opening_time", name: "Opening Time", fieldType: "number", category: "timings", unit: "sec", required: true, failThreshold: 60, order: 3 },
+    { id: "closing_time", name: "Closing Time", fieldType: "number", category: "timings", unit: "sec", required: true, order: 4 },
+    { id: "actuator_condition", name: "Actuator Condition", fieldType: "pass_fail", category: "visual", required: true, order: 5 },
+    { id: "seals_condition", name: "Seals Condition", fieldType: "pass_fail", category: "visual", required: true, order: 6 },
+    { id: "battery_voltage", name: "Battery Voltage", fieldType: "number", category: "voltages", unit: "V", required: true, order: 7 },
+    { id: "battery_condition", name: "Battery Condition", fieldType: "pass_fail", category: "battery", required: true, order: 8 },
+    { id: "control_panel", name: "Control Panel Status", fieldType: "pass_fail", category: "control_panel", required: true, order: 9 },
+    { id: "fire_alarm_link", name: "Fire Alarm Link Test", fieldType: "pass_fail", category: "control_panel", required: true, order: 10 },
+  ],
+  stairwell_pressurisation: [
+    { id: "fan_running", name: "Fan Running", fieldType: "pass_fail", category: "fan_readings", required: true, order: 1 },
+    { id: "fan_speed", name: "Fan Speed", fieldType: "number", category: "fan_readings", unit: "RPM", required: true, order: 2 },
+    { id: "supply_pressure", name: "Supply Pressure", fieldType: "number", category: "pressure", unit: "Pa", required: true, order: 3 },
+    { id: "differential_doors_closed", name: "Differential (All Doors Closed)", fieldType: "number", category: "pressure", unit: "Pa", required: true, passThreshold: 45, failThreshold: 60, order: 4 },
+    { id: "differential_door_open", name: "Differential (One Door Open)", fieldType: "number", category: "pressure", unit: "Pa", required: true, passThreshold: 10, order: 5 },
+    { id: "door_force_ground", name: "Door Force (Ground)", fieldType: "number", category: "door_force", unit: "N", required: true, failThreshold: 100, order: 6 },
+    { id: "door_force_upper", name: "Door Force (Upper Floors)", fieldType: "number", category: "door_force", unit: "N", required: true, failThreshold: 100, order: 7 },
+    { id: "airflow_velocity", name: "Airflow Velocity", fieldType: "number", category: "airflow", unit: "m/s", required: true, passThreshold: 0.75, order: 8 },
+    { id: "battery_condition", name: "Battery Condition", fieldType: "pass_fail", category: "battery", required: true, order: 9 },
+    { id: "control_panel", name: "Control Panel Status", fieldType: "pass_fail", category: "control_panel", required: true, order: 10 },
+  ],
+  smoke_shaft: [
+    { id: "fan_running", name: "Extract Fan Running", fieldType: "pass_fail", category: "fan_readings", required: true, order: 1 },
+    { id: "fan_speed", name: "Fan Speed", fieldType: "number", category: "fan_readings", unit: "RPM", required: true, order: 2 },
+    { id: "shaft_damper_open", name: "Shaft Damper Opens", fieldType: "pass_fail", category: "dampers", required: true, order: 3 },
+    { id: "shaft_damper_close", name: "Shaft Damper Closes", fieldType: "pass_fail", category: "dampers", required: true, order: 4 },
+    { id: "airflow_velocity", name: "Airflow Velocity at Damper", fieldType: "number", category: "airflow", unit: "m/s", required: true, passThreshold: 1, order: 5 },
+    { id: "failsafe", name: "Failsafe Position Correct", fieldType: "pass_fail", category: "dampers", required: true, order: 6 },
+    { id: "activation_time", name: "Activation Time", fieldType: "number", category: "timings", unit: "sec", required: true, failThreshold: 60, order: 7 },
+    { id: "battery_condition", name: "Battery Condition", fieldType: "pass_fail", category: "battery", required: true, order: 8 },
+    { id: "battery_voltage", name: "Battery Voltage", fieldType: "number", category: "voltages", unit: "V", required: true, order: 9 },
+    { id: "control_panel", name: "Control Panel Status", fieldType: "pass_fail", category: "control_panel", required: true, order: 10 },
+  ],
+};

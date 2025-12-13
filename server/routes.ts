@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { hashPassword, verifyPassword } from "./auth";
+import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
@@ -3594,6 +3595,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Capacity metrics error:", error);
       res.status(500).json({ error: "Failed to calculate capacity metrics" });
+    }
+  });
+
+  // ============================================
+  // CHECK SHEET TEMPLATES
+  // ============================================
+
+  app.get("/api/check-sheet-templates/:userId", async (req, res) => {
+    try {
+      const templates = await storage.getCheckSheetTemplates(req.params.userId);
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch check sheet templates" });
+    }
+  });
+
+  app.get("/api/check-sheet-templates/detail/:id", async (req, res) => {
+    try {
+      const template = await storage.getCheckSheetTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ error: "Check sheet template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch check sheet template" });
+    }
+  });
+
+  app.get("/api/check-sheet-templates/system/:userId/:systemType", async (req, res) => {
+    try {
+      const templates = await storage.getCheckSheetTemplatesBySystemType(req.params.userId, req.params.systemType);
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch check sheet templates by system type" });
+    }
+  });
+
+  // Get default template fields for a system type
+  app.get("/api/check-sheet-templates/defaults/:systemType", async (req, res) => {
+    try {
+      const { systemType } = req.params;
+      const defaultFields = DEFAULT_TEMPLATE_FIELDS[systemType] || [];
+      res.json({ systemType, fields: defaultFields });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch default template fields" });
+    }
+  });
+
+  app.post("/api/check-sheet-templates", async (req, res) => {
+    try {
+      const validation = insertCheckSheetTemplateSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
+      }
+      // Apply default fields if not provided but systemType is given
+      const data = validation.data;
+      if (data.systemType && (!data.fields || (Array.isArray(data.fields) && data.fields.length === 0))) {
+        data.fields = DEFAULT_TEMPLATE_FIELDS[data.systemType] || [];
+      }
+      const template = await storage.createCheckSheetTemplate(data);
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create check sheet template" });
+    }
+  });
+
+  app.patch("/api/check-sheet-templates/:id", async (req, res) => {
+    try {
+      const existing = await storage.getCheckSheetTemplate(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Check sheet template not found" });
+      }
+      const template = await storage.updateCheckSheetTemplate(req.params.id, req.body);
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update check sheet template" });
+    }
+  });
+
+  app.delete("/api/check-sheet-templates/:id", async (req, res) => {
+    try {
+      const existing = await storage.getCheckSheetTemplate(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Check sheet template not found" });
+      }
+      await storage.deleteCheckSheetTemplate(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete check sheet template" });
+    }
+  });
+
+  // ============================================
+  // CHECK SHEET READINGS
+  // ============================================
+
+  app.get("/api/check-sheet-readings/:userId", async (req, res) => {
+    try {
+      const readings = await storage.getCheckSheetReadings(req.params.userId);
+      res.json(readings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch check sheet readings" });
+    }
+  });
+
+  app.get("/api/check-sheet-readings/detail/:id", async (req, res) => {
+    try {
+      const reading = await storage.getCheckSheetReading(req.params.id);
+      if (!reading) {
+        return res.status(404).json({ error: "Check sheet reading not found" });
+      }
+      res.json(reading);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch check sheet reading" });
+    }
+  });
+
+  app.get("/api/check-sheet-readings/job/:jobId", async (req, res) => {
+    try {
+      const readings = await storage.getCheckSheetReadingsByJob(req.params.jobId);
+      res.json(readings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch check sheet readings by job" });
+    }
+  });
+
+  app.post("/api/check-sheet-readings", async (req, res) => {
+    try {
+      const validation = insertCheckSheetReadingSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
+      }
+      const reading = await storage.createCheckSheetReading(validation.data);
+      res.json(reading);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create check sheet reading" });
+    }
+  });
+
+  app.patch("/api/check-sheet-readings/:id", async (req, res) => {
+    try {
+      const existing = await storage.getCheckSheetReading(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Check sheet reading not found" });
+      }
+      const reading = await storage.updateCheckSheetReading(req.params.id, req.body);
+      res.json(reading);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update check sheet reading" });
+    }
+  });
+
+  app.delete("/api/check-sheet-readings/:id", async (req, res) => {
+    try {
+      const existing = await storage.getCheckSheetReading(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Check sheet reading not found" });
+      }
+      await storage.deleteCheckSheetReading(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete check sheet reading" });
     }
   });
 
