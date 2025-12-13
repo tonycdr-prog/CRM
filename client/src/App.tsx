@@ -67,7 +67,7 @@ function PlaceholderPage({ title }: { title: string }) {
   );
 }
 
-function AuthenticatedRoutes() {
+function LayoutRoutes() {
   return (
     <AppLayout>
       <Switch>
@@ -125,6 +125,15 @@ function AuthenticatedRoutes() {
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
+  );
+}
+
+function AuthenticatedRoutes() {
+  return (
+    <Switch>
+      <Route path="/landing" component={Landing} />
+      <Route component={LayoutRoutes} />
+    </Switch>
   );
 }
 
