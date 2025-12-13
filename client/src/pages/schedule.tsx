@@ -35,7 +35,9 @@ import {
   Plus,
   ArrowRight,
   Building2,
-  Map
+  Map,
+  Palette,
+  Columns
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -83,7 +85,8 @@ interface Client {
   companyName: string;
 }
 
-type ViewMode = "month" | "week" | "day" | "timeline" | "map";
+type ViewMode = "month" | "week" | "day" | "timeline" | "map" | "split";
+type ColorScheme = "priority" | "status";
 
 interface LocationCoordinate {
   id: string;
@@ -111,6 +114,22 @@ const priorityMarkerColors: Record<string, string> = {
   high: "#f97316",
   normal: "#3b82f6",
   low: "#9ca3af",
+};
+
+const statusMarkerColors: Record<string, string> = {
+  pending: "#9ca3af",
+  scheduled: "#3b82f6",
+  in_progress: "#eab308",
+  completed: "#22c55e",
+  cancelled: "#ef4444",
+};
+
+const statusBgColors: Record<string, string> = {
+  pending: "bg-gray-400 text-white",
+  scheduled: "bg-blue-500 text-white",
+  in_progress: "bg-yellow-500 text-white",
+  completed: "bg-green-500 text-white",
+  cancelled: "bg-red-500 text-white",
 };
 
 interface StaffMember {
@@ -156,6 +175,7 @@ export default function Schedule() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [colorScheme, setColorScheme] = useState<ColorScheme>("priority");
 
   // Client-side only initialization for Leaflet map
   useEffect(() => {
@@ -237,6 +257,19 @@ export default function Schedule() {
     setCurrentDate(new Date());
   };
 
+  // Get job color based on current color scheme
+  const getJobBgColor = (job: Job) => {
+    return colorScheme === "priority" 
+      ? priorityColors[job.priority] 
+      : statusBgColors[job.status];
+  };
+
+  const getJobMarkerColor = (job: Job) => {
+    return colorScheme === "priority"
+      ? priorityMarkerColors[job.priority] || priorityMarkerColors.normal
+      : statusMarkerColors[job.status] || statusMarkerColors.pending;
+  };
+
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
     setIsCreateDialogOpen(true);
@@ -316,7 +349,7 @@ export default function Schedule() {
                 {dayJobs.slice(0, 3).map(job => (
                   <div
                     key={job.id}
-                    className={`text-xs p-1 rounded truncate cursor-pointer ${statusColors[job.status]} bg-card hover:opacity-80`}
+                    className={`text-xs p-1 rounded truncate cursor-pointer ${getJobBgColor(job)}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleJobClick(job);
@@ -325,7 +358,7 @@ export default function Schedule() {
                   >
                     <div className="font-medium truncate">{job.title}</div>
                     {job.scheduledTime && (
-                      <div className="text-muted-foreground">{job.scheduledTime}</div>
+                      <div className="opacity-80">{job.scheduledTime}</div>
                     )}
                   </div>
                 ))}
@@ -380,7 +413,7 @@ export default function Schedule() {
                   {dayJobs.map(job => (
                     <div
                       key={job.id}
-                      className={`text-xs p-1 rounded mb-1 ${priorityColors[job.priority]} cursor-pointer`}
+                      className={`text-xs p-1 rounded mb-1 ${getJobBgColor(job)} cursor-pointer`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleJobClick(job);
@@ -427,7 +460,7 @@ export default function Schedule() {
                   {timeJobs.map(job => (
                     <div
                       key={job.id}
-                      className={`p-3 rounded-lg mb-2 ${statusColors[job.status]} bg-card border cursor-pointer`}
+                      className={`p-3 rounded-lg mb-2 ${getJobBgColor(job)} cursor-pointer`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleJobClick(job);
@@ -436,19 +469,19 @@ export default function Schedule() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <div className="font-medium">{job.title}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                          <div className="text-sm opacity-80 flex items-center gap-1 mt-1">
                             <Building2 className="h-3 w-3" />
                             {getClientName(job.clientId)}
                           </div>
                           {job.siteAddress && (
-                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <div className="text-sm opacity-80 flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
                               {job.siteAddress}
                             </div>
                           )}
                         </div>
-                        <Badge className={priorityColors[job.priority]}>
-                          {job.priority}
+                        <Badge variant="outline" className="bg-background/50">
+                          {colorScheme === "priority" ? job.status.replace(/_/g, " ") : job.priority}
                         </Badge>
                       </div>
                     </div>
@@ -574,7 +607,7 @@ export default function Schedule() {
                         {dayJobsForStaff.map((job, idx) => (
                           <div
                             key={job.id}
-                            className={`text-xs p-1 mb-1 rounded cursor-pointer truncate ${priorityColors[job.priority]}`}
+                            className={`text-xs p-1 mb-1 rounded cursor-pointer truncate ${getJobBgColor(job)}`}
                             style={{ marginTop: idx > 0 ? "2px" : "0" }}
                             onClick={() => handleJobClick(job)}
                             title={`${job.title} - ${job.scheduledTime || "All day"} (${job.estimatedDuration || 2}h)`}
@@ -619,12 +652,20 @@ export default function Schedule() {
             })).length} jobs this week</span>
           </div>
           <div className="flex items-center gap-2">
-            {Object.entries(priorityColors).map(([priority, color]) => (
-              <div key={priority} className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded ${color}`} />
-                <span className="capitalize">{priority}</span>
-              </div>
-            ))}
+            {colorScheme === "priority"
+              ? Object.entries(priorityColors).map(([priority, color]) => (
+                  <div key={priority} className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded ${color.split(" ")[0]}`} />
+                    <span className="capitalize">{priority}</span>
+                  </div>
+                ))
+              : Object.entries(statusBgColors).map(([status, color]) => (
+                  <div key={status} className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded ${color.split(" ")[0]}`} />
+                    <span className="capitalize">{status.replace(/_/g, " ")}</span>
+                  </div>
+                ))
+            }
           </div>
         </div>
       </div>
@@ -707,7 +748,7 @@ export default function Schedule() {
               <Marker
                 key={job.id}
                 position={[job.latitude!, job.longitude!]}
-                icon={createMarkerIcon(priorityMarkerColors[job.priority] || priorityMarkerColors.normal)}
+                icon={createMarkerIcon(getJobMarkerColor(job))}
               >
                 <Popup>
                   <div className="min-w-[200px]">
@@ -725,11 +766,11 @@ export default function Schedule() {
                       </div>
                     )}
                     <div className="flex items-center gap-2 mt-2">
-                      <Badge className={`text-xs ${priorityColors[job.priority]}`}>
-                        {job.priority}
+                      <Badge className={`text-xs ${getJobBgColor(job)}`}>
+                        {colorScheme === "priority" ? job.priority : job.status.replace(/_/g, " ")}
                       </Badge>
                       <Badge variant="outline" className="text-xs capitalize">
-                        {job.status.replace(/_/g, " ")}
+                        {colorScheme === "priority" ? job.status.replace(/_/g, " ") : job.priority}
                       </Badge>
                     </div>
                     <Button 
@@ -752,17 +793,160 @@ export default function Schedule() {
             <span>{jobs.filter(j => !locationCoordinates.find(c => c.entityType === "job" && c.entityId === j.id)).length} jobs without coordinates</span>
           </div>
           <div className="flex items-center gap-2">
-            {Object.entries(priorityMarkerColors).map(([priority, color]) => (
-              <div key={priority} className="flex items-center gap-1">
-                <div style={{ backgroundColor: color }} className="w-3 h-3 rounded-full border border-white" />
-                <span className="capitalize">{priority}</span>
-              </div>
-            ))}
+            {colorScheme === "priority" 
+              ? Object.entries(priorityMarkerColors).map(([priority, color]) => (
+                  <div key={priority} className="flex items-center gap-1">
+                    <div style={{ backgroundColor: color }} className="w-3 h-3 rounded-full border border-white" />
+                    <span className="capitalize">{priority}</span>
+                  </div>
+                ))
+              : Object.entries(statusMarkerColors).map(([status, color]) => (
+                  <div key={status} className="flex items-center gap-1">
+                    <div style={{ backgroundColor: color }} className="w-3 h-3 rounded-full border border-white" />
+                    <span className="capitalize">{status.replace(/_/g, " ")}</span>
+                  </div>
+                ))
+            }
           </div>
         </div>
       </div>
     );
   };
+
+  // Render compact month view for split mode
+  const renderCompactMonthView = () => (
+    <div className="border rounded-lg overflow-hidden h-full">
+      <div className="grid grid-cols-7 bg-muted">
+        {["M", "T", "W", "T", "F", "S", "S"].map((day, idx) => (
+          <div key={idx} className="p-1 text-center text-xs font-medium border-b">
+            {day}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {monthDays.map((day, index) => {
+          const dayJobs = getJobsForDate(day);
+          const isCurrentMonth = isSameMonth(day, currentDate);
+          const isCurrentDay = isToday(day);
+
+          return (
+            <div
+              key={index}
+              className={`min-h-[60px] p-1 border-b border-r cursor-pointer hover-elevate ${
+                !isCurrentMonth ? "bg-muted/30 text-muted-foreground" : ""
+              } ${isCurrentDay ? "bg-primary/5" : ""}`}
+              onClick={() => handleDateClick(day)}
+              data-testid={`split-calendar-day-${format(day, "yyyy-MM-dd")}`}
+            >
+              <div className={`text-right text-xs ${isCurrentDay ? "font-bold text-primary" : ""}`}>
+                {format(day, "d")}
+              </div>
+              <div className="space-y-0.5">
+                {dayJobs.slice(0, 2).map(job => (
+                  <div
+                    key={job.id}
+                    className={`text-[10px] px-1 rounded truncate cursor-pointer ${getJobBgColor(job)}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleJobClick(job);
+                    }}
+                  >
+                    {job.title}
+                  </div>
+                ))}
+                {dayJobs.length > 2 && (
+                  <div className="text-[10px] text-muted-foreground text-center">
+                    +{dayJobs.length - 2}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Render compact map for split mode  
+  const renderCompactMapView = () => {
+    if (!isMapReady) {
+      return (
+        <div className="border rounded-lg p-4 h-full flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+        </div>
+      );
+    }
+
+    const jobsWithCoords = getJobsWithCoordinates();
+    const defaultCenter: [number, number] = [51.5074, -0.1278];
+    const center: [number, number] = jobsWithCoords.length > 0
+      ? [
+          jobsWithCoords.reduce((sum, j) => sum + (j.latitude || 0), 0) / jobsWithCoords.length,
+          jobsWithCoords.reduce((sum, j) => sum + (j.longitude || 0), 0) / jobsWithCoords.length,
+        ]
+      : defaultCenter;
+
+    if (jobsWithCoords.length === 0) {
+      return (
+        <div className="border rounded-lg p-4 h-full flex flex-col items-center justify-center">
+          <Map className="h-8 w-8 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground text-center">No job locations</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="border rounded-lg overflow-hidden h-full">
+        <MapContainer
+          center={center}
+          zoom={9}
+          style={{ height: "100%", width: "100%" }}
+          data-testid="split-map-container"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {jobsWithCoords.map(job => (
+            <Marker
+              key={job.id}
+              position={[job.latitude!, job.longitude!]}
+              icon={createMarkerIcon(getJobMarkerColor(job))}
+            >
+              <Popup>
+                <div className="min-w-[150px]">
+                  <div className="font-semibold text-sm">{job.title}</div>
+                  {job.scheduledDate && (
+                    <div className="text-xs text-muted-foreground">
+                      {format(parseISO(job.scheduledDate), "MMM d")}
+                    </div>
+                  )}
+                  <Button 
+                    size="sm" 
+                    className="w-full mt-2"
+                    onClick={() => handleJobClick(job)}
+                  >
+                    Details
+                  </Button>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </div>
+    );
+  };
+
+  const renderSplitView = () => (
+    <div className="grid grid-cols-2 gap-4 h-[500px]">
+      <div className="h-full overflow-hidden">
+        {renderCompactMonthView()}
+      </div>
+      <div className="h-full">
+        {renderCompactMapView()}
+      </div>
+    </div>
+  );
 
   // Jobs without scheduled dates
   const unscheduledJobs = jobs.filter(
@@ -817,15 +1001,31 @@ export default function Schedule() {
                     }
                   </h2>
                 </div>
-                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-                  <TabsList>
-                    <TabsTrigger value="month" data-testid="tab-month">Month</TabsTrigger>
-                    <TabsTrigger value="week" data-testid="tab-week">Week</TabsTrigger>
-                    <TabsTrigger value="day" data-testid="tab-day">Day</TabsTrigger>
-                    <TabsTrigger value="timeline" data-testid="tab-timeline">Timeline</TabsTrigger>
-                    <TabsTrigger value="map" data-testid="tab-map">Map</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={colorScheme === "priority" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setColorScheme(colorScheme === "priority" ? "status" : "priority")}
+                    data-testid="button-toggle-color-scheme"
+                    title={`Color by: ${colorScheme === "priority" ? "Priority" : "Status"}`}
+                  >
+                    <Palette className="h-4 w-4 mr-1" />
+                    {colorScheme === "priority" ? "Priority" : "Status"}
+                  </Button>
+                  <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+                    <TabsList>
+                      <TabsTrigger value="month" data-testid="tab-month">Month</TabsTrigger>
+                      <TabsTrigger value="week" data-testid="tab-week">Week</TabsTrigger>
+                      <TabsTrigger value="day" data-testid="tab-day">Day</TabsTrigger>
+                      <TabsTrigger value="timeline" data-testid="tab-timeline">Timeline</TabsTrigger>
+                      <TabsTrigger value="map" data-testid="tab-map">Map</TabsTrigger>
+                      <TabsTrigger value="split" data-testid="tab-split">
+                        <Columns className="h-4 w-4 mr-1" />
+                        Split
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -834,27 +1034,31 @@ export default function Schedule() {
               {viewMode === "day" && renderDayView()}
               {viewMode === "timeline" && renderTimelineView()}
               {viewMode === "map" && renderMapView()}
+              {viewMode === "split" && renderSplitView()}
             </CardContent>
           </Card>
 
           {/* Legend */}
           <div className="flex flex-wrap gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-gray-400" />
-              <span>Pending</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-blue-500" />
-              <span>Scheduled</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-yellow-500" />
-              <span>In Progress</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-green-500" />
-              <span>Completed</span>
-            </div>
+            {colorScheme === "priority" ? (
+              <>
+                {Object.entries(priorityColors).map(([priority, color]) => (
+                  <div key={priority} className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded ${color.split(" ")[0]}`} />
+                    <span className="capitalize">{priority}</span>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                {Object.entries(statusBgColors).map(([status, color]) => (
+                  <div key={status} className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded ${color.split(" ")[0]}`} />
+                    <span className="capitalize">{status.replace(/_/g, " ")}</span>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
 
@@ -926,18 +1130,28 @@ export default function Schedule() {
             </CardContent>
           </Card>
 
-          {/* Priority Legend */}
+          {/* Color Legend */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Priority Colors</CardTitle>
+              <CardTitle className="text-base">
+                {colorScheme === "priority" ? "Priority Colors" : "Status Colors"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {Object.entries(priorityColors).map(([priority, color]) => (
-                <div key={priority} className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded ${color}`} />
-                  <span className="text-sm capitalize">{priority}</span>
-                </div>
-              ))}
+              {colorScheme === "priority" 
+                ? Object.entries(priorityColors).map(([priority, color]) => (
+                    <div key={priority} className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded ${color}`} />
+                      <span className="text-sm capitalize">{priority}</span>
+                    </div>
+                  ))
+                : Object.entries(statusBgColors).map(([status, color]) => (
+                    <div key={status} className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded ${color}`} />
+                      <span className="text-sm capitalize">{status.replace(/_/g, " ")}</span>
+                    </div>
+                  ))
+              }
             </CardContent>
           </Card>
         </div>
