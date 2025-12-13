@@ -776,6 +776,188 @@ export const SMOKE_CONTROL_SYSTEM_TYPES = [
   { value: "other", label: "Other (specify in notes)" },
 ] as const;
 
+// Checklist item structure for system service checklists
+export interface SystemChecklistItem {
+  id: string;
+  item: string;
+  category: string;
+  isMandatory: boolean;
+  checked: boolean;
+  notes?: string;
+}
+
+// Default checklist templates per smoke control system type
+export const SYSTEM_CHECKLIST_TEMPLATES: Record<string, Omit<SystemChecklistItem, 'id' | 'checked' | 'notes'>[]> = {
+  mshev: [
+    { item: "Visual inspection of extract fan unit", category: "Visual Inspection", isMandatory: true },
+    { item: "Check fan motor bearings for wear", category: "Mechanical", isMandatory: true },
+    { item: "Verify belt tension and condition", category: "Mechanical", isMandatory: true },
+    { item: "Clean fan blades and housing", category: "Maintenance", isMandatory: false },
+    { item: "Test fire alarm activation signal", category: "Functional Test", isMandatory: true },
+    { item: "Measure airflow velocity at extract points", category: "Performance", isMandatory: true },
+    { item: "Check damper operation - open/close cycle", category: "Functional Test", isMandatory: true },
+    { item: "Verify control panel indicators", category: "Electrical", isMandatory: true },
+    { item: "Test manual override function", category: "Functional Test", isMandatory: true },
+    { item: "Check electrical connections and terminations", category: "Electrical", isMandatory: true },
+  ],
+  shev: [
+    { item: "Visual inspection of smoke vents", category: "Visual Inspection", isMandatory: true },
+    { item: "Check actuator operation", category: "Mechanical", isMandatory: true },
+    { item: "Verify weather seals condition", category: "Visual Inspection", isMandatory: true },
+    { item: "Test manual release mechanism", category: "Functional Test", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Measure opening angle/position", category: "Performance", isMandatory: true },
+    { item: "Check wiring and connections", category: "Electrical", isMandatory: true },
+    { item: "Lubricate hinges and moving parts", category: "Maintenance", isMandatory: false },
+  ],
+  aov: [
+    { item: "Visual inspection of vent condition", category: "Visual Inspection", isMandatory: true },
+    { item: "Check actuator/motor operation", category: "Mechanical", isMandatory: true },
+    { item: "Test open/close cycle time", category: "Functional Test", isMandatory: true },
+    { item: "Verify weather seals", category: "Visual Inspection", isMandatory: true },
+    { item: "Test fire alarm trigger", category: "Functional Test", isMandatory: true },
+    { item: "Check manual override", category: "Functional Test", isMandatory: true },
+    { item: "Inspect control panel indicators", category: "Electrical", isMandatory: true },
+    { item: "Check wiring and connections", category: "Electrical", isMandatory: true },
+  ],
+  stairwell_aov: [
+    { item: "Visual inspection of stairwell vent", category: "Visual Inspection", isMandatory: true },
+    { item: "Check actuator operation", category: "Mechanical", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Verify opening position", category: "Performance", isMandatory: true },
+    { item: "Check manual override function", category: "Functional Test", isMandatory: true },
+    { item: "Inspect seals and weatherproofing", category: "Visual Inspection", isMandatory: true },
+    { item: "Test control panel indicators", category: "Electrical", isMandatory: true },
+  ],
+  lobby_aov: [
+    { item: "Visual inspection of lobby vent", category: "Visual Inspection", isMandatory: true },
+    { item: "Check actuator operation", category: "Mechanical", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Verify opening position", category: "Performance", isMandatory: true },
+    { item: "Check manual override function", category: "Functional Test", isMandatory: true },
+    { item: "Inspect seals and weatherproofing", category: "Visual Inspection", isMandatory: true },
+  ],
+  car_park: [
+    { item: "Visual inspection of extract fans", category: "Visual Inspection", isMandatory: true },
+    { item: "Check jet fan operation", category: "Mechanical", isMandatory: true },
+    { item: "Test CO/NO2 sensor activation", category: "Functional Test", isMandatory: true },
+    { item: "Verify fan speed control", category: "Performance", isMandatory: true },
+    { item: "Test fire mode operation", category: "Functional Test", isMandatory: true },
+    { item: "Check impulse fan direction", category: "Performance", isMandatory: true },
+    { item: "Inspect control panel and BMS interface", category: "Electrical", isMandatory: true },
+    { item: "Measure airflow at extract points", category: "Performance", isMandatory: true },
+  ],
+  pressurisation: [
+    { item: "Visual inspection of supply fan", category: "Visual Inspection", isMandatory: true },
+    { item: "Check fan motor operation", category: "Mechanical", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Measure differential pressure", category: "Performance", isMandatory: true },
+    { item: "Verify pressure relief damper operation", category: "Functional Test", isMandatory: true },
+    { item: "Check door opening force", category: "Performance", isMandatory: true },
+    { item: "Test pressure sensors", category: "Functional Test", isMandatory: true },
+    { item: "Inspect control panel", category: "Electrical", isMandatory: true },
+  ],
+  stairwell_pressurisation: [
+    { item: "Visual inspection of supply fan", category: "Visual Inspection", isMandatory: true },
+    { item: "Check fan motor operation", category: "Mechanical", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Measure differential pressure at each level", category: "Performance", isMandatory: true },
+    { item: "Check door opening force at each level", category: "Performance", isMandatory: true },
+    { item: "Verify pressure relief damper operation", category: "Functional Test", isMandatory: true },
+    { item: "Test with doors open scenario", category: "Functional Test", isMandatory: true },
+    { item: "Inspect air inlet grilles", category: "Visual Inspection", isMandatory: true },
+  ],
+  lobby_pressurisation: [
+    { item: "Visual inspection of supply fan", category: "Visual Inspection", isMandatory: true },
+    { item: "Check fan motor operation", category: "Mechanical", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Measure differential pressure", category: "Performance", isMandatory: true },
+    { item: "Check door opening force", category: "Performance", isMandatory: true },
+    { item: "Verify pressure relief operation", category: "Functional Test", isMandatory: true },
+    { item: "Inspect inlet and outlet grilles", category: "Visual Inspection", isMandatory: true },
+  ],
+  corridor_pressurisation: [
+    { item: "Visual inspection of supply arrangement", category: "Visual Inspection", isMandatory: true },
+    { item: "Check fan operation", category: "Mechanical", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Measure differential pressure", category: "Performance", isMandatory: true },
+    { item: "Check door opening forces", category: "Performance", isMandatory: true },
+    { item: "Verify damper sequencing", category: "Functional Test", isMandatory: true },
+  ],
+  smoke_shaft: [
+    { item: "Visual inspection of shaft vents", category: "Visual Inspection", isMandatory: true },
+    { item: "Check damper operation at each level", category: "Functional Test", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Verify damper sequencing", category: "Functional Test", isMandatory: true },
+    { item: "Measure airflow velocity", category: "Performance", isMandatory: true },
+    { item: "Check head of shaft vent", category: "Visual Inspection", isMandatory: true },
+    { item: "Test manual override at each damper", category: "Functional Test", isMandatory: true },
+  ],
+  smoke_curtain: [
+    { item: "Visual inspection of curtain fabric", category: "Visual Inspection", isMandatory: true },
+    { item: "Check motor/actuator operation", category: "Mechanical", isMandatory: true },
+    { item: "Test deploy and retract cycle", category: "Functional Test", isMandatory: true },
+    { item: "Verify fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Check guide rails and seals", category: "Visual Inspection", isMandatory: true },
+    { item: "Measure deploy time", category: "Performance", isMandatory: true },
+    { item: "Inspect control unit", category: "Electrical", isMandatory: true },
+  ],
+  fire_curtain: [
+    { item: "Visual inspection of curtain condition", category: "Visual Inspection", isMandatory: true },
+    { item: "Check motor/gravity mechanism", category: "Mechanical", isMandatory: true },
+    { item: "Test deploy operation", category: "Functional Test", isMandatory: true },
+    { item: "Verify fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Check guide rails and bottom bar", category: "Visual Inspection", isMandatory: true },
+    { item: "Measure deploy time", category: "Performance", isMandatory: true },
+    { item: "Test reset function", category: "Functional Test", isMandatory: true },
+  ],
+  damper_system: [
+    { item: "Visual inspection of damper blade", category: "Visual Inspection", isMandatory: true },
+    { item: "Check actuator operation", category: "Mechanical", isMandatory: true },
+    { item: "Test open/close cycle", category: "Functional Test", isMandatory: true },
+    { item: "Verify fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Check blade seals", category: "Visual Inspection", isMandatory: true },
+    { item: "Measure airflow velocity", category: "Performance", isMandatory: true },
+    { item: "Test manual override", category: "Functional Test", isMandatory: true },
+    { item: "Check position indicator", category: "Electrical", isMandatory: true },
+  ],
+  extract_fan: [
+    { item: "Visual inspection of fan unit", category: "Visual Inspection", isMandatory: true },
+    { item: "Check motor bearings", category: "Mechanical", isMandatory: true },
+    { item: "Verify belt tension (if applicable)", category: "Mechanical", isMandatory: false },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Measure airflow rate", category: "Performance", isMandatory: true },
+    { item: "Check vibration levels", category: "Performance", isMandatory: true },
+    { item: "Test speed control", category: "Functional Test", isMandatory: true },
+    { item: "Inspect electrical connections", category: "Electrical", isMandatory: true },
+  ],
+  supply_fan: [
+    { item: "Visual inspection of fan unit", category: "Visual Inspection", isMandatory: true },
+    { item: "Check motor operation", category: "Mechanical", isMandatory: true },
+    { item: "Verify filter condition", category: "Visual Inspection", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Measure airflow rate", category: "Performance", isMandatory: true },
+    { item: "Check inlet damper operation", category: "Functional Test", isMandatory: true },
+    { item: "Inspect electrical connections", category: "Electrical", isMandatory: true },
+  ],
+  bms_interface: [
+    { item: "Check BMS communication status", category: "Electrical", isMandatory: true },
+    { item: "Verify fire alarm signal receipt", category: "Functional Test", isMandatory: true },
+    { item: "Test system activation from BMS", category: "Functional Test", isMandatory: true },
+    { item: "Check fault signal transmission", category: "Functional Test", isMandatory: true },
+    { item: "Verify status feedback to BMS", category: "Functional Test", isMandatory: true },
+    { item: "Review event logs", category: "Electrical", isMandatory: true },
+    { item: "Test override functions", category: "Functional Test", isMandatory: true },
+  ],
+  other: [
+    { item: "Visual inspection of system components", category: "Visual Inspection", isMandatory: true },
+    { item: "Check operational status", category: "Functional Test", isMandatory: true },
+    { item: "Test fire alarm activation", category: "Functional Test", isMandatory: true },
+    { item: "Verify performance parameters", category: "Performance", isMandatory: true },
+    { item: "Inspect electrical connections", category: "Electrical", isMandatory: true },
+  ],
+};
+
 // Service Visit Types - purpose/type of each site visit
 export const SERVICE_VISIT_TYPES = [
   { value: "condition_survey", label: "Condition / Compliance Survey Visit" },

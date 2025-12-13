@@ -48,12 +48,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { nanoid } from "nanoid";
 import { Link, useSearch } from "wouter";
 import { useEffect } from "react";
 import { exportToCSV } from "@/lib/exportUtils";
-import { SERVICE_VISIT_TYPES, SMOKE_CONTROL_SYSTEM_TYPES, SYSTEM_CONDITION_OPTIONS, SERVICE_STATEMENTS } from "@shared/schema";
+import { SERVICE_VISIT_TYPES, SMOKE_CONTROL_SYSTEM_TYPES, SYSTEM_CONDITION_OPTIONS, SERVICE_STATEMENTS, SYSTEM_CHECKLIST_TEMPLATES, type SystemChecklistItem } from "@shared/schema";
 import { Settings, AlertTriangle, FileText, ClipboardCheck } from "lucide-react";
 
 interface FaultHistoryEntry {
@@ -67,6 +74,7 @@ interface SystemEntry {
   systemType: string;
   location: string;
   notes?: string;
+  checklist: SystemChecklistItem[];
 }
 
 interface Engineer {
@@ -161,15 +169,28 @@ export default function Jobs() {
   const [completeServiceStatement, setCompleteServiceStatement] = useState(SERVICE_STATEMENTS.operational);
   const [completeCompletionNotes, setCompleteCompletionNotes] = useState("");
   const [completeActualDuration, setCompleteActualDuration] = useState("");
+  const [completeSystems, setCompleteSystems] = useState<SystemEntry[]>([]);
+  const [expandedSystems, setExpandedSystems] = useState<Record<number, boolean>>({});
 
   // Systems management
   const addSystem = () => {
-    setSystems([...systems, { systemType: "", location: "", notes: "" }]);
+    setSystems([...systems, { systemType: "", location: "", notes: "", checklist: [] }]);
   };
 
   const updateSystem = (index: number, field: keyof SystemEntry, value: string) => {
     const updated = [...systems];
-    updated[index] = { ...updated[index], [field]: value };
+    if (field === "systemType" && value !== updated[index].systemType) {
+      const template = SYSTEM_CHECKLIST_TEMPLATES[value] || [];
+      const checklist: SystemChecklistItem[] = template.map(item => ({
+        ...item,
+        id: nanoid(),
+        checked: false,
+        notes: "",
+      }));
+      updated[index] = { ...updated[index], [field]: value, checklist };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
     setSystems(updated);
   };
 
@@ -212,6 +233,25 @@ export default function Jobs() {
     setCompleteServiceStatement(job.serviceStatement || SERVICE_STATEMENTS.operational);
     setCompleteCompletionNotes(job.completionNotes || "");
     setCompleteActualDuration(job.actualDuration?.toString() || "");
+    // Initialize systems with checklists
+    const systemsWithChecklists = (job.systems || []).map(sys => {
+      // If system already has checklist, use it; otherwise generate from template
+      if (sys.checklist && sys.checklist.length > 0) {
+        return sys;
+      }
+      const template = SYSTEM_CHECKLIST_TEMPLATES[sys.systemType] || [];
+      return {
+        ...sys,
+        checklist: template.map(item => ({
+          ...item,
+          id: nanoid(),
+          checked: false,
+          notes: "",
+        })),
+      };
+    });
+    setCompleteSystems(systemsWithChecklists);
+    setExpandedSystems({});
     setIsCompleteDialogOpen(true);
   };
 
@@ -226,6 +266,37 @@ export default function Jobs() {
     setCompleteServiceStatement(SERVICE_STATEMENTS.operational);
     setCompleteCompletionNotes("");
     setCompleteActualDuration("");
+    setCompleteSystems([]);
+    setExpandedSystems({});
+  };
+
+  // System checklist helpers
+  const toggleSystemExpanded = (index: number) => {
+    setExpandedSystems(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const updateChecklistItem = (systemIndex: number, itemId: string, checked: boolean) => {
+    setCompleteSystems(prev => {
+      const updated = [...prev];
+      const system = { ...updated[systemIndex] };
+      system.checklist = system.checklist.map(item =>
+        item.id === itemId ? { ...item, checked } : item
+      );
+      updated[systemIndex] = system;
+      return updated;
+    });
+  };
+
+  const updateChecklistItemNotes = (systemIndex: number, itemId: string, notes: string) => {
+    setCompleteSystems(prev => {
+      const updated = [...prev];
+      const system = { ...updated[systemIndex] };
+      system.checklist = system.checklist.map(item =>
+        item.id === itemId ? { ...item, notes } : item
+      );
+      updated[systemIndex] = system;
+      return updated;
+    });
   };
 
   // Handle URL parameters for creating a job from contract
@@ -379,6 +450,7 @@ export default function Jobs() {
         serviceStatement: completeServiceStatement || null,
         completionNotes: completeCompletionNotes || null,
         actualDuration: parseFloat(completeActualDuration) || null,
+        systems: completeSystems,
       },
     });
   };
@@ -1062,6 +1134,102 @@ export default function Jobs() {
                 </div>
               )}
             </div>
+
+            {/* System Checklists */}
+            {completeSystems.length > 0 && (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                  <ClipboardCheck className="h-4 w-4" />
+                  System Checklists
+                </h4>
+                <div className="space-y-3">
+                  {completeSystems.map((system, systemIndex) => {
+                    const systemType = SMOKE_CONTROL_SYSTEM_TYPES.find(t => t.value === system.systemType);
+                    const checkedCount = system.checklist.filter(item => item.checked).length;
+                    const totalCount = system.checklist.length;
+                    const mandatoryCount = system.checklist.filter(item => item.isMandatory).length;
+                    const mandatoryChecked = system.checklist.filter(item => item.isMandatory && item.checked).length;
+                    const isExpanded = expandedSystems[systemIndex] || false;
+                    
+                    // Group checklist items by category
+                    const categories = system.checklist.reduce((acc, item) => {
+                      if (!acc[item.category]) acc[item.category] = [];
+                      acc[item.category].push(item);
+                      return acc;
+                    }, {} as Record<string, SystemChecklistItem[]>);
+
+                    return (
+                      <Collapsible key={systemIndex} open={isExpanded} onOpenChange={() => toggleSystemExpanded(systemIndex)}>
+                        <CollapsibleTrigger asChild>
+                          <div 
+                            className="flex items-center justify-between p-3 border rounded cursor-pointer hover-elevate"
+                            data-testid={`collapsible-system-${systemIndex}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              <span className="font-medium">{systemType?.label || system.systemType}</span>
+                              {system.location && <span className="text-muted-foreground text-sm">- {system.location}</span>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {mandatoryChecked < mandatoryCount && (
+                                <Badge variant="outline" className="text-amber-600 border-amber-600">
+                                  {mandatoryCount - mandatoryChecked} mandatory remaining
+                                </Badge>
+                              )}
+                              <Badge variant={checkedCount === totalCount ? "default" : "secondary"}>
+                                {checkedCount}/{totalCount} completed
+                              </Badge>
+                            </div>
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2">
+                          <div className="border rounded p-3 space-y-4">
+                            {Object.entries(categories).map(([category, items]) => (
+                              <div key={category} className="space-y-2">
+                                <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{category}</h5>
+                                <div className="space-y-2">
+                                  {items.map((item) => (
+                                    <div key={item.id} className="flex items-start gap-3 p-2 rounded hover:bg-muted/50">
+                                      <Checkbox
+                                        id={item.id}
+                                        checked={item.checked}
+                                        onCheckedChange={(checked) => updateChecklistItem(systemIndex, item.id, checked === true)}
+                                        data-testid={`checkbox-checklist-${systemIndex}-${item.id}`}
+                                      />
+                                      <div className="flex-1 space-y-1">
+                                        <label 
+                                          htmlFor={item.id} 
+                                          className={`text-sm cursor-pointer ${item.checked ? 'line-through text-muted-foreground' : ''}`}
+                                        >
+                                          {item.item}
+                                          {item.isMandatory && (
+                                            <span className="ml-1 text-red-500">*</span>
+                                          )}
+                                        </label>
+                                        <Input
+                                          placeholder="Add notes..."
+                                          value={item.notes || ""}
+                                          onChange={(e) => updateChecklistItemNotes(systemIndex, item.id, e.target.value)}
+                                          className="h-7 text-xs"
+                                          data-testid={`input-checklist-notes-${systemIndex}-${item.id}`}
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  <span className="text-red-500">*</span> indicates mandatory items that should be completed before marking the visit as complete.
+                </p>
+              </div>
+            )}
 
             {/* Fault History */}
             <div className="border-t pt-4">
