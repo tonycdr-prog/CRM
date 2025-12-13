@@ -37,7 +37,8 @@ import {
   Building2,
   Map,
   Palette,
-  Columns
+  Columns,
+  AlertTriangle
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -150,6 +151,29 @@ interface JobAssignment {
   assignedAt: string | null;
 }
 
+interface Conflict {
+  type: string;
+  severity: "warning" | "error" | "info";
+  job1Id: string;
+  job2Id: string;
+  job1Title: string;
+  job2Title: string;
+  staffId?: string;
+  staffName?: string;
+  conflictDate: string;
+  details: string;
+  travelTimeMinutes?: number;
+  gapMinutes?: number;
+}
+
+interface ConflictResponse {
+  conflicts: Conflict[];
+  totalConflicts: number;
+  errorCount: number;
+  warningCount: number;
+  infoCount: number;
+}
+
 const priorityColors: Record<string, string> = {
   urgent: "bg-red-500 text-white",
   high: "bg-orange-500 text-white",
@@ -206,6 +230,17 @@ export default function Schedule() {
     queryKey: [`/api/location-coordinates/${user?.id}`],
     enabled: !!user?.id,
   });
+
+  const { data: conflictData } = useQuery<ConflictResponse>({
+    queryKey: [`/api/detect-conflicts/${user?.id}`],
+    enabled: !!user?.id,
+    refetchInterval: 60000,
+  });
+
+  const getJobConflicts = (jobId: string): Conflict[] => {
+    if (!conflictData?.conflicts) return [];
+    return conflictData.conflicts.filter(c => c.job1Id === jobId || c.job2Id === jobId);
+  };
 
   const updateJobMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Job> }) => {
@@ -604,31 +639,40 @@ export default function Schedule() {
                         key={`${staff.id}-${day.toISOString()}`}
                         className={`relative border-r p-1 min-h-[60px] ${isToday(day) ? "bg-primary/5" : ""}`}
                       >
-                        {dayJobsForStaff.map((job, idx) => (
-                          <div
-                            key={job.id}
-                            className={`text-xs p-1 mb-1 rounded cursor-pointer truncate ${getJobBgColor(job)}`}
-                            style={{ marginTop: idx > 0 ? "2px" : "0" }}
-                            onClick={() => handleJobClick(job)}
-                            title={`${job.title} - ${job.scheduledTime || "All day"} (${job.estimatedDuration || 2}h)`}
-                            data-testid={`timeline-job-${job.id}`}
-                          >
-                            <div className="flex items-center gap-1">
-                              {job.scheduledTime && (
-                                <span className="font-mono text-[10px] opacity-80">
-                                  {job.scheduledTime.slice(0, 5)}
-                                </span>
-                              )}
-                              <span className="truncate font-medium">{job.title}</span>
-                            </div>
-                            {job.estimatedDuration && (
-                              <div className="text-[10px] opacity-80 flex items-center gap-1">
-                                <Clock className="h-2 w-2" />
-                                {job.estimatedDuration}h
+                        {dayJobsForStaff.map((job, idx) => {
+                          const jobConflicts = getJobConflicts(job.id);
+                          const hasConflict = jobConflicts.length > 0;
+                          const hasError = jobConflicts.some(c => c.severity === "error");
+                          
+                          return (
+                            <div
+                              key={job.id}
+                              className={`text-xs p-1 mb-1 rounded cursor-pointer truncate ${getJobBgColor(job)}`}
+                              style={{ marginTop: idx > 0 ? "2px" : "0" }}
+                              onClick={() => handleJobClick(job)}
+                              title={`${job.title} - ${job.scheduledTime || "All day"} (${job.estimatedDuration || 2}h)${hasConflict ? ` - ${jobConflicts.length} conflict(s)` : ""}`}
+                              data-testid={`timeline-job-${job.id}`}
+                            >
+                              <div className="flex items-center gap-1">
+                                {hasConflict && (
+                                  <AlertTriangle className={`h-3 w-3 flex-shrink-0 ${hasError ? "text-white" : "text-white/90"}`} />
+                                )}
+                                {job.scheduledTime && (
+                                  <span className="font-mono text-[10px] opacity-80">
+                                    {job.scheduledTime.slice(0, 5)}
+                                  </span>
+                                )}
+                                <span className="truncate font-medium">{job.title}</span>
                               </div>
-                            )}
-                          </div>
-                        ))}
+                              {job.estimatedDuration && (
+                                <div className="text-[10px] opacity-80 flex items-center gap-1">
+                                  <Clock className="h-2 w-2" />
+                                  {job.estimatedDuration}h
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                         {dayJobsForStaff.length === 0 && (
                           <div className="h-full flex items-center justify-center">
                             <div className="w-full h-px bg-muted" />
@@ -1129,6 +1173,70 @@ export default function Schedule() {
               )}
             </CardContent>
           </Card>
+
+          {/* Scheduling Conflicts */}
+          {conflictData && conflictData.totalConflicts > 0 && (
+            <Card data-testid="card-conflicts">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Scheduling Conflicts
+                </CardTitle>
+                <CardDescription>
+                  {conflictData.totalConflicts} issue{conflictData.totalConflicts !== 1 ? "s" : ""} detected
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="flex gap-2">
+                      {conflictData.errorCount > 0 && (
+                        <Badge variant="destructive" className="text-xs">
+                          {conflictData.errorCount} Critical
+                        </Badge>
+                      )}
+                      {conflictData.warningCount > 0 && (
+                        <Badge className="bg-amber-500 text-white text-xs">
+                          {conflictData.warningCount} Warning
+                        </Badge>
+                      )}
+                      {conflictData.infoCount > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {conflictData.infoCount} Info
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto space-y-2">
+                    {conflictData.conflicts.slice(0, 5).map((conflict, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2 rounded text-xs border-l-2 ${
+                          conflict.severity === "error" 
+                            ? "border-l-red-500 bg-red-500/10" 
+                            : conflict.severity === "warning"
+                              ? "border-l-amber-500 bg-amber-500/10"
+                              : "border-l-blue-500 bg-blue-500/10"
+                        }`}
+                        data-testid={`conflict-item-${idx}`}
+                      >
+                        <div className="font-medium">{conflict.details}</div>
+                        <div className="text-muted-foreground mt-1">
+                          {conflict.staffName && `${conflict.staffName} - `}
+                          {conflict.conflictDate}
+                        </div>
+                      </div>
+                    ))}
+                    {conflictData.conflicts.length > 5 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        +{conflictData.conflicts.length - 5} more conflicts
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Color Legend */}
           <Card>

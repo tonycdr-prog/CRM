@@ -2942,6 +2942,234 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Haversine formula for calculating distance between two coordinates
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in kilometers
+  };
+
+  // Estimate travel time in minutes (average speed 30 mph / 48 km/h for urban driving)
+  const estimateTravelTime = (distanceKm: number): number => {
+    const averageSpeedKmh = 48;
+    return Math.ceil((distanceKm / averageSpeedKmh) * 60);
+  };
+
+  // Travel time estimation endpoint
+  app.get("/api/travel-time/:userId", async (req, res) => {
+    try {
+      const { from, to } = req.query;
+      
+      if (!from || !to) {
+        res.status(400).json({ error: "Both 'from' and 'to' job IDs are required" });
+        return;
+      }
+
+      const coordinates = await storage.getLocationCoordinates(req.params.userId);
+      const fromCoord = coordinates.find(c => c.entityType === "job" && c.entityId === from);
+      const toCoord = coordinates.find(c => c.entityType === "job" && c.entityId === to);
+
+      if (!fromCoord || !toCoord) {
+        res.json({ 
+          available: false, 
+          message: "Coordinates not available for one or both jobs" 
+        });
+        return;
+      }
+
+      const distance = calculateDistance(
+        fromCoord.latitude, fromCoord.longitude,
+        toCoord.latitude, toCoord.longitude
+      );
+      const travelTimeMinutes = estimateTravelTime(distance);
+
+      res.json({
+        available: true,
+        fromJobId: from,
+        toJobId: to,
+        distanceKm: Math.round(distance * 10) / 10,
+        distanceMiles: Math.round(distance * 0.621371 * 10) / 10,
+        travelTimeMinutes,
+        travelTimeFormatted: travelTimeMinutes < 60 
+          ? `${travelTimeMinutes} mins`
+          : `${Math.floor(travelTimeMinutes / 60)}h ${travelTimeMinutes % 60}m`
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to calculate travel time" });
+    }
+  });
+
+  // Conflict detection endpoint - analyzes all jobs and detects scheduling conflicts
+  app.get("/api/detect-conflicts/:userId", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const jobs = await storage.getJobs(userId);
+      const assignments = await storage.getJobAssignments(userId);
+      const coordinates = await storage.getLocationCoordinates(userId);
+      
+      interface Conflict {
+        type: string;
+        severity: "warning" | "error" | "info";
+        job1Id: string;
+        job2Id: string;
+        job1Title: string;
+        job2Title: string;
+        staffId?: string;
+        staffName?: string;
+        conflictDate: string;
+        details: string;
+        travelTimeMinutes?: number;
+        gapMinutes?: number;
+      }
+
+      const conflicts: Conflict[] = [];
+      const staffMembers = await storage.getStaffDirectory(userId);
+
+      // Filter scheduled jobs with dates
+      const scheduledJobs = jobs.filter(j => 
+        j.scheduledDate && j.status !== "cancelled" && j.status !== "completed"
+      );
+
+      // Group jobs by staff member and date
+      const jobsByStaffAndDate: Record<string, typeof scheduledJobs> = {};
+
+      for (const job of scheduledJobs) {
+        // Get staff from assignments or assignedTechnicianId
+        const jobAssignments = assignments.filter(a => a.jobId === job.id);
+        const staffIds = jobAssignments.map(a => a.staffId).filter(Boolean) as string[];
+        
+        if (job.assignedTechnicianId) {
+          staffIds.push(job.assignedTechnicianId);
+        }
+
+        for (const staffId of Array.from(new Set(staffIds))) {
+          const key = `${staffId}_${job.scheduledDate}`;
+          if (!jobsByStaffAndDate[key]) {
+            jobsByStaffAndDate[key] = [];
+          }
+          jobsByStaffAndDate[key].push(job);
+        }
+      }
+
+      // Check for conflicts within each staff/date group
+      for (const [key, dayJobs] of Object.entries(jobsByStaffAndDate)) {
+        if (dayJobs.length < 2) continue;
+
+        const [staffId, date] = key.split("_");
+        const staff = staffMembers.find(s => s.id === staffId);
+
+        // Sort jobs by scheduled time
+        const sortedJobs = dayJobs.sort((a, b) => {
+          const timeA = a.scheduledTime || "00:00";
+          const timeB = b.scheduledTime || "00:00";
+          return timeA.localeCompare(timeB);
+        });
+
+        // Check consecutive job pairs for conflicts
+        for (let i = 0; i < sortedJobs.length - 1; i++) {
+          const job1 = sortedJobs[i];
+          const job2 = sortedJobs[i + 1];
+
+          const time1 = job1.scheduledTime || "08:00";
+          const time2 = job2.scheduledTime || "08:00";
+          const duration1 = job1.estimatedDuration || 2; // Default 2 hours
+
+          // Calculate job1 end time
+          const [h1, m1] = time1.split(":").map(Number);
+          const endMinutes1 = h1 * 60 + m1 + duration1 * 60;
+
+          // Calculate job2 start time in minutes
+          const [h2, m2] = time2.split(":").map(Number);
+          const startMinutes2 = h2 * 60 + m2;
+
+          // Gap between jobs
+          const gapMinutes = startMinutes2 - endMinutes1;
+
+          // Calculate travel time if coordinates available
+          let travelTimeMinutes = 0;
+          const coord1 = coordinates.find(c => c.entityType === "job" && c.entityId === job1.id);
+          const coord2 = coordinates.find(c => c.entityType === "job" && c.entityId === job2.id);
+
+          if (coord1 && coord2) {
+            const distance = calculateDistance(
+              coord1.latitude, coord1.longitude,
+              coord2.latitude, coord2.longitude
+            );
+            travelTimeMinutes = estimateTravelTime(distance);
+          }
+
+          // Check for overlapping jobs (job2 starts before job1 ends)
+          if (gapMinutes < 0) {
+            conflicts.push({
+              type: "staff_double_booking",
+              severity: "error",
+              job1Id: job1.id,
+              job2Id: job2.id,
+              job1Title: job1.title,
+              job2Title: job2.title,
+              staffId,
+              staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
+              conflictDate: date,
+              details: `Jobs overlap by ${Math.abs(gapMinutes)} minutes`,
+              gapMinutes
+            });
+          }
+          // Check for insufficient travel time (gap less than travel time)
+          else if (travelTimeMinutes > 0 && gapMinutes < travelTimeMinutes) {
+            conflicts.push({
+              type: "insufficient_travel_time",
+              severity: "warning",
+              job1Id: job1.id,
+              job2Id: job2.id,
+              job1Title: job1.title,
+              job2Title: job2.title,
+              staffId,
+              staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
+              conflictDate: date,
+              details: `Gap of ${gapMinutes} mins is less than ${travelTimeMinutes} mins travel time`,
+              travelTimeMinutes,
+              gapMinutes
+            });
+          }
+          // Tight schedule warning (less than 15 mins buffer after travel)
+          else if (travelTimeMinutes > 0 && gapMinutes < travelTimeMinutes + 15) {
+            conflicts.push({
+              type: "tight_schedule",
+              severity: "info",
+              job1Id: job1.id,
+              job2Id: job2.id,
+              job1Title: job1.title,
+              job2Title: job2.title,
+              staffId,
+              staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
+              conflictDate: date,
+              details: `Only ${gapMinutes - travelTimeMinutes} mins buffer after ${travelTimeMinutes} mins travel`,
+              travelTimeMinutes,
+              gapMinutes
+            });
+          }
+        }
+      }
+
+      res.json({
+        conflicts,
+        totalConflicts: conflicts.length,
+        errorCount: conflicts.filter(c => c.severity === "error").length,
+        warningCount: conflicts.filter(c => c.severity === "warning").length,
+        infoCount: conflicts.filter(c => c.severity === "info").length
+      });
+    } catch (error) {
+      console.error("Conflict detection error:", error);
+      res.status(500).json({ error: "Failed to detect conflicts" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
