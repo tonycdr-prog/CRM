@@ -55,6 +55,7 @@ import QualityChecklists from "@/pages/quality-checklists";
 import TimeOffRequests from "@/pages/time-off-requests";
 import VisitTypes from "@/pages/visit-types";
 import SiteAssets from "@/pages/site-assets";
+import CheckSheetReadings from "@/pages/check-sheet-readings";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -118,6 +119,7 @@ function LayoutRoutes() {
         <Route path="/competitors" component={Competitors} />
         <Route path="/service-history" component={ServiceHistoryPage} />
         <Route path="/quality-checklists" component={QualityChecklists} />
+        <Route path="/check-sheet-readings" component={CheckSheetReadings} />
         <Route path="/time-off-requests" component={TimeOffRequests} />
         <Route path="/visit-types" component={VisitTypes} />
         <Route path="/site-assets" component={SiteAssets} />

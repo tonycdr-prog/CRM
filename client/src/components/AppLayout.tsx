@@ -91,6 +91,7 @@ const menuSections: MenuSection[] = [
       { title: "Airflow Testing", url: "/test", icon: Wind },
       { title: "Visit Types", url: "/visit-types", icon: ClipboardList },
       { title: "Quality Checklists", url: "/quality-checklists", icon: FileCheck },
+      { title: "Check Sheets", url: "/check-sheet-readings", icon: ClipboardList },
     ],
   },
   {
