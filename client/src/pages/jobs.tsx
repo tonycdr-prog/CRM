@@ -39,7 +39,8 @@ import {
   Trash2,
   Play,
   CheckCircle,
-  Download
+  Download,
+  Users
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,6 +54,11 @@ import { Link, useSearch } from "wouter";
 import { useEffect } from "react";
 import { exportToCSV } from "@/lib/exportUtils";
 
+interface Engineer {
+  name: string;
+  competency: string;
+}
+
 interface Job {
   id: string;
   userId: string;
@@ -63,6 +69,9 @@ interface Job {
   title: string;
   description: string | null;
   jobType: string;
+  worksheetType: string;
+  engineerCount: number;
+  engineerNames: Engineer[];
   priority: string;
   status: string;
   scheduledDate: string | null;
@@ -108,6 +117,9 @@ export default function Jobs() {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [selectedContractId, setSelectedContractId] = useState<string>("");
   const [siteAddress, setSiteAddress] = useState("");
+  const [worksheetType, setWorksheetType] = useState("annual_service");
+  const [engineerCount, setEngineerCount] = useState(1);
+  const [engineers, setEngineers] = useState<Engineer[]>([{ name: "", competency: "competent" }]);
 
   // Handle URL parameters for creating a job from contract
   useEffect(() => {
@@ -144,6 +156,27 @@ export default function Jobs() {
     setSelectedClientId("");
     setSelectedContractId("");
     setSiteAddress("");
+    setWorksheetType("annual_service");
+    setEngineerCount(1);
+    setEngineers([{ name: "", competency: "competent" }]);
+  };
+
+  const updateEngineerCount = (count: number) => {
+    setEngineerCount(count);
+    const newEngineers = [...engineers];
+    while (newEngineers.length < count) {
+      newEngineers.push({ name: "", competency: "competent" });
+    }
+    while (newEngineers.length > count) {
+      newEngineers.pop();
+    }
+    setEngineers(newEngineers);
+  };
+
+  const updateEngineer = (index: number, field: "name" | "competency", value: string) => {
+    const newEngineers = [...engineers];
+    newEngineers[index] = { ...newEngineers[index], [field]: value };
+    setEngineers(newEngineers);
   };
 
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
@@ -227,6 +260,9 @@ export default function Jobs() {
       title: formData.get("title") as string,
       description: formData.get("description") as string || null,
       jobType: formData.get("jobType") as string,
+      worksheetType: worksheetType,
+      engineerCount: engineerCount,
+      engineerNames: engineers.filter(e => e.name.trim() !== ""),
       priority: formData.get("priority") as string,
       status: "pending",
       scheduledDate: formData.get("scheduledDate") as string || null,
@@ -269,6 +305,21 @@ export default function Jobs() {
         return <Badge variant="secondary">Low</Badge>;
       default:
         return <Badge variant="outline">{priority}</Badge>;
+    }
+  };
+
+  const getWorksheetTypeBadge = (type: string) => {
+    switch (type) {
+      case "annual_service":
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">Annual Service</Badge>;
+      case "interim":
+        return <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-100">Interim</Badge>;
+      case "remedial":
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">Remedial</Badge>;
+      case "emergency":
+        return <Badge variant="destructive">Emergency</Badge>;
+      default:
+        return null;
     }
   };
 
@@ -400,6 +451,22 @@ export default function Jobs() {
                     </Select>
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="worksheetType">Worksheet Type</Label>
+                    <Select value={worksheetType} onValueChange={setWorksheetType}>
+                      <SelectTrigger data-testid="select-worksheet-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="annual_service">Annual Service</SelectItem>
+                        <SelectItem value="interim">Interim</SelectItem>
+                        <SelectItem value="remedial">Remedial</SelectItem>
+                        <SelectItem value="emergency">Emergency</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="priority">Priority</Label>
                     <Select name="priority" defaultValue="normal">
                       <SelectTrigger data-testid="select-priority">
@@ -413,7 +480,49 @@ export default function Jobs() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="engineerCount">Number of Engineers</Label>
+                    <Select value={String(engineerCount)} onValueChange={(v) => updateEngineerCount(parseInt(v))}>
+                      <SelectTrigger data-testid="select-engineer-count">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 Engineer</SelectItem>
+                        <SelectItem value="2">2 Engineers</SelectItem>
+                        <SelectItem value="3">3 Engineers</SelectItem>
+                        <SelectItem value="4">4 Engineers</SelectItem>
+                        <SelectItem value="5">5 Engineers</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                {engineers.map((engineer, index) => (
+                  <div key={index} className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Engineer {index + 1} Name</Label>
+                      <Input 
+                        value={engineer.name} 
+                        onChange={(e) => updateEngineer(index, "name", e.target.value)}
+                        placeholder="Engineer name"
+                        data-testid={`input-engineer-name-${index}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Competency Level</Label>
+                      <Select value={engineer.competency} onValueChange={(v) => updateEngineer(index, "competency", v)}>
+                        <SelectTrigger data-testid={`select-engineer-competency-${index}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="trainee">Trainee</SelectItem>
+                          <SelectItem value="competent">Competent</SelectItem>
+                          <SelectItem value="senior">Senior</SelectItem>
+                          <SelectItem value="lead">Lead Engineer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
                 <div className="space-y-2">
                   <Label>Postcode Lookup</Label>
                   <PostcodeLookup 
@@ -560,6 +669,7 @@ export default function Jobs() {
                       <Link href={`/jobs/${job.id}`}><CardTitle className="text-lg hover:underline cursor-pointer" data-testid={`link-job-${job.id}`}>{job.title}</CardTitle></Link>
                       {getStatusBadge(job.status)}
                       {getPriorityBadge(job.priority)}
+                      {getWorksheetTypeBadge(job.worksheetType)}
                     </div>
                     <CardDescription className="flex items-center gap-2 mt-1">
                       <span>{job.jobNumber}</span>
@@ -613,6 +723,15 @@ export default function Jobs() {
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       <span>{format(parseISO(job.scheduledDate), "MMM d, yyyy")}</span>
+                    </div>
+                  )}
+                  {job.engineerCount > 0 && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <span>{job.engineerCount} engineer{job.engineerCount > 1 ? "s" : ""}</span>
+                      {job.engineerNames && job.engineerNames.length > 0 && (
+                        <span className="text-xs">({job.engineerNames.map(e => e.name).filter(Boolean).join(", ")})</span>
+                      )}
                     </div>
                   )}
                   {job.estimatedDuration && (

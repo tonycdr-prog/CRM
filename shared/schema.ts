@@ -724,6 +724,9 @@ export const jobs = pgTable("jobs", {
   priority: text("priority").default("normal"), // low, normal, high, urgent
   status: text("status").default("pending"), // pending, scheduled, in_progress, completed, cancelled
   jobType: text("job_type").default("testing"), // testing, installation, repair, maintenance
+  worksheetType: text("worksheet_type").default("annual_service"), // annual_service, interim, remedial, emergency
+  engineerCount: integer("engineer_count").default(1),
+  engineerNames: jsonb("engineer_names").$type<{ name: string; competency: string }[]>().default([]),
   quotedAmount: real("quoted_amount"),
   actualCost: real("actual_cost"),
   materialsCost: real("materials_cost"),
