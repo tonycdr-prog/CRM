@@ -53,7 +53,15 @@ import { nanoid } from "nanoid";
 import { Link, useSearch } from "wouter";
 import { useEffect } from "react";
 import { exportToCSV } from "@/lib/exportUtils";
-import { SERVICE_VISIT_TYPES } from "@shared/schema";
+import { SERVICE_VISIT_TYPES, SYSTEM_CONDITION_OPTIONS, SERVICE_STATEMENTS } from "@shared/schema";
+import { AlertTriangle, FileText } from "lucide-react";
+
+interface FaultHistoryEntry {
+  date: string;
+  fault: string;
+  resolved: boolean;
+  resolution?: string;
+}
 
 interface Engineer {
   name: string;
@@ -89,6 +97,13 @@ interface Job {
   notes: string | null;
   completionNotes: string | null;
   completedAt: string | null;
+  systemAge: string | null;
+  systemInstallDate: string | null;
+  systemCondition: string;
+  faultHistory: FaultHistoryEntry[];
+  recommendations: string | null;
+  backOfficeNotes: string | null;
+  serviceStatement: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -121,6 +136,40 @@ export default function Jobs() {
   const [worksheetType, setWorksheetType] = useState("routine_service");
   const [engineerCount, setEngineerCount] = useState(1);
   const [engineers, setEngineers] = useState<Engineer[]>([{ name: "", competency: "competent" }]);
+  
+  // Visit report fields
+  const [systemAge, setSystemAge] = useState("");
+  const [systemInstallDate, setSystemInstallDate] = useState("");
+  const [systemCondition, setSystemCondition] = useState("operational");
+  const [faultHistory, setFaultHistory] = useState<FaultHistoryEntry[]>([]);
+  const [recommendations, setRecommendations] = useState("");
+  const [backOfficeNotes, setBackOfficeNotes] = useState("");
+  const [serviceStatement, setServiceStatement] = useState(SERVICE_STATEMENTS.operational);
+
+  // Auto-update service statement based on condition
+  const handleConditionChange = (condition: string) => {
+    setSystemCondition(condition);
+    if (condition === "operational") {
+      setServiceStatement(SERVICE_STATEMENTS.operational);
+    } else {
+      setServiceStatement(SERVICE_STATEMENTS.non_operational);
+    }
+  };
+
+  // Fault history management
+  const addFaultEntry = () => {
+    setFaultHistory([...faultHistory, { date: new Date().toISOString().split('T')[0], fault: "", resolved: false }]);
+  };
+
+  const updateFaultEntry = (index: number, field: keyof FaultHistoryEntry, value: string | boolean) => {
+    const updated = [...faultHistory];
+    updated[index] = { ...updated[index], [field]: value };
+    setFaultHistory(updated);
+  };
+
+  const removeFaultEntry = (index: number) => {
+    setFaultHistory(faultHistory.filter((_, i) => i !== index));
+  };
 
   // Handle URL parameters for creating a job from contract
   useEffect(() => {
@@ -157,9 +206,16 @@ export default function Jobs() {
     setSelectedClientId("");
     setSelectedContractId("");
     setSiteAddress("");
-    setWorksheetType("annual_service");
+    setWorksheetType("routine_service");
     setEngineerCount(1);
     setEngineers([{ name: "", competency: "competent" }]);
+    setSystemAge("");
+    setSystemInstallDate("");
+    setSystemCondition("operational");
+    setFaultHistory([]);
+    setRecommendations("");
+    setBackOfficeNotes("");
+    setServiceStatement(SERVICE_STATEMENTS.operational);
   };
 
   const updateEngineerCount = (count: number) => {
@@ -272,6 +328,14 @@ export default function Jobs() {
       quotedAmount: parseFloat(formData.get("quotedAmount") as string) || null,
       assignedTechnicianId: formData.get("assignedTechnicianId") as string || null,
       notes: formData.get("notes") as string || null,
+      // Visit report fields
+      systemAge: systemAge || null,
+      systemInstallDate: systemInstallDate || null,
+      systemCondition: systemCondition,
+      faultHistory: faultHistory.filter(f => f.fault.trim() !== ""),
+      recommendations: recommendations || null,
+      backOfficeNotes: backOfficeNotes || null,
+      serviceStatement: serviceStatement || null,
     });
   };
 
@@ -574,6 +638,165 @@ export default function Jobs() {
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea id="notes" name="notes" rows={2} data-testid="input-notes" />
+                </div>
+
+                {/* Visit Report Section */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Visit Report Information
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="systemAge">System Age</Label>
+                      <Input 
+                        id="systemAge" 
+                        value={systemAge} 
+                        onChange={(e) => setSystemAge(e.target.value)}
+                        placeholder="e.g., 5 years, Installed 2019"
+                        data-testid="input-system-age"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="systemInstallDate">Install Date</Label>
+                      <Input 
+                        id="systemInstallDate" 
+                        type="date"
+                        value={systemInstallDate} 
+                        onChange={(e) => setSystemInstallDate(e.target.value)}
+                        data-testid="input-system-install-date"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <Label>System Condition</Label>
+                    <Select value={systemCondition} onValueChange={handleConditionChange}>
+                      <SelectTrigger data-testid="select-system-condition">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SYSTEM_CONDITION_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {systemCondition !== "operational" && (
+                      <div className="flex items-center gap-2 p-2 bg-destructive/10 rounded text-sm text-destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        System is not fully operational - requires attention
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fault History */}
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center justify-between">
+                      <Label>Fault History</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addFaultEntry} data-testid="button-add-fault">
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Fault
+                      </Button>
+                    </div>
+                    {faultHistory.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No faults recorded</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {faultHistory.map((entry, index) => (
+                          <div key={index} className="border rounded p-3 space-y-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              <Input 
+                                type="date"
+                                value={entry.date}
+                                onChange={(e) => updateFaultEntry(index, "date", e.target.value)}
+                                data-testid={`input-fault-date-${index}`}
+                              />
+                              <Input 
+                                value={entry.fault}
+                                onChange={(e) => updateFaultEntry(index, "fault", e.target.value)}
+                                placeholder="Fault description"
+                                className="col-span-2"
+                                data-testid={`input-fault-desc-${index}`}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input 
+                                  type="checkbox"
+                                  checked={entry.resolved}
+                                  onChange={(e) => updateFaultEntry(index, "resolved", e.target.checked)}
+                                  className="rounded"
+                                  data-testid={`checkbox-fault-resolved-${index}`}
+                                />
+                                Resolved
+                              </label>
+                              {entry.resolved && (
+                                <Input 
+                                  value={entry.resolution || ""}
+                                  onChange={(e) => updateFaultEntry(index, "resolution", e.target.value)}
+                                  placeholder="Resolution details"
+                                  className="flex-1"
+                                  data-testid={`input-fault-resolution-${index}`}
+                                />
+                              )}
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => removeFaultEntry(index)}
+                                data-testid={`button-remove-fault-${index}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <Label htmlFor="recommendations">Recommendations</Label>
+                    <Textarea 
+                      id="recommendations"
+                      value={recommendations}
+                      onChange={(e) => setRecommendations(e.target.value)}
+                      rows={2}
+                      placeholder="Recommendations for the client..."
+                      data-testid="input-recommendations"
+                    />
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <Label htmlFor="backOfficeNotes" className="flex items-center gap-2">
+                      Back Office Notes
+                      <Badge variant="outline" className="text-xs">Internal Only</Badge>
+                    </Label>
+                    <Textarea 
+                      id="backOfficeNotes"
+                      value={backOfficeNotes}
+                      onChange={(e) => setBackOfficeNotes(e.target.value)}
+                      rows={2}
+                      placeholder="Private notes - not visible to client..."
+                      data-testid="input-back-office-notes"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceStatement">Service Statement</Label>
+                    <Textarea 
+                      id="serviceStatement"
+                      value={serviceStatement}
+                      onChange={(e) => setServiceStatement(e.target.value)}
+                      rows={4}
+                      className="text-sm"
+                      data-testid="input-service-statement"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Auto-populated based on system condition. BS 7346-8:2013+A1:2019 compliant.
+                    </p>
+                  </div>
                 </div>
               </div>
               <DialogFooter>

@@ -735,6 +735,14 @@ export const jobs = pgTable("jobs", {
   notes: text("notes"),
   completionNotes: text("completion_notes"),
   customerSignature: text("customer_signature"),
+  // Visit Report Fields
+  systemAge: text("system_age"), // e.g., "5 years", "Installed 2019"
+  systemInstallDate: text("system_install_date"),
+  systemCondition: text("system_condition").default("operational"), // operational, impaired, non_operational
+  faultHistory: jsonb("fault_history").$type<{ date: string; fault: string; resolved: boolean; resolution?: string }[]>().default([]),
+  recommendations: text("recommendations"),
+  backOfficeNotes: text("back_office_notes"), // Private notes - not visible to client
+  serviceStatement: text("service_statement"), // Compliance statement based on condition
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -757,6 +765,19 @@ export const SERVICE_VISIT_TYPES = [
   { value: "diagnostic_testing", label: "Diagnostic Testing Visit" },
   { value: "goodwill", label: "Free of Charge / Goodwill Visit" },
 ] as const;
+
+// System Condition Options for visit reports
+export const SYSTEM_CONDITION_OPTIONS = [
+  { value: "operational", label: "Operational" },
+  { value: "impaired", label: "Impaired / Partial Operation" },
+  { value: "non_operational", label: "Non-Operational" },
+] as const;
+
+// BS 7346-8:2013+A1:2019 Compliance Service Statements
+export const SERVICE_STATEMENTS = {
+  operational: `The smoke ventilation system has been inspected, tested and serviced in accordance with BS 7346-8:2013+A1:2019, Clause 11. All functional tests, electrical readings and visual inspections have been completed in line with the manufacturer's instructions. The system was found to be operational at the time of attendance, subject to the defects and observations recorded on this worksheet.`,
+  non_operational: `The smoke ventilation system was found to be non-operational or impaired at the time of attendance. This condition represents a non-compliance with BS 7346-8:2013+A1:2019 and may affect life safety. Immediate remedial action is required.`,
+} as const;
 
 // Quotes table
 export const quotes = pgTable("quotes", {
