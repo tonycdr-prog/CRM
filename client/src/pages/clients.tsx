@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { PostcodeLookup } from "@/components/PostcodeLookup";
 import {
   Dialog,
   DialogContent,
@@ -96,6 +97,24 @@ export default function Clients() {
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState("all");
+  const [formAddress, setFormAddress] = useState("");
+  const [formCity, setFormCity] = useState("");
+  const [formPostcode, setFormPostcode] = useState("");
+
+  const resetClientFormState = () => {
+    setFormAddress("");
+    setFormCity("");
+    setFormPostcode("");
+  };
+
+  const handleAddressFound = (address: { postcode: string; address1: string; address2: string; city: string; county: string; country: string }) => {
+    setFormPostcode(address.postcode);
+    setFormCity(address.city);
+    if (address.address2) {
+      setFormAddress(address.address2);
+    }
+    toast({ title: "Address found", description: `${address.city}, ${address.postcode}` });
+  };
 
   const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients", user?.id],
@@ -182,9 +201,9 @@ export default function Clients() {
       contactName: formData.get("contactName") as string || null,
       email: formData.get("email") as string || null,
       phone: formData.get("phone") as string || null,
-      address: formData.get("address") as string || null,
-      city: formData.get("city") as string || null,
-      postcode: formData.get("postcode") as string || null,
+      address: formAddress || null,
+      city: formCity || null,
+      postcode: formPostcode || null,
       vatNumber: formData.get("vatNumber") as string || null,
       paymentTerms: parseInt(formData.get("paymentTerms") as string) || 30,
       notes: formData.get("notes") as string || null,
@@ -238,7 +257,7 @@ export default function Clients() {
           <h1 className="text-2xl font-bold" data-testid="text-clients-title">Clients</h1>
           <p className="text-muted-foreground">Manage your customer database</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetClientFormState(); }}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-client">
               <Plus className="h-4 w-4 mr-2" />
@@ -273,17 +292,21 @@ export default function Clients() {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label>Postcode Lookup</Label>
+                  <PostcodeLookup onAddressFound={handleAddressFound} />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="address">Address</Label>
-                  <Input id="address" name="address" data-testid="input-address" />
+                  <Input id="address" name="address" value={formAddress} onChange={(e) => setFormAddress(e.target.value)} data-testid="input-address" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
-                    <Input id="city" name="city" data-testid="input-city" />
+                    <Input id="city" name="city" value={formCity} onChange={(e) => setFormCity(e.target.value)} data-testid="input-city" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="postcode">Postcode</Label>
-                    <Input id="postcode" name="postcode" data-testid="input-postcode" />
+                    <Input id="postcode" name="postcode" value={formPostcode} onChange={(e) => setFormPostcode(e.target.value)} data-testid="input-postcode" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { PostcodeLookup } from "@/components/PostcodeLookup";
 import {
   Dialog,
   DialogContent,
@@ -412,6 +413,15 @@ export default function Jobs() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Postcode Lookup</Label>
+                  <PostcodeLookup 
+                    onAddressFound={(addr) => {
+                      const fullAddress = [addr.address2, addr.city, addr.postcode].filter(Boolean).join(", ");
+                      setSiteAddress(fullAddress);
+                    }} 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="siteAddress">Site Address {selectedClientId && "(Auto-filled from client)"}</Label>
