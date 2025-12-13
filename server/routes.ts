@@ -10,6 +10,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
   await setupAuth(app);
 
+  // ============================================
+  // SEED TEST USER (for TEST_MODE in frontend)
+  // ============================================
+  try {
+    await storage.upsertUser({
+      id: "test-user-shared",
+      email: "test-shared@example.com",
+      firstName: "Test",
+      lastName: "User",
+    });
+    console.log("Test user seeded successfully");
+  } catch (error) {
+    console.error("Failed to seed test user:", error);
+  }
+
   // Get current authenticated user
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
@@ -454,9 +469,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/jobs", async (req, res) => {
     try {
+      console.log("Creating job with data:", JSON.stringify(req.body, null, 2));
       const job = await storage.createJob(req.body);
       res.json(job);
     } catch (error) {
+      console.error("Error creating job:", error);
       res.status(500).json({ error: "Failed to create job" });
     }
   });

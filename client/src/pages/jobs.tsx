@@ -57,6 +57,7 @@ interface Job {
   userId: string;
   clientId: string | null;
   contractId: string | null;
+  projectId: string | null;
   jobNumber: string;
   title: string;
   description: string | null;
@@ -64,16 +65,19 @@ interface Job {
   priority: string;
   status: string;
   scheduledDate: string | null;
-  completedDate: string | null;
+  scheduledTime: string | null;
   siteAddress: string | null;
-  siteCity: string | null;
-  sitePostcode: string | null;
-  estimatedHours: number | null;
-  actualHours: number | null;
-  estimatedCost: string | null;
-  actualCost: string | null;
-  assignedTo: string | null;
+  estimatedDuration: number | null;
+  actualDuration: number | null;
+  quotedAmount: number | null;
+  actualCost: number | null;
+  materialsCost: number | null;
+  labourCost: number | null;
+  assignedTechnicianId: string | null;
+  assignedSubcontractorId: string | null;
   notes: string | null;
+  completionNotes: string | null;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,8 +107,6 @@ export default function Jobs() {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [selectedContractId, setSelectedContractId] = useState<string>("");
   const [siteAddress, setSiteAddress] = useState("");
-  const [siteCity, setSiteCity] = useState("");
-  const [sitePostcode, setSitePostcode] = useState("");
 
   // Handle URL parameters for creating a job from contract
   useEffect(() => {
@@ -125,8 +127,6 @@ export default function Jobs() {
     const client = clients.find(c => c.id === clientId);
     if (client) {
       if (client.address) setSiteAddress(client.address);
-      if (client.city) setSiteCity(client.city);
-      if (client.postcode) setSitePostcode(client.postcode);
     }
     setSelectedContractId("");
   };
@@ -143,8 +143,6 @@ export default function Jobs() {
     setSelectedClientId("");
     setSelectedContractId("");
     setSiteAddress("");
-    setSiteCity("");
-    setSitePostcode("");
   };
 
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
@@ -221,7 +219,6 @@ export default function Jobs() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     createJobMutation.mutate({
-      id: nanoid(),
       userId: user?.id,
       clientId: formData.get("clientId") as string || null,
       contractId: formData.get("contractId") as string || null,
@@ -233,11 +230,9 @@ export default function Jobs() {
       status: "pending",
       scheduledDate: formData.get("scheduledDate") as string || null,
       siteAddress: formData.get("siteAddress") as string || null,
-      siteCity: formData.get("siteCity") as string || null,
-      sitePostcode: formData.get("sitePostcode") as string || null,
-      estimatedHours: parseFloat(formData.get("estimatedHours") as string) || null,
-      estimatedCost: formData.get("estimatedCost") as string || null,
-      assignedTo: formData.get("assignedTo") as string || null,
+      estimatedDuration: parseFloat(formData.get("estimatedDuration") as string) || null,
+      quotedAmount: parseFloat(formData.get("quotedAmount") as string) || null,
+      assignedTechnicianId: formData.get("assignedTechnicianId") as string || null,
       notes: formData.get("notes") as string || null,
     });
   };
@@ -322,8 +317,8 @@ export default function Jobs() {
                 { key: "jobType", header: "Type" },
                 { key: "scheduledDate", header: "Scheduled Date" },
                 { key: "siteAddress", header: "Site Address" },
-                { key: "siteCity", header: "City" },
-                { key: "sitePostcode", header: "Postcode" },
+                { key: "estimatedDuration", header: "Est. Hours" },
+                { key: "quotedAmount", header: "Quoted Amount" },
               ]
             )}
             data-testid="button-export-jobs"
@@ -422,33 +417,23 @@ export default function Jobs() {
                   <Label htmlFor="siteAddress">Site Address {selectedClientId && "(Auto-filled from client)"}</Label>
                   <Input id="siteAddress" name="siteAddress" value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} data-testid="input-site-address" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="siteCity">City</Label>
-                    <Input id="siteCity" name="siteCity" value={siteCity} onChange={(e) => setSiteCity(e.target.value)} data-testid="input-site-city" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sitePostcode">Postcode</Label>
-                    <Input id="sitePostcode" name="sitePostcode" value={sitePostcode} onChange={(e) => setSitePostcode(e.target.value)} data-testid="input-site-postcode" />
-                  </div>
-                </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="scheduledDate">Scheduled Date</Label>
                     <Input id="scheduledDate" name="scheduledDate" type="date" data-testid="input-scheduled-date" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="estimatedHours">Est. Hours</Label>
-                    <Input id="estimatedHours" name="estimatedHours" type="number" step="0.5" data-testid="input-estimated-hours" />
+                    <Label htmlFor="estimatedDuration">Est. Hours</Label>
+                    <Input id="estimatedDuration" name="estimatedDuration" type="number" step="0.5" data-testid="input-estimated-duration" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="estimatedCost">Est. Cost (GBP)</Label>
-                    <Input id="estimatedCost" name="estimatedCost" type="number" step="0.01" data-testid="input-estimated-cost" />
+                    <Label htmlFor="quotedAmount">Quoted Amount (£)</Label>
+                    <Input id="quotedAmount" name="quotedAmount" type="number" step="0.01" data-testid="input-quoted-amount" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="assignedTo">Assigned To</Label>
-                  <Input id="assignedTo" name="assignedTo" data-testid="input-assigned-to" />
+                  <Label htmlFor="assignedTechnicianId">Assigned Technician</Label>
+                  <Input id="assignedTechnicianId" name="assignedTechnicianId" data-testid="input-assigned-technician" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
@@ -587,7 +572,7 @@ export default function Jobs() {
                         <Play className="h-4 w-4 mr-2" />
                         Start Job
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => updateJobMutation.mutate({ id: job.id, data: { status: "completed", completedDate: new Date().toISOString() } })}>
+                      <DropdownMenuItem onClick={() => updateJobMutation.mutate({ id: job.id, data: { status: "completed", completedAt: new Date().toISOString() } })}>
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Mark Complete
                       </DropdownMenuItem>
@@ -611,7 +596,7 @@ export default function Jobs() {
                   {job.siteAddress && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="h-4 w-4" />
-                      <span>{job.siteCity || job.siteAddress}</span>
+                      <span>{job.siteAddress}</span>
                     </div>
                   )}
                   {job.scheduledDate && (
@@ -620,16 +605,16 @@ export default function Jobs() {
                       <span>{format(parseISO(job.scheduledDate), "MMM d, yyyy")}</span>
                     </div>
                   )}
-                  {job.estimatedHours && (
+                  {job.estimatedDuration && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span>{job.estimatedHours}h estimated</span>
+                      <span>{job.estimatedDuration}h estimated</span>
                     </div>
                   )}
-                  {job.estimatedCost && (
+                  {job.quotedAmount && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <DollarSign className="h-4 w-4" />
-                      <span>£{parseFloat(job.estimatedCost).toLocaleString()}</span>
+                      <span>£{job.quotedAmount.toLocaleString()}</span>
                     </div>
                   )}
                 </div>

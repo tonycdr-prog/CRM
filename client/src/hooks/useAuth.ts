@@ -8,7 +8,7 @@ const TEST_MODE_ENABLED = true;
 
 const TEST_USER: User = {
   id: "test-user-shared",
-  email: "tester@example.com",
+  email: "test-shared@example.com",
   firstName: "Test",
   lastName: "User",
   profileImageUrl: null,
