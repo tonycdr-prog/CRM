@@ -743,6 +743,8 @@ export const jobs = pgTable("jobs", {
   recommendations: text("recommendations"),
   backOfficeNotes: text("back_office_notes"), // Private notes - not visible to client
   serviceStatement: text("service_statement"), // Compliance statement based on condition
+  // Multiple systems per visit
+  systems: jsonb("systems").$type<{ systemType: string; location: string; notes?: string }[]>().default([]),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -751,6 +753,28 @@ export const jobs = pgTable("jobs", {
 export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true });
 export type InsertJob = z.infer<typeof insertJobSchema>;
 export type DbJob = typeof jobs.$inferSelect;
+
+// Smoke Control System Types - systems that can be serviced on a visit
+export const SMOKE_CONTROL_SYSTEM_TYPES = [
+  { value: "mshev", label: "MSHEV (Mechanical Smoke & Heat Exhaust)" },
+  { value: "shev", label: "SHEV (Natural Smoke & Heat Exhaust)" },
+  { value: "aov", label: "AOV (Automatic Opening Vent)" },
+  { value: "stairwell_aov", label: "Stairwell AOV" },
+  { value: "lobby_aov", label: "Lobby AOV" },
+  { value: "car_park", label: "Car Park Ventilation" },
+  { value: "pressurisation", label: "Pressurisation System" },
+  { value: "stairwell_pressurisation", label: "Stairwell Pressurisation" },
+  { value: "lobby_pressurisation", label: "Lobby Pressurisation" },
+  { value: "corridor_pressurisation", label: "Corridor Pressurisation" },
+  { value: "smoke_shaft", label: "Smoke Shaft" },
+  { value: "smoke_curtain", label: "Smoke Curtain / Barrier" },
+  { value: "fire_curtain", label: "Fire Curtain" },
+  { value: "damper_system", label: "Smoke Control Dampers" },
+  { value: "extract_fan", label: "Smoke Extract Fan" },
+  { value: "supply_fan", label: "Air Supply Fan" },
+  { value: "bms_interface", label: "BMS / Fire Alarm Interface" },
+  { value: "other", label: "Other (specify in notes)" },
+] as const;
 
 // Service Visit Types - purpose/type of each site visit
 export const SERVICE_VISIT_TYPES = [
