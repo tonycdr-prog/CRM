@@ -53,8 +53,8 @@ import { nanoid } from "nanoid";
 import { Link, useSearch } from "wouter";
 import { useEffect } from "react";
 import { exportToCSV } from "@/lib/exportUtils";
-import { SERVICE_VISIT_TYPES, SMOKE_CONTROL_SYSTEM_TYPES } from "@shared/schema";
-import { Settings } from "lucide-react";
+import { SERVICE_VISIT_TYPES, SMOKE_CONTROL_SYSTEM_TYPES, SYSTEM_CONDITION_OPTIONS, SERVICE_STATEMENTS } from "@shared/schema";
+import { Settings, AlertTriangle, FileText, ClipboardCheck } from "lucide-react";
 
 interface FaultHistoryEntry {
   date: string;
@@ -147,6 +147,21 @@ export default function Jobs() {
   // Multiple systems per visit
   const [systems, setSystems] = useState<SystemEntry[]>([]);
 
+  // Complete Visit dialog state
+  const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
+  const [selectedJobForCompletion, setSelectedJobForCompletion] = useState<Job | null>(null);
+  
+  // Complete Visit form fields
+  const [completeSystemAge, setCompleteSystemAge] = useState("");
+  const [completeSystemInstallDate, setCompleteSystemInstallDate] = useState("");
+  const [completeSystemCondition, setCompleteSystemCondition] = useState("operational");
+  const [completeFaultHistory, setCompleteFaultHistory] = useState<FaultHistoryEntry[]>([]);
+  const [completeRecommendations, setCompleteRecommendations] = useState("");
+  const [completeBackOfficeNotes, setCompleteBackOfficeNotes] = useState("");
+  const [completeServiceStatement, setCompleteServiceStatement] = useState(SERVICE_STATEMENTS.operational);
+  const [completeCompletionNotes, setCompleteCompletionNotes] = useState("");
+  const [completeActualDuration, setCompleteActualDuration] = useState("");
+
   // Systems management
   const addSystem = () => {
     setSystems([...systems, { systemType: "", location: "", notes: "" }]);
@@ -160,6 +175,57 @@ export default function Jobs() {
 
   const removeSystem = (index: number) => {
     setSystems(systems.filter((_, i) => i !== index));
+  };
+
+  // Complete Visit helpers
+  const handleConditionChange = (condition: string) => {
+    setCompleteSystemCondition(condition);
+    if (condition === "operational") {
+      setCompleteServiceStatement(SERVICE_STATEMENTS.operational);
+    } else {
+      setCompleteServiceStatement(SERVICE_STATEMENTS.non_operational);
+    }
+  };
+
+  const addFaultEntry = () => {
+    setCompleteFaultHistory([...completeFaultHistory, { date: new Date().toISOString().split('T')[0], fault: "", resolved: false }]);
+  };
+
+  const updateFaultEntry = (index: number, field: keyof FaultHistoryEntry, value: string | boolean) => {
+    const updated = [...completeFaultHistory];
+    updated[index] = { ...updated[index], [field]: value };
+    setCompleteFaultHistory(updated);
+  };
+
+  const removeFaultEntry = (index: number) => {
+    setCompleteFaultHistory(completeFaultHistory.filter((_, i) => i !== index));
+  };
+
+  const openCompleteDialog = (job: Job) => {
+    setSelectedJobForCompletion(job);
+    setCompleteSystemAge(job.systemAge || "");
+    setCompleteSystemInstallDate(job.systemInstallDate || "");
+    setCompleteSystemCondition(job.systemCondition || "operational");
+    setCompleteFaultHistory(job.faultHistory || []);
+    setCompleteRecommendations(job.recommendations || "");
+    setCompleteBackOfficeNotes(job.backOfficeNotes || "");
+    setCompleteServiceStatement(job.serviceStatement || SERVICE_STATEMENTS.operational);
+    setCompleteCompletionNotes(job.completionNotes || "");
+    setCompleteActualDuration(job.actualDuration?.toString() || "");
+    setIsCompleteDialogOpen(true);
+  };
+
+  const resetCompleteFormState = () => {
+    setSelectedJobForCompletion(null);
+    setCompleteSystemAge("");
+    setCompleteSystemInstallDate("");
+    setCompleteSystemCondition("operational");
+    setCompleteFaultHistory([]);
+    setCompleteRecommendations("");
+    setCompleteBackOfficeNotes("");
+    setCompleteServiceStatement(SERVICE_STATEMENTS.operational);
+    setCompleteCompletionNotes("");
+    setCompleteActualDuration("");
   };
 
   // Handle URL parameters for creating a job from contract
@@ -280,6 +346,42 @@ export default function Jobs() {
       toast({ title: "Failed to delete job", variant: "destructive" });
     },
   });
+
+  const completeJobMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Job> }) => {
+      return apiRequest("PATCH", `/api/jobs/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
+      setIsCompleteDialogOpen(false);
+      resetCompleteFormState();
+      toast({ title: "Visit completed successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to complete visit", variant: "destructive" });
+    },
+  });
+
+  const handleCompleteVisit = () => {
+    if (!selectedJobForCompletion) return;
+    
+    completeJobMutation.mutate({
+      id: selectedJobForCompletion.id,
+      data: {
+        status: "completed",
+        completedAt: new Date().toISOString(),
+        systemAge: completeSystemAge || null,
+        systemInstallDate: completeSystemInstallDate || null,
+        systemCondition: completeSystemCondition,
+        faultHistory: completeFaultHistory,
+        recommendations: completeRecommendations || null,
+        backOfficeNotes: completeBackOfficeNotes || null,
+        serviceStatement: completeServiceStatement || null,
+        completionNotes: completeCompletionNotes || null,
+        actualDuration: parseFloat(completeActualDuration) || null,
+      },
+    });
+  };
 
   const filteredJobs = jobs.filter((job) => {
     const matchesSearch = 
@@ -793,26 +895,37 @@ export default function Jobs() {
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" data-testid={`button-job-menu-${job.id}`}>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => updateJobMutation.mutate({ id: job.id, data: { status: "in_progress" } })}>
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Job
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => updateJobMutation.mutate({ id: job.id, data: { status: "completed", completedAt: new Date().toISOString() } })}>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Mark Complete
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      {(job.status === "pending" || job.status === "scheduled") && (
+                        <DropdownMenuItem 
+                          onClick={() => updateJobMutation.mutate({ id: job.id, data: { status: "in_progress" } })}
+                          data-testid={`button-start-job-${job.id}`}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Start Job
+                        </DropdownMenuItem>
+                      )}
+                      {job.status === "in_progress" && (
+                        <DropdownMenuItem 
+                          onClick={() => openCompleteDialog(job)}
+                          data-testid={`button-complete-visit-${job.id}`}
+                        >
+                          <ClipboardCheck className="h-4 w-4 mr-2" />
+                          Complete Visit
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem data-testid={`button-edit-job-${job.id}`}>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-destructive"
                         onClick={() => deleteJobMutation.mutate(job.id)}
+                        data-testid={`button-delete-job-${job.id}`}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
@@ -882,6 +995,218 @@ export default function Jobs() {
           ))}
         </div>
       )}
+
+      {/* Complete Visit Dialog */}
+      <Dialog open={isCompleteDialogOpen} onOpenChange={(open) => { setIsCompleteDialogOpen(open); if (!open) resetCompleteFormState(); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5" />
+              Complete Visit
+            </DialogTitle>
+            <DialogDescription>
+              {selectedJobForCompletion && (
+                <span>
+                  Complete visit report for <strong>{selectedJobForCompletion.title}</strong> ({selectedJobForCompletion.jobNumber})
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            {/* System Information */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                <Settings className="h-4 w-4" />
+                System Information
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>System Age</Label>
+                  <Input 
+                    value={completeSystemAge}
+                    onChange={(e) => setCompleteSystemAge(e.target.value)}
+                    placeholder="e.g., 5 years"
+                    data-testid="input-complete-system-age"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Install Date</Label>
+                  <Input 
+                    type="date"
+                    value={completeSystemInstallDate}
+                    onChange={(e) => setCompleteSystemInstallDate(e.target.value)}
+                    data-testid="input-complete-install-date"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* System Condition */}
+            <div className="space-y-2">
+              <Label>System Condition</Label>
+              <Select value={completeSystemCondition} onValueChange={handleConditionChange}>
+                <SelectTrigger data-testid="select-complete-condition">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SYSTEM_CONDITION_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {completeSystemCondition !== "operational" && (
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm mt-1">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>Non-operational condition - requires immediate attention</span>
+                </div>
+              )}
+            </div>
+
+            {/* Fault History */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Fault History
+                </h4>
+                <Button type="button" variant="outline" size="sm" onClick={addFaultEntry} data-testid="button-add-fault">
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Fault
+                </Button>
+              </div>
+              {completeFaultHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No faults recorded. Click "Add Fault" to record issues found.</p>
+              ) : (
+                <div className="space-y-3">
+                  {completeFaultHistory.map((fault, index) => (
+                    <div key={index} className="border rounded p-3 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input 
+                          type="date"
+                          value={fault.date}
+                          onChange={(e) => updateFaultEntry(index, "date", e.target.value)}
+                          data-testid={`input-fault-date-${index}`}
+                        />
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="checkbox" 
+                            checked={fault.resolved}
+                            onChange={(e) => updateFaultEntry(index, "resolved", e.target.checked)}
+                            className="h-4 w-4"
+                            data-testid={`checkbox-fault-resolved-${index}`}
+                          />
+                          <Label className="text-sm">Resolved</Label>
+                        </div>
+                      </div>
+                      <Input 
+                        value={fault.fault}
+                        onChange={(e) => updateFaultEntry(index, "fault", e.target.value)}
+                        placeholder="Describe the fault"
+                        data-testid={`input-fault-description-${index}`}
+                      />
+                      {fault.resolved && (
+                        <Input 
+                          value={fault.resolution || ""}
+                          onChange={(e) => updateFaultEntry(index, "resolution", e.target.value)}
+                          placeholder="Resolution details"
+                          data-testid={`input-fault-resolution-${index}`}
+                        />
+                      )}
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeFaultEntry(index)} data-testid={`button-remove-fault-${index}`}>
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Recommendations */}
+            <div className="space-y-2">
+              <Label>Recommendations</Label>
+              <Textarea 
+                value={completeRecommendations}
+                onChange={(e) => setCompleteRecommendations(e.target.value)}
+                placeholder="Enter any recommendations for the client..."
+                rows={3}
+                data-testid="input-complete-recommendations"
+              />
+            </div>
+
+            {/* Completion Details */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                <CheckCircle className="h-4 w-4" />
+                Completion Details
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Actual Duration (hours)</Label>
+                  <Input 
+                    type="number"
+                    step="0.5"
+                    value={completeActualDuration}
+                    onChange={(e) => setCompleteActualDuration(e.target.value)}
+                    placeholder="e.g., 4.5"
+                    data-testid="input-complete-duration"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 mt-4">
+                <Label>Completion Notes</Label>
+                <Textarea 
+                  value={completeCompletionNotes}
+                  onChange={(e) => setCompleteCompletionNotes(e.target.value)}
+                  placeholder="Summary of work completed..."
+                  rows={3}
+                  data-testid="input-complete-notes"
+                />
+              </div>
+            </div>
+
+            {/* Back Office Notes */}
+            <div className="space-y-2">
+              <Label>Back Office Notes (Internal)</Label>
+              <Textarea 
+                value={completeBackOfficeNotes}
+                onChange={(e) => setCompleteBackOfficeNotes(e.target.value)}
+                placeholder="Internal notes for the back office..."
+                rows={2}
+                data-testid="input-complete-backoffice"
+              />
+            </div>
+
+            {/* Service Statement */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4" />
+                Service Statement
+              </h4>
+              <div className="bg-muted/50 p-3 rounded text-sm">
+                {completeServiceStatement}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                This statement is automatically generated based on the system condition and will be included in the report.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsCompleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCompleteVisit} 
+              disabled={completeJobMutation.isPending}
+              data-testid="button-submit-complete"
+            >
+              {completeJobMutation.isPending ? "Completing..." : "Complete Visit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
