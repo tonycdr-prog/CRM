@@ -53,14 +53,20 @@ import { nanoid } from "nanoid";
 import { Link, useSearch } from "wouter";
 import { useEffect } from "react";
 import { exportToCSV } from "@/lib/exportUtils";
-import { SERVICE_VISIT_TYPES, SYSTEM_CONDITION_OPTIONS, SERVICE_STATEMENTS } from "@shared/schema";
-import { AlertTriangle, FileText } from "lucide-react";
+import { SERVICE_VISIT_TYPES, SYSTEM_CONDITION_OPTIONS, SERVICE_STATEMENTS, SMOKE_CONTROL_SYSTEM_TYPES } from "@shared/schema";
+import { AlertTriangle, FileText, Settings } from "lucide-react";
 
 interface FaultHistoryEntry {
   date: string;
   fault: string;
   resolved: boolean;
   resolution?: string;
+}
+
+interface SystemEntry {
+  systemType: string;
+  location: string;
+  notes?: string;
 }
 
 interface Engineer {
@@ -104,6 +110,7 @@ interface Job {
   recommendations: string | null;
   backOfficeNotes: string | null;
   serviceStatement: string | null;
+  systems: SystemEntry[];
   createdAt: string;
   updatedAt: string;
 }
@@ -145,6 +152,24 @@ export default function Jobs() {
   const [recommendations, setRecommendations] = useState("");
   const [backOfficeNotes, setBackOfficeNotes] = useState("");
   const [serviceStatement, setServiceStatement] = useState(SERVICE_STATEMENTS.operational);
+  
+  // Multiple systems per visit
+  const [systems, setSystems] = useState<SystemEntry[]>([]);
+
+  // Systems management
+  const addSystem = () => {
+    setSystems([...systems, { systemType: "", location: "", notes: "" }]);
+  };
+
+  const updateSystem = (index: number, field: keyof SystemEntry, value: string) => {
+    const updated = [...systems];
+    updated[index] = { ...updated[index], [field]: value };
+    setSystems(updated);
+  };
+
+  const removeSystem = (index: number) => {
+    setSystems(systems.filter((_, i) => i !== index));
+  };
 
   // Auto-update service statement based on condition
   const handleConditionChange = (condition: string) => {
@@ -216,6 +241,7 @@ export default function Jobs() {
     setRecommendations("");
     setBackOfficeNotes("");
     setServiceStatement(SERVICE_STATEMENTS.operational);
+    setSystems([]);
   };
 
   const updateEngineerCount = (count: number) => {
@@ -336,6 +362,8 @@ export default function Jobs() {
       recommendations: recommendations || null,
       backOfficeNotes: backOfficeNotes || null,
       serviceStatement: serviceStatement || null,
+      // Systems to service
+      systems: systems.filter(s => s.systemType !== ""),
     });
   };
 
@@ -638,6 +666,60 @@ export default function Jobs() {
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea id="notes" name="notes" rows={2} data-testid="input-notes" />
+                </div>
+
+                {/* Systems Section */}
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Systems to Service
+                    </h4>
+                    <Button type="button" variant="outline" size="sm" onClick={addSystem} data-testid="button-add-system">
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add System
+                    </Button>
+                  </div>
+                  {systems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No systems added. Click "Add System" to specify which systems are being serviced.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {systems.map((system, index) => (
+                        <div key={index} className="border rounded p-3 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Select value={system.systemType} onValueChange={(v) => updateSystem(index, "systemType", v)}>
+                              <SelectTrigger data-testid={`select-system-type-${index}`}>
+                                <SelectValue placeholder="Select system type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SMOKE_CONTROL_SYSTEM_TYPES.map(type => (
+                                  <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Input 
+                              value={system.location}
+                              onChange={(e) => updateSystem(index, "location", e.target.value)}
+                              placeholder="Location (e.g., Stair 1, Levels B2-L10)"
+                              data-testid={`input-system-location-${index}`}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Input 
+                              value={system.notes || ""}
+                              onChange={(e) => updateSystem(index, "notes", e.target.value)}
+                              placeholder="Notes (optional)"
+                              className="flex-1"
+                              data-testid={`input-system-notes-${index}`}
+                            />
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeSystem(index)} data-testid={`button-remove-system-${index}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Visit Report Section */}
@@ -985,6 +1067,23 @@ export default function Jobs() {
                 </div>
                 {job.description && (
                   <p className="text-sm text-muted-foreground mt-3">{job.description}</p>
+                )}
+                {job.systems && job.systems.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="text-sm font-medium flex items-center gap-1">
+                      <Settings className="h-3 w-3" />
+                      Systems:
+                    </span>
+                    {job.systems.map((system, idx) => {
+                      const systemType = SMOKE_CONTROL_SYSTEM_TYPES.find(t => t.value === system.systemType);
+                      return (
+                        <Badge key={idx} variant="secondary" className="text-xs" data-testid={`badge-system-${job.id}-${idx}`}>
+                          {systemType?.label || system.systemType}
+                          {system.location && ` - ${system.location}`}
+                        </Badge>
+                      );
+                    })}
+                  </div>
                 )}
               </CardContent>
             </Card>
