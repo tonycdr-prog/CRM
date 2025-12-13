@@ -1432,14 +1432,16 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type DbNotification = typeof notifications.$inferSelect;
 
-// Recurring Jobs - scheduled repeat jobs
+// Recurring Jobs - scheduled repeat jobs with contract-based scheduling
 export const recurringJobs = pgTable("recurring_jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
   templateId: varchar("template_id").references(() => jobTemplates.id),
   clientId: varchar("client_id").references(() => clients.id),
+  contractId: varchar("contract_id").references(() => contracts.id),
   name: text("name").notNull(),
   description: text("description"),
+  serviceType: text("service_type"), // damper_testing, pressure_testing, maintenance, inspection
   frequency: text("frequency").notNull(), // daily, weekly, monthly, quarterly, biannually, annually
   interval: integer("interval").default(1), // e.g., every 2 weeks
   dayOfWeek: integer("day_of_week"), // 0-6 for weekly
@@ -1453,6 +1455,8 @@ export const recurringJobs = pgTable("recurring_jobs", {
   assignedTechnician: text("assigned_technician"),
   priority: text("priority").default("medium"),
   autoCreateDays: integer("auto_create_days").default(14), // days before due to create job
+  reminderDaysBefore: integer("reminder_days_before").default(7), // days before due to send reminder
+  lastReminderSent: text("last_reminder_sent"), // timestamp of last reminder
   isActive: boolean("is_active").default(true),
   jobsGenerated: integer("jobs_generated").default(0),
   createdAt: timestamp("created_at").defaultNow(),
