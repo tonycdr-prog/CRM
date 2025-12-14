@@ -65,7 +65,8 @@ import {
   HardHat,
   FolderKanban,
   ScrollText,
-  Settings
+  Settings,
+  Link2
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -169,6 +170,7 @@ const menuSections: MenuSection[] = [
     title: "Compliance & Safety",
     icon: ShieldCheck,
     items: [
+      { title: "Golden Thread", url: "/golden-thread", icon: Link2 },
       { title: "Incidents", url: "/incidents", icon: AlertTriangle },
       { title: "Risk Assessments", url: "/risk-assessments", icon: ShieldCheck },
       { title: "Defect Register", url: "/defects", icon: AlertOctagon },

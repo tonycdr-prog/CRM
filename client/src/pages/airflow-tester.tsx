@@ -143,6 +143,9 @@ export default function AirflowTester() {
   const [damperClosedImage, setDamperClosedImage] = useState<string | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Predictive readings pre-load
+  const [designVelocity, setDesignVelocity] = useState<number | "">("");
+  
   // Deviation narrative state
   const [failureReasonCode, setFailureReasonCode] = useState<string | undefined>(undefined);
   const [failureNarrative, setFailureNarrative] = useState<string | undefined>(undefined);
@@ -308,6 +311,34 @@ export default function AirflowTester() {
     setReadings(newReadings);
   };
 
+  // Pre-fill all readings with design velocity
+  const handlePrefillGrid = () => {
+    if (typeof designVelocity !== "number" || designVelocity <= 0) {
+      toast({
+        title: "Invalid design velocity",
+        description: "Please enter a valid design velocity before pre-filling",
+        variant: "destructive",
+      });
+      return;
+    }
+    const requiredPoints = gridSize * gridSize;
+    const prefilled = Array(requiredPoints).fill(designVelocity);
+    setReadings(prefilled);
+    toast({
+      title: "Grid pre-filled",
+      description: `All ${requiredPoints} readings set to ${designVelocity} m/s. Adjust only where readings differ.`,
+    });
+  };
+
+  // Check if a reading deviates from design velocity (>10% difference)
+  const isDeviatedFromDesign = (reading: number | ""): boolean => {
+    if (typeof reading !== "number" || typeof designVelocity !== "number" || designVelocity <= 0) {
+      return false;
+    }
+    const deviation = Math.abs(reading - designVelocity) / designVelocity;
+    return deviation > 0.1; // More than 10% difference
+  };
+
   const calculateAverage = (): number | null => {
     const validReadings = readings.filter((r): r is number => typeof r === "number" && !isNaN(r));
     if (validReadings.length === 0) return null;
@@ -338,6 +369,7 @@ export default function AirflowTester() {
     setGridSize(5);
     setTestDate(new Date().toISOString().split('T')[0]);
     setEditingId(null);
+    setDesignVelocity("");
     // Clear failure fields
     setFailureReasonCode(undefined);
     setFailureNarrative(undefined);
@@ -2036,6 +2068,46 @@ export default function AirflowTester() {
                 </p>
               </CardHeader>
               <CardContent>
+                {/* Predictive readings pre-fill section */}
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                  <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                    <div className="flex-1 space-y-1">
+                      <Label htmlFor="design-velocity" className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                        Design Velocity (Expected)
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="design-velocity"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          placeholder="e.g. 2.5"
+                          value={designVelocity}
+                          onChange={(e) => setDesignVelocity(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                          className="pr-12"
+                          data-testid="input-design-velocity"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          m/s
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handlePrefillGrid}
+                      disabled={typeof designVelocity !== "number" || designVelocity <= 0}
+                      className="whitespace-nowrap"
+                      data-testid="button-prefill-grid"
+                    >
+                      <LayoutGrid className="w-4 h-4 mr-2" />
+                      Pre-fill Grid
+                    </Button>
+                  </div>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    Enter the expected design velocity and pre-fill the grid. Then adjust only readings that differ from expected.
+                  </p>
+                </div>
                 {anomalies.length > 0 && (
                   <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
                     <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
@@ -2056,9 +2128,10 @@ export default function AirflowTester() {
                   {readings.map((reading, index) => {
                     const positionLabels = generatePositionLabels(gridSize);
                     const anomaly = anomalies.find(a => a.index === index);
+                    const deviated = isDeviatedFromDesign(reading);
                     return (
                       <div key={index} className="space-y-2">
-                        <Label htmlFor={`reading-${index}`} className="text-sm font-medium flex items-center gap-1">
+                        <Label htmlFor={`reading-${index}`} className="text-sm font-medium flex items-center gap-1 flex-wrap">
                           {positionLabels[index]}
                           {anomaly && (
                             <Badge 
@@ -2070,6 +2143,15 @@ export default function AirflowTester() {
                               }`}
                             >
                               {anomaly.type === 'negative' ? 'Negative' : anomaly.type === 'high' ? 'High' : 'Low'}
+                            </Badge>
+                          )}
+                          {deviated && !anomaly && (
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800"
+                              data-testid={`badge-deviated-${index + 1}`}
+                            >
+                              Adjusted
                             </Badge>
                           )}
                         </Label>
@@ -2087,7 +2169,9 @@ export default function AirflowTester() {
                                 ? anomaly.type === 'negative'
                                   ? 'border-red-500 focus-visible:ring-red-500'
                                   : 'border-amber-500 focus-visible:ring-amber-500'
-                                : ''
+                                : deviated
+                                  ? 'border-purple-500 focus-visible:ring-purple-500'
+                                  : ''
                             }`}
                             data-testid={`input-reading-${index + 1}`}
                           />
