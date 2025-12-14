@@ -491,7 +491,7 @@ export default function GoldenThread() {
         <TabsContent value="checklist" className="space-y-4">
           {selectedBuilding && (
             <>
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-5">
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">Total Documents</CardTitle>
@@ -506,6 +506,14 @@ export default function GoldenThread() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-verified-documents">{getChecklistStats().verified}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-muted-foreground" data-testid="text-pending-documents">{getChecklistStats().pending}</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -531,7 +539,7 @@ export default function GoldenThread() {
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <CardTitle>{selectedBuilding.name} - Document Checklist</CardTitle>
-                      <CardDescription>Track required documentation for Building Safety Act compliance</CardDescription>
+                      <CardDescription>Track required documentation for Building Safety Act compliance <span className="text-destructive">*</span> = mandatory</CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
                       <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -664,7 +672,7 @@ export default function GoldenThread() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
                                     <p className="font-medium">{doc.name}</p>
-                                    {doc.required && <Badge variant="outline" className="text-xs">Required</Badge>}
+                                    {doc.required && <span className="text-xs font-medium text-destructive">*</span>}
                                   </div>
                                   <p className="text-sm text-muted-foreground truncate">{doc.description}</p>
                                 </div>
