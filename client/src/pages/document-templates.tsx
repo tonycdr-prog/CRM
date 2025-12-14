@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, FileText, Copy, CheckCircle } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Copy, CheckCircle, Sparkles, Download } from "lucide-react";
 
 interface DocumentTemplate {
   id: string;
@@ -48,6 +48,193 @@ const defaultFormData = {
   isActive: true,
   notes: "",
 };
+
+// Pre-built starter templates
+const STARTER_TEMPLATES = [
+  {
+    name: "Cover Letter - Site Survey",
+    description: "Professional cover letter for site survey documentation",
+    templateType: "letter",
+    category: "smoke_control",
+    content: `Dear {{client_name}},
+
+Re: Smoke Control System Survey - {{site_address}}
+
+Thank you for instructing us to carry out a survey of the smoke control system at the above address.
+
+Please find enclosed our survey report dated {{survey_date}}, which details our findings and recommendations.
+
+If you have any questions regarding this report, please do not hesitate to contact us.
+
+Yours sincerely,
+
+{{engineer_name}}
+{{company_name}}`,
+    headerText: "{{company_name}} | {{company_address}} | Tel: {{company_phone}}",
+    footerText: "Company Registration: {{company_reg}} | VAT: {{vat_number}}",
+  },
+  {
+    name: "Project Quote - Smoke Control",
+    description: "Standard quote template for smoke control projects",
+    templateType: "quote",
+    category: "smoke_control",
+    content: `QUOTATION
+
+To: {{client_name}}
+Address: {{client_address}}
+Date: {{quote_date}}
+Quote Ref: {{quote_ref}}
+Valid Until: {{valid_until}}
+
+RE: {{project_title}} - {{site_address}}
+
+Following our site survey, we are pleased to submit our quotation for the works detailed below:
+
+SCOPE OF WORKS:
+{{scope_of_works}}
+
+PRICE:
+Labour and Materials: £{{price_exc_vat}}
+VAT (20%): £{{vat_amount}}
+TOTAL: £{{total_price}}
+
+PAYMENT TERMS:
+{{payment_terms}}
+
+PROGRAMME:
+Works can commence within {{lead_time}} of order confirmation.
+Estimated duration: {{duration}}
+
+We trust this quotation meets with your approval and look forward to receiving your instructions.`,
+    termsAndConditions: `1. This quotation is valid for 30 days from the date shown.
+2. Payment terms: 30 days from invoice date.
+3. All works carried out in accordance with BS EN 12101 and relevant regulations.
+4. Price excludes any remedial works not detailed in the scope.
+5. Access to be provided by the client during normal working hours.`,
+  },
+  {
+    name: "Survey Report - Smoke Control",
+    description: "Comprehensive survey report template for smoke control systems",
+    templateType: "report",
+    category: "smoke_control",
+    content: `SMOKE CONTROL SYSTEM SURVEY REPORT
+
+Client: {{client_name}}
+Site Address: {{site_address}}
+Survey Date: {{survey_date}}
+Engineer: {{engineer_name}}
+Report Ref: {{report_ref}}
+
+1. INTRODUCTION
+This report details the findings of our survey of the smoke control system at the above address, carried out on {{survey_date}}.
+
+2. SYSTEM DESCRIPTION
+System Type: {{system_type}}
+Manufacturer: {{manufacturer}}
+Age of System: {{system_age}}
+Number of Dampers: {{damper_count}}
+Control Panel Location: {{panel_location}}
+
+3. SURVEY FINDINGS
+{{survey_findings}}
+
+4. COMPLIANCE STATUS
+Current Compliance: {{compliance_status}}
+Testing Standard: BS EN 12101-8 / BSRIA BG 49/2024
+
+5. RECOMMENDATIONS
+{{recommendations}}
+
+6. PRIORITY ACTIONS
+{{priority_actions}}
+
+7. CONCLUSION
+{{conclusion}}
+
+Report prepared by: {{engineer_name}}
+Qualifications: {{engineer_qualifications}}
+Date: {{report_date}}`,
+    headerText: "SMOKE CONTROL SURVEY REPORT | {{company_name}}",
+    footerText: "This report is confidential and intended for the named recipient only.",
+  },
+  {
+    name: "Service Certificate",
+    description: "Completion certificate for smoke control servicing",
+    templateType: "certificate",
+    category: "smoke_control",
+    content: `SERVICE COMPLETION CERTIFICATE
+
+Certificate No: {{certificate_number}}
+Date of Issue: {{issue_date}}
+
+This is to certify that:
+
+Site: {{site_address}}
+Client: {{client_name}}
+System Type: {{system_type}}
+
+Has been serviced and tested in accordance with:
+- BS EN 12101-8:2011
+- BSRIA BG 49/2024
+- Regulatory Reform (Fire Safety) Order 2005
+
+SERVICE DETAILS:
+Date of Service: {{service_date}}
+Type of Service: {{service_type}}
+Job Reference: {{job_reference}}
+
+SYSTEM STATUS:
+Overall Condition: {{system_condition}}
+Operational Status: {{operational_status}}
+
+TEST RESULTS:
+{{test_results}}
+
+ENGINEER DECLARATION:
+I confirm that the above system has been inspected and tested, and at the time of this certificate was found to be in {{condition_statement}} condition.
+
+Engineer Name: {{engineer_name}}
+Signature: ___________________
+Date: {{signature_date}}
+
+Next Service Due: {{next_service_date}}`,
+    headerText: "{{company_name}} - SERVICE CERTIFICATE",
+    footerText: "Retain this certificate for your records. Next service due: {{next_service_date}}",
+  },
+  {
+    name: "Cover Letter - Annual Service",
+    description: "Cover letter for annual maintenance service visits",
+    templateType: "letter",
+    category: "maintenance",
+    content: `Dear {{client_name}},
+
+Re: Annual Smoke Control System Service - {{site_address}}
+
+We are writing to confirm that the annual service of your smoke control system has been completed.
+
+Service Date: {{service_date}}
+Engineer: {{engineer_name}}
+Job Reference: {{job_reference}}
+
+Please find enclosed:
+- Service Completion Certificate
+- Test Results Summary
+- Recommendations Report (if applicable)
+
+System Status: {{system_status}}
+
+{{additional_comments}}
+
+If you have any questions or require further information, please do not hesitate to contact our office.
+
+Yours sincerely,
+
+{{signatory_name}}
+{{company_name}}`,
+    headerText: "{{company_name}}",
+    footerText: "For queries: {{company_phone}} | {{company_email}}",
+  },
+];
 
 export default function DocumentTemplatesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -93,6 +280,23 @@ export default function DocumentTemplatesPage() {
   const resetForm = () => {
     setFormData(defaultFormData);
     setEditingTemplate(null);
+  };
+
+  const useStarterTemplate = (template: typeof STARTER_TEMPLATES[0]) => {
+    setFormData({
+      name: template.name,
+      description: template.description || "",
+      templateType: template.templateType,
+      category: template.category,
+      content: template.content,
+      headerText: template.headerText || "",
+      footerText: template.footerText || "",
+      termsAndConditions: template.termsAndConditions || "",
+      isDefault: false,
+      isActive: true,
+      notes: "",
+    });
+    setIsDialogOpen(true);
   };
 
   const handleEdit = (template: DocumentTemplate) => {
@@ -293,11 +497,38 @@ export default function DocumentTemplatesPage() {
         </Dialog>
       </div>
 
+      {/* Starter Templates Section */}
+      <Card data-testid="card-starter-templates">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Starter Templates
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Pre-built templates for common smoke control documents</p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {STARTER_TEMPLATES.map((template, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                onClick={() => useStarterTemplate(template)}
+                data-testid={`button-starter-${index}`}
+              >
+                <Download className="h-3 w-3 mr-1" />
+                {template.name}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {templates.length === 0 ? (
         <Card data-testid="empty-state">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No document templates yet. Create your first template.</p>
+            <p className="text-muted-foreground">No document templates yet. Use a starter template or create your own.</p>
           </CardContent>
         </Card>
       ) : (
