@@ -68,6 +68,52 @@ const MOTOR_LIFESPAN_HOURS = 20000; // Industry standard motor lifespan
 const MOTOR_WARNING_THRESHOLD = 0.8; // Warn at 80% of lifespan (16,000 hours)
 const HOURS_PER_YEAR_TYPICAL = 2920; // Assuming 8 hours/day operation
 
+// Shift Types
+const SHIFT_TYPES = [
+  { value: "standard", label: "Standard Day (08:00 - 17:00)", start: "08:00", end: "17:00" },
+  { value: "early", label: "Early Shift (06:00 - 14:00)", start: "06:00", end: "14:00" },
+  { value: "late", label: "Late Shift (14:00 - 22:00)", start: "14:00", end: "22:00" },
+  { value: "night", label: "Night Shift (22:00 - 06:00)", start: "22:00", end: "06:00" },
+  { value: "weekend", label: "Weekend (08:00 - 16:00)", start: "08:00", end: "16:00" },
+  { value: "custom", label: "Custom Time", start: "", end: "" },
+];
+
+// Competency requirements for job types
+const JOB_COMPETENCY_REQUIREMENTS: Record<string, { minLevel: string; certifications: string[] }> = {
+  commissioning: { minLevel: "senior", certifications: ["SDI 19", "CSCS", "IPAF"] },
+  remedial: { minLevel: "competent", certifications: ["CSCS"] },
+  reactive: { minLevel: "competent", certifications: ["CSCS"] },
+  inspection: { minLevel: "competent", certifications: ["SDI 19"] },
+  maintenance: { minLevel: "trainee", certifications: [] },
+};
+
+const COMPETENCY_LEVELS = ["trainee", "competent", "senior", "lead"];
+
+// Check if competency level meets job requirements
+function checkCompetencyAdequacy(jobType: string, engineers: { name: string; competency: string }[]): { adequate: boolean; warning: string | null } {
+  const requirements = JOB_COMPETENCY_REQUIREMENTS[jobType];
+  if (!requirements) return { adequate: true, warning: null };
+  
+  const minLevelIndex = COMPETENCY_LEVELS.indexOf(requirements.minLevel);
+  const hasAdequateEngineer = engineers.some(eng => {
+    if (!eng.name) return false;
+    const engLevelIndex = COMPETENCY_LEVELS.indexOf(eng.competency);
+    return engLevelIndex >= minLevelIndex;
+  });
+  
+  if (!hasAdequateEngineer && engineers.some(eng => eng.name)) {
+    const certList = requirements.certifications.length > 0 
+      ? ` Recommended certifications: ${requirements.certifications.join(", ")}.`
+      : "";
+    return {
+      adequate: false,
+      warning: `${jobType.charAt(0).toUpperCase() + jobType.slice(1)} jobs typically require a ${requirements.minLevel} level engineer or above.${certList} You may proceed if risk has been assessed.`,
+    };
+  }
+  
+  return { adequate: true, warning: null };
+}
+
 // Calculate estimated running hours from system age
 function calculateMotorRunningHours(systemAge: string): { hours: number; isEstimate: boolean } | null {
   if (!systemAge) return null;
@@ -216,6 +262,10 @@ export default function Jobs() {
   const [worksheetType, setWorksheetType] = useState("routine_service");
   const [engineerCount, setEngineerCount] = useState(1);
   const [engineers, setEngineers] = useState<Engineer[]>([{ name: "", competency: "competent" }]);
+  const [shiftType, setShiftType] = useState("standard");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [jobType, setJobType] = useState("inspection");
+  const [competencyWarningAcknowledged, setCompetencyWarningAcknowledged] = useState(false);
   
   // Multiple systems per visit
   const [systems, setSystems] = useState<SystemEntry[]>([]);
@@ -405,6 +455,10 @@ export default function Jobs() {
     setEngineerCount(1);
     setEngineers([{ name: "", competency: "competent" }]);
     setSystems([]);
+    setShiftType("standard");
+    setScheduledTime("");
+    setJobType("inspection");
+    setCompetencyWarningAcknowledged(false);
   };
 
   const updateEngineerCount = (count: number) => {
@@ -417,12 +471,16 @@ export default function Jobs() {
       newEngineers.pop();
     }
     setEngineers(newEngineers);
+    // Reset competency acknowledgment when engineer count changes
+    setCompetencyWarningAcknowledged(false);
   };
 
   const updateEngineer = (index: number, field: "name" | "competency", value: string) => {
     const newEngineers = [...engineers];
     newEngineers[index] = { ...newEngineers[index], [field]: value };
     setEngineers(newEngineers);
+    // Reset competency acknowledgment when engineer details change
+    setCompetencyWarningAcknowledged(false);
   };
 
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
@@ -535,6 +593,29 @@ export default function Jobs() {
   const handleCreateJob = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
+    // Check competency and warn if not acknowledged
+    const competencyCheck = checkCompetencyAdequacy(jobType, engineers);
+    if (!competencyCheck.adequate && !competencyWarningAcknowledged) {
+      toast({ 
+        title: "Competency Warning", 
+        description: "Please acknowledge the competency warning before proceeding.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Determine scheduled time based on shift type
+    const selectedShift = SHIFT_TYPES.find(s => s.value === shiftType);
+    const finalScheduledTime = shiftType === "custom" ? scheduledTime : (selectedShift?.start || null);
+    
+    // Build notes with shift metadata for reference
+    const existingNotes = formData.get("notes") as string || "";
+    const shiftInfo = selectedShift ? `[Shift: ${selectedShift.label}${selectedShift.end ? ` (${selectedShift.start}-${selectedShift.end})` : ""}]` : "";
+    const notesWithShift = shiftInfo && !existingNotes.includes("[Shift:") 
+      ? (existingNotes ? `${existingNotes}\n${shiftInfo}` : shiftInfo)
+      : existingNotes;
+    
     createJobMutation.mutate({
       userId: user?.id,
       clientId: formData.get("clientId") as string || null,
@@ -542,18 +623,19 @@ export default function Jobs() {
       jobNumber: formData.get("jobNumber") as string || `JOB-${Date.now()}`,
       title: formData.get("title") as string,
       description: formData.get("description") as string || null,
-      jobType: formData.get("jobType") as string,
+      jobType: jobType,
       worksheetType: worksheetType,
       engineerCount: engineerCount,
       engineerNames: engineers.filter(e => e.name.trim() !== ""),
       priority: formData.get("priority") as string,
       status: "pending",
       scheduledDate: formData.get("scheduledDate") as string || null,
+      scheduledTime: finalScheduledTime,
       siteAddress: formData.get("siteAddress") as string || null,
       estimatedDuration: parseFloat(formData.get("estimatedDuration") as string) || null,
       quotedAmount: parseFloat(formData.get("quotedAmount") as string) || null,
       assignedTechnicianId: formData.get("assignedTechnicianId") as string || null,
-      notes: formData.get("notes") as string || null,
+      notes: notesWithShift || null,
       // Systems to service
       systems: systems.filter(s => s.systemType !== ""),
     });
@@ -735,7 +817,7 @@ export default function Jobs() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="jobType">Job Type</Label>
-                    <Select name="jobType" defaultValue="inspection">
+                    <Select value={jobType} onValueChange={(v) => { setJobType(v); setCompetencyWarningAcknowledged(false); }}>
                       <SelectTrigger data-testid="select-job-type">
                         <SelectValue />
                       </SelectTrigger>
@@ -820,6 +902,35 @@ export default function Jobs() {
                     </div>
                   </div>
                 ))}
+                {/* Competency Warning Alert */}
+                {(() => {
+                  const competencyCheck = checkCompetencyAdequacy(jobType, engineers);
+                  
+                  if (!competencyCheck.adequate && competencyCheck.warning) {
+                    return (
+                      <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-3" data-testid="competency-warning">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm text-amber-800 dark:text-amber-200">{competencyCheck.warning}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Checkbox 
+                                id="competencyAcknowledge" 
+                                checked={competencyWarningAcknowledged}
+                                onCheckedChange={(checked) => setCompetencyWarningAcknowledged(checked === true)}
+                                data-testid="checkbox-acknowledge-competency"
+                              />
+                              <label htmlFor="competencyAcknowledge" className="text-sm text-amber-700 dark:text-amber-300">
+                                Risk assessed - proceed with current engineer selection
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="space-y-2">
                   <Label>Postcode Lookup</Label>
                   <PostcodeLookup 
@@ -833,11 +944,38 @@ export default function Jobs() {
                   <Label htmlFor="siteAddress">Site Address {selectedClientId && "(Auto-filled from client)"}</Label>
                   <Input id="siteAddress" name="siteAddress" value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} data-testid="input-site-address" />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="scheduledDate">Scheduled Date</Label>
                     <Input id="scheduledDate" name="scheduledDate" type="date" data-testid="input-scheduled-date" />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="shiftType">Shift / Working Hours</Label>
+                    <Select value={shiftType} onValueChange={setShiftType}>
+                      <SelectTrigger data-testid="select-shift-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SHIFT_TYPES.map(shift => (
+                          <SelectItem key={shift.value} value={shift.value}>{shift.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {shiftType === "custom" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduledTime">Custom Start Time</Label>
+                    <Input 
+                      id="scheduledTime" 
+                      type="time" 
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      data-testid="input-scheduled-time" 
+                    />
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="estimatedDuration">Est. Hours</Label>
                     <Input id="estimatedDuration" name="estimatedDuration" type="number" step="0.5" data-testid="input-estimated-duration" />

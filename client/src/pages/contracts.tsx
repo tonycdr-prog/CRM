@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,8 @@ import {
   Edit,
   Trash2,
   RefreshCw,
-  Briefcase
+  Briefcase,
+  Calculator
 } from "lucide-react";
 import { Link } from "wouter";
 import {
@@ -52,8 +53,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { format, differenceInDays, parseISO, subDays } from "date-fns";
 import { nanoid } from "nanoid";
+
+// Constants for auto-calculation
+const RENEWAL_LEAD_DAYS = 60; // Renewal date is 60 days before end date
 
 interface Contract {
   id: string;
@@ -87,6 +91,60 @@ export default function Contracts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // Controlled form state for contract creation
+  const [formTitle, setFormTitle] = useState("");
+  const [formContractNumber, setFormContractNumber] = useState("");
+  const [formClientId, setFormClientId] = useState("");
+  const [formContractType, setFormContractType] = useState("annual_maintenance");
+  const [formValue, setFormValue] = useState("");
+  const [formAutoRenew, setFormAutoRenew] = useState("false");
+  const [formStartDate, setFormStartDate] = useState("");
+  const [formEndDate, setFormEndDate] = useState("");
+  const [formRenewalDate, setFormRenewalDate] = useState("");
+  const [formSlaResponseTime, setFormSlaResponseTime] = useState("");
+  const [formSlaResolutionTime, setFormSlaResolutionTime] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formTerms, setFormTerms] = useState("");
+  const [renewalAutoCalculated, setRenewalAutoCalculated] = useState(false);
+
+  // Auto-calculate renewal date when end date changes
+  useEffect(() => {
+    if (formEndDate) {
+      try {
+        const endDateObj = parseISO(formEndDate);
+        const renewalDateObj = subDays(endDateObj, RENEWAL_LEAD_DAYS);
+        const calculatedRenewalDate = format(renewalDateObj, "yyyy-MM-dd");
+        setFormRenewalDate(calculatedRenewalDate);
+        setRenewalAutoCalculated(true);
+      } catch {
+        // Invalid date format, don't auto-calculate
+      }
+    } else {
+      if (renewalAutoCalculated) {
+        setFormRenewalDate("");
+        setRenewalAutoCalculated(false);
+      }
+    }
+  }, [formEndDate]);
+
+  // Reset form state
+  const resetFormState = () => {
+    setFormTitle("");
+    setFormContractNumber("");
+    setFormClientId("");
+    setFormContractType("annual_maintenance");
+    setFormValue("");
+    setFormAutoRenew("false");
+    setFormStartDate("");
+    setFormEndDate("");
+    setFormRenewalDate("");
+    setFormSlaResponseTime("");
+    setFormSlaResolutionTime("");
+    setFormDescription("");
+    setFormTerms("");
+    setRenewalAutoCalculated(false);
+  };
 
   const { data: contracts = [], isLoading } = useQuery<Contract[]>({
     queryKey: ["/api/contracts", user?.id],
@@ -105,6 +163,7 @@ export default function Contracts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contracts", user?.id] });
       setIsCreateDialogOpen(false);
+      resetFormState();
       toast({ title: "Contract created successfully" });
     },
     onError: () => {
@@ -145,23 +204,22 @@ export default function Contracts() {
 
   const handleCreateContract = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
     createContractMutation.mutate({
       id: nanoid(),
       userId: user?.id,
-      clientId: formData.get("clientId") as string || null,
-      contractNumber: formData.get("contractNumber") as string || `CON-${Date.now()}`,
-      title: formData.get("title") as string,
-      description: formData.get("description") as string || null,
-      contractType: formData.get("contractType") as string,
-      value: formData.get("value") as string || "0",
-      startDate: formData.get("startDate") as string,
-      endDate: formData.get("endDate") as string || null,
-      renewalDate: formData.get("renewalDate") as string || null,
-      autoRenew: formData.get("autoRenew") === "true",
-      slaResponseTime: parseInt(formData.get("slaResponseTime") as string) || null,
-      slaResolutionTime: parseInt(formData.get("slaResolutionTime") as string) || null,
-      terms: formData.get("terms") as string || null,
+      clientId: formClientId || null,
+      contractNumber: formContractNumber || `CON-${Date.now()}`,
+      title: formTitle,
+      description: formDescription || null,
+      contractType: formContractType,
+      value: formValue || "0",
+      startDate: formStartDate,
+      endDate: formEndDate || null,
+      renewalDate: formRenewalDate || null,
+      autoRenew: formAutoRenew === "true",
+      slaResponseTime: parseInt(formSlaResponseTime) || null,
+      slaResolutionTime: parseInt(formSlaResolutionTime) || null,
+      terms: formTerms || null,
       status: "active",
     });
   };
@@ -217,7 +275,10 @@ export default function Contracts() {
           <h1 className="text-2xl font-bold" data-testid="text-contracts-title">Contracts</h1>
           <p className="text-muted-foreground">Manage service agreements and SLAs</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+          setIsCreateDialogOpen(open);
+          if (!open) resetFormState();
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-contract">
               <Plus className="h-4 w-4 mr-2" />
@@ -234,17 +295,29 @@ export default function Contracts() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="title">Contract Title *</Label>
-                    <Input id="title" name="title" required data-testid="input-contract-title" />
+                    <Input 
+                      id="title" 
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                      required 
+                      data-testid="input-contract-title" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="contractNumber">Contract Number</Label>
-                    <Input id="contractNumber" name="contractNumber" placeholder="Auto-generated" data-testid="input-contract-number" />
+                    <Input 
+                      id="contractNumber" 
+                      value={formContractNumber}
+                      onChange={(e) => setFormContractNumber(e.target.value)}
+                      placeholder="Auto-generated" 
+                      data-testid="input-contract-number" 
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="clientId">Client</Label>
-                    <Select name="clientId">
+                    <Select value={formClientId} onValueChange={setFormClientId}>
                       <SelectTrigger data-testid="select-contract-client">
                         <SelectValue placeholder="Select client" />
                       </SelectTrigger>
@@ -259,7 +332,7 @@ export default function Contracts() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="contractType">Contract Type</Label>
-                    <Select name="contractType" defaultValue="annual_maintenance">
+                    <Select value={formContractType} onValueChange={setFormContractType}>
                       <SelectTrigger data-testid="select-contract-type">
                         <SelectValue />
                       </SelectTrigger>
@@ -275,11 +348,18 @@ export default function Contracts() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="value">Contract Value (GBP)</Label>
-                    <Input id="value" name="value" type="number" step="0.01" data-testid="input-contract-value" />
+                    <Input 
+                      id="value" 
+                      value={formValue}
+                      onChange={(e) => setFormValue(e.target.value)}
+                      type="number" 
+                      step="0.01" 
+                      data-testid="input-contract-value" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="autoRenew">Auto Renew</Label>
-                    <Select name="autoRenew" defaultValue="false">
+                    <Select value={formAutoRenew} onValueChange={setFormAutoRenew}>
                       <SelectTrigger data-testid="select-auto-renew">
                         <SelectValue />
                       </SelectTrigger>
@@ -293,38 +373,100 @@ export default function Contracts() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="startDate">Start Date *</Label>
-                    <Input id="startDate" name="startDate" type="date" required data-testid="input-start-date" />
+                    <Input 
+                      id="startDate" 
+                      value={formStartDate}
+                      onChange={(e) => setFormStartDate(e.target.value)}
+                      type="date" 
+                      required 
+                      data-testid="input-start-date" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="endDate">End Date</Label>
-                    <Input id="endDate" name="endDate" type="date" data-testid="input-end-date" />
+                    <Input 
+                      id="endDate" 
+                      value={formEndDate}
+                      onChange={(e) => setFormEndDate(e.target.value)}
+                      type="date" 
+                      data-testid="input-end-date" 
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="renewalDate">Renewal Date</Label>
-                    <Input id="renewalDate" name="renewalDate" type="date" data-testid="input-renewal-date" />
+                    <Label htmlFor="renewalDate" className="flex items-center gap-1">
+                      Renewal Date
+                      {renewalAutoCalculated && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calculator className="h-3 w-3" />
+                          Auto
+                        </span>
+                      )}
+                    </Label>
+                    <Input 
+                      id="renewalDate" 
+                      value={formRenewalDate}
+                      onChange={(e) => {
+                        setFormRenewalDate(e.target.value);
+                        setRenewalAutoCalculated(false);
+                      }}
+                      type="date" 
+                      data-testid="input-renewal-date" 
+                    />
+                    {renewalAutoCalculated && (
+                      <p className="text-xs text-muted-foreground">
+                        Calculated as {RENEWAL_LEAD_DAYS} days before end date
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="slaResponseTime">SLA Response (hours)</Label>
-                    <Input id="slaResponseTime" name="slaResponseTime" type="number" data-testid="input-sla-response" />
+                    <Input 
+                      id="slaResponseTime" 
+                      value={formSlaResponseTime}
+                      onChange={(e) => setFormSlaResponseTime(e.target.value)}
+                      type="number" 
+                      data-testid="input-sla-response" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="slaResolutionTime">SLA Resolution (hours)</Label>
-                    <Input id="slaResolutionTime" name="slaResolutionTime" type="number" data-testid="input-sla-resolution" />
+                    <Input 
+                      id="slaResolutionTime" 
+                      value={formSlaResolutionTime}
+                      onChange={(e) => setFormSlaResolutionTime(e.target.value)}
+                      type="number" 
+                      data-testid="input-sla-resolution" 
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="description" rows={2} data-testid="input-description" />
+                  <Textarea 
+                    id="description" 
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    rows={2} 
+                    data-testid="input-description" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="terms">Terms & Conditions</Label>
-                  <Textarea id="terms" name="terms" rows={3} data-testid="input-terms" />
+                  <Textarea 
+                    id="terms" 
+                    value={formTerms}
+                    onChange={(e) => setFormTerms(e.target.value)}
+                    rows={3} 
+                    data-testid="input-terms" 
+                  />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => {
+                  setIsCreateDialogOpen(false);
+                  resetFormState();
+                }}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={createContractMutation.isPending} data-testid="button-save-contract">
