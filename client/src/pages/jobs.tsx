@@ -63,10 +63,9 @@ import { exportToCSV } from "@/lib/exportUtils";
 import { SERVICE_VISIT_TYPES, SMOKE_CONTROL_SYSTEM_TYPES, SYSTEM_CONDITION_OPTIONS, SERVICE_STATEMENTS, SYSTEM_CHECKLIST_TEMPLATES, type SystemChecklistItem } from "@shared/schema";
 import { Settings, AlertTriangle, FileText, ClipboardCheck, Fan } from "lucide-react";
 
-// Fan Motor Life Tracking Constants
-const MOTOR_LIFESPAN_HOURS = 20000; // Industry standard motor lifespan
-const MOTOR_WARNING_THRESHOLD = 0.8; // Warn at 80% of lifespan (16,000 hours)
+// Fan System Age & Runtime Estimation (Advisory Only - Not Compliance Indicators)
 const HOURS_PER_YEAR_TYPICAL = 2920; // Assuming 8 hours/day operation
+const MANUFACTURER_DESIGN_LIFE_YEARS = 15; // Typical manufacturer stated design life
 
 // Shift Types
 const SHIFT_TYPES = [
@@ -114,64 +113,40 @@ function checkCompetencyAdequacy(jobType: string, engineers: { name: string; com
   return { adequate: true, warning: null };
 }
 
-// Calculate estimated running hours from system age
-function calculateMotorRunningHours(systemAge: string): { hours: number; isEstimate: boolean } | null {
+// Calculate estimated running hours from system age (Advisory Only)
+function calculateEstimatedRuntime(systemAge: string): { hours: number; years: number } | null {
   if (!systemAge) return null;
   
-  // Try to parse years from common formats like "5 years", "5", "5y", "5 yrs"
   const yearMatch = systemAge.match(/^(\d+(?:\.\d+)?)\s*(?:years?|yrs?|y)?$/i);
   if (yearMatch) {
     const years = parseFloat(yearMatch[1]);
-    return { hours: Math.round(years * HOURS_PER_YEAR_TYPICAL), isEstimate: true };
+    return { hours: Math.round(years * HOURS_PER_YEAR_TYPICAL), years };
   }
   
-  // Try to parse months
   const monthMatch = systemAge.match(/^(\d+(?:\.\d+)?)\s*(?:months?|mo?s?)$/i);
   if (monthMatch) {
     const months = parseFloat(monthMatch[1]);
-    return { hours: Math.round((months / 12) * HOURS_PER_YEAR_TYPICAL), isEstimate: true };
+    return { hours: Math.round((months / 12) * HOURS_PER_YEAR_TYPICAL), years: months / 12 };
   }
   
   return null;
 }
 
-// Get motor life status and warning message
-function getMotorLifeStatus(hours: number): { 
-  status: 'ok' | 'warning' | 'critical' | 'exceeded';
+// Get age-based insight (Advisory Only - Does Not Determine Compliance)
+function getAgeInsight(years: number): { 
+  stage: 'new' | 'mid-life' | 'mature' | 'aged';
   message: string;
-  percentUsed: number;
 } {
-  const percentUsed = (hours / MOTOR_LIFESPAN_HOURS) * 100;
-  
-  if (hours > MOTOR_LIFESPAN_HOURS) {
-    return {
-      status: 'exceeded',
-      message: `Motor lifespan exceeded! Approximately ${hours.toLocaleString()} running hours (${Math.round(percentUsed)}% of ${MOTOR_LIFESPAN_HOURS.toLocaleString()}hr lifespan). Immediate replacement recommended.`,
-      percentUsed,
-    };
+  if (years <= 5) {
+    return { stage: 'new', message: 'System within early operational period' };
   }
-  
-  if (hours > MOTOR_LIFESPAN_HOURS * MOTOR_WARNING_THRESHOLD) {
-    return {
-      status: 'critical',
-      message: `Motor nearing end of life! Approximately ${hours.toLocaleString()} running hours (${Math.round(percentUsed)}% of lifespan). Schedule replacement within next service cycle.`,
-      percentUsed,
-    };
+  if (years <= 10) {
+    return { stage: 'mid-life', message: 'System in mid-life operational period' };
   }
-  
-  if (hours > MOTOR_LIFESPAN_HOURS * 0.6) {
-    return {
-      status: 'warning',
-      message: `Motor at ${Math.round(percentUsed)}% of expected lifespan (${hours.toLocaleString()}hrs of ${MOTOR_LIFESPAN_HOURS.toLocaleString()}hrs). Consider proactive replacement planning.`,
-      percentUsed,
-    };
+  if (years <= MANUFACTURER_DESIGN_LIFE_YEARS) {
+    return { stage: 'mature', message: 'System approaching typical manufacturer design life' };
   }
-  
-  return {
-    status: 'ok',
-    message: `Motor running hours: ~${hours.toLocaleString()} (${Math.round(percentUsed)}% of ${MOTOR_LIFESPAN_HOURS.toLocaleString()}hr lifespan)`,
-    percentUsed,
-  };
+  return { stage: 'aged', message: `System beyond typical ${MANUFACTURER_DESIGN_LIFE_YEARS}-year manufacturer design life` };
 }
 
 interface FaultHistoryEntry {
@@ -1318,54 +1293,36 @@ export default function Jobs() {
                 </div>
               </div>
               
-              {/* Fan Motor Life Warning */}
+              {/* System Age Insight (Advisory Only) */}
               {(() => {
-                const motorCalc = calculateMotorRunningHours(completeSystemAge);
-                if (!motorCalc) return null;
-                const motorStatus = getMotorLifeStatus(motorCalc.hours);
+                const runtimeCalc = calculateEstimatedRuntime(completeSystemAge);
+                if (!runtimeCalc) return null;
+                const ageInsight = getAgeInsight(runtimeCalc.years);
                 
-                const statusColors = {
-                  ok: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
-                  warning: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
-                  critical: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800',
-                  exceeded: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
+                const stageColors = {
+                  new: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
+                  'mid-life': 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
+                  mature: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
+                  aged: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800',
                 };
                 
                 return (
-                  <div className={`mt-3 p-3 rounded border ${statusColors[motorStatus.status]}`} data-testid="motor-life-warning">
+                  <div className={`mt-3 p-3 rounded border ${stageColors[ageInsight.stage]}`} data-testid="system-age-insight">
                     <div className="flex items-start gap-2">
                       <Fan className="h-4 w-4 mt-0.5 flex-shrink-0" />
                       <div className="space-y-1">
                         <div className="font-medium text-sm flex items-center gap-2">
-                          Fan Motor Life Estimate
-                          {motorStatus.status !== 'ok' && (
-                            <Badge 
-                              variant={motorStatus.status === 'exceeded' ? 'destructive' : 'outline'}
-                              className="text-xs"
-                            >
-                              {motorStatus.status === 'exceeded' ? 'Replace Now' : 
-                               motorStatus.status === 'critical' ? 'Replace Soon' : 'Monitor'}
-                            </Badge>
-                          )}
+                          Manufacturer Insight
+                          <Badge variant="outline" className="text-xs">Advisory Only</Badge>
                         </div>
-                        <p className="text-sm">{motorStatus.message}</p>
-                        {motorCalc.isEstimate && (
-                          <p className="text-xs opacity-75">
-                            Based on typical 8hr/day operation ({HOURS_PER_YEAR_TYPICAL.toLocaleString()} hrs/year)
-                          </p>
-                        )}
-                        {/* Progress bar */}
-                        <div className="mt-2">
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all ${
-                                motorStatus.status === 'exceeded' ? 'bg-red-500' :
-                                motorStatus.status === 'critical' ? 'bg-orange-500' :
-                                motorStatus.status === 'warning' ? 'bg-amber-500' : 'bg-green-500'
-                              }`}
-                              style={{ width: `${Math.min(motorStatus.percentUsed, 100)}%` }}
-                            />
-                          </div>
+                        <p className="text-sm">{ageInsight.message}</p>
+                        <p className="text-sm">
+                          Estimated runtime: ~{runtimeCalc.hours.toLocaleString()} hours 
+                          (based on {HOURS_PER_YEAR_TYPICAL.toLocaleString()} hrs/year typical operation)
+                        </p>
+                        <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
+                          <p className="font-medium mb-1">Compliance Note:</p>
+                          <p>Smoke extract fan compliance is determined by BS EN 12101-3 certification and BS 7346-8 inspection records, not runtime hours. Age/runtime data is for planning purposes only.</p>
                         </div>
                       </div>
                     </div>
