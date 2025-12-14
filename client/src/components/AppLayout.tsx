@@ -183,6 +183,7 @@ const menuSections: MenuSection[] = [
       { title: "Document Register", url: "/document-register", icon: FileText },
       { title: "Document Templates", url: "/document-templates", icon: Copy },
       { title: "Reports", url: "/reports", icon: BarChart3 },
+      { title: "Service Analytics", url: "/service-analytics", icon: Gauge },
       { title: "Notifications", url: "/notifications", icon: Bell },
     ],
   },

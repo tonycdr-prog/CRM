@@ -57,6 +57,7 @@ import VisitTypes from "@/pages/visit-types";
 import SiteAssets from "@/pages/site-assets";
 import CheckSheetReadings from "@/pages/check-sheet-readings";
 import GoldenThread from "@/pages/golden-thread";
+import ServiceAnalytics from "@/pages/service-analytics";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -125,6 +126,7 @@ function LayoutRoutes() {
         <Route path="/visit-types" component={VisitTypes} />
         <Route path="/site-assets" component={SiteAssets} />
         <Route path="/golden-thread" component={GoldenThread} />
+        <Route path="/service-analytics" component={ServiceAnalytics} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>
