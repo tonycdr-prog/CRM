@@ -61,7 +61,72 @@ import { Link, useSearch } from "wouter";
 import { useEffect } from "react";
 import { exportToCSV } from "@/lib/exportUtils";
 import { SERVICE_VISIT_TYPES, SMOKE_CONTROL_SYSTEM_TYPES, SYSTEM_CONDITION_OPTIONS, SERVICE_STATEMENTS, SYSTEM_CHECKLIST_TEMPLATES, type SystemChecklistItem } from "@shared/schema";
-import { Settings, AlertTriangle, FileText, ClipboardCheck } from "lucide-react";
+import { Settings, AlertTriangle, FileText, ClipboardCheck, Fan } from "lucide-react";
+
+// Fan Motor Life Tracking Constants
+const MOTOR_LIFESPAN_HOURS = 20000; // Industry standard motor lifespan
+const MOTOR_WARNING_THRESHOLD = 0.8; // Warn at 80% of lifespan (16,000 hours)
+const HOURS_PER_YEAR_TYPICAL = 2920; // Assuming 8 hours/day operation
+
+// Calculate estimated running hours from system age
+function calculateMotorRunningHours(systemAge: string): { hours: number; isEstimate: boolean } | null {
+  if (!systemAge) return null;
+  
+  // Try to parse years from common formats like "5 years", "5", "5y", "5 yrs"
+  const yearMatch = systemAge.match(/^(\d+(?:\.\d+)?)\s*(?:years?|yrs?|y)?$/i);
+  if (yearMatch) {
+    const years = parseFloat(yearMatch[1]);
+    return { hours: Math.round(years * HOURS_PER_YEAR_TYPICAL), isEstimate: true };
+  }
+  
+  // Try to parse months
+  const monthMatch = systemAge.match(/^(\d+(?:\.\d+)?)\s*(?:months?|mo?s?)$/i);
+  if (monthMatch) {
+    const months = parseFloat(monthMatch[1]);
+    return { hours: Math.round((months / 12) * HOURS_PER_YEAR_TYPICAL), isEstimate: true };
+  }
+  
+  return null;
+}
+
+// Get motor life status and warning message
+function getMotorLifeStatus(hours: number): { 
+  status: 'ok' | 'warning' | 'critical' | 'exceeded';
+  message: string;
+  percentUsed: number;
+} {
+  const percentUsed = (hours / MOTOR_LIFESPAN_HOURS) * 100;
+  
+  if (hours > MOTOR_LIFESPAN_HOURS) {
+    return {
+      status: 'exceeded',
+      message: `Motor lifespan exceeded! Approximately ${hours.toLocaleString()} running hours (${Math.round(percentUsed)}% of ${MOTOR_LIFESPAN_HOURS.toLocaleString()}hr lifespan). Immediate replacement recommended.`,
+      percentUsed,
+    };
+  }
+  
+  if (hours > MOTOR_LIFESPAN_HOURS * MOTOR_WARNING_THRESHOLD) {
+    return {
+      status: 'critical',
+      message: `Motor nearing end of life! Approximately ${hours.toLocaleString()} running hours (${Math.round(percentUsed)}% of lifespan). Schedule replacement within next service cycle.`,
+      percentUsed,
+    };
+  }
+  
+  if (hours > MOTOR_LIFESPAN_HOURS * 0.6) {
+    return {
+      status: 'warning',
+      message: `Motor at ${Math.round(percentUsed)}% of expected lifespan (${hours.toLocaleString()}hrs of ${MOTOR_LIFESPAN_HOURS.toLocaleString()}hrs). Consider proactive replacement planning.`,
+      percentUsed,
+    };
+  }
+  
+  return {
+    status: 'ok',
+    message: `Motor running hours: ~${hours.toLocaleString()} (${Math.round(percentUsed)}% of ${MOTOR_LIFESPAN_HOURS.toLocaleString()}hr lifespan)`,
+    percentUsed,
+  };
+}
 
 interface FaultHistoryEntry {
   date: string;
@@ -1114,6 +1179,61 @@ export default function Jobs() {
                   />
                 </div>
               </div>
+              
+              {/* Fan Motor Life Warning */}
+              {(() => {
+                const motorCalc = calculateMotorRunningHours(completeSystemAge);
+                if (!motorCalc) return null;
+                const motorStatus = getMotorLifeStatus(motorCalc.hours);
+                
+                const statusColors = {
+                  ok: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
+                  warning: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
+                  critical: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800',
+                  exceeded: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
+                };
+                
+                return (
+                  <div className={`mt-3 p-3 rounded border ${statusColors[motorStatus.status]}`} data-testid="motor-life-warning">
+                    <div className="flex items-start gap-2">
+                      <Fan className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1">
+                        <div className="font-medium text-sm flex items-center gap-2">
+                          Fan Motor Life Estimate
+                          {motorStatus.status !== 'ok' && (
+                            <Badge 
+                              variant={motorStatus.status === 'exceeded' ? 'destructive' : 'outline'}
+                              className="text-xs"
+                            >
+                              {motorStatus.status === 'exceeded' ? 'Replace Now' : 
+                               motorStatus.status === 'critical' ? 'Replace Soon' : 'Monitor'}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm">{motorStatus.message}</p>
+                        {motorCalc.isEstimate && (
+                          <p className="text-xs opacity-75">
+                            Based on typical 8hr/day operation ({HOURS_PER_YEAR_TYPICAL.toLocaleString()} hrs/year)
+                          </p>
+                        )}
+                        {/* Progress bar */}
+                        <div className="mt-2">
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full transition-all ${
+                                motorStatus.status === 'exceeded' ? 'bg-red-500' :
+                                motorStatus.status === 'critical' ? 'bg-orange-500' :
+                                motorStatus.status === 'warning' ? 'bg-amber-500' : 'bg-green-500'
+                              }`}
+                              style={{ width: `${Math.min(motorStatus.percentUsed, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* System Condition */}

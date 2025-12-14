@@ -19,7 +19,10 @@ import {
   Receipt,
   DollarSign,
   Users,
-  AlertCircle
+  AlertCircle,
+  FileSignature,
+  Package,
+  Wrench
 } from "lucide-react";
 import { Link } from "wouter";
 import { loadStorageData, type StorageData } from "@/lib/storage";
@@ -431,6 +434,24 @@ export default function Dashboard() {
               <Button size="sm" variant="outline" data-testid="button-quick-new-test">
                 <FileText className="h-4 w-4 mr-1" />
                 New Test
+              </Button>
+            </Link>
+            <Link href="/leads">
+              <Button size="sm" variant="outline" data-testid="button-quick-new-quote">
+                <FileSignature className="h-4 w-4 mr-1" />
+                New Quote
+              </Button>
+            </Link>
+            <Link href="/parts-catalog">
+              <Button size="sm" variant="outline" data-testid="button-quick-new-product">
+                <Package className="h-4 w-4 mr-1" />
+                New Product
+              </Button>
+            </Link>
+            <Link href="/equipment">
+              <Button size="sm" variant="outline" data-testid="button-quick-new-asset">
+                <Wrench className="h-4 w-4 mr-1" />
+                New Asset
               </Button>
             </Link>
           </div>
