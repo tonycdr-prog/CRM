@@ -1,109 +1,28 @@
 # Airflow Velocity Testing - Smoke Control Damper
 
 ## Overview
-
-This application is a professional, UK regulation-compliant utility for visualising and documenting airflow velocity readings across smoke control dampers. It enables field technicians to perform compliant testing with automatic grid size calculation (5×5, 6×6, or 7×7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The tool supports on-site use with touch-friendly controls and is available as a web application and native mobile app (iOS/Android). The project aims to provide comprehensive reporting, trend analysis, and efficient workflow for commissioning, annual inspection, and reactive testing of smoke control systems.
+This application provides a professional, UK regulation-compliant utility for visualizing and documenting airflow velocity readings across smoke control dampers. It automates grid size calculation (5x5, 6x6, or 7x7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The tool is designed for on-site use with touch-friendly controls and is available as a web and native mobile application (iOS/Android). Its purpose is to streamline commissioning, annual inspection, and reactive testing of smoke control systems by offering comprehensive reporting, trend analysis, and efficient workflows. The project aims to enhance compliance, provide valuable insights into system performance, and improve field technician efficiency.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
+The application features a **React 18+** and **TypeScript** frontend, built with **Vite**, using **shadcn/ui**, **Radix UI**, and **Tailwind CSS** for a touch-optimized, responsive UI. State management utilizes **React hooks** and **TanStack Query**, with **LocalStorage** for client-side persistence. The backend is an **Express.js** application with **TypeScript**, following a **RESTful API** design. It uses **Drizzle ORM** for PostgreSQL database access. The mobile application is wrapped for native iOS and Android deployment using **Capacitor**.
 
-### Frontend
-
-The frontend is a single-page application built with **React 18+** and **TypeScript**, using **Vite** as the build tool. It leverages **shadcn/ui** with **Radix UI** primitives and **Tailwind CSS** for styling, following Material Design principles with custom design tokens. The UI is touch-optimized for field use on tablets and mobile devices, featuring a responsive grid layout. State management uses **React hooks** for local state and **TanStack Query** for server state, with **LocalStorage** for client-side data persistence.
-
-**Key Features**:
-
--   **UK Regulation Compliance**: Automatic grid size calculation (5x5, 6x6, 7x7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024.
--   **Professional Report System**: Comprehensive project documentation including company details, scope of works, system description, testing standards, executive summary, and pass/fail statistics.
--   **Trend Analysis & Historical Tracking**: Year-over-year velocity trend visualisation using Recharts, historical data grouping, and pass/fail trend indicators for floor-level dampers.
--   **Enhanced PDF Export**: Professional, selection-aware PDF generation with cover pages, standards sections, summary tables, individual test pages with grid visualisations, and trend charts for historical data. Optimised for performance and file size.
--   **Damper Image Documentation**: Camera integration for capturing damper conditions (open/closed positions), with images stored as base64 data URLs and included in PDF exports.
--   **Grouped Test History**: Tests are organised by building and date into expandable site visit cards, offering summary statistics and visit-level selection for bulk operations.
--   **Four-Tab Interface**: Report Setup, Damper Testing, Stairwell Pressure Testing, and Test History.
--   **Stairwell Differential Pressure Testing**: Compliant with BS EN 12101-6 and other relevant standards, supporting various system classifications and test scenarios. Features floor-by-floor measurements, live compliance checking, pressure thresholds, door opening force validation, and environmental condition tracking.
--   **Multi-Standard Support**: Support for multiple UK building standard versions (BS 5588-4:1978, BS 5588-4:1998, BS EN 12101-6:2022) to accommodate systems installed under different regulatory periods. Automatic class availability filtering based on selected standard, with superseded standard warnings. "Per design" class handling for BS EN 12101-6 Classes D-F.
--   **Data Backup & Restore**: JSON export/import functionality in Test History tab for backing up all test data with schema validation on import.
--   **Anomaly Detection**: Intelligent detection of unusual readings using MAD (Median Absolute Deviation) algorithm. Flags negative values, readings >12 m/s, and statistical outliers with visual badges and input highlighting.
--   **Keyboard Navigation**: Arrow key, Tab, and Enter key navigation for velocity grid inputs to speed up data entry.
--   **Duplicate Test**: Quick copy feature to duplicate test configurations (building, location, damper settings) for rapid multi-floor testing.
--   **Offline Status Indicator**: Visual indicator in header showing connection state for field use awareness.
--   **Signature Capture**: Canvas-based component (SignatureCapture.tsx) integrated into Report Settings and PDF exports with tester/witness signatures.
--   **PDF Certification Page**: Professional certification section in PDF exports with tester/witness signatures and QR codes linking to digital report verification.
--   **Auto-Save Indicator**: Visual indicator showing last save timestamp for data persistence awareness.
--   **Damper Templates**: Save and reuse common damper configurations (dimensions, system type, location) for rapid testing setup.
--   **CSV Export**: Export test data to CSV format for spreadsheet analysis and external reporting.
--   **Project Management**: Full UI for creating and managing projects that group multiple buildings. Projects auto-fill report settings (address, client, postcode, contractor) and support adding/editing/deleting buildings. Data persists to localStorage.
--   **Photo Annotation**: Canvas-based annotation system for damper images. Supports arrows, circles, rectangles, freehand drawing, and text annotations with color selection and stroke width control. Touch-friendly for mobile devices. Annotated images replace originals and are included in PDF exports.
--   **Dashboard Overview**: Central hub showing project statistics, pass rates, upcoming annual tests, and predictive maintenance alerts for dampers with declining performance trends.
--   **Floor Sequencing Mode**: Pre-define damper testing sequences for buildings. Create test sessions with building, floor range, and dampers per floor, then step through tests in order with progress tracking.
--   **Bulk Test Packs**: Pre-configured building templates (residential high-rise, commercial office, hotel, etc.) with quick-apply damper configurations. Supports custom pack creation and saving.
--   **Compliance Checklists**: BS EN 12101-8 compliance verification with categorized checklist items, progress tracking, and notes per item. Supports commissioning, annual, and remedial inspection types.
--   **Deviation Narratives**: Automatic prompting for failure reason codes, detailed narratives, and corrective actions when tests fail. Includes predefined failure categories and corrective action templates.
--   **Offline Delta Sync**: Change queue system that tracks modifications while offline and syncs to server when connectivity returns. SyncIndicator component shows sync status, pending changes, and last sync time.
--   **Predictive Maintenance**: Trend analysis across damper test history to identify declining performance. Uses linear regression on velocity trends to flag dampers requiring attention before failures occur.
-
-### Business Management Platform
-
-The application includes a comprehensive business management layer for smoke control service companies:
-
--   **Client Management**: Full CRM with company and contact details, communication logs, status tracking.
--   **Contract Management**: Service agreements, SLA tracking, auto-renewal alerts, contract value tracking.
--   **Job Scheduling**: Work order management with scheduling, priority levels, site details, and job status workflow.
--   **Quotes & Invoices**: Financial document management with VAT calculations, status tracking, overdue alerts.
--   **Expense Tracking**: Site costs, mileage claims (with HMRC rate), materials, and category-based filtering.
--   **Timesheets**: Working hours tracking with job assignment, hourly rates, and weekly summaries.
--   **Vehicle Fleet**: Fleet management with MOT/tax/insurance expiry tracking and maintenance schedules.
--   **Subcontractor Network**: Approved subcontractor database with insurance/accreditation expiry alerts.
--   **Holiday Management**: Leave requests with approval workflow and annual allowance tracking.
--   **Sidebar Navigation**: Organised navigation with Testing, Business, Operations, Sales, Compliance, and Documentation sections.
--   **Global Search**: Header-mounted search dialog (Cmd/Ctrl+K) for cross-entity searching across clients, contracts, jobs, and invoices with instant navigation to results.
--   **CSV Data Export**: Export button on jobs page for downloading job data to CSV format for spreadsheet analysis.
--   **Contract Renewal Badges**: Visual warning indicators on contracts list showing renewal urgency with color-coded badges for overdue (red), 7-day (red), 30-day (amber), 60-day (orange), and 90-day (yellow) warnings.
--   **Equipment & Asset Tracking**: Asset register with calibration due dates, maintenance schedules, purchase values, and status indicators. Categories include tools, meters, PPE, and vehicles.
--   **Technician Certifications**: Track staff qualifications (CSCS, IPAF, PASMA, First Aid, etc.) with expiry monitoring and renewal alerts.
--   **Sales Pipeline (Leads)**: Kanban-style lead tracking with stages (new, contacted, qualified, proposal, negotiation, won, lost), estimated values, win probability, and weighted pipeline calculations.
--   **Tender Management**: Full tender register with submission deadlines, contract values, bid amounts, win rate tracking, and status workflow.
--   **Site Access Notes**: Store parking instructions, access codes, key safe locations, building manager contacts, security details, and induction requirements per site.
--   **Incident Reporting**: Accident and near-miss logging with severity levels, RIDDOR reporting flags, root cause analysis, and corrective action tracking.
--   **Risk Assessments**: RAMS (Risk Assessment and Method Statement) creation with method statements, emergency procedures, and approval workflow.
--   **Job Templates**: Reusable job configurations with checklist items, estimated durations, default pricing, and equipment requirements.
--   **Recurring Jobs**: Scheduled automatic job creation with frequency options (daily, weekly, monthly, quarterly, biannually, annually), interval control, and auto-create days configuration.
--   **Notifications Center**: Internal notification system with read/unread tracking, category filtering, mark all read, and bulk operations.
--   **Supplier Management**: Vendor database with company details, contact info, star ratings (1-5), categories (parts, equipment, services, consumables), payment terms, preferred supplier flagging, and active/inactive status.
--   **Purchase Orders**: Full PO workflow with line item management (JSONB storage), supplier linking, automatic VAT/subtotal/total calculations, status tracking (draft, sent, confirmed, received, cancelled), and expected delivery dates.
--   **Training Records**: Employee training and certification tracking with course types (internal, external, online, practical), completion/expiry dates, certificate numbers, scores, cost tracking, and expiry warning badges.
-
-### Backend
-
-The backend is an **Express.js** application with **TypeScript**. It follows a **RESTful API** design, with routes defined in `server/routes.ts`. It uses `tsx` for development and `esbuild` for production bundling. The data layer uses the **DatabaseStorage** class implementing the `IStorage` interface with **Drizzle ORM** for PostgreSQL database access.
-
-**API Routes** (`server/routes.ts`):
--   `/api/sync/:userId` - GET all data for initial sync, POST to upload changes
--   `/api/sync/:userId/status` - GET pending changes count and last sync time
--   `/api/projects/:userId` - GET all projects, POST to create
--   `/api/projects/:id` - PATCH to update, DELETE to remove
--   `/api/tests/:userId` - GET all tests, POST to create
--   `/api/tests/:id` - PATCH to update, DELETE to remove
--   `/api/test-packs/:userId` - GET all test packs, POST to create, DELETE by id
--   `/api/test-sessions/:userId` - GET all sessions, POST to create
--   `/api/test-sessions/:id` - PATCH to update, DELETE to remove
--   `/api/compliance-checklists/:userId` - GET all checklists, POST to create, PATCH to update
--   `/api/damper-templates/:userId` - GET templates, POST to create, DELETE by id
--   `/api/stairwell-tests/:userId` - GET tests, POST to create, DELETE by id
-
-### Mobile App Platform
-
-The application is wrapped for native iOS and Android deployment using **Capacitor**. It supports iOS 13.0+ and Android 6.0+ (API 23+), including native camera access and splash screen management.
+**Key Architectural Features:**
+*   **Compliance & Reporting**: Automatic grid size calculation, professional PDF report generation with certifications, and comprehensive project documentation. Includes support for multiple UK building standards (e.g., BS EN 12101-6, BS 5588-4) and features for stairwell differential pressure testing.
+*   **Data Management**: Trend analysis with Recharts, historical data tracking, data backup/restore via JSON, CSV export, and Golden Thread document management for Building Safety Act compliance.
+*   **Workflow Enhancements**: Damper image documentation with annotation, grouped test history, duplicate test functionality, damper templates, and a "Floor Sequencing Mode" for structured testing.
+*   **Intelligent Features**: Anomaly detection using MAD algorithm, predictive maintenance through velocity trend analysis, and predictive readings pre-load with deviation highlighting.
+*   **User Experience**: Touch-optimized interface, keyboard navigation for data entry, offline status indicator, signature capture, and auto-save indicator.
+*   **Business Management Platform**: Integrated CRM for client and contract management, job scheduling, quotes/invoices, expense/timesheet tracking, asset/equipment management, and technician certification tracking. Includes features for sales pipeline, tender management, incident reporting, risk assessments, and recurring jobs.
+*   **Synchronization**: Offline delta sync with a change queue system that tracks modifications and syncs to the server upon connectivity restoration.
 
 ## External Dependencies
-
--   **Database**: Drizzle ORM (Type-safe SQL query builder), Drizzle Kit (schema management), @neondatabase/serverless (Neon PostgreSQL driver).
--   **UI & Styling**: Tailwind CSS, shadcn/ui, Radix UI, class-variance-authority, Lucide React (icons).
--   **Form Handling**: React Hook Form, @hookform/resolvers, Zod (validation).
--   **Data Export**: html-to-image, jsPDF, JSZip.
--   **Routing**: wouter.
--   **Utilities**: date-fns, clsx, tailwind-merge, nanoid.
--   **Mobile App**: Capacitor (core), @capacitor/app, @capacitor/splash-screen, @capacitor/status-bar, @capacitor/camera.
+*   **Database**: Drizzle ORM, Drizzle Kit, @neondatabase/serverless (Neon PostgreSQL driver).
+*   **UI & Styling**: Tailwind CSS, shadcn/ui, Radix UI, class-variance-authority, Lucide React.
+*   **Form Handling**: React Hook Form, @hookform/resolvers, Zod.
+*   **Data Export**: html-to-image, jsPDF, JSZip.
+*   **Routing**: wouter.
+*   **Utilities**: date-fns, clsx, tailwind-merge, nanoid.
+*   **Mobile App**: Capacitor (core), @capacitor/app, @capacitor/splash-screen, @capacitor/status-bar, @capacitor/camera.
