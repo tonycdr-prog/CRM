@@ -1683,7 +1683,7 @@ export class DatabaseStorage implements IStorage {
 
   // Staff Directory
   async getStaffDirectory(userId: string): Promise<DbStaffMember[]> {
-    return db.select().from(staffDirectory).where(eq(staffDirectory.userId, userId)).orderBy(desc(staffDirectory.createdAt));
+    return db.select().from(staffDirectory).where(or(eq(staffDirectory.userId, userId), eq(staffDirectory.userId, SHARED_USER_ID))).orderBy(desc(staffDirectory.createdAt));
   }
 
   async createStaffMember(member: NewStaffMember): Promise<DbStaffMember> {

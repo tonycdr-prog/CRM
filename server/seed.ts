@@ -139,6 +139,160 @@ const ENGINEERS = [
   { name: "Alex Brown", competency: "Apprentice" },
 ];
 
+const STAFF_MEMBERS = [
+  {
+    employeeNumber: "EMP001",
+    firstName: "Michael",
+    lastName: "Johnson",
+    email: "m.johnson@company.co.uk",
+    phone: "020 7946 1234",
+    mobile: "07700 900123",
+    jobTitle: "Senior Smoke Control Engineer",
+    department: "Engineering",
+    startDate: "2018-03-15",
+    employmentType: "full_time",
+    lineManager: "Operations Director",
+    address: "42 High Street, Croydon",
+    postcode: "CR0 1PD",
+    drivingLicence: true,
+    drivingLicenceExpiry: "2028-06-30",
+    skills: ["Smoke Control Testing", "Damper Commissioning", "Stairwell Pressurisation", "BMS Integration", "Report Writing"],
+    qualifications: ["NVQ Level 3 Building Services", "BSRIA Commissioning Certificate", "CSCS Gold Card", "First Aid at Work"],
+  },
+  {
+    employeeNumber: "EMP002",
+    firstName: "Paul",
+    lastName: "Stevens",
+    email: "p.stevens@company.co.uk",
+    phone: "020 7946 1235",
+    mobile: "07700 900124",
+    jobTitle: "Lead Technician",
+    department: "Engineering",
+    startDate: "2019-07-01",
+    employmentType: "full_time",
+    lineManager: "Michael Johnson",
+    address: "15 Oak Avenue, Bromley",
+    postcode: "BR1 2AA",
+    drivingLicence: true,
+    drivingLicenceExpiry: "2027-03-15",
+    skills: ["Smoke Control Testing", "Damper Commissioning", "AOV Systems", "Electrical Testing"],
+    qualifications: ["NVQ Level 3 Building Services", "18th Edition Wiring Regulations", "CSCS Gold Card"],
+  },
+  {
+    employeeNumber: "EMP003",
+    firstName: "Christopher",
+    lastName: "Davies",
+    email: "c.davies@company.co.uk",
+    phone: "020 7946 1236",
+    mobile: "07700 900125",
+    jobTitle: "Certified Technician",
+    department: "Engineering",
+    startDate: "2020-09-14",
+    employmentType: "full_time",
+    lineManager: "Paul Stevens",
+    address: "8 Maple Road, Lewisham",
+    postcode: "SE13 5NN",
+    drivingLicence: true,
+    drivingLicenceExpiry: "2029-11-20",
+    skills: ["Smoke Control Testing", "Damper Servicing", "Fan Systems"],
+    qualifications: ["NVQ Level 2 Building Services", "CSCS Blue Card", "Working at Heights"],
+  },
+  {
+    employeeNumber: "EMP004",
+    firstName: "Thomas",
+    lastName: "Wilson",
+    email: "t.wilson@company.co.uk",
+    phone: "0161 234 5679",
+    mobile: "07700 900126",
+    jobTitle: "Senior Smoke Control Engineer",
+    department: "Engineering - North",
+    startDate: "2017-01-09",
+    employmentType: "full_time",
+    lineManager: "Operations Director",
+    address: "23 Station Road, Salford",
+    postcode: "M5 4WT",
+    drivingLicence: true,
+    drivingLicenceExpiry: "2026-08-12",
+    skills: ["Smoke Control Testing", "Damper Commissioning", "Stairwell Pressurisation", "Project Management", "Client Liaison"],
+    qualifications: ["HNC Building Services Engineering", "BSRIA Commissioning Certificate", "CSCS Gold Card", "IOSH Managing Safely"],
+  },
+  {
+    employeeNumber: "EMP005",
+    firstName: "Alexander",
+    lastName: "Brown",
+    email: "a.brown@company.co.uk",
+    phone: "020 7946 1237",
+    mobile: "07700 900127",
+    jobTitle: "Apprentice Technician",
+    department: "Engineering",
+    startDate: "2024-01-08",
+    employmentType: "apprentice",
+    lineManager: "Christopher Davies",
+    address: "17 New Street, Greenwich",
+    postcode: "SE10 9EW",
+    drivingLicence: false,
+    skills: ["Basic Smoke Control Testing", "Equipment Handling"],
+    qualifications: ["CSCS Green Card", "Level 2 Diploma in Progress"],
+  },
+  {
+    employeeNumber: "EMP006",
+    firstName: "Sarah",
+    lastName: "Mitchell",
+    email: "s.mitchell@company.co.uk",
+    phone: "020 7946 1238",
+    mobile: "07700 900128",
+    jobTitle: "Technician",
+    department: "Engineering",
+    startDate: "2022-04-25",
+    employmentType: "full_time",
+    lineManager: "Paul Stevens",
+    address: "56 Victoria Road, Wandsworth",
+    postcode: "SW18 3HE",
+    drivingLicence: true,
+    drivingLicenceExpiry: "2030-02-28",
+    skills: ["Smoke Control Testing", "Damper Servicing", "Documentation", "Customer Service"],
+    qualifications: ["NVQ Level 2 Building Services", "CSCS Blue Card", "First Aid at Work"],
+  },
+  {
+    employeeNumber: "EMP007",
+    firstName: "James",
+    lastName: "Taylor",
+    email: "j.taylor@company.co.uk",
+    phone: "0121 303 9945",
+    mobile: "07700 900129",
+    jobTitle: "Regional Engineer",
+    department: "Engineering - Midlands",
+    startDate: "2019-11-11",
+    employmentType: "full_time",
+    lineManager: "Operations Director",
+    address: "89 Corporation Street, Birmingham",
+    postcode: "B4 6TE",
+    drivingLicence: true,
+    drivingLicenceExpiry: "2027-07-19",
+    skills: ["Smoke Control Testing", "Damper Commissioning", "Stairwell Pressurisation", "Fault Diagnosis"],
+    qualifications: ["NVQ Level 3 Building Services", "BSRIA Commissioning Certificate", "CSCS Gold Card", "Confined Spaces"],
+  },
+  {
+    employeeNumber: "EMP008",
+    firstName: "David",
+    lastName: "Clark",
+    email: "d.clark@company.co.uk",
+    phone: "0141 332 5567",
+    mobile: "07700 900130",
+    jobTitle: "Trainee Technician",
+    department: "Engineering - Scotland",
+    startDate: "2023-06-05",
+    employmentType: "full_time",
+    lineManager: "Thomas Wilson",
+    address: "12 Argyle Street, Glasgow",
+    postcode: "G2 8AG",
+    drivingLicence: true,
+    drivingLicenceExpiry: "2031-04-22",
+    skills: ["Basic Smoke Control Testing", "Equipment Setup", "Site Preparation"],
+    qualifications: ["CSCS Green Card", "Manual Handling"],
+  },
+];
+
 function generateReadings(gridSize: number): (number | "")[] {
   const totalPoints = gridSize * gridSize;
   const readings: (number | "")[] = [];
@@ -167,6 +321,17 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
     const createdJobs: any[] = [];
     const createdDampers: any[] = [];
     const createdTests: any[] = [];
+    const createdStaff: any[] = [];
+
+    // Seed staff/engineers
+    for (const staff of STAFF_MEMBERS) {
+      const member = await storage.createStaffMember({
+        userId: TEST_USER_ID,
+        ...staff,
+      });
+      createdStaff.push(member);
+      console.log(`Created staff: ${member.firstName} ${member.lastName}`);
+    }
 
     for (const company of UK_COMPANIES) {
       const client = await storage.createClient({
@@ -322,6 +487,7 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
     }
 
     const counts = {
+      staff: createdStaff.length,
       clients: createdClients.length,
       contracts: createdContracts.length,
       projects: createdProjects.length,
