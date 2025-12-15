@@ -66,7 +66,8 @@ import {
   FolderKanban,
   ScrollText,
   Settings,
-  Link2
+  Link2,
+  Download
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -184,6 +185,7 @@ const menuSections: MenuSection[] = [
       { title: "Document Templates", url: "/document-templates", icon: Copy },
       { title: "Reports", url: "/reports", icon: BarChart3 },
       { title: "Service Analytics", url: "/service-analytics", icon: Gauge },
+      { title: "Downloads", url: "/downloads", icon: Download },
       { title: "Notifications", url: "/notifications", icon: Bell },
     ],
   },
