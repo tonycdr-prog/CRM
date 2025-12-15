@@ -1,0 +1,5627 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 1733
+>>
+stream
+0.5670000000000001 w
+0 G
+0. 0.2 0.4 rg
+0. 841.8899999999999864 595.2755905511811534 -226.7716535433071101 re
+f
+BT
+/F2 32 Tf
+36.7999999999999972 TL
+1. g
+116.8377952755905795 742.6774015748030706 Td
+(Airflow Velocity Testing) Tj
+ET
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+1. g
+183.9677952755905892 700.15771653543311 Td
+(Complete App Capabilities) Tj
+ET
+BT
+/F1 12 Tf
+13.7999999999999989 TL
+1. g
+235.6577952755905869 657.6380314960629221 Td
+(A Demonstration Guide) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+186.0877952755905369 558.42543307086612 Td
+(Professional UK-Compliant Smoke Control Testing) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+209.6377952755906051 535.748267716535338 Td
+(Web & Mobile Application \(iOS/Android\)) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0. g
+113.3858267716535551 479.0553543307086102 Td
+(• Smoke Control Damper Velocity Testing) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0. g
+113.3858267716535551 459.2128346456692611 Td
+(• Stairwell Differential Pressure Testing) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0. g
+113.3858267716535551 439.3703149606298552 Td
+(• Professional PDF Report Generation) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0. g
+113.3858267716535551 419.5277952755905062 Td
+(• UK Building Standards Compliance) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0. g
+113.3858267716535551 399.6852755905511003 Td
+(• Business Management CRM) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0. g
+113.3858267716535551 379.8427559055117513 Td
+(• Offline-First Mobile App) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0. g
+113.3858267716535551 360.0002362204724022 Td
+(• Trend Analysis & Anomaly Detection) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.392 g
+251.6927952755905551 283.4648031496062686 Td
+(Generated: 15/12/2025) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 5392
+>>
+stream
+0.5670000000000001 w
+0 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(A demonstration guide showing exactly what this application can do) Tj
+ET
+0.78 G
+56.6929133858267775 765.3545669291338527 m
+538.5826771653544256 765.3545669291338527 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 725.6695275590550409 Td
+(Overview) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 685.9844881889763428 Td
+(This is a professional, UK regulation-compliant application for smoke control system testing, commissioning,) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 671.8112598425196893 Td
+(and business management. It's designed for fire safety engineers and technicians working on-site, available) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 657.6380314960629221 Td
+(as both a web application and native mobile app \(iOS/Android\).) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 637.7955118110235162 Td
+(Who is this for? Fire safety contractors, commissioning engineers, building services consultants, and smoke) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 623.6222834645668627 Td
+(ventilation specialists who need to test smoke control dampers and stairwell pressurisation systems to UK) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 609.4490551181102092 Td
+(standards.) Tj
+ET
+0.78 G
+56.6929133858267775 589.6065354330708033 m
+538.5826771653544256 589.6065354330708033 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 549.9214960629921052 Td
+(Core Testing Features) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 501.7325196850393354 Td
+(Smoke Control Damper Velocity Testing) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 470.5514173228345953 Td
+(What it does: Measures and documents airflow velocity readings across smoke control dampers to verify they) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 456.378188976377885 Td
+(meet design specifications.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 436.5356692913385359 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 416.69314960629913 Td
+(1. Create a new test - Navigate to the Testing section and tap "New Damper Test") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 399.6852755905511003 Td
+(2. Enter damper dimensions - Input the width and height in millimetres \(e.g., 600mm x 400mm\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 382.6774015748030706 Td
+(3. Watch the grid auto-calculate - The system automatically determines whether you need a 5x5, 6x6, or 7x7) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 368.5041732283464171 Td
+(measurement grid based on BSRIA BG 49/2024 standards:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 351.4962992125983874 Td
+(   - Dampers under 0.5m²: 5x5 grid \(25 readings\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 337.323070866141677 Td
+(   - Dampers 0.5m² to 1.0m²: 6x6 grid \(36 readings\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 323.1498425196849666 Td
+(   - Dampers over 1.0m²: 7x7 grid \(49 readings\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 308.9766141732283131 Td
+(4. Enter your readings - Tap each cell in the grid and enter your anemometer reading. Use keyboard) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 294.8033858267715459 Td
+(navigation \(Tab or arrow keys\) to move quickly between cells.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 277.7955118110235162 Td
+(5. See instant calculations - As you enter readings, the average velocity updates in real-time. You'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 260.7876377952754865 Td
+(   - Overall average velocity \(m/s\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 246.614409448818833 Td
+(   - Minimum and maximum readings) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 232.4411811023621794 Td
+(   - Calculated airflow volume \(m³/s\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 212.5986614173227736 Td
+(What you'll see on screen:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 198.4254330708660063 Td
+(• A visual grid matching the damper face) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 181.4175590551179766 Td
+(• Each cell showing its reading value) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 164.4096850393699469 Td
+(• Colour coding: green for readings within tolerance, amber for borderline, red for out of spec) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 147.4018110236219172 Td
+(• The calculated average prominently displayed) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 130.3939370078738875 Td
+(• Pass/fail status against the design velocity) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 107.7167716535432191 Td
+(Real-world example: You're commissioning a smoke shaft serving floors 1-10 of a new residential tower. Each) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 93.5435433070865656 Td
+(floor has a 750mm x 500mm motorised damper. You set up the test, enter the dimensions, and the app) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 79.3703149606297984 Td
+(creates a 6x6 grid. You take your 36 readings across the damper face using your anemometer, entering each) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 1 of 19) Tj
+ET
+endstream
+endobj
+7 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 8 0 R
+>>
+endobj
+8 0 obj
+<<
+/Length 5287
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(value. The app shows an average of 8.2 m/s against a design requirement of 8.0 m/s - a clear pass.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 765.3545669291338527 Td
+(System types supported:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 751.1813385826771992 Td
+(• Push systems - Supply air into protected areas) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 734.1734645669291695 Td
+(• Pull systems - Extract smoke from affected areas  ) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 717.1655905511811397 Td
+(• Push-pull systems - Combined supply and extract) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 694.4884251968503577 Td
+(Visit types you can record:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 680.3151968503937042 Td
+(• Initial commissioning \(new installation\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 663.3073228346456744 Td
+(• Annual inspection \(maintenance contract\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 646.2994488188976447 Td
+(• Remedial works \(after repairs\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 629.291574803149615 Td
+(• Final verification \(sign-off testing\)) Tj
+ET
+0.78 G
+56.6929133858267775 606.614409448818833 m
+538.5826771653544256 606.614409448818833 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 569.7640157480313974 Td
+(Stairwell Differential Pressure Testing) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 538.5829133858267141 Td
+(What it does: Measures and documents pressure differentials in pressurised stairwells to verify they meet) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 524.4096850393700606 Td
+(building standards for escape route protection.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 504.5671653543306547 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 484.7246456692913057 Td
+(1. Select your building standard - Choose from:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 467.716771653543276 Td
+(   - BS EN 12101-6:2022 \(current standard\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 453.5435433070865656 Td
+(   - BS EN 12101-6:2005 \(legacy installations\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 439.3703149606298552 Td
+(   - BS 5588-4:1998 \(older buildings\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 419.5277952755905062 Td
+(2. Choose the pressure class - Options range from Class A to Class F, each with different pressure) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 405.3545669291337958 Td
+(requirements:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 388.3466929133857661 Td
+(   - Class A: 50 Pa \(±10%\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 374.1734645669290558 Td
+(   - Class B: 45 Pa \(±10%\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 360.0002362204724022 Td
+(   - And so on...) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 340.1577165354329964 Td
+(3. Add floors to test - List each floor in the stairwell \(Ground, 1, 2, 3... up to the roof level\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 317.480551181102328 Td
+(4. Record measurements for each scenario:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 294.8033858267715459 Td
+(   Doors Closed Test:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 280.6301574803148924 Td
+(   - Enter the pressure differential \(Pa\) across the stairwell door at each level) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 266.4569291338582389 Td
+(   - The app shows whether each reading is within the acceptable range) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 246.614409448818833 Td
+(   Single Door Open Test:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 232.4411811023621794 Td
+(   - Open one door at a time and measure the minimum pressure at other levels) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 218.2679527559054122 Td
+(   - Records which door was opened and resulting pressures) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 198.4254330708660063 Td
+(   Door Force Test:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 184.2522047244093528 Td
+(   - Measure the force \(Newtons\) required to open each door) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 170.0789763779526993 Td
+(   - App checks against 100N limit \(or 140N for fire doors\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 155.9057480314959321 Td
+(   - Flags any doors exceeding the maximum opening force) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 136.0632283464566399 Td
+(What you'll see on screen:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 121.8899999999998727 Td
+(• A floor-by-floor table of all readings) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 104.882125984251843 Td
+(• Green/red indicators for pass/fail at each level) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 87.8742519685038133 Td
+(• Automatic calculation of average pressures) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 70.8663779527557836 Td
+(• Door force compliance status) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 2 of 19) Tj
+ET
+endstream
+endobj
+9 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 10 0 R
+>>
+endobj
+10 0 obj
+<<
+/Length 4718
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(• Overall system pass/fail summary) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 762.5199212598424765 Td
+(Real-world example: You're conducting an annual inspection of a 15-storey pressurised stairwell. You select) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 748.346692913385823 Td
+(BS EN 12101-6:2022, Class B. Starting at ground level, you work your way up, recording the pressure at) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 734.1734645669291695 Td
+(each floor with all doors closed \(target: 45 Pa ±10%\). You then repeat with the ground floor door open, then) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 720.0002362204724022 Td
+(first floor door open, and so on. Finally, you measure door opening forces. The app compiles all results and) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 705.8270078740157487 Td
+(shows 2 floors failing the single-door-open test - you know exactly where remedial work is needed.) Tj
+ET
+0.78 G
+56.6929133858267775 685.9844881889763428 m
+538.5826771653544256 685.9844881889763428 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 649.1340944881889072 Td
+(Test Scenarios Supported) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 617.952992125984224 Td
+(The app handles various testing configurations:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 598.1104724409448181 Td
+(• All doors closed - Standard operating condition testing) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 581.1025984251967884 Td
+(• Single door open - Tests pressure maintenance when occupants use the stairwell) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 564.0947244094487587 Td
+(• Multiple doors open - Simulates evacuation conditions) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 547.086850393700729 Td
+(• Fire service override - Tests firefighter switch operation and bypass modes) Tj
+ET
+0.78 G
+56.6929133858267775 524.4096850393700606 m
+538.5826771653544256 524.4096850393700606 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 484.7246456692913057 Td
+(Compliance & Reporting) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 436.5356692913385359 Td
+(UK Building Standards Reference) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 405.3545669291337958 Td
+(The app includes built-in reference to key standards:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 385.5120472440944468 Td
+(Standard  |  Description  |  When to use) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 367.086850393700729 Td
+(BS EN 12101-8:2020  |  Smoke control dampers  |  All damper testing) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 351.4962992125983874 Td
+(BS EN 12101-6:2022  |  Stairwell pressurisation  |  Current installations) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 335.9057480314959889 Td
+(BS 5588-4:1998  |  Smoke control in escape routes  |  Older buildings) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 320.3151968503935905 Td
+(BSRIA BG 49/2024  |  Commissioning air systems  |  All commissioning work) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 299.0553543307086102 Td
+(What you'll see: When you select a standard, the app automatically applies the correct:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 284.882125984251843 Td
+(• Measurement grid requirements) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 267.8742519685038133 Td
+(• Pressure tolerances) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 250.8663779527557836 Td
+(• Door force limits) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 233.8585039370077538 Td
+(• Commissioning checklist items) Tj
+ET
+0.78 G
+56.6929133858267775 211.1813385826770855 m
+538.5826771653544256 211.1813385826770855 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 174.3309448818896499 Td
+(Professional PDF Reports) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 143.1498425196849666 Td
+(What it does: Generates polished, client-ready reports that you can email or print directly from the app.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 123.3073228346455608 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 103.4648031496061549 Td
+(1. Complete your testing - All readings must be entered) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 86.4569291338581252 Td
+(2. Add project details - Client name, site address, your engineer details) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 3 of 19) Tj
+ET
+endstream
+endobj
+11 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 12 0 R
+>>
+endobj
+12 0 obj
+<<
+/Length 5103
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(3. Capture signatures - Both tester and witness signatures using touch screen) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 768.1892125984252289 Td
+(4. Tap "Generate Report" - The PDF is created in seconds) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 745.5120472440944468 Td
+(What you'll see in the report:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 731.3388188976377933 Td
+(• Your company logo and branding \(upload once, used on all reports\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(• Executive summary with pass/fail status) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 697.3230708661417339 Td
+(• Complete test data with the measurement grid) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 680.3151968503937042 Td
+(• Visual representation of readings) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 663.3073228346456744 Td
+(• Compliance checklist with tick marks) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 646.2994488188976447 Td
+(• Digital signatures) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 629.291574803149615 Td
+(• Report reference number and date) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 612.2837007874015853 Td
+(• Standard references) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 589.6065354330708033 Td
+(Report types available:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 575.4333070866141497 Td
+(• Commissioning certificate \(new installations\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 558.42543307086612 Td
+(• Annual inspection report \(maintenance visits\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 541.4175590551180903 Td
+(• Remedial works report \(after repairs\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 524.4096850393700606 Td
+(• Summary report \(quick overview\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 501.7325196850393354 Td
+(Real-world example: After completing damper testing across a 6-floor office building \(12 dampers total\), you) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 487.559291338582625 Td
+(tap "Generate Report". In 10 seconds, you have a 25-page PDF with all test data, a summary showing 11) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 473.3860629921259147 Td
+(pass and 1 fail, photographs of the failed damper, and both signatures. You email it to the client before) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 459.2128346456692611 Td
+(leaving site.) Tj
+ET
+0.78 G
+56.6929133858267775 439.3703149606298552 m
+538.5826771653544256 439.3703149606298552 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 402.5199212598424765 Td
+(Compliance Checklists) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 371.3388188976377364 Td
+(What it does: Provides structured checklists aligned to UK standards to ensure nothing is missed during) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 357.1655905511810261 Td
+(testing.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 337.323070866141677 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 317.480551181102328 Td
+(1. Select the checklist type - Choose from pre-test, functional, performance, or documentation checklists) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 300.4726771653542983 Td
+(2. Work through each item - Tick off items as you verify them) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 283.4648031496062686 Td
+(3. Add notes - Record observations against specific items) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 266.4569291338582389 Td
+(4. Mark completion - The checklist becomes part of your test record) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 243.7797637795274568 Td
+(Checklist categories:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 223.9372440944881646 Td
+(Pre-Test Verification:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 209.7640157480313974 Td
+(• [ ] Damper accessible for testing) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 192.7561417322833677 Td
+(• [ ] Control panel in manual mode) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 175.748267716535338 Td
+(• [ ] Building HVAC system status confirmed) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 158.7403937007873083 Td
+(• [ ] Test equipment calibrated \(date checked\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 141.7325196850392786 Td
+(• [ ] Site access arrangements in place) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 119.0553543307086102 Td
+(Functional Testing:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 104.882125984251843 Td
+(• [ ] Damper opens on command) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 87.8742519685038133 Td
+(• [ ] Damper closes on command) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 70.8663779527557836 Td
+(• [ ] End switches operate correctly) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 4 of 19) Tj
+ET
+endstream
+endobj
+13 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 14 0 R
+>>
+endobj
+14 0 obj
+<<
+/Length 4514
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(• [ ] Manual release functions) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 768.1892125984252289 Td
+(• [ ] Position indicators accurate) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 745.5120472440944468 Td
+(Performance Testing:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 731.3388188976377933 Td
+(• [ ] Design airflow rate documented) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(• [ ] Measurement grid completed) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 697.3230708661417339 Td
+(• [ ] Average velocity calculated) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 680.3151968503937042 Td
+(• [ ] Leakage rate within tolerance) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 663.3073228346456744 Td
+(• [ ] System response time acceptable) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 640.6301574803148924 Td
+(Documentation:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 626.4569291338582389 Td
+(• [ ] As-built drawings available) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 609.4490551181102092 Td
+(• [ ] O&M manual present) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 592.4411811023621794 Td
+(• [ ] Previous test results reviewed) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 575.4333070866141497 Td
+(• [ ] Calibration certificates checked) Tj
+ET
+0.78 G
+56.6929133858267775 552.7561417322833677 m
+538.5826771653544256 552.7561417322833677 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 515.9057480314959321 Td
+(Golden Thread Document Management) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 484.7246456692913057 Td
+(What it does: Supports Building Safety Act compliance by maintaining a structured audit trail of all testing) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 470.5514173228345953 Td
+(documentation.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 450.7088976377952463 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 430.8663779527558404 Td
+(1. Upload existing documents - Add as-built drawings, O&M manuals, previous reports) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 413.8585039370078107 Td
+(2. Link to tests - Connect documents to specific dampers or projects) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 396.850629921259781 Td
+(3. Track versions - When documents are updated, the history is preserved) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 379.8427559055117513 Td
+(4. View audit trail - See who uploaded/modified what and when) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 357.1655905511810261 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 342.9923622047243725 Td
+(• Document library organised by building and system) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 325.9844881889763428 Td
+(• Version numbers on each document) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 308.9766141732283131 Td
+(• Upload dates and user names) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 291.9687401574802834 Td
+(• Links to related test records) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 274.9608661417322537 Td
+(• Export capability for handover packs) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 252.2837007874014716 Td
+(Why this matters: The Building Safety Act requires a "golden thread" of building safety information. This) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 238.1104724409448181 Td
+(feature ensures your testing records are part of that thread, properly linked to the building's safety case) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 223.9372440944881646 Td
+(documentation.) Tj
+ET
+0.78 G
+56.6929133858267775 204.0947244094487303 m
+538.5826771653544256 204.0947244094487303 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 164.4096850393699469 Td
+(Business Management Platform \(CRM\)) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 116.220708661417234 Td
+(Client Management) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 85.0396062992125508 Td
+(What it does: Maintains a complete database of all your clients with their contact details, sites, and) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 70.8663779527557836 Td
+(preferences.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 5 of 19) Tj
+ET
+endstream
+endobj
+15 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 16 0 R
+>>
+endobj
+16 0 obj
+<<
+/Length 5301
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 765.3545669291338527 Td
+(1. Add a new client - Tap "New Client" and enter:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 748.346692913385823 Td
+(   - Company name \(e.g., "Jones Property Management Ltd"\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 734.1734645669291695 Td
+(   - Primary contact person and their role) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 720.0002362204724022 Td
+(   - Phone numbers \(office and mobile\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 705.8270078740157487 Td
+(   - Email addresses) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 691.6537795275589815 Td
+(   - Company address) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 671.8112598425196893 Td
+(2. Add multiple contacts - Each client can have several contacts:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 654.8033858267716596 Td
+(   - Building manager: Sarah Thompson, sarah@jonesproperty.com) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 640.6301574803148924 Td
+(   - Accounts: accounts@jonesproperty.com) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 626.4569291338582389 Td
+(   - Emergency out-of-hours: 07xxx xxxxxx) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 606.614409448818833 Td
+(3. Add multiple addresses - Useful for clients with several sites:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 589.6065354330708033 Td
+(   - Head Office: 45 High Street, Manchester M1 1AA) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 575.4333070866141497 Td
+(   - London Office: 22 Fleet Street, London EC4Y 1AA) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 561.2600787401574962 Td
+(   - Birmingham Site: Unit 4, Industrial Estate, B1 2CD) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 541.4175590551180903 Td
+(4. Set client priority - Helps you prioritise:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 524.4096850393700606 Td
+(   - Standard: Normal service levels) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 510.2364566929133503 Td
+(   - Preferred: Priority scheduling) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 496.0632283464566399 Td
+(   - VIP: Immediate response) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 476.2207086614172908 Td
+(5. Record financial details:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 459.2128346456692611 Td
+(   - VAT number) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 445.0396062992125508 Td
+(   - Account reference) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 430.8663779527558404 Td
+(   - Payment terms \(30 days, 60 days, etc.\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 411.0238582677164914 Td
+(What you'll see on the client screen:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 396.850629921259781 Td
+(• Client summary card with key details) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 379.8427559055117513 Td
+(• List of all contacts with click-to-call/email) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 362.8348818897637216 Td
+(• All associated addresses on a map) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 345.8270078740156919 Td
+(• Contract summary \(active contracts, value\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 328.8191338582676053 Td
+(• Job history) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 311.8112598425195756 Td
+(• Outstanding invoices) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 294.8033858267715459 Td
+(• Notes and activity log) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 272.1262204724408775 Td
+(Real-world example: You receive a call from "Green Facilities Ltd". You search for them, see they're a VIP) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 257.952992125984224 Td
+(client with 3 active contracts worth £45,000/year. You can see their 5 sites on a map, their preferred engineer) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 243.7797637795274568 Td
+(is Dave \(who knows their systems\), and they have one overdue invoice. You have everything you need to) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 229.6065354330708033 Td
+(handle the call professionally.) Tj
+ET
+0.78 G
+56.6929133858267775 209.7640157480313974 m
+538.5826771653544256 209.7640157480313974 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 172.9136220472439618 Td
+(Contract Management) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 141.7325196850392786 Td
+(What it does: Tracks all your service agreements, their value, renewal dates, and SLA requirements.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 121.8899999999998727 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 102.0474803149605805 Td
+(1. Create a new contract - Enter:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 85.0396062992125508 Td
+(   - Contract name \(e.g., "Annual Smoke Vent Maintenance - Tower Court"\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 70.8663779527557836 Td
+(   - Client \(select from your list\)) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 6 of 19) Tj
+ET
+endstream
+endobj
+17 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 18 0 R
+>>
+endobj
+18 0 obj
+<<
+/Length 5235
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(   - Start date and end date) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 771.0238582677164914 Td
+(   - Contract value \(e.g., £3,500 per year\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 756.8506299212598378 Td
+(   - Billing frequency \(monthly, quarterly, annually\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 742.6774015748030706 Td
+(   - Auto-renewal: Yes/No) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 722.8348818897637784 Td
+(2. Set SLA levels:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 705.8270078740157487 Td
+(   - Basic: 5-day response, 10-day resolution) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 691.6537795275589815 Td
+(   - Standard: 2-day response, 5-day resolution) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 677.480551181102328 Td
+(   - Premium: Same-day response, 2-day resolution) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 657.6380314960629221 Td
+(3. Add covered sites - List which addresses are included) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 634.9608661417322537 Td
+(4. Define scope - What's included:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 617.952992125984224 Td
+(   - Number of dampers covered) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 603.7797637795274568 Td
+(   - Annual tests included) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 589.6065354330708033 Td
+(   - Emergency callouts \(included/chargeable\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 575.4333070866141497 Td
+(   - Parts \(included/chargeable\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 555.5907874015747439 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 541.4175590551180903 Td
+(• Contract dashboard showing all active contracts) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 524.4096850393700606 Td
+(• Upcoming renewals \(next 30, 60, 90 days\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 507.4018110236219741 Td
+(• Contract value totals) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 490.3939370078739444 Td
+(• SLA performance metrics) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 473.3860629921259147 Td
+(• Linked jobs and invoices) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 450.7088976377952463 Td
+(Real-world example: It's October and you want to see which contracts renew in January. You filter by renewal) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 436.5356692913385359 Td
+(date and see 8 contracts worth £28,000 are due for renewal. You can generate renewal letters directly, see) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 422.3624409448818255 Td
+(the service history for each, and plan your retention calls.) Tj
+ET
+0.78 G
+56.6929133858267775 402.5199212598424765 m
+538.5826771653544256 402.5199212598424765 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 365.6695275590550409 Td
+(Job Scheduling) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 334.4884251968503008 Td
+(What it does: Creates and tracks work orders from initial request through to completion and invoicing.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 314.6459055118109518 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 294.8033858267715459 Td
+(1. Create a new job:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 277.7955118110235162 Td
+(   - Job type: Testing / Installation / Repair / Maintenance) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 263.6222834645668627 Td
+(   - Client: Select from list) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 249.4490551181102092 Td
+(   - Site address: Select from client's addresses) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 235.2758267716534419 Td
+(   - Description: "Annual smoke damper testing - 12 dampers across 6 floors") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 221.1025984251967884 Td
+(   - Priority: Low / Normal / High / Urgent) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 201.2600787401573825 Td
+(2. Schedule the job:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 184.2522047244093528 Td
+(   - Planned date: Pick from calendar) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 170.0789763779526993 Td
+(   - Estimated duration: 4 hours) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 155.9057480314959321 Td
+(   - Assigned engineer: Select from staff list) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 136.0632283464566399 Td
+(3. Add site access notes:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 119.0553543307086102 Td
+(   - "Report to main reception, ask for security") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 104.882125984251843 Td
+(   - "Parking in loading bay, need permit from security") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 90.7088976377951894 Td
+(   - "Out of hours access: call 07xxx before arrival") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 70.8663779527557836 Td
+(4. Track progress - Job statuses:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 7 of 19) Tj
+ET
+endstream
+endobj
+19 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 20 0 R
+>>
+endobj
+20 0 obj
+<<
+/Length 5017
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(   - Pending: Created but not scheduled) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 771.0238582677164914 Td
+(   - Scheduled: Date and engineer assigned) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 756.8506299212598378 Td
+(   - In Progress: Engineer has started work) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 742.6774015748030706 Td
+(   - Completed: Work finished) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 728.5041732283464171 Td
+(   - Invoiced: Invoice sent to client) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(   - Cancelled: Job cancelled \(with reason\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 694.4884251968503577 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 680.3151968503937042 Td
+(• Job board showing all jobs by status) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 663.3073228346456744 Td
+(• Calendar view of scheduled work) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 646.2994488188976447 Td
+(• Engineer diary view) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 629.291574803149615 Td
+(• Job details with all notes and history) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 612.2837007874015853 Td
+(• Linked test records) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 595.2758267716535556 Td
+(• Time and materials logged) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 572.5986614173227736 Td
+(Real-world example: A client calls with an urgent fault - one damper failed to open during a fire alarm test.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 558.42543307086612 Td
+(You create an Urgent job, see that Dave is free tomorrow morning, assign it to him. Dave gets a notification) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 544.2522047244094665 Td
+(on his phone with all the site details. He arrives, fixes the issue, marks the job complete, and logs 2 hours) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 530.0789763779526993 Td
+(labour plus a new actuator. You invoice the same day.) Tj
+ET
+0.78 G
+56.6929133858267775 510.2364566929133503 m
+538.5826771653544256 510.2364566929133503 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 473.3860629921259147 Td
+(Quotes & Invoices) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 442.2049606299212314 Td
+(What it does: Creates professional quotes and invoices linked to your jobs and contracts.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 422.3624409448818255 Td
+(How to create a quote:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 402.5199212598424765 Td
+(1. Start a new quote:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 385.5120472440944468 Td
+(   - Select client) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 371.3388188976377364 Td
+(   - Enter quote description) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 357.1655905511810261 Td
+(   - Add line items:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 342.9923622047243725 Td
+(     - "Annual smoke damper testing \(12 dampers\)" - £1,800.00) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 328.8191338582676053 Td
+(     - "Fire stopping inspection" - £350.00) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 314.6459055118109518 Td
+(     - "Report production and handover" - £150.00) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 300.4726771653542983 Td
+(   - Subtotal, VAT, and total calculate automatically) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 280.6301574803148924 Td
+(2. Send to client - Generate PDF and email directly) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 257.952992125984224 Td
+(3. Convert to invoice - When accepted, one tap converts the quote to an invoice) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 235.2758267716534419 Td
+(4. Track payment:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 218.2679527559054122 Td
+(   - Mark as sent) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 204.0947244094487587 Td
+(   - Record payment received) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 189.9214960629919915 Td
+(   - Chase overdue invoices) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 170.0789763779526993 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 155.9057480314959321 Td
+(• Quote/invoice list with status \(Draft, Sent, Accepted, Paid, Overdue\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 138.8978740157479024 Td
+(• Outstanding amounts) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 121.8899999999998727 Td
+(• Payment history) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 104.882125984251843 Td
+(• Aged debtor reports) Tj
+ET
+0.78 G
+56.6929133858267775 82.2049606299211604 m
+538.5826771653544256 82.2049606299211604 l
+S
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 8 of 19) Tj
+ET
+endstream
+endobj
+21 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 22 0 R
+>>
+endobj
+22 0 obj
+<<
+/Length 4339
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 785.1970866141732586 Td
+(Financial Tracking) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 754.0159842519684616 Td
+(What it does: Records all costs associated with jobs so you can see true profitability.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 734.1734645669291695 Td
+(How to record expenses:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(1. Add an expense:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 697.3230708661417339 Td
+(   - Date) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 683.1498425196850803 Td
+(   - Category: Materials / Travel / Subcontractor / Equipment / Other) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 668.9766141732283131 Td
+(   - Description: "Replacement actuator for Tower Court") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 654.8033858267716596 Td
+(   - Amount: £245.00) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 640.6301574803148924 Td
+(   - Receipt: Capture photo of receipt) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 620.7876377952754865 Td
+(2. Record mileage:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 603.7797637795274568 Td
+(   - Start location) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 589.6065354330708033 Td
+(   - End location) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 575.4333070866141497 Td
+(   - Miles travelled) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 561.2600787401574962 Td
+(   - Rate \(e.g., 45p/mile\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 547.086850393700729 Td
+(   - Auto-calculates value) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 527.2443307086614368 Td
+(3. Log time:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 510.2364566929133503 Td
+(   - Job reference) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 496.0632283464566399 Td
+(   - Hours worked) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 481.8899999999999295 Td
+(   - Engineer) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 467.716771653543276 Td
+(   - Activity type \(travel, testing, paperwork\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 447.8742519685038701 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 433.7010236220471597 Td
+(• Expense reports by category) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 416.69314960629913 Td
+(• Mileage summaries) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 399.6852755905511003 Td
+(• Job costing: revenue vs expenses = profit) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 382.6774015748030706 Td
+(• Margin calculations per job) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 365.6695275590550409 Td
+(• Monthly financial summaries) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 342.9923622047243725 Td
+(Real-world example: You complete a job invoiced at £2,400. Looking at the job costing:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 328.8191338582676053 Td
+(• Labour \(8 hours × £45\): £360) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 311.8112598425195756 Td
+(• Materials: £245) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 294.8033858267715459 Td
+(• Travel \(85 miles\): £38) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 277.7955118110235162 Td
+(• Total costs: £643) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 260.7876377952754865 Td
+(• Profit: £1,757 \(73% margin\)) Tj
+ET
+0.78 G
+56.6929133858267775 238.1104724409447897 m
+538.5826771653544256 238.1104724409447897 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 198.4254330708660063 Td
+(Staff & Resource Management) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 150.2364566929132934 Td
+(Staff Directory) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 119.0553543307086102 Td
+(What it does: Maintains complete records for all your employees and contractors.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 99.2128346456692043 Td
+(Information stored for each person:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 85.0396062992125508 Td
+(• Full name and job title) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+272.3027952755905972 28.3466929133857093 Td
+(Page 9 of 19) Tj
+ET
+endstream
+endobj
+23 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 24 0 R
+>>
+endobj
+24 0 obj
+<<
+/Length 4725
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(• Contact details \(phone, email, address\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 768.1892125984252289 Td
+(• Employment type: Full-time / Part-time / Contractor / Apprentice) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 751.1813385826771992 Td
+(• Start date) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 734.1734645669291695 Td
+(• Line manager) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 717.1655905511811397 Td
+(• Emergency contact) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 700.15771653543311 Td
+(• National Insurance number) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 683.1498425196850803 Td
+(• Driving licence details \(including expiry date\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 660.4726771653542983 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 646.2994488188976447 Td
+(• Staff list with quick search) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 629.291574803149615 Td
+(• Individual profile cards) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 612.2837007874015853 Td
+(• Organisation chart) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 595.2758267716535556 Td
+(• Upcoming driving licence renewals) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 578.2679527559055259 Td
+(• Employment anniversary dates) Tj
+ET
+0.78 G
+56.6929133858267775 555.5907874015747439 m
+538.5826771653544256 555.5907874015747439 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 518.7403937007873083 Td
+(Skills & Qualifications) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 487.559291338582625 Td
+(What it does: Tracks all certifications, training, and competencies for each team member.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 467.716771653543276 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 447.8742519685038701 Td
+(1. Add qualifications:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 430.8663779527558404 Td
+(   - Type: CSCS Card / NVQ / Manufacturer Training / In-house) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 416.69314960629913 Td
+(   - Name: "Fire Door Inspection - FDIS Level 1") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 402.5199212598424765 Td
+(   - Issue date) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 388.3466929133857661 Td
+(   - Expiry date) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 374.1734645669290558 Td
+(   - Certification number) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 360.0002362204724022 Td
+(   - Upload certificate image) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 340.1577165354329964 Td
+(2. Record skills:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 323.1498425196849666 Td
+(   - Skill name: "Smoke Damper Testing") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 308.9766141732283131 Td
+(   - Competency level: Trainee / Competent / Specialist / Trainer) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 294.8033858267715459 Td
+(   - Date assessed) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 274.9608661417322537 Td
+(3. Set up alerts - Get notified before certifications expire) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 252.2837007874014716 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 238.1104724409448181 Td
+(• Skills matrix across the team) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 221.1025984251967884 Td
+(• Who is qualified for what) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 204.0947244094487587 Td
+(• Upcoming certificate renewals) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 187.086850393700729 Td
+(• Training needs identification) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 170.0789763779526993 Td
+(• Competency gaps) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 147.4018110236219172 Td
+(Real-world example: A client specifically requests a BSRIA-trained engineer. You search by qualification and) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 133.2285826771652637 Td
+(see Dave and Maria both hold BSRIA CP/47 certification. Maria's is due to expire next month - you make a) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 119.0553543307086102 Td
+(note to book her refresher course.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 99.2128346456692043 Td
+(Sample engineers in the demo data:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 79.3703149606297984 Td
+(Name  |  Level  |  Key Skills) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 10 of 19) Tj
+ET
+endstream
+endobj
+25 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 26 0 R
+>>
+endobj
+26 0 obj
+<<
+/Length 4550
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(David Thompson  |  Senior  |  Smoke dampers, Stairwell pressurisation, BSRIA CP/47) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 769.6065354330708033 Td
+(Sarah Mitchell  |  Competent  |  Damper testing, AOV servicing) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 754.0159842519684616 Td
+(James Wilson  |  Trainee  |  Under supervision, learning damper testing) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 738.42543307086612 Td
+(Michael Brown  |  Specialist  |  Complex commissioning, training delivery) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 722.8348818897637784 Td
+(Emma Davis  |  Competent  |  Testing, inspection) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 707.2443307086614368 Td
+(Robert Taylor  |  Senior  |  Pressure systems, commissioning) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 691.6537795275589815 Td
+(Lisa Anderson  |  Trainee  |  Basic testing under supervision) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 676.0632283464566399 Td
+(Chris Martin  |  Specialist  |  System design, witness testing) Tj
+ET
+0.78 G
+56.6929133858267775 654.8033858267716596 m
+538.5826771653544256 654.8033858267716596 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 617.952992125984224 Td
+(Staff Scheduling) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 586.7718897637794271 Td
+(What it does: Manages availability, time-off, and shift patterns.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 566.9293700787401349 Td
+(Features:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 552.7561417322833677 Td
+(• Availability patterns \(Mon-Fri 8am-5pm, etc.\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 535.748267716535338 Td
+(• Time-off requests and approvals) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 518.7403937007873083 Td
+(• Shift handover notes) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 501.7325196850393354 Td
+(• Daily briefing distribution) Tj
+ET
+0.78 G
+56.6929133858267775 479.0553543307086102 m
+538.5826771653544256 479.0553543307086102 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 442.2049606299212314 Td
+(Equipment & Vehicles) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 411.0238582677164914 Td
+(What it does: Tracks all your test equipment and company vehicles.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 391.1813385826770855 Td
+(For equipment:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 377.0081102362204319 Td
+(• Asset register with descriptions) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 360.0002362204724022 Td
+(• Serial numbers) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 342.9923622047243725 Td
+(• Calibration status and due dates) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 325.9844881889763428 Td
+(• Current location/custodian) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 308.9766141732283131 Td
+(• Service history) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 291.9687401574802834 Td
+(• Reservation for specific jobs) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 269.2915748031495013 Td
+(For vehicles:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 255.1183464566928478 Td
+(• Fleet list) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 238.1104724409448181 Td
+(• MOT and service due dates) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 221.1025984251967884 Td
+(• Mileage tracking) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 204.0947244094487587 Td
+(• Driver assignments) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 187.086850393700729 Td
+(• Booking calendar) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 164.4096850393699469 Td
+(Real-world example: You need to send an engineer to a job requiring a calibrated anemometer. You check) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 150.2364566929132934 Td
+(equipment availability - see that anemometer #3 is calibrated until March and currently with Dave \(who has a) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 136.0632283464566399 Td
+(job nearby\). You can reassign it to Maria's job next week.) Tj
+ET
+0.78 G
+56.6929133858267775 116.2207086614172198 m
+538.5826771653544256 116.2207086614172198 l
+S
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 11 of 19) Tj
+ET
+endstream
+endobj
+27 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 28 0 R
+>>
+endobj
+28 0 obj
+<<
+/Length 4611
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 785.1970866141732586 Td
+(Intelligent Features) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 737.0081102362204319 Td
+(Trend Analysis) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 705.8270078740157487 Td
+(What it does: Charts historical velocity data so you can spot declining performance over time.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 685.9844881889763428 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 666.1419685039369369 Td
+(1. Select a damper - Choose from your damper registry) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 649.1340944881889072 Td
+(2. View history - See all tests performed on that damper) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 632.1262204724408775 Td
+(3. See the trend chart - X-axis shows dates, Y-axis shows average velocities) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 609.4490551181102092 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 595.2758267716535556 Td
+(• Line chart showing velocity over time) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 578.2679527559055259 Td
+(• Design velocity baseline for comparison) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 561.2600787401574962 Td
+(• Trend line \(is it declining?\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 544.2522047244094665 Td
+(• Anomaly markers \(unusual readings highlighted\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 527.2443307086614368 Td
+(• Comparison with similar dampers) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 504.5671653543306547 Td
+(Why this matters: If a damper tested at 8.5 m/s last year now tests at 7.2 m/s, that's a 15% decline. The trend) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 490.3939370078739444 Td
+(chart makes this immediately visible. You can recommend preventive maintenance before it fails completely.) Tj
+ET
+0.78 G
+56.6929133858267775 470.5514173228345953 m
+538.5826771653544256 470.5514173228345953 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 433.7010236220471597 Td
+(Anomaly Detection) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 402.5199212598424765 Td
+(What it does: Automatically flags readings that are statistically unusual.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 382.6774015748030706 Td
+(How it works:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 368.5041732283464171 Td
+(• Uses MAD \(Median Absolute Deviation\) algorithm) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 351.4962992125983874 Td
+(• Compares each reading against historical patterns) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 334.4884251968503008 Td
+(• Flags readings more than 2 standard deviations from normal) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 311.8112598425195756 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 297.6380314960629221 Td
+(• Unusual readings highlighted in orange/red) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 280.6301574803148924 Td
+(• Explanation of why it's flagged) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 263.6222834645668627 Td
+(• Comparison to historical average) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 246.614409448818833 Td
+(• Suggested action \(investigate, retest, service required\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 223.9372440944881646 Td
+(Real-world example: You enter readings for a damper. Most cells show 7-8 m/s, but one shows 3.2 m/s. The) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 209.7640157480313974 Td
+(app immediately highlights this reading with an alert: "This reading is 58% below the damper average. Check) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 195.5907874015747439 Td
+(for obstruction or damage in this quadrant.") Tj
+ET
+0.78 G
+56.6929133858267775 175.748267716535338 m
+538.5826771653544256 175.748267716535338 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 138.8978740157479024 Td
+(Predictive Maintenance) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 107.7167716535432191 Td
+(What it does: Uses historical data to predict when maintenance will be needed.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 87.8742519685038133 Td
+(Features:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 73.7010236220471597 Td
+(• Velocity decline rate calculation) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 12 of 19) Tj
+ET
+endstream
+endobj
+29 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 30 0 R
+>>
+endobj
+30 0 obj
+<<
+/Length 4409
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(• Time to reach minimum acceptable velocity) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 768.1892125984252289 Td
+(• Maintenance scheduling recommendations) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 751.1813385826771992 Td
+(• Pre-loaded predictive readings based on history) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 728.5041732283464171 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(• Predicted test results before you start \(based on trend\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 697.3230708661417339 Td
+(• Expected maintenance date) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 680.3151968503937042 Td
+(• Recommended service items) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 663.3073228346456744 Td
+(• Comparison of actual vs predicted) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 640.6301574803148924 Td
+(Real-world example: The app shows a damper has declined 5% per year over the last 3 tests. At this rate, it) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 626.4569291338582389 Td
+(will drop below the minimum 6.5 m/s requirement in approximately 18 months. You can schedule preventive) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 612.2837007874015853 Td
+(maintenance now rather than waiting for failure.) Tj
+ET
+0.78 G
+56.6929133858267775 592.4411811023621794 m
+538.5826771653544256 592.4411811023621794 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 552.7561417322833677 Td
+(Project & Site Management) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 504.5671653543306547 Td
+(Projects) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 473.3860629921259147 Td
+(What it does: Groups related buildings and dampers together for efficient management.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 453.5435433070865656 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 433.7010236220471597 Td
+(1. Create a project:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 416.69314960629913 Td
+(   - Project name: "Tower Court Residential Development") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 402.5199212598424765 Td
+(   - Client: Select from list) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 388.3466929133857661 Td
+(   - Site address) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 374.1734645669290558 Td
+(   - Main contractor \(if applicable\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 360.0002362204724022 Td
+(   - Project status: Planning / Active / Complete / On Hold) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 340.1577165354329964 Td
+(2. Add buildings:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 323.1498425196849666 Td
+(   - Building A: 15-storey residential) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 308.9766141732283131 Td
+(   - Building B: 12-storey residential) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 294.8033858267715459 Td
+(   - Podium: 2-storey retail) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 274.9608661417322537 Td
+(3. Add dampers to each building - See Damper Registry below) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 252.2837007874014716 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 238.1104724409448181 Td
+(• Project overview dashboard) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 221.1025984251967884 Td
+(• Building list with damper counts) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 204.0947244094487587 Td
+(• Testing progress \(12 of 45 dampers tested\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 187.086850393700729 Td
+(• Linked contracts and jobs) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 170.0789763779526993 Td
+(• Document library) Tj
+ET
+0.78 G
+56.6929133858267775 147.4018110236219457 m
+538.5826771653544256 147.4018110236219457 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 110.5514173228345953 Td
+(Damper Registry) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 79.3703149606297984 Td
+(What it does: Maintains a complete database of every damper you manage.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 13 of 19) Tj
+ET
+endstream
+endobj
+31 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 32 0 R
+>>
+endobj
+32 0 obj
+<<
+/Length 4667
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(Information stored for each damper:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 771.0238582677164914 Td
+(• Unique damper ID \(e.g., "TC-A-L05-SD01"\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 754.0159842519684616 Td
+(• Building and location \(Tower Court, Building A, Level 05\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 737.0081102362204319 Td
+(• Shaft identifier \(Smoke Shaft 1\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 720.0002362204724022 Td
+(• Dimensions \(600mm × 400mm\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 702.9923622047243725 Td
+(• System type \(Push/Pull/Push-Pull\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 685.9844881889763428 Td
+(• Manufacturer and model) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 668.9766141732283131 Td
+(• Installation date) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 651.9687401574802834 Td
+(• All historical test records) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 629.291574803149615 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 615.1183464566928478 Td
+(• Searchable damper list) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 598.1104724409448181 Td
+(• Filter by building, floor, system type) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 581.1025984251967884 Td
+(• Test status \(never tested, passed, failed, due soon\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 564.0947244094487587 Td
+(• Quick access to test history) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 547.086850393700729 Td
+(• Photo gallery) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 524.4096850393700606 Td
+(Damper ID naming convention:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 510.2364566929133503 Td
+(The app suggests a standardised format:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 496.0632283464566399 Td
+(`[Building]-[Floor]-[Type]-[Number]`) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 481.8899999999999295 Td
+(Example: TC-A-L05-SD01 = Tower Court, Building A, Level 05, Smoke Damper 01) Tj
+ET
+0.78 G
+56.6929133858267775 462.0474803149605805 m
+538.5826771653544256 462.0474803149605805 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 425.1970866141731449 Td
+(Damper Templates) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 394.0159842519684616 Td
+(What it does: Saves commonly-used damper configurations for quick reuse.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 374.1734645669290558 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 354.3309448818897067 Td
+(1. Create a template:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 337.323070866141677 Td
+(   - Template name: "Standard AOV 600x400 Push") Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 323.1498425196849666 Td
+(   - Default dimensions) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 308.9766141732283131 Td
+(   - Default system type) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 294.8033858267715459 Td
+(   - Standard manufacturer) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 274.9608661417322537 Td
+(2. Apply to new dampers - Select template, adjust only what's different) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 252.2837007874014716 Td
+(Real-world example: A development has 45 identical dampers. You create a template with the standard) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 238.1104724409448181 Td
+(settings, then apply it to each damper, only changing the floor and location identifier. Saves significant time) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 223.9372440944881646 Td
+(versus entering all details manually 45 times.) Tj
+ET
+0.78 G
+56.6929133858267775 204.0947244094487303 m
+538.5826771653544256 204.0947244094487303 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 167.2443307086613231 Td
+(Floor Sequencing Mode) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 136.0632283464566399 Td
+(What it does: Provides structured floor-by-floor testing to ensure nothing is missed.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 116.220708661417234 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 96.3781889763778281 Td
+(1. Start floor sequence - Select the building) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 79.3703149606297984 Td
+(2. Work through floors - App presents dampers floor by floor) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 14 of 19) Tj
+ET
+endstream
+endobj
+33 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 34 0 R
+>>
+endobj
+34 0 obj
+<<
+/Length 4037
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(3. Mark completion - Each floor shows complete/incomplete status) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 768.1892125984252289 Td
+(4. Track progress - Visual indicator of progress through building) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 745.5120472440944468 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 731.3388188976377933 Td
+(• Floor-by-floor list) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(• Number of dampers per floor) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 697.3230708661417339 Td
+(• Completion status) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 680.3151968503937042 Td
+(• Time spent per floor) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 663.3073228346456744 Td
+(• Estimated time remaining) Tj
+ET
+0.78 G
+56.6929133858267775 640.6301574803148924 m
+538.5826771653544256 640.6301574803148924 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 600.9451181102361943 Td
+(Data Management) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 552.7561417322833677 Td
+(Export Options) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 521.5750393700786844 Td
+(PDF Reports:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 507.4018110236219741 Td
+(• Professional client-ready documents) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 490.3939370078739444 Td
+(• Company branding) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 473.3860629921259147 Td
+(• Digital signatures) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 456.378188976377885 Td
+(• Pass/fail summaries) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 433.7010236220471597 Td
+(CSV Export:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 419.5277952755905062 Td
+(• Raw data for spreadsheet analysis) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 402.5199212598424765 Td
+(• All readings in tabular format) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 385.5120472440944468 Td
+(• Suitable for client data systems) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 362.8348818897637216 Td
+(JSON Backup:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 348.6616535433070112 Td
+(• Complete data export) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 331.6537795275589815 Td
+(• Suitable for backup and restore) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 314.6459055118109518 Td
+(• Can transfer to another device) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 291.9687401574802834 Td
+(ZIP Archives:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 277.7955118110235162 Td
+(• Bundle multiple reports) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 260.7876377952754865 Td
+(• Include photos and documents) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 243.7797637795274568 Td
+(• Complete project handover package) Tj
+ET
+0.78 G
+56.6929133858267775 221.10259842519676 m
+538.5826771653544256 221.10259842519676 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 184.2522047244093528 Td
+(Offline Capability) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 153.0711023622046696 Td
+(What it does: Works fully without internet connection - essential for basement and core testing where signal is) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 138.8978740157479024 Td
+(poor.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 119.0553543307086102 Td
+(How it works:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 104.882125984251843 Td
+(• All data stored locally on device) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 87.8742519685038133 Td
+(• Create and complete tests offline) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 70.8663779527557836 Td
+(• Offline indicator shows when disconnected) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 15 of 19) Tj
+ET
+endstream
+endobj
+35 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 36 0 R
+>>
+endobj
+36 0 obj
+<<
+/Length 4075
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(• Changes queued for sync when back online) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 768.1892125984252289 Td
+(• Automatic sync when connection restored) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 745.5120472440944468 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 731.3388188976377933 Td
+(• Connectivity indicator in header) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(• Pending sync count \(e.g., "3 changes waiting to sync"\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 697.3230708661417339 Td
+(• Sync status animation when connecting) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 680.3151968503937042 Td
+(• Confirmation when sync complete) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 657.6380314960629221 Td
+(Real-world example: You're testing dampers in a basement car park with no signal. You complete 6 damper) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 643.4648031496062686 Td
+(tests over 2 hours. When you return to the surface and get signal, the app automatically syncs all 6 tests to) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 629.291574803149615 Td
+(the server within seconds.) Tj
+ET
+0.78 G
+56.6929133858267775 609.4490551181102092 m
+538.5826771653544256 609.4490551181102092 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 572.5986614173227736 Td
+(Auto-Save) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 541.4175590551180903 Td
+(What it does: Continuously saves your work so you never lose data.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 521.5750393700786844 Td
+(What you'll see:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 507.4018110236219741 Td
+(• Save indicator: "Saved" with timestamp) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 490.3939370078739444 Td
+(• Auto-saves every few seconds during data entry) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 473.3860629921259147 Td
+(• Confirmation when manually saving) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 456.378188976377885 Td
+(• Recovery of unsaved work if app closes unexpectedly) Tj
+ET
+0.78 G
+56.6929133858267775 433.7010236220471597 m
+538.5826771653544256 433.7010236220471597 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 394.0159842519684616 Td
+(User Experience) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 345.8270078740156919 Td
+(Touch-Optimised Interface) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 314.6459055118109518 Td
+(Designed for field use:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 300.4726771653542983 Td
+(• Large tap targets \(no tiny buttons\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 283.4648031496062686 Td
+(• Works with gloves) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 266.4569291338582389 Td
+(• Works in bright sunlight) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 249.4490551181102092 Td
+(• Minimal scrolling required) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 232.4411811023621794 Td
+(• Key actions always visible) Tj
+ET
+0.78 G
+56.6929133858267775 209.7640157480313974 m
+538.5826771653544256 209.7640157480313974 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 172.9136220472439618 Td
+(Navigation) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 141.7325196850392786 Td
+(Keyboard shortcuts for efficiency:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 127.559291338582625 Td
+(• Tab: Move to next cell) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 110.5514173228345953 Td
+(• Shift+Tab: Move to previous cell) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 93.5435433070865656 Td
+(• Arrow keys: Move within grid) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 76.5356692913385359 Td
+(• Enter: Confirm and move down) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 16 of 19) Tj
+ET
+endstream
+endobj
+37 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 38 0 R
+>>
+endobj
+38 0 obj
+<<
+/Length 3735
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(• Escape: Cancel edit) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 762.5199212598424765 Td
+(Quick navigation:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 748.346692913385823 Td
+(• Recent items list) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 731.3388188976377933 Td
+(• Search across all data) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(• Breadcrumb trails showing where you are) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 697.3230708661417339 Td
+(• Back button always available) Tj
+ET
+0.78 G
+56.6929133858267775 674.6459055118109518 m
+538.5826771653544256 674.6459055118109518 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 637.7955118110235162 Td
+(Visual Feedback) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 606.614409448818833 Td
+(Clear status indicators:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 592.4411811023621794 Td
+(• Saving: Subtle animation) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 575.4333070866141497 Td
+(• Saved: Green checkmark with timestamp) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 558.42543307086612 Td
+(• Offline: Orange indicator) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 541.4175590551180903 Td
+(• Error: Red alert with explanation) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 524.4096850393700606 Td
+(• Success: Green toast notification) Tj
+ET
+0.78 G
+56.6929133858267775 501.7325196850393354 m
+538.5826771653544256 501.7325196850393354 l
+S
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 464.8821259842518998 Td
+(Image Documentation) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 433.7010236220471597 Td
+(What it does: Captures photos of dampers and attaches them to test records.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 413.8585039370078107 Td
+(How to use it:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 394.0159842519684616 Td
+(1. Tap camera icon on damper or test) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 377.0081102362204319 Td
+(2. Capture photo - Shows preview) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 360.0002362204724022 Td
+(3. Annotate - Draw on image to highlight issues) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 342.9923622047243725 Td
+(4. Save - Attached to record) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 320.3151968503935905 Td
+(Photo types:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 306.1419685039369369 Td
+(• Damper in open position) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 289.1340944881889072 Td
+(• Damper in closed position) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 272.1262204724408775 Td
+(• Defects or damage) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 255.1183464566928478 Td
+(• Location/identification plate) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 238.1104724409448181 Td
+(• General installation views) Tj
+ET
+0.78 G
+56.6929133858267775 215.4333070866140929 m
+538.5826771653544256 215.4333070866140929 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 175.748267716535338 Td
+(Mobile App Features \(Capacitor\)) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 127.559291338582625 Td
+(Native Functionality) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 96.3781889763778281 Td
+(The mobile app provides:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 82.2049606299211746 Td
+(• iOS and Android versions - Install from app stores) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 17 of 19) Tj
+ET
+endstream
+endobj
+39 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 40 0 R
+>>
+endobj
+40 0 obj
+<<
+/Length 3786
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(• Camera integration - Native camera for quality photos) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 768.1892125984252289 Td
+(• Splash screen - Professional branding on launch) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 751.1813385826771992 Td
+(• Status bar - Customised to match app design) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 720.0002362204724022 Td
+(Offline-First Design) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 688.819133858267719 Td
+(• Full functionality without internet) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 671.8112598425196893 Td
+(• Local data persistence) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 654.8033858267716596 Td
+(• Background sync when online) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 637.7955118110235162 Td
+(• Battery optimised) Tj
+ET
+0.78 G
+56.6929133858267775 615.1183464566928478 m
+538.5826771653544256 615.1183464566928478 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 575.4333070866141497 Td
+(Security & Authentication) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 527.2443307086614368 Td
+(User Management) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 496.0632283464566399 Td
+(Login options:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 481.8899999999999295 Td
+(• Replit Auth \(quick social login\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 464.8821259842518998 Td
+(• Username/password \(traditional\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 447.8742519685038701 Td
+(• Session management \(stay logged in\)) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.2 g
+56.6929133858267775 416.69314960629913 Td
+(Data Isolation) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 385.5120472440944468 Td
+(• Each user sees only their own data) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 368.5041732283464171 Td
+(• Shared demo data for training new users) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 351.4962992125983874 Td
+(• Role-based access ready for team implementation) Tj
+ET
+0.78 G
+56.6929133858267775 328.8191338582676622 m
+538.5826771653544256 328.8191338582676622 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 289.1340944881889072 Td
+(Sample Data \(Pre-loaded\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 249.4490551181102092 Td
+(The app comes pre-loaded with realistic UK demo data to explore:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 229.6065354330708033 Td
+(8 Staff Members:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 215.4333070866141497 Td
+(• Mix of experience levels \(Trainee to Specialist\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 198.4254330708660063 Td
+(• Various qualifications \(CSCS, NVQ, BSRIA\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 181.4175590551179766 Td
+(• Complete profile information) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 158.7403937007873083 Td
+(6 Client Companies:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 144.5671653543306547 Td
+(• Spread across UK regions) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 127.559291338582625 Td
+(• Different sectors \(commercial, residential, public\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 110.5514173228345953 Td
+(• Multiple contacts and addresses) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 87.8742519685038133 Td
+(9 Service Contracts:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 73.7010236220471597 Td
+(• Various values and terms) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 18 of 19) Tj
+ET
+endstream
+endobj
+41 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 42 0 R
+>>
+endobj
+42 0 obj
+<<
+/Length 3830
+>>
+stream
+0.5670000000000001 w
+0.78 G
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+(• Different SLA levels) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 768.1892125984252289 Td
+(• Renewal dates spread throughout year) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 745.5120472440944468 Td
+(6 Building Projects:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 731.3388188976377933 Td
+(• Different sizes and types) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 714.3309448818897636 Td
+(• Multiple dampers per building) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 697.3230708661417339 Td
+(• Complete test histories) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 674.6459055118109518 Td
+(18 Jobs:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 660.4726771653542983 Td
+(• Various statuses \(pending to completed\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 643.4648031496062686 Td
+(• Different types \(testing, maintenance, repair\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 626.4569291338582389 Td
+(• Assigned to different engineers) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 603.7797637795274568 Td
+(Dampers and Test Records:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 589.6065354330708033 Td
+(• Multiple damper configurations) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 572.5986614173227736 Td
+(• Historical velocity readings) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 555.5907874015747439 Td
+(• Trend data for analysis demos) Tj
+ET
+0.78 G
+56.6929133858267775 532.9136220472440755 m
+538.5826771653544256 532.9136220472440755 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 493.2285826771653205 Td
+(Getting Started) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 453.5435433070865656 Td
+(1. Log in using your preferred method) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 436.5356692913385359 Td
+(2. Explore the demo data - All features have sample data to try) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 419.5277952755905062 Td
+(3. Create your first client - Start building your own database) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 402.5199212598424765 Td
+(4. Add a project and dampers - Set up your first site) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 385.5120472440944468 Td
+(5. Run a test - Experience the touch-optimised testing workflow) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 368.5041732283464171 Td
+(6. Generate a report - See the professional PDF output) Tj
+ET
+0.78 G
+56.6929133858267775 345.8270078740156919 m
+538.5826771653544256 345.8270078740156919 l
+S
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. 0.298 0.6 rg
+56.6929133858267775 306.1419685039369369 Td
+(Technical Stack) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 266.4569291338582389 Td
+(For developers and technical teams:) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 246.614409448818833 Td
+(• Frontend: React 18+, TypeScript, Vite, shadcn/ui, Tailwind CSS) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 229.6065354330708033 Td
+(• Backend: Express.js, TypeScript, RESTful API) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 212.5986614173227736 Td
+(• Database: PostgreSQL with Drizzle ORM) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 195.5907874015747439 Td
+(• Mobile: Capacitor for iOS/Android) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 178.5829133858267141 Td
+(• Charts: Recharts) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 161.5750393700786844 Td
+(• PDF: jsPDF, html-to-image) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 144.5671653543306547 Td
+(• Forms: React Hook Form, Zod validation) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.502 g
+269.8277952755905744 28.3466929133857093 Td
+(Page 19 of 19) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R 25 0 R 27 0 R 29 0 R 31 0 R 33 0 R 35 0 R 37 0 R 39 0 R 41 0 R ]
+/Count 20
+>>
+endobj
+43 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+44 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+45 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+46 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+47 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+48 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+49 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+50 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+51 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+52 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+53 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+54 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+55 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+56 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 43 0 R
+/F2 44 0 R
+/F3 45 0 R
+/F4 46 0 R
+/F5 47 0 R
+/F6 48 0 R
+/F7 49 0 R
+/F8 50 0 R
+/F9 51 0 R
+/F10 52 0 R
+/F11 53 0 R
+/F12 54 0 R
+/F13 55 0 R
+/F14 56 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+57 0 obj
+<<
+/Producer (jsPDF 3.0.3)
+/CreationDate (D:20251215111316-00'00')
+>>
+endobj
+58 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 59
+0000000000 65535 f 
+0000092909 00000 n 
+0000094862 00000 n 
+0000000015 00000 n 
+0000000152 00000 n 
+0000001937 00000 n 
+0000002074 00000 n 
+0000007518 00000 n 
+0000007655 00000 n 
+0000012994 00000 n 
+0000013132 00000 n 
+0000017903 00000 n 
+0000018042 00000 n 
+0000023198 00000 n 
+0000023337 00000 n 
+0000027904 00000 n 
+0000028043 00000 n 
+0000033397 00000 n 
+0000033536 00000 n 
+0000038824 00000 n 
+0000038963 00000 n 
+0000044033 00000 n 
+0000044172 00000 n 
+0000048564 00000 n 
+0000048703 00000 n 
+0000053481 00000 n 
+0000053620 00000 n 
+0000058223 00000 n 
+0000058362 00000 n 
+0000063026 00000 n 
+0000063165 00000 n 
+0000067627 00000 n 
+0000067766 00000 n 
+0000072486 00000 n 
+0000072625 00000 n 
+0000076715 00000 n 
+0000076854 00000 n 
+0000080982 00000 n 
+0000081121 00000 n 
+0000084909 00000 n 
+0000085048 00000 n 
+0000088887 00000 n 
+0000089026 00000 n 
+0000093097 00000 n 
+0000093223 00000 n 
+0000093354 00000 n 
+0000093488 00000 n 
+0000093626 00000 n 
+0000093750 00000 n 
+0000093879 00000 n 
+0000094011 00000 n 
+0000094147 00000 n 
+0000094275 00000 n 
+0000094402 00000 n 
+0000094531 00000 n 
+0000094664 00000 n 
+0000094766 00000 n 
+0000095115 00000 n 
+0000095201 00000 n 
+trailer
+<<
+/Size 59
+/Root 58 0 R
+/Info 57 0 R
+/ID [ <EC26C85F079B37E699C104825BA62E8F> <EC26C85F079B37E699C104825BA62E8F> ]
+>>
+startxref
+95305
+%%EOF
