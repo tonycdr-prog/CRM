@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { hashPassword, verifyPassword } from "./auth";
 import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS } from "@shared/schema";
+import { seedDatabase } from "./seed";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
@@ -25,6 +26,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   } catch (error) {
     console.error("Failed to seed test user:", error);
   }
+
+  // ============================================
+  // SEED DATABASE ENDPOINT (Development only)
+  // ============================================
+  app.post("/api/seed", async (req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({ success: false, message: "Seeding is disabled in production" });
+    }
+    try {
+      const result = await seedDatabase();
+      res.json(result);
+    } catch (error) {
+      console.error("Seed error:", error);
+      res.status(500).json({ success: false, message: "Failed to seed database" });
+    }
+  });
 
   // Get current authenticated user
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
