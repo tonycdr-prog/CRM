@@ -5,6 +5,8 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { hashPassword, verifyPassword } from "./auth";
 import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS } from "@shared/schema";
 import { seedDatabase } from "./seed";
+import fs from "fs";
+import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
@@ -40,6 +42,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Seed error:", error);
       res.status(500).json({ success: false, message: "Failed to seed database" });
+    }
+  });
+
+  // ============================================
+  // PDF DOWNLOAD ENDPOINT
+  // ============================================
+  app.get("/api/downloads/capabilities-pdf", (req, res) => {
+    const pdfPath = path.join(process.cwd(), "APP_CAPABILITIES.pdf");
+    if (fs.existsSync(pdfPath)) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "attachment; filename=App_Capabilities_Guide.pdf");
+      fs.createReadStream(pdfPath).pipe(res);
+    } else {
+      res.status(404).json({ error: "PDF not found" });
     }
   });
 
