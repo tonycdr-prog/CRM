@@ -15,7 +15,9 @@ import {
   checkSheetTemplates, checkSheetReadings
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or } from "drizzle-orm";
+
+const SHARED_USER_ID = "test-user-shared";
 
 // Infer types directly from tables for DB operations
 type DbProject = typeof projects.$inferSelect;
@@ -675,7 +677,7 @@ export class DatabaseStorage implements IStorage {
 
   // Projects
   async getProjects(userId: string): Promise<DbProject[]> {
-    return db.select().from(projects).where(eq(projects.userId, userId)).orderBy(desc(projects.createdAt));
+    return db.select().from(projects).where(or(eq(projects.userId, userId), eq(projects.userId, SHARED_USER_ID))).orderBy(desc(projects.createdAt));
   }
 
   async getProject(id: string): Promise<DbProject | undefined> {
@@ -720,7 +722,7 @@ export class DatabaseStorage implements IStorage {
 
   // Dampers
   async getDampers(userId: string): Promise<DbDamper[]> {
-    return db.select().from(dampers).where(eq(dampers.userId, userId)).orderBy(desc(dampers.createdAt));
+    return db.select().from(dampers).where(or(eq(dampers.userId, userId), eq(dampers.userId, SHARED_USER_ID))).orderBy(desc(dampers.createdAt));
   }
 
   async getDamper(id: string): Promise<DbDamper | undefined> {
@@ -735,7 +737,7 @@ export class DatabaseStorage implements IStorage {
 
   // Tests
   async getTests(userId: string): Promise<DbTest[]> {
-    return db.select().from(tests).where(eq(tests.userId, userId)).orderBy(desc(tests.createdAt));
+    return db.select().from(tests).where(or(eq(tests.userId, userId), eq(tests.userId, SHARED_USER_ID))).orderBy(desc(tests.createdAt));
   }
 
   async getTest(id: string): Promise<DbTest | undefined> {
@@ -891,7 +893,7 @@ export class DatabaseStorage implements IStorage {
 
   // Clients
   async getClients(userId: string): Promise<DbClient[]> {
-    return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(desc(clients.createdAt));
+    return db.select().from(clients).where(or(eq(clients.userId, userId), eq(clients.userId, SHARED_USER_ID))).orderBy(desc(clients.createdAt));
   }
 
   async getClient(id: string): Promise<DbClient | undefined> {
@@ -956,7 +958,7 @@ export class DatabaseStorage implements IStorage {
 
   // Contracts
   async getContracts(userId: string): Promise<DbContract[]> {
-    return db.select().from(contracts).where(eq(contracts.userId, userId)).orderBy(desc(contracts.createdAt));
+    return db.select().from(contracts).where(or(eq(contracts.userId, userId), eq(contracts.userId, SHARED_USER_ID))).orderBy(desc(contracts.createdAt));
   }
 
   async getContract(id: string): Promise<DbContract | undefined> {
@@ -981,7 +983,7 @@ export class DatabaseStorage implements IStorage {
 
   // Jobs
   async getJobs(userId: string): Promise<DbJob[]> {
-    return db.select().from(jobs).where(eq(jobs.userId, userId)).orderBy(desc(jobs.createdAt));
+    return db.select().from(jobs).where(or(eq(jobs.userId, userId), eq(jobs.userId, SHARED_USER_ID))).orderBy(desc(jobs.createdAt));
   }
 
   async getJob(id: string): Promise<DbJob | undefined> {
