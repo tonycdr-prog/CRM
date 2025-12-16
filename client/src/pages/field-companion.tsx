@@ -1,65 +1,45 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Search,
-  SlidersHorizontal,
   MapPin,
   Phone,
   Clock,
   Calendar,
   ChevronRight,
-  Briefcase,
-  Route,
-  QrCode,
-  Menu,
-  AlertTriangle,
+  Navigation,
+  CheckCircle2,
+  PlayCircle,
+  AlertCircle,
+  User,
+  Building2,
+  Wrench,
 } from "lucide-react";
-import { format, parseISO, isToday } from "date-fns";
-
-interface Job {
-  id: string;
-  jobNumber: string;
-  title: string;
-  status: string;
-  priority: string;
-  scheduledDate: string | null;
-  scheduledTime: string | null;
-  estimatedDuration: number | null;
-  siteAddress: string | null;
-  clientId: string | null;
-  notes: string | null;
-  systems: any[];
-}
+import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
+import type { DbJob } from "@shared/schema";
 
 interface Client {
   id: string;
   companyName: string;
   contactName: string | null;
   phone: string | null;
+  email: string | null;
+  address: string | null;
 }
 
 export default function FieldCompanion() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-  const [sortOrder, setSortOrder] = useState("date-asc");
 
-  const { data: jobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
+  const { data: jobs = [], isLoading: jobsLoading } = useQuery<DbJob[]>({
     queryKey: ["/api/jobs", user?.id],
     enabled: !!user?.id,
   });
@@ -74,44 +54,23 @@ export default function FieldCompanion() {
     return clients.find((c) => c.id === clientId);
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-      scheduled: { variant: "outline", label: "Scheduled" },
-      in_progress: { variant: "default", label: "On Site" },
-      completed: { variant: "secondary", label: "Complete" },
-      cancelled: { variant: "destructive", label: "Cancelled" },
-    };
-    const config = variants[status] || { variant: "outline", label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
+  // Separate jobs by category
+  const todaysJobs = jobs.filter(
+    (j) => j.scheduledDate && isToday(parseISO(j.scheduledDate)) && j.status !== "completed"
+  );
+  const activeJob = jobs.find((j) => j.status === "in_progress");
+  const upcomingJobs = jobs.filter(
+    (j) => j.scheduledDate && !isToday(parseISO(j.scheduledDate)) && !isPast(parseISO(j.scheduledDate)) && j.status !== "completed"
+  );
+  const completedToday = jobs.filter(
+    (j) => j.scheduledDate && isToday(parseISO(j.scheduledDate)) && j.status === "completed"
+  );
 
-  const getPriorityStyles = (priority: string) => {
-    const baseStyle = "border-l-4";
-    switch (priority) {
-      case "urgent":
-        return `${baseStyle} border-l-red-500 dark:border-l-red-400`;
-      case "high":
-        return `${baseStyle} border-l-orange-500 dark:border-l-orange-400`;
-      case "medium":
-        return `${baseStyle} border-l-yellow-500 dark:border-l-yellow-400`;
-      default:
-        return `${baseStyle} border-l-gray-300 dark:border-l-gray-600`;
-    }
-  };
-
-  const filteredJobs = jobs
-    .filter((job) => {
-      if (activeTab === "today") {
-        return job.scheduledDate && isToday(parseISO(job.scheduledDate));
-      }
-      if (activeTab === "working") {
-        return job.status === "in_progress";
-      }
-      return true;
-    })
-    .filter((job) => {
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
+  // Filter by search
+  const filterJobs = (jobList: DbJob[]) => {
+    if (!searchQuery) return jobList;
+    const query = searchQuery.toLowerCase();
+    return jobList.filter((job) => {
       const client = getClient(job.clientId);
       return (
         job.jobNumber?.toLowerCase().includes(query) ||
@@ -119,246 +78,288 @@ export default function FieldCompanion() {
         job.siteAddress?.toLowerCase().includes(query) ||
         client?.companyName?.toLowerCase().includes(query)
       );
-    })
-    .sort((a, b) => {
-      if (sortOrder === "date-asc") {
-        return (a.scheduledDate || "").localeCompare(b.scheduledDate || "");
-      }
-      if (sortOrder === "date-desc") {
-        return (b.scheduledDate || "").localeCompare(a.scheduledDate || "");
-      }
-      if (sortOrder === "priority") {
-        const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
-        return (priorityOrder[a.priority as keyof typeof priorityOrder] || 4) -
-          (priorityOrder[b.priority as keyof typeof priorityOrder] || 4);
-      }
-      return 0;
     });
+  };
 
-  const todayCount = jobs.filter(
-    (j) => j.scheduledDate && isToday(parseISO(j.scheduledDate))
-  ).length;
-  const workingCount = jobs.filter((j) => j.status === "in_progress").length;
+  const getStatusColor = (status: string | null) => {
+    switch (status) {
+      case "in_progress":
+        return "bg-blue-500 dark:bg-blue-400";
+      case "completed":
+        return "bg-green-500 dark:bg-green-400";
+      case "scheduled":
+        return "bg-amber-500 dark:bg-amber-400";
+      default:
+        return "bg-gray-400 dark:bg-gray-500";
+    }
+  };
+
+  const getPriorityLabel = (priority: string | null) => {
+    switch (priority) {
+      case "urgent":
+        return { label: "Urgent", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" };
+      case "high":
+        return { label: "High", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" };
+      default:
+        return null;
+    }
+  };
+
+  const JobCard = ({ job, showDate = false }: { job: DbJob; showDate?: boolean }) => {
+    const client = getClient(job.clientId);
+    const priority = getPriorityLabel(job.priority);
+
+    return (
+      <Card
+        className="hover-elevate cursor-pointer transition-all"
+        onClick={() => setLocation(`/field-companion/${job.id}`)}
+        data-testid={`card-job-${job.id}`}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            {/* Status indicator */}
+            <div className={`w-2 h-full min-h-[60px] rounded-full ${getStatusColor(job.status)}`} />
+            
+            <div className="flex-1 min-w-0 space-y-2">
+              {/* Header row */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm" data-testid={`text-job-number-${job.id}`}>
+                      {job.jobNumber}
+                    </span>
+                    {priority && (
+                      <Badge className={priority.className} variant="secondary">
+                        {priority.label}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="font-medium text-base" data-testid={`text-job-title-${job.id}`}>
+                    {job.title}
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+              </div>
+
+              {/* Client & Location */}
+              {client && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Building2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{client.companyName}</span>
+                </div>
+              )}
+
+              {job.siteAddress && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{job.siteAddress}</span>
+                </div>
+              )}
+
+              {/* Time info */}
+              <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                {showDate && job.scheduledDate && (
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      {isTomorrow(parseISO(job.scheduledDate))
+                        ? "Tomorrow"
+                        : format(parseISO(job.scheduledDate), "EEE, d MMM")}
+                    </span>
+                  </div>
+                )}
+                {job.scheduledTime && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{job.scheduledTime}</span>
+                  </div>
+                )}
+                {job.estimatedDuration && (
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                    {job.estimatedDuration}h
+                  </span>
+                )}
+              </div>
+
+              {/* Quick actions */}
+              <div className="flex items-center gap-2 pt-1">
+                {job.siteAddress && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(
+                        `https://maps.google.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
+                        "_blank"
+                      );
+                    }}
+                    data-testid={`button-navigate-${job.id}`}
+                  >
+                    <Navigation className="h-3 w-3 mr-1" />
+                    Navigate
+                  </Button>
+                )}
+                {client?.phone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.location.href = `tel:${client.phone}`;
+                    }}
+                    data-testid={`button-call-${job.id}`}
+                  >
+                    <Phone className="h-3 w-3 mr-1" />
+                    Call
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-background border-b p-3 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by job number, site, description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-              data-testid="input-field-search"
-            />
-          </div>
-          <Button variant="outline" size="icon" data-testid="button-field-filter">
-            <SlidersHorizontal className="h-4 w-4" />
-          </Button>
+    <div className="flex flex-col h-full bg-muted/30">
+      {/* Search bar */}
+      <div className="bg-background border-b p-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search jobs, clients, addresses..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-field-search"
+          />
         </div>
+      </div>
 
-        <Select value={sortOrder} onValueChange={setSortOrder}>
-          <SelectTrigger className="w-full" data-testid="select-sort-order">
-            <SelectValue placeholder="Sort by..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date-asc">Date - Oldest First</SelectItem>
-            <SelectItem value="date-desc">Date - Newest First</SelectItem>
-            <SelectItem value="priority">Priority</SelectItem>
-          </SelectContent>
-        </Select>
+      <ScrollArea className="flex-1">
+        <div className="p-3 space-y-4">
+          {jobsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+            </div>
+          ) : (
+            <>
+              {/* Active Job - Most prominent */}
+              {activeJob && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <PlayCircle className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+                    <h2 className="font-semibold text-lg">Currently On Site</h2>
+                  </div>
+                  <div className="ring-2 ring-blue-500 dark:ring-blue-400 rounded-md">
+                    <JobCard job={activeJob} />
+                  </div>
+                </div>
+              )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" data-testid="tabs-job-filter">
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="all" data-testid="tab-all-jobs">
-              All <Badge variant="secondary" className="ml-1 text-xs">{jobs.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="today" data-testid="tab-today-jobs">
-              Today <Badge variant="secondary" className="ml-1 text-xs">{todayCount}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="working" data-testid="tab-working-jobs">
-              Working <Badge variant="secondary" className="ml-1 text-xs">{workingCount}</Badge>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
+              {/* Today's Schedule */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <h2 className="font-semibold text-lg">Today's Jobs</h2>
+                  <Badge variant="secondary" className="ml-auto">
+                    {filterJobs(todaysJobs).length}
+                  </Badge>
+                </div>
+                
+                {filterJobs(todaysJobs).length === 0 ? (
+                  <Card className="bg-muted/50">
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-green-500 dark:text-green-400" />
+                      <p>No more jobs scheduled for today</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {filterJobs(todaysJobs)
+                      .sort((a, b) => (a.scheduledTime || "").localeCompare(b.scheduledTime || ""))
+                      .map((job) => (
+                        <JobCard key={job.id} job={job} />
+                      ))}
+                  </div>
+                )}
+              </div>
 
-      <main className="flex-1 overflow-y-auto p-3 space-y-3 touch-pan-y">
-        {jobsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
-          </div>
-        ) : filteredJobs.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No jobs found
-          </div>
-        ) : (
-          filteredJobs.map((job) => {
-            const client = getClient(job.clientId);
-            return (
-              <Link key={job.id} href={`/field-companion/${job.id}`}>
-                <Card
-                  className={`hover-elevate cursor-pointer ${getPriorityStyles(job.priority)}`}
-                  data-testid={`card-job-${job.id}`}
-                >
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-primary" data-testid={`text-job-number-${job.id}`}>
-                            {job.jobNumber}
-                          </span>
-                          {job.notes && (
-                            <AlertTriangle className="h-4 w-4 text-amber-500" />
-                          )}
-                        </div>
-                        <p className="font-medium truncate" data-testid={`text-job-title-${job.id}`}>
-                          {job.title}
-                        </p>
-                      </div>
-                      {getStatusBadge(job.status)}
-                    </div>
+              {/* Completed Today */}
+              {completedToday.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
+                    <h2 className="font-semibold text-lg">Completed Today</h2>
+                    <Badge variant="secondary" className="ml-auto">
+                      {completedToday.length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {completedToday.map((job) => (
+                      <JobCard key={job.id} job={job} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                    {client && (
-                      <p className="text-sm text-muted-foreground">
-                        {client.companyName}
-                      </p>
-                    )}
+              {/* Upcoming Jobs */}
+              {filterJobs(upcomingJobs).length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+                    <h2 className="font-semibold text-lg">Upcoming</h2>
+                    <Badge variant="secondary" className="ml-auto">
+                      {filterJobs(upcomingJobs).length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {filterJobs(upcomingJobs)
+                      .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""))
+                      .slice(0, 5)
+                      .map((job) => (
+                        <JobCard key={job.id} job={job} showDate />
+                      ))}
+                  </div>
+                </div>
+              )}
 
-                    <p className="text-sm line-clamp-2 text-muted-foreground">
-                      {job.notes || "No special notes"}
-                    </p>
-
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                      {job.scheduledDate && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            {format(parseISO(job.scheduledDate), "dd/MM/yyyy")}
-                            {job.scheduledTime && ` - ${job.scheduledTime}`}
-                          </span>
-                        </div>
-                      )}
-                      {job.estimatedDuration && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{job.estimatedDuration}h</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {job.siteAddress && (
-                      <div className="flex items-start gap-1 text-sm">
-                        <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                        <span className="text-muted-foreground">{job.siteAddress}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-0 ml-auto text-primary underline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            window.open(
-                              `https://maps.google.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
-                              "_blank"
-                            );
-                          }}
-                          data-testid={`link-map-${job.id}`}
-                        >
-                          View On Map
-                        </Button>
-                      </div>
-                    )}
-
-                    {client?.phone && (
-                      <div className="flex items-center gap-1 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-0 text-primary underline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            window.location.href = `tel:${client.phone}`;
-                          }}
-                          data-testid={`link-call-${job.id}`}
-                        >
-                          {client.phone}
-                        </Button>
-                      </div>
-                    )}
-
-                    {job.systems && job.systems.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {job.systems.slice(0, 3).map((system, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs">
-                            {system.systemType}
-                          </Badge>
-                        ))}
-                        {job.systems.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{job.systems.length - 3} more
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-
-                    {job.status !== "completed" && (
-                      <Button
-                        className="w-full mt-2"
-                        variant="default"
-                        data-testid={`button-complete-${job.id}`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                        }}
-                      >
-                        Complete
-                      </Button>
-                    )}
+              {/* Empty state */}
+              {jobs.length === 0 && (
+                <Card className="bg-muted/50">
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    <Wrench className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">No jobs assigned</p>
+                    <p className="text-sm mt-1">Jobs will appear here when scheduled</p>
                   </CardContent>
                 </Card>
-              </Link>
-            );
-          })
-        )}
-      </main>
-
-      <nav className="sticky bottom-0 bg-background border-t">
-        <div className="grid grid-cols-4">
-          <button
-            onClick={() => setLocation("/field-companion")}
-            className="flex flex-col items-center justify-center gap-1 h-14 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            data-testid="nav-jobs"
-          >
-            <Briefcase className="h-5 w-5" />
-            <span className="text-xs">Jobs</span>
-          </button>
-          <button
-            onClick={() => setLocation("/field-companion/routes")}
-            className="flex flex-col items-center justify-center gap-1 h-14 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            data-testid="nav-routes"
-          >
-            <Route className="h-5 w-5" />
-            <span className="text-xs">Routes</span>
-          </button>
-          <button
-            className="flex flex-col items-center justify-center gap-1 h-14 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            data-testid="nav-scan"
-          >
-            <QrCode className="h-5 w-5" />
-            <span className="text-xs">Scan</span>
-          </button>
-          <button
-            className="flex flex-col items-center justify-center gap-1 h-14 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            data-testid="nav-menu"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="text-xs">Menu</span>
-          </button>
+              )}
+            </>
+          )}
         </div>
-      </nav>
+      </ScrollArea>
+
+      {/* Bottom quick stats bar */}
+      <div className="bg-background border-t p-3">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center p-2 bg-muted/50 rounded-lg">
+            <p className="text-2xl font-bold text-primary dark:text-primary">{todaysJobs.length}</p>
+            <p className="text-xs text-muted-foreground">Today</p>
+          </div>
+          <div className="text-center p-2 bg-muted/50 rounded-lg">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{completedToday.length}</p>
+            <p className="text-xs text-muted-foreground">Done</p>
+          </div>
+          <div className="text-center p-2 bg-muted/50 rounded-lg">
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{upcomingJobs.length}</p>
+            <p className="text-xs text-muted-foreground">Upcoming</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

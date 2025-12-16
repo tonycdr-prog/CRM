@@ -264,7 +264,7 @@ export interface IStorage {
   getJobs(userId: string): Promise<DbJob[]>;
   getJob(id: string): Promise<DbJob | undefined>;
   createJob(job: NewJob): Promise<DbJob>;
-  updateJob(id: string, job: Partial<NewJob>): Promise<DbJob | undefined>;
+  updateJob(id: string, job: Partial<DbJob>): Promise<DbJob | undefined>;
   deleteJob(id: string): Promise<boolean>;
   
   // Quotes
@@ -996,7 +996,7 @@ export class DatabaseStorage implements IStorage {
     return newJob;
   }
 
-  async updateJob(id: string, job: Partial<NewJob>): Promise<DbJob | undefined> {
+  async updateJob(id: string, job: Partial<DbJob>): Promise<DbJob | undefined> {
     const [updated] = await db.update(jobs).set({ ...job, updatedAt: new Date() }).where(eq(jobs.id, id)).returning();
     return updated || undefined;
   }
