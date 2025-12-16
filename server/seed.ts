@@ -376,9 +376,68 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
       }
     }
 
+    // ===== SITES =====
+    const createdSites: any[] = [];
+    const createdSiteAssets: any[] = [];
+    const SYSTEM_TYPES = ["mshev", "shev", "aov", "pressurisation", "car_park", "smoke_shaft"];
+    const ASSET_TYPE_VALUES = ["smoke_damper", "fire_damper", "aov", "exhaust_fan", "supply_fan", "control_panel", "smoke_detector", "pressure_sensor", "louvre", "actuator"];
+    
     for (let i = 0; i < BUILDINGS.length; i++) {
       const building = BUILDINGS[i];
       const client = createdClients[i % createdClients.length];
+      const systemType = SYSTEM_TYPES[i % SYSTEM_TYPES.length];
+      
+      const site = await storage.createSite({
+        userId: TEST_USER_ID,
+        clientId: client.id,
+        name: building.name,
+        address: building.address,
+        postcode: building.postcode,
+        city: ["London", "Manchester", "Birmingham", "Leeds", "Glasgow", "Bristol"][i % 6],
+        systemType: systemType,
+        systemDescription: `${building.floors}-floor ${systemType === "pressurisation" ? "stairwell pressurisation" : systemType === "mshev" ? "mechanical smoke extraction" : "smoke control"} system`,
+        accessNotes: `Report to ${["main reception", "security desk", "facilities office"][i % 3]}. Access card required for plant rooms.`,
+        parkingInfo: `${["Underground car park - Level B1", "On-street parking with permit", "Loading bay access only", "Multi-storey adjacent"][i % 4]}`,
+        siteContactName: ["Building Manager", "Facilities Coordinator", "Security Lead"][i % 3],
+        siteContactPhone: `07${String(700 + i).padStart(3, '0')} ${String(100000 + Math.floor(Math.random() * 899999)).padStart(6, '0')}`,
+        siteContactEmail: `facilities@${building.name.toLowerCase().replace(/\s+/g, '')}.co.uk`,
+        status: "active",
+      });
+      createdSites.push(site);
+      console.log(`Created site: ${site.name}`);
+
+      // Create site assets for each site
+      const assetCount = building.dampersPerFloor * Math.min(building.floors, 5);
+      for (let a = 0; a < assetCount; a++) {
+        const floorNum = Math.floor(a / building.dampersPerFloor) + 1;
+        const assetOnFloor = (a % building.dampersPerFloor) + 1;
+        const assetType = ASSET_TYPE_VALUES[a % ASSET_TYPE_VALUES.length];
+        const assetNumber = `${building.name.substring(0, 3).toUpperCase()}-${assetType.substring(0, 2).toUpperCase()}-${String(a + 1).padStart(3, '0')}`;
+        
+        const asset = await storage.createSiteAsset({
+          userId: TEST_USER_ID,
+          siteId: site.id,
+          clientId: client.id,
+          assetNumber: assetNumber,
+          assetType: assetType,
+          floor: `Level ${floorNum}`,
+          area: ["Stairwell A", "Stairwell B", "Lobby", "Corridor", "Plant Room"][assetOnFloor % 5],
+          location: `Floor ${floorNum} - ${["North", "South", "East", "West"][a % 4]} wing`,
+          manufacturer: ["Colt", "SE Controls", "Smoke Control Systems", "Brakel", "Kingspan"][a % 5],
+          model: `Model ${String.fromCharCode(65 + (a % 5))}${100 + a}`,
+          serialNumber: `SN-${new Date().getFullYear()}-${String(a + 1).padStart(6, '0')}`,
+          status: ["active", "active", "active", "pending_inspection", "faulty"][a % 5],
+          condition: ["good", "good", "fair", "poor", "good"][a % 5],
+        });
+        createdSiteAssets.push({ ...asset, siteId: site.id });
+      }
+      console.log(`Created ${assetCount} assets for site: ${site.name}`);
+    }
+
+    for (let i = 0; i < BUILDINGS.length; i++) {
+      const building = BUILDINGS[i];
+      const client = createdClients[i % createdClients.length];
+      const site = createdSites[i];
       
       const project = await storage.createProject({
         userId: TEST_USER_ID,
@@ -412,6 +471,7 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
           clientId: client.id,
           contractId: contract?.id || null,
           projectId: project.id,
+          siteId: site.id,
           jobNumber: `JOB-${new Date().getFullYear()}-${String(createdJobs.length + 1).padStart(4, '0')}`,
           title: `${jobType.charAt(0).toUpperCase() + jobType.slice(1)} - ${building.name}`,
           description: `${jobType === "testing" ? "Annual velocity testing" : jobType === "installation" ? "New damper installation" : jobType === "maintenance" ? "Scheduled maintenance" : "Corrective repair"} at ${building.name}`,
@@ -431,6 +491,23 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
         });
         createdJobs.push(job);
         console.log(`Created job: ${job.jobNumber}`);
+
+        // Assign some site assets to this job
+        const siteAssetsForJob = createdSiteAssets.filter(a => a.siteId === site.id);
+        const assetsToAssign = siteAssetsForJob.slice(0, Math.min(3 + j, siteAssetsForJob.length));
+        for (const asset of assetsToAssign) {
+          await storage.createJobSiteAsset({
+            userId: TEST_USER_ID,
+            jobId: job.id,
+            siteAssetId: asset.id,
+            status: jobStatus === "completed" ? "completed" : jobStatus === "in_progress" ? "in_progress" : "assigned",
+            completedBy: jobStatus === "completed" ? assignedEngineer.name : null,
+            notes: jobStatus === "completed" ? "Tested and operational" : null,
+          });
+        }
+        if (assetsToAssign.length > 0) {
+          console.log(`Assigned ${assetsToAssign.length} assets to job ${job.jobNumber}`);
+        }
 
         if (jobStatus === "completed" && jobType === "testing") {
           const dampersToTest = Math.min(building.dampersPerFloor * 3, 12);
@@ -820,6 +897,8 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
     const counts = {
       staff: createdStaff.length,
       clients: createdClients.length,
+      sites: createdSites.length,
+      siteAssets: createdSiteAssets.length,
       contracts: createdContracts.length,
       projects: createdProjects.length,
       jobs: createdJobs.length,

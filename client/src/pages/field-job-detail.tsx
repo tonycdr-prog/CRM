@@ -30,11 +30,21 @@ import {
   AlertTriangle,
   Wrench,
   User,
+  Package,
+  Plus,
+  Search,
+  Key,
+  ChevronRight,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { DbJob } from "@shared/schema";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { DbJob, DbSiteAsset, DbJobSiteAsset } from "@shared/schema";
+import { ASSET_TYPES, SMOKE_CONTROL_SYSTEM_TYPES } from "@shared/schema";
 
 interface Client {
   id: string;
@@ -51,6 +61,23 @@ interface Contract {
   contractNumber: string | null;
 }
 
+interface Site {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  postcode: string | null;
+  systemType: string | null;
+  floors: number | null;
+  accessInstructions: string | null;
+}
+
+interface JobWithSiteDetail extends DbJob {
+  site: Site | null;
+  assignedAssets: DbJobSiteAsset[];
+  siteAssets: DbSiteAsset[];
+}
+
 export default function FieldJobDetail() {
   const [, params] = useRoute("/field-companion/:id");
   const [, setLocation] = useLocation();
@@ -58,11 +85,20 @@ export default function FieldJobDetail() {
   const { toast } = useToast();
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [showNoAccessDialog, setShowNoAccessDialog] = useState(false);
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [showNewAssetModal, setShowNewAssetModal] = useState(false);
   const [completionNotes, setCompletionNotes] = useState("");
   const [noAccessReason, setNoAccessReason] = useState("");
+  const [assetSearchQuery, setAssetSearchQuery] = useState("");
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
+  const [newAssetName, setNewAssetName] = useState("");
+  const [newAssetType, setNewAssetType] = useState("");
+  const [newAssetFloor, setNewAssetFloor] = useState("");
+  const [newAssetLocation, setNewAssetLocation] = useState("");
+  const [newAssetAssignToJob, setNewAssetAssignToJob] = useState(true);
 
-  const { data: job, isLoading: jobLoading } = useQuery<DbJob>({
-    queryKey: ["/api/jobs/detail", jobId],
+  const { data: job, isLoading: jobLoading } = useQuery<JobWithSiteDetail>({
+    queryKey: ["/api/jobs/detail-with-site", jobId],
     enabled: !!jobId,
   });
 
@@ -82,10 +118,84 @@ export default function FieldJobDetail() {
       return apiRequest("PATCH", `/api/jobs/${jobId}`, updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/detail", jobId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/detail-with-site", jobId] });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs-with-sites"] });
     },
   });
+
+  const assignAssetsMutation = useMutation({
+    mutationFn: async (assetIds: string[]) => {
+      const promises = assetIds.map(assetId =>
+        apiRequest("POST", "/api/job-site-assets", {
+          jobId,
+          siteAssetId: assetId,
+          status: "pending",
+        })
+      );
+      return Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/detail-with-site", jobId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs-with-sites"] });
+      setShowAssetModal(false);
+      setSelectedAssetIds([]);
+      setAssetSearchQuery("");
+      toast({ title: "Assets assigned", description: `${selectedAssetIds.length} asset(s) added to job` });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to assign assets", variant: "destructive" });
+    },
+  });
+
+  const createAssetMutation = useMutation({
+    mutationFn: async (data: { name: string; assetType: string; floor: string; location: string; assignToJob: boolean }) => {
+      const assetResponse = await apiRequest("POST", "/api/site-assets", {
+        siteId: job?.siteId,
+        name: data.name,
+        assetType: data.assetType || null,
+        floor: data.floor || null,
+        location: data.location || null,
+        status: "active",
+      });
+      
+      if (data.assignToJob && assetResponse.id) {
+        await apiRequest("POST", "/api/job-site-assets", {
+          jobId,
+          siteAssetId: assetResponse.id,
+          status: "pending",
+        });
+      }
+      
+      return assetResponse;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/detail-with-site", jobId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs-with-sites"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets"] });
+      setShowNewAssetModal(false);
+      setNewAssetName("");
+      setNewAssetType("");
+      setNewAssetFloor("");
+      setNewAssetLocation("");
+      setNewAssetAssignToJob(true);
+      toast({ title: "Asset created", description: "New asset has been added to the site" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create asset", variant: "destructive" });
+    },
+  });
+
+  const handleCreateAsset = () => {
+    if (!newAssetName.trim()) return;
+    createAssetMutation.mutate({
+      name: newAssetName.trim(),
+      assetType: newAssetType,
+      floor: newAssetFloor,
+      location: newAssetLocation,
+      assignToJob: newAssetAssignToJob,
+    });
+  };
 
   const handleStartJob = () => {
     updateJobMutation.mutate(
@@ -131,6 +241,47 @@ export default function FieldJobDetail() {
         },
       }
     );
+  };
+
+  // Get available assets (site assets not yet assigned to this job)
+  const assignedAssetIds = new Set((job?.assignedAssets || []).map(a => a.siteAssetId));
+  const availableAssets = (job?.siteAssets || []).filter(a => !assignedAssetIds.has(a.id));
+
+  // Filter available assets by search query
+  const filteredAvailableAssets = availableAssets.filter(asset => {
+    if (!assetSearchQuery) return true;
+    const q = assetSearchQuery.toLowerCase();
+    return (
+      asset.name?.toLowerCase().includes(q) ||
+      asset.assetType?.toLowerCase().includes(q) ||
+      asset.location?.toLowerCase().includes(q) ||
+      asset.floor?.toLowerCase().includes(q) ||
+      asset.manufacturer?.toLowerCase().includes(q)
+    );
+  });
+
+  const getAssetTypeLabel = (assetType: string | null) => {
+    if (!assetType) return null;
+    const type = ASSET_TYPES.find(t => t.value === assetType);
+    return type?.label || assetType;
+  };
+
+  const getSystemLabel = (systemType: string | null) => {
+    if (!systemType) return null;
+    const system = SMOKE_CONTROL_SYSTEM_TYPES.find(s => s.value === systemType);
+    return system?.label || systemType;
+  };
+
+  const toggleAssetSelection = (assetId: string) => {
+    setSelectedAssetIds(prev =>
+      prev.includes(assetId) ? prev.filter(id => id !== assetId) : [...prev, assetId]
+    );
+  };
+
+  const handleAssignAssets = () => {
+    if (selectedAssetIds.length > 0) {
+      assignAssetsMutation.mutate(selectedAssetIds);
+    }
   };
 
   const getStatusBadge = (status: string | null) => {
@@ -374,6 +525,129 @@ export default function FieldJobDetail() {
             </Card>
           )}
 
+          {/* Site Assets Section */}
+          {job.site && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Assets ({job.assignedAssets?.length || 0}/{(job.siteAssets?.length || 0)})
+                  </CardTitle>
+                  {availableAssets.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAssetModal(true)}
+                      data-testid="button-add-assets"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Assigned Assets */}
+                {job.assignedAssets && job.assignedAssets.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Assigned to this job</p>
+                    {job.assignedAssets.map(assignment => {
+                      const asset = job.siteAssets?.find(a => a.id === assignment.siteAssetId);
+                      if (!asset) return null;
+                      return (
+                        <div
+                          key={assignment.id}
+                          className="flex items-center justify-between p-3 bg-muted/50 rounded border"
+                          data-testid={`asset-assigned-${asset.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm truncate">{asset.name}</span>
+                              {asset.assetType && (
+                                <Badge variant="outline" className="text-xs">
+                                  {getAssetTypeLabel(asset.assetType)}
+                                </Badge>
+                              )}
+                              <Badge
+                                variant={assignment.status === "completed" ? "secondary" : "outline"}
+                                className="text-xs"
+                              >
+                                {assignment.status === "completed" ? "Tested" : "Pending"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                              {asset.floor && <span>Floor {asset.floor}</span>}
+                              {asset.location && <span>{asset.location}</span>}
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Package className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-2">No assets assigned to this job</p>
+                    <div className="flex flex-col items-center gap-2">
+                      {availableAssets.length > 0 && (
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowAssetModal(true)}
+                          data-testid="button-add-assets-empty"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Assets from Site
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowNewAssetModal(true)}
+                        data-testid="button-create-new-asset-empty"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Create New Asset
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Site info summary */}
+                <div className="pt-2 border-t flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {job.siteAssets?.length || 0} total assets at {job.site.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowNewAssetModal(true)}
+                    data-testid="button-create-new-asset"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    New
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Access Instructions */}
+          {job.site?.accessInstructions && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  Access Instructions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm">{job.site.accessInstructions}</p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Notes */}
           {(job.notes || job.description) && (
             <Card>
@@ -467,6 +741,222 @@ export default function FieldJobDetail() {
               disabled={updateJobMutation.isPending}
             >
               Submit No Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Assets Modal */}
+      <Dialog open={showAssetModal} onOpenChange={setShowAssetModal}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Add Assets to Job
+            </DialogTitle>
+            <DialogDescription>
+              Select assets from {job?.site?.name} to add to this job.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search assets by name, type, location..."
+              value={assetSearchQuery}
+              onChange={(e) => setAssetSearchQuery(e.target.value)}
+              className="pl-9"
+              data-testid="input-asset-search"
+            />
+          </div>
+
+          {/* Asset List */}
+          <ScrollArea className="flex-1 min-h-0 max-h-[40vh] border rounded-md">
+            <div className="p-2 space-y-1">
+              {filteredAvailableAssets.length > 0 ? (
+                filteredAvailableAssets.map(asset => (
+                  <div
+                    key={asset.id}
+                    className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-colors ${
+                      selectedAssetIds.includes(asset.id)
+                        ? "bg-primary/10 border border-primary/30"
+                        : "hover:bg-muted/50"
+                    }`}
+                    onClick={() => toggleAssetSelection(asset.id)}
+                    data-testid={`asset-available-${asset.id}`}
+                  >
+                    <Checkbox
+                      checked={selectedAssetIds.includes(asset.id)}
+                      onCheckedChange={() => toggleAssetSelection(asset.id)}
+                      data-testid={`checkbox-asset-${asset.id}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{asset.name}</span>
+                        {asset.assetType && (
+                          <Badge variant="outline" className="text-xs">
+                            {getAssetTypeLabel(asset.assetType)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                        {asset.floor && <span>Floor {asset.floor}</span>}
+                        {asset.location && <span>{asset.location}</span>}
+                        {asset.manufacturer && <span>{asset.manufacturer}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  {assetSearchQuery
+                    ? "No assets match your search"
+                    : "No available assets to add"}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          {/* Selection count */}
+          {selectedAssetIds.length > 0 && (
+            <div className="text-sm text-muted-foreground">
+              {selectedAssetIds.length} asset{selectedAssetIds.length !== 1 ? "s" : ""} selected
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAssetModal(false);
+                setSelectedAssetIds([]);
+                setAssetSearchQuery("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignAssets}
+              disabled={selectedAssetIds.length === 0 || assignAssetsMutation.isPending}
+              data-testid="button-confirm-add-assets"
+            >
+              {assignAssetsMutation.isPending ? (
+                "Adding..."
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add {selectedAssetIds.length > 0 ? `${selectedAssetIds.length} ` : ""}Asset{selectedAssetIds.length !== 1 ? "s" : ""}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create New Asset Modal */}
+      <Dialog open={showNewAssetModal} onOpenChange={setShowNewAssetModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Add New Asset
+            </DialogTitle>
+            <DialogDescription>
+              Create a new asset at {job?.site?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="asset-name">Asset Name *</Label>
+              <Input
+                id="asset-name"
+                placeholder="e.g., Smoke Damper SD-01"
+                value={newAssetName}
+                onChange={(e) => setNewAssetName(e.target.value)}
+                data-testid="input-new-asset-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="asset-type">Asset Type</Label>
+              <Select value={newAssetType} onValueChange={setNewAssetType}>
+                <SelectTrigger data-testid="select-new-asset-type">
+                  <SelectValue placeholder="Select type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ASSET_TYPES.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="asset-floor">Floor</Label>
+                <Input
+                  id="asset-floor"
+                  placeholder="e.g., Ground, 1, B1"
+                  value={newAssetFloor}
+                  onChange={(e) => setNewAssetFloor(e.target.value)}
+                  data-testid="input-new-asset-floor"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="asset-location">Location</Label>
+                <Input
+                  id="asset-location"
+                  placeholder="e.g., Lobby, Stairwell A"
+                  value={newAssetLocation}
+                  onChange={(e) => setNewAssetLocation(e.target.value)}
+                  data-testid="input-new-asset-location"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <Checkbox
+                id="assign-to-job"
+                checked={newAssetAssignToJob}
+                onCheckedChange={(checked) => setNewAssetAssignToJob(checked === true)}
+                data-testid="checkbox-assign-to-job"
+              />
+              <Label htmlFor="assign-to-job" className="text-sm">
+                Add to this job for testing
+              </Label>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowNewAssetModal(false);
+                setNewAssetName("");
+                setNewAssetType("");
+                setNewAssetFloor("");
+                setNewAssetLocation("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateAsset}
+              disabled={!newAssetName.trim() || createAssetMutation.isPending}
+              data-testid="button-confirm-create-asset"
+            >
+              {createAssetMutation.isPending ? (
+                "Creating..."
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Asset
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

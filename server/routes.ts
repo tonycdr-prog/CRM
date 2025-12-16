@@ -572,12 +572,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced jobs endpoint with site info for field companion
+  app.get("/api/jobs-with-sites/:userId", async (req, res) => {
+    try {
+      const jobs = await storage.getJobs(req.params.userId);
+      const sites = await storage.getSites(req.params.userId);
+      
+      // Create a map of sites by ID for quick lookup
+      const siteMap = new Map(sites.map(s => [s.id, s]));
+      
+      // Enhance jobs with site data
+      const jobsWithSites = await Promise.all(jobs.map(async (job) => {
+        const site = job.siteId ? siteMap.get(job.siteId) : null;
+        const jobAssets = await storage.getJobSiteAssets(job.id);
+        return {
+          ...job,
+          site: site ? {
+            id: site.id,
+            name: site.name,
+            address: site.address,
+            city: site.city,
+            postcode: site.postcode,
+            systemType: site.systemType,
+            accessNotes: site.accessNotes,
+            parkingInfo: site.parkingInfo,
+            siteContactName: site.siteContactName,
+            siteContactPhone: site.siteContactPhone,
+          } : null,
+          assetCount: jobAssets.length,
+          completedAssetCount: jobAssets.filter(a => a.status === "completed").length,
+        };
+      }));
+      
+      res.json(jobsWithSites);
+    } catch (error) {
+      console.error("Error fetching jobs with sites:", error);
+      res.status(500).json({ error: "Failed to fetch jobs with sites" });
+    }
+  });
+
   app.get("/api/jobs/detail/:id", async (req, res) => {
     try {
       const job = await storage.getJob(req.params.id);
       res.json(job);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch job" });
+    }
+  });
+
+  // Enhanced job detail with site and asset info for field companion
+  app.get("/api/jobs/detail-with-site/:id", async (req, res) => {
+    try {
+      const job = await storage.getJob(req.params.id);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      const site = job.siteId ? await storage.getSite(job.siteId) : null;
+      const jobAssets = await storage.getJobSiteAssetsWithDetails(job.id);
+      const allSiteAssets = job.siteId ? await storage.getSiteAssetsBySite(job.siteId) : [];
+      
+      res.json({
+        ...job,
+        site: site || null,
+        assignedAssets: jobAssets,
+        availableSiteAssets: allSiteAssets,
+      });
+    } catch (error) {
+      console.error("Error fetching job with site:", error);
+      res.status(500).json({ error: "Failed to fetch job details" });
     }
   });
 

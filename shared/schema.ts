@@ -737,6 +737,7 @@ export const jobs = pgTable("jobs", {
   clientId: varchar("client_id").references(() => clients.id),
   contractId: varchar("contract_id").references(() => contracts.id),
   projectId: varchar("project_id").references(() => projects.id),
+  siteId: varchar("site_id").references(() => sites.id),
   jobNumber: text("job_number").notNull(),
   title: text("title").notNull(),
   description: text("description"),

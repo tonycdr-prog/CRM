@@ -21,9 +21,11 @@ import {
   User,
   Building2,
   Wrench,
+  Package,
 } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import type { DbJob } from "@shared/schema";
+import { SMOKE_CONTROL_SYSTEM_TYPES } from "@shared/schema";
 
 interface Client {
   id: string;
@@ -34,13 +36,32 @@ interface Client {
   address: string | null;
 }
 
+interface SiteInfo {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  postcode: string | null;
+  systemType: string | null;
+  accessNotes: string | null;
+  parkingInfo: string | null;
+  siteContactName: string | null;
+  siteContactPhone: string | null;
+}
+
+interface JobWithSite extends DbJob {
+  site: SiteInfo | null;
+  assetCount: number;
+  completedAssetCount: number;
+}
+
 export default function FieldCompanion() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: jobs = [], isLoading: jobsLoading } = useQuery<DbJob[]>({
-    queryKey: ["/api/jobs", user?.id],
+  const { data: jobs = [], isLoading: jobsLoading } = useQuery<JobWithSite[]>({
+    queryKey: ["/api/jobs-with-sites", user?.id],
     enabled: !!user?.id,
   });
 
@@ -52,6 +73,12 @@ export default function FieldCompanion() {
   const getClient = (clientId: string | null) => {
     if (!clientId) return null;
     return clients.find((c) => c.id === clientId);
+  };
+
+  const getSystemLabel = (systemType: string | null) => {
+    if (!systemType) return null;
+    const system = SMOKE_CONTROL_SYSTEM_TYPES.find(s => s.value === systemType);
+    return system?.label || systemType;
   };
 
   // Separate jobs by category
@@ -67,7 +94,7 @@ export default function FieldCompanion() {
   );
 
   // Filter by search
-  const filterJobs = (jobList: DbJob[]) => {
+  const filterJobs = (jobList: JobWithSite[]) => {
     if (!searchQuery) return jobList;
     const query = searchQuery.toLowerCase();
     return jobList.filter((job) => {
@@ -76,6 +103,7 @@ export default function FieldCompanion() {
         job.jobNumber?.toLowerCase().includes(query) ||
         job.title?.toLowerCase().includes(query) ||
         job.siteAddress?.toLowerCase().includes(query) ||
+        job.site?.name?.toLowerCase().includes(query) ||
         client?.companyName?.toLowerCase().includes(query)
       );
     });
@@ -105,7 +133,7 @@ export default function FieldCompanion() {
     }
   };
 
-  const JobCard = ({ job, showDate = false }: { job: DbJob; showDate?: boolean }) => {
+  const JobCard = ({ job, showDate = false }: { job: JobWithSite; showDate?: boolean }) => {
     const client = getClient(job.clientId);
     const priority = getPriorityLabel(job.priority);
 
@@ -133,6 +161,12 @@ export default function FieldCompanion() {
                         {priority.label}
                       </Badge>
                     )}
+                    {job.assetCount > 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        <Package className="h-3 w-3 mr-1" />
+                        {job.completedAssetCount}/{job.assetCount}
+                      </Badge>
+                    )}
                   </div>
                   <p className="font-medium text-base" data-testid={`text-job-title-${job.id}`}>
                     {job.title}
@@ -141,18 +175,36 @@ export default function FieldCompanion() {
                 <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
               </div>
 
-              {/* Client & Location */}
-              {client && (
+              {/* Site info */}
+              {job.site && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="font-medium truncate" data-testid={`text-site-name-${job.id}`}>{job.site.name}</span>
+                  {job.site.systemType && (
+                    <Badge variant="secondary" className="text-xs shrink-0">
+                      <Wrench className="h-3 w-3 mr-1" />
+                      {getSystemLabel(job.site.systemType)}
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Client */}
+              {client && !job.site && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Building2 className="h-4 w-4 shrink-0" />
                   <span className="truncate">{client.companyName}</span>
                 </div>
               )}
 
-              {job.siteAddress && (
+              {/* Address */}
+              {(job.site?.address || job.siteAddress) && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{job.siteAddress}</span>
+                  <span className="truncate">
+                    {job.site?.address || job.siteAddress}
+                    {job.site?.city && `, ${job.site.city}`}
+                  </span>
                 </div>
               )}
 
