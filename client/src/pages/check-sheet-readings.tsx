@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -87,6 +88,7 @@ const getCategoryLabel = (category: string) => {
 };
 
 export default function CheckSheetReadingsPage() {
+  const searchParams = useSearch();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingReading, setEditingReading] = useState<DbCheckSheetReading | null>(null);
   const [formData, setFormData] = useState(defaultFormData);
@@ -94,6 +96,7 @@ export default function CheckSheetReadingsPage() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [lastDraftSave, setLastDraftSave] = useState<Date | null>(null);
+  const [linkedJobId, setLinkedJobId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const userId = "test-user-shared";
@@ -163,7 +166,35 @@ export default function CheckSheetReadingsPage() {
     setReadings([]);
     setEditingReading(null);
     setActiveCategory("all");
+    setLinkedJobId(null);
   };
+
+  // Handle URL parameters for starting a check sheet from job detail page
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.get("startCheckSheet") === "true") {
+      const jobId = params.get("jobId");
+      const systemType = params.get("systemType");
+      const location = params.get("location");
+      const building = params.get("building");
+      
+      if (systemType) {
+        setFormData(prev => ({
+          ...prev,
+          systemType: systemType,
+          location: location || "",
+          building: building || "",
+        }));
+        initializeReadingsForSystemType(systemType);
+      }
+      if (jobId) {
+        setLinkedJobId(jobId);
+      }
+      setIsDialogOpen(true);
+      // Clean up URL
+      window.history.replaceState({}, "", "/check-sheets");
+    }
+  }, [searchParams, initializeReadingsForSystemType]);
 
   const handleEdit = (reading: DbCheckSheetReading) => {
     setEditingReading(reading);
@@ -254,6 +285,7 @@ export default function CheckSheetReadingsPage() {
 
     const submitData = {
       ...formData,
+      jobId: linkedJobId,
       readings: processedReadings,
       status,
       passCount,

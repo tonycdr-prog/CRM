@@ -234,6 +234,9 @@ export default function Jobs() {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [selectedContractId, setSelectedContractId] = useState<string>("");
   const [siteAddress, setSiteAddress] = useState("");
+  const [defaultJobTitle, setDefaultJobTitle] = useState<string>("");
+  const [defaultQuotedAmount, setDefaultQuotedAmount] = useState<string>("");
+  const [linkedQuoteId, setLinkedQuoteId] = useState<string>("");
   const [worksheetType, setWorksheetType] = useState("routine_service");
   const [engineerCount, setEngineerCount] = useState(1);
   const [engineers, setEngineers] = useState<Engineer[]>([{ name: "", competency: "competent" }]);
@@ -391,14 +394,20 @@ export default function Jobs() {
     });
   };
 
-  // Handle URL parameters for creating a job from contract
+  // Handle URL parameters for creating a job from contract or quote
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (params.get("createJob") === "true") {
       const contractId = params.get("contractId");
       const clientId = params.get("clientId");
+      const title = params.get("title");
+      const amount = params.get("amount");
+      const quoteId = params.get("quoteId");
       if (contractId) setSelectedContractId(contractId);
       if (clientId) setSelectedClientId(clientId);
+      if (title) setDefaultJobTitle(decodeURIComponent(title));
+      if (amount) setDefaultQuotedAmount(amount);
+      if (quoteId) setLinkedQuoteId(quoteId);
       setIsCreateDialogOpen(true);
       // Clean up URL
       window.history.replaceState({}, "", "/jobs");
@@ -426,6 +435,9 @@ export default function Jobs() {
     setSelectedClientId("");
     setSelectedContractId("");
     setSiteAddress("");
+    setDefaultJobTitle("");
+    setDefaultQuotedAmount("");
+    setLinkedQuoteId("");
     setWorksheetType("routine_service");
     setEngineerCount(1);
     setEngineers([{ name: "", competency: "competent" }]);
@@ -750,7 +762,10 @@ export default function Jobs() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="title">Job Title *</Label>
-                    <Input id="title" name="title" required data-testid="input-job-title" />
+                    <Input id="title" name="title" required data-testid="input-job-title" defaultValue={defaultJobTitle} key={`title-${defaultJobTitle}`} />
+                    {linkedQuoteId && (
+                      <p className="text-xs text-muted-foreground">Linked to quote</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="jobNumber">Job Number</Label>
@@ -957,7 +972,7 @@ export default function Jobs() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="quotedAmount">Quoted Amount (£)</Label>
-                    <Input id="quotedAmount" name="quotedAmount" type="number" step="0.01" data-testid="input-quoted-amount" />
+                    <Input id="quotedAmount" name="quotedAmount" type="number" step="0.01" data-testid="input-quoted-amount" defaultValue={defaultQuotedAmount} key={`amount-${defaultQuotedAmount}`} />
                   </div>
                 </div>
                 <div className="space-y-2">

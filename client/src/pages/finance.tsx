@@ -46,14 +46,17 @@ import {
   AlertTriangle,
   MoreHorizontal,
   Send,
-  Copy
+  Copy,
+  Briefcase
 } from "lucide-react";
+import { Link, useSearch } from "wouter";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useEffect } from "react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { nanoid } from "nanoid";
 
@@ -106,10 +109,28 @@ interface Client {
 export default function Finance() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const search = useSearch();
+  const searchParams = new URLSearchParams(search);
   const [activeTab, setActiveTab] = useState("invoices");
   const [searchQuery, setSearchQuery] = useState("");
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+
+  // Handle URL params for creating new items
+  useEffect(() => {
+    if (searchParams.get("createInvoice") === "true") {
+      setIsInvoiceDialogOpen(true);
+      setActiveTab("invoices");
+      // Clear URL param after applying
+      window.history.replaceState({}, "", "/finance");
+    }
+    if (searchParams.get("createQuote") === "true") {
+      setIsQuoteDialogOpen(true);
+      setActiveTab("quotes");
+      // Clear URL param after applying
+      window.history.replaceState({}, "", "/finance");
+    }
+  }, [search]);
 
   const { data: quotes = [], isLoading: quotesLoading } = useQuery<Quote[]>({
     queryKey: ["/api/quotes", user?.id],
@@ -596,11 +617,20 @@ export default function Finance() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem data-testid={`button-send-quote-${quote.id}`}>
                               <Send className="h-4 w-4 mr-2" />
                               Send to Client
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem 
+                              asChild 
+                              data-testid={`button-quote-to-job-${quote.id}`}
+                            >
+                              <Link href={`/jobs?createJob=true${quote.clientId ? `&clientId=${quote.clientId}` : ""}&quoteId=${quote.id}&title=${encodeURIComponent(quote.title)}&amount=${quote.total}`}>
+                                <Briefcase className="h-4 w-4 mr-2" />
+                                Convert to Job
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem data-testid={`button-quote-to-invoice-${quote.id}`}>
                               <Receipt className="h-4 w-4 mr-2" />
                               Convert to Invoice
                             </DropdownMenuItem>

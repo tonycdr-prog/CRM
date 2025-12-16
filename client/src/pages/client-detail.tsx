@@ -175,23 +175,39 @@ export default function ClientDetail() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/clients">
-          <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold" data-testid="text-client-name">{client.companyName}</h1>
-            <Badge variant={client.status === "active" ? "default" : "secondary"}>
-              {client.status}
-            </Badge>
-            <Badge variant="outline">{client.clientType}</Badge>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4">
+          <Link href="/clients">
+            <Button variant="ghost" size="icon" data-testid="button-back">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold" data-testid="text-client-name">{client.companyName}</h1>
+              <Badge variant={client.status === "active" ? "default" : "secondary"}>
+                {client.status}
+              </Badge>
+              <Badge variant="outline">{client.clientType}</Badge>
+            </div>
+            {client.contactName && (
+              <p className="text-muted-foreground">{client.contactName}</p>
+            )}
           </div>
-          {client.contactName && (
-            <p className="text-muted-foreground">{client.contactName}</p>
-          )}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Link href={`/contracts?createContract=true&clientId=${id}`}>
+            <Button variant="outline" data-testid="button-add-contract">
+              <FileText className="h-4 w-4 mr-2" />
+              Add Contract
+            </Button>
+          </Link>
+          <Link href={`/jobs?createJob=true&clientId=${id}`}>
+            <Button data-testid="button-create-job">
+              <Briefcase className="h-4 w-4 mr-2" />
+              Create Job
+            </Button>
+          </Link>
         </div>
       </div>
 

@@ -412,16 +412,28 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            <Link href="/jobs">
+            <Link href="/schedule">
+              <Button size="sm" data-testid="button-quick-today-schedule">
+                <Calendar className="h-4 w-4 mr-1" />
+                Today's Schedule
+              </Button>
+            </Link>
+            <Link href="/jobs?createJob=true">
               <Button size="sm" data-testid="button-quick-new-job">
                 <Plus className="h-4 w-4 mr-1" />
                 New Job
               </Button>
             </Link>
-            <Link href="/finance">
+            <Link href="/finance?createInvoice=true">
               <Button size="sm" variant="outline" data-testid="button-quick-new-invoice">
                 <Receipt className="h-4 w-4 mr-1" />
                 New Invoice
+              </Button>
+            </Link>
+            <Link href="/finance?createQuote=true">
+              <Button size="sm" variant="outline" data-testid="button-quick-new-quote">
+                <FileSignature className="h-4 w-4 mr-1" />
+                New Quote
               </Button>
             </Link>
             <Link href="/clients">
@@ -430,28 +442,10 @@ export default function Dashboard() {
                 New Client
               </Button>
             </Link>
-            <Link href="/test">
+            <Link href="/check-sheets">
               <Button size="sm" variant="outline" data-testid="button-quick-new-test">
                 <FileText className="h-4 w-4 mr-1" />
-                New Test
-              </Button>
-            </Link>
-            <Link href="/leads">
-              <Button size="sm" variant="outline" data-testid="button-quick-new-quote">
-                <FileSignature className="h-4 w-4 mr-1" />
-                New Quote
-              </Button>
-            </Link>
-            <Link href="/parts-catalog">
-              <Button size="sm" variant="outline" data-testid="button-quick-new-product">
-                <Package className="h-4 w-4 mr-1" />
-                New Product
-              </Button>
-            </Link>
-            <Link href="/equipment">
-              <Button size="sm" variant="outline" data-testid="button-quick-new-asset">
-                <Wrench className="h-4 w-4 mr-1" />
-                New Asset
+                New Check Sheet
               </Button>
             </Link>
           </div>

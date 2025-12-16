@@ -54,10 +54,18 @@ import {
   X,
   UserPlus,
   Shield,
-  AlertCircle
+  AlertCircle,
+  ClipboardList,
+  ExternalLink
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useState } from "react";
+
+interface JobSystem {
+  systemType: string;
+  location: string;
+  notes?: string;
+}
 
 interface Job {
   id: string;
@@ -84,6 +92,7 @@ interface Job {
   assignedTo?: string | null;
   notes: string | null;
   completionNotes?: string | null;
+  systems?: JobSystem[];
   createdAt: string;
 }
 
@@ -186,6 +195,21 @@ interface JobEquipmentReservation {
   notes: string | null;
 }
 
+interface CheckSheetReading {
+  id: string;
+  jobId: string | null;
+  systemType: string;
+  location: string | null;
+  building: string | null;
+  testerName: string;
+  testDate: string;
+  status: string;
+  overallResult: string | null;
+  passCount: number;
+  failCount: number;
+  naCount: number;
+}
+
 const SKILL_TYPES = [
   { value: "cscs", label: "CSCS Card" },
   { value: "ipaf", label: "IPAF" },
@@ -279,6 +303,12 @@ export default function JobDetail() {
 
   const { data: jobEquipmentReservations = [], isLoading: reservationsLoading } = useQuery<JobEquipmentReservation[]>({
     queryKey: ["/api/job-equipment-reservations/by-job", id],
+    enabled: !!id && !!user?.id,
+  });
+
+  // Check sheets linked to this job
+  const { data: jobCheckSheets = [] } = useQuery<CheckSheetReading[]>({
+    queryKey: ["/api/check-sheet-readings/job", id],
     enabled: !!id && !!user?.id,
   });
 
@@ -708,6 +738,119 @@ export default function JobDetail() {
             )}
           </CardContent>
         </Card>
+
+        {/* Systems to Test Section */}
+        {job.systems && job.systems.length > 0 && (
+          <Card className="md:col-span-3">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  <CardTitle>Systems to Test</CardTitle>
+                </div>
+                <div className="flex gap-2">
+                  {jobCheckSheets.length > 0 && (
+                    <Badge variant="secondary">{jobCheckSheets.length} completed</Badge>
+                  )}
+                  <Badge variant="outline">{job.systems.length} system{job.systems.length !== 1 ? "s" : ""}</Badge>
+                </div>
+              </div>
+              <CardDescription>Click to start a check sheet for each system</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {job.systems.map((system, index) => {
+                  // Find completed check sheets for this system type
+                  const completedSheets = jobCheckSheets.filter(cs => 
+                    cs.systemType === system.systemType && 
+                    (cs.location === system.location || (!cs.location && !system.location))
+                  );
+                  const hasCompleted = completedSheets.length > 0;
+                  const latestSheet = completedSheets[0];
+                  
+                  return (
+                    <Card key={index} className={`p-4 ${hasCompleted ? "border-green-500/50" : ""}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium capitalize">{system.systemType.replace(/_/g, " ")}</span>
+                            {hasCompleted && (
+                              <Badge variant={latestSheet?.overallResult === "pass" ? "default" : "destructive"} className="text-xs">
+                                {latestSheet?.overallResult === "pass" ? "Passed" : latestSheet?.overallResult === "fail" ? "Failed" : "Tested"}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground truncate">{system.location}</div>
+                          {system.notes && (
+                            <div className="text-xs text-muted-foreground mt-1">{system.notes}</div>
+                          )}
+                          {hasCompleted && latestSheet && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Tested: {format(parseISO(latestSheet.testDate), "MMM d, yyyy")}
+                            </div>
+                          )}
+                        </div>
+                        <Link href={`/check-sheets?startCheckSheet=true&jobId=${job.id}&systemType=${encodeURIComponent(system.systemType)}&location=${encodeURIComponent(system.location)}&building=${encodeURIComponent(job.siteAddress || "")}`}>
+                          <Button size="sm" variant={hasCompleted ? "outline" : "default"} data-testid={`button-start-checksheet-${index}`}>
+                            <ClipboardList className="h-4 w-4 mr-1" />
+                            {hasCompleted ? "Retest" : "Start"}
+                          </Button>
+                        </Link>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Completed Check Sheets Section (when job has no predefined systems but has check sheets) */}
+        {(!job.systems || job.systems.length === 0) && jobCheckSheets.length > 0 && (
+          <Card className="md:col-span-3">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  <CardTitle>Completed Check Sheets</CardTitle>
+                </div>
+                <Badge variant="secondary">{jobCheckSheets.length} check sheet{jobCheckSheets.length !== 1 ? "s" : ""}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {jobCheckSheets.map((sheet) => (
+                  <Card key={sheet.id} className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium capitalize">{sheet.systemType.replace(/_/g, " ")}</span>
+                          <Badge variant={sheet.overallResult === "pass" ? "default" : "destructive"} className="text-xs">
+                            {sheet.overallResult === "pass" ? "Passed" : sheet.overallResult === "fail" ? "Failed" : "Incomplete"}
+                          </Badge>
+                        </div>
+                        {sheet.location && <div className="text-sm text-muted-foreground truncate">{sheet.location}</div>}
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {format(parseISO(sheet.testDate), "MMM d, yyyy")} by {sheet.testerName}
+                        </div>
+                        <div className="flex gap-2 mt-1">
+                          <span className="text-xs text-green-600">{sheet.passCount} pass</span>
+                          <span className="text-xs text-red-600">{sheet.failCount} fail</span>
+                          <span className="text-xs text-muted-foreground">{sheet.naCount} N/A</span>
+                        </div>
+                      </div>
+                      <Link href={`/check-sheets`}>
+                        <Button size="icon" variant="ghost" data-testid={`button-view-checksheet-${sheet.id}`}>
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="md:col-span-2">
           <Tabs defaultValue="team">

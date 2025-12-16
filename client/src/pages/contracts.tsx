@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,8 @@ import {
   Briefcase,
   Calculator
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
+import { useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,6 +89,7 @@ interface Client {
 export default function Contracts() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearch();
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -127,6 +129,18 @@ export default function Contracts() {
       }
     }
   }, [formEndDate]);
+
+  // Handle URL parameters for creating a contract from client page
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.get("createContract") === "true") {
+      const clientId = params.get("clientId");
+      if (clientId) setFormClientId(clientId);
+      setIsCreateDialogOpen(true);
+      // Clean up URL
+      window.history.replaceState({}, "", "/contracts");
+    }
+  }, [searchParams]);
 
   // Reset form state
   const resetFormState = () => {
