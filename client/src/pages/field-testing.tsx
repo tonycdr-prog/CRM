@@ -1701,7 +1701,7 @@ export default function FieldTesting() {
           <Gauge className="w-8 h-8 text-primary" />
           <div className="flex-1">
             <h1 className="text-2xl font-semibold" data-testid="text-title">
-              Airflow Velocity Testing
+              Field Testing
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm text-muted-foreground">

@@ -513,10 +513,10 @@ export default function Finance() {
                       </TableCell>
                       <TableCell>{getClientName(invoice.clientId)}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {format(parseISO(invoice.issueDate), "MMM d, yyyy")}
+                        {invoice.issueDate ? format(parseISO(invoice.issueDate), "MMM d, yyyy") : "-"}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {format(parseISO(invoice.dueDate), "MMM d, yyyy")}
+                        {invoice.dueDate ? format(parseISO(invoice.dueDate), "MMM d, yyyy") : "-"}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         £{parseFloat(invoice.total).toLocaleString()}
