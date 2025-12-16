@@ -358,14 +358,14 @@ export default function CheckSheetReadingsPage() {
               New Check Sheet
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
-            <DialogHeader>
+          <DialogContent className="max-w-4xl h-[90vh] sm:h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle data-testid="dialog-title">
                 {editingReading ? "Edit Check Sheet" : "New Check Sheet Reading"}
               </DialogTitle>
             </DialogHeader>
             
-            <Tabs defaultValue="setup" className="flex-1 flex flex-col overflow-hidden">
+            <Tabs defaultValue="setup" className="flex-1 flex flex-col min-h-0">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="setup" data-testid="tab-setup">Setup</TabsTrigger>
                 <TabsTrigger value="readings" data-testid="tab-readings" disabled={!formData.systemType}>
@@ -486,8 +486,8 @@ export default function CheckSheetReadingsPage() {
                 )}
               </TabsContent>
 
-              <TabsContent value="readings" className="flex-1 overflow-auto flex flex-col p-1">
-                <div className="flex items-center gap-4 mb-4">
+              <TabsContent value="readings" className="flex-1 min-h-0 flex flex-col p-1">
+                <div className="flex items-center gap-4 mb-4 flex-shrink-0">
                   <div className="flex-1">
                     <Progress value={progressPercent} className="h-2" />
                     <p className="text-xs text-muted-foreground mt-1">
@@ -495,7 +495,7 @@ export default function CheckSheetReadingsPage() {
                     </p>
                   </div>
                   <Select value={activeCategory} onValueChange={setActiveCategory}>
-                    <SelectTrigger className="w-48" data-testid="select-category-filter">
+                    <SelectTrigger className="w-32 sm:w-48" data-testid="select-category-filter">
                       <SelectValue placeholder="Filter by category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -507,7 +507,7 @@ export default function CheckSheetReadingsPage() {
                   </Select>
                 </div>
 
-                <ScrollArea className="flex-1">
+                <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y">
                   <div className="space-y-6 pr-4">
                     {visibleCategories.map(category => (
                       <div key={category} className="space-y-3">
@@ -650,7 +650,7 @@ export default function CheckSheetReadingsPage() {
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               </TabsContent>
 
               <TabsContent value="summary" className="flex-1 overflow-auto space-y-4 p-1">
