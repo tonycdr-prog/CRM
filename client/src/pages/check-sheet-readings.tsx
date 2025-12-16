@@ -486,7 +486,7 @@ export default function CheckSheetReadingsPage() {
                 )}
               </TabsContent>
 
-              <TabsContent value="readings" className="flex-1 overflow-hidden flex flex-col p-1">
+              <TabsContent value="readings" className="flex-1 overflow-auto flex flex-col p-1">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex-1">
                     <Progress value={progressPercent} className="h-2" />
