@@ -1,0 +1,595 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useRoute, Link, useLocation } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { 
+  ArrowLeft,
+  Building2, 
+  MapPin,
+  Phone,
+  Mail,
+  Package,
+  Plus,
+  Search,
+  Briefcase,
+  Wrench,
+  Edit,
+  Trash2,
+  MoreHorizontal,
+  Car,
+  Key,
+  Info
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SMOKE_CONTROL_SYSTEM_TYPES, ASSET_TYPES } from "@shared/schema";
+
+interface Site {
+  id: string;
+  userId: string | null;
+  clientId: string;
+  name: string;
+  address: string | null;
+  postcode: string | null;
+  city: string | null;
+  systemType: string | null;
+  systemDescription: string | null;
+  accessNotes: string | null;
+  parkingInfo: string | null;
+  siteContactName: string | null;
+  siteContactPhone: string | null;
+  siteContactEmail: string | null;
+  notes: string | null;
+  status: string | null;
+  createdAt: string;
+}
+
+interface Client {
+  id: string;
+  companyName: string;
+}
+
+interface SiteAsset {
+  id: string;
+  userId: string | null;
+  siteId: string | null;
+  clientId: string | null;
+  assetNumber: string;
+  assetType: string;
+  location: string | null;
+  floor: string | null;
+  building: string | null;
+  area: string | null;
+  description: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  status: string | null;
+  condition: string | null;
+  lastInspectionDate: string | null;
+  nextInspectionDue: string | null;
+  notes: string | null;
+}
+
+export default function SiteDetail() {
+  const [, params] = useRoute("/sites/:id");
+  const siteId = params?.id;
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAddAssetDialogOpen, setIsAddAssetDialogOpen] = useState(false);
+
+  const [assetForm, setAssetForm] = useState({
+    assetNumber: "",
+    assetType: "",
+    floor: "",
+    area: "",
+    location: "",
+    description: "",
+    manufacturer: "",
+    model: "",
+    serialNumber: "",
+    notes: "",
+  });
+
+  const resetAssetForm = () => {
+    setAssetForm({
+      assetNumber: "",
+      assetType: "",
+      floor: "",
+      area: "",
+      location: "",
+      description: "",
+      manufacturer: "",
+      model: "",
+      serialNumber: "",
+      notes: "",
+    });
+  };
+
+  const { data: site, isLoading: siteLoading } = useQuery<Site>({
+    queryKey: ["/api/sites/detail", siteId],
+    enabled: !!siteId,
+  });
+
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients", user?.id],
+    enabled: !!user?.id,
+  });
+
+  const { data: assets = [], isLoading: assetsLoading } = useQuery<SiteAsset[]>({
+    queryKey: ["/api/site-assets/by-site", siteId],
+    enabled: !!siteId,
+  });
+
+  const createAssetMutation = useMutation({
+    mutationFn: async (data: typeof assetForm) => {
+      return apiRequest("POST", "/api/site-assets", { 
+        ...data, 
+        userId: user?.id,
+        siteId: siteId,
+        clientId: site?.clientId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets/by-site", siteId] });
+      setIsAddAssetDialogOpen(false);
+      resetAssetForm();
+      toast({ title: "Asset added", description: "The asset has been added to this site" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create asset", variant: "destructive" });
+    },
+  });
+
+  const deleteAssetMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/site-assets/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets/by-site", siteId] });
+      toast({ title: "Asset deleted" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete asset", variant: "destructive" });
+    },
+  });
+
+  const handleAddAsset = () => {
+    if (!assetForm.assetNumber || !assetForm.assetType) {
+      toast({ title: "Error", description: "Please fill in required fields", variant: "destructive" });
+      return;
+    }
+    createAssetMutation.mutate(assetForm);
+  };
+
+  const handleCreateJob = () => {
+    if (site) {
+      setLocation(`/jobs?createJob=true&clientId=${site.clientId}&siteAddress=${encodeURIComponent(site.address || site.name)}`);
+    }
+  };
+
+  const getClientName = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    return client?.companyName || "Unknown Client";
+  };
+
+  const getSystemLabel = (systemType: string | null) => {
+    if (!systemType) return null;
+    const system = SMOKE_CONTROL_SYSTEM_TYPES.find(s => s.value === systemType);
+    return system?.label || systemType;
+  };
+
+  const getAssetTypeLabel = (type: string) => {
+    const assetType = ASSET_TYPES.find(t => t.value === type);
+    return assetType?.label || type;
+  };
+
+  const filteredAssets = assets.filter(asset => {
+    const matchesSearch = 
+      asset.assetNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.assetType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.floor?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const getStatusBadge = (status: string | null) => {
+    switch (status) {
+      case "active":
+        return <Badge variant="default" className="bg-green-600">Active</Badge>;
+      case "faulty":
+        return <Badge variant="destructive">Faulty</Badge>;
+      case "inactive":
+        return <Badge variant="secondary">Inactive</Badge>;
+      case "pending_inspection":
+        return <Badge variant="outline" className="border-yellow-500 text-yellow-600">Pending Inspection</Badge>;
+      default:
+        return <Badge variant="secondary">{status || "Unknown"}</Badge>;
+    }
+  };
+
+  if (siteLoading) {
+    return (
+      <div className="container mx-auto py-6 px-4">
+        <div className="text-center py-8">Loading site...</div>
+      </div>
+    );
+  }
+
+  if (!site) {
+    return (
+      <div className="container mx-auto py-6 px-4">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Site Not Found</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              The site you're looking for doesn't exist or has been deleted.
+            </p>
+            <Link href="/sites">
+              <Button>Back to Sites</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-6 px-4">
+      <div className="mb-6">
+        <Link href="/sites">
+          <Button variant="ghost" size="sm" className="mb-4" data-testid="button-back-to-sites">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Sites
+          </Button>
+        </Link>
+
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold" data-testid="text-site-name">{site.name}</h1>
+              {site.systemType && (
+                <Badge variant="outline">
+                  <Wrench className="h-3 w-3 mr-1" />
+                  {getSystemLabel(site.systemType)}
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground">
+              <Link href={`/clients/${site.clientId}`} className="hover:underline">
+                {getClientName(site.clientId)}
+              </Link>
+            </p>
+          </div>
+          <Button onClick={handleCreateJob} data-testid="button-create-job">
+            <Briefcase className="h-4 w-4 mr-2" />
+            Create Job
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              Site Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {site.address && (
+              <div className="flex items-start gap-3">
+                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">Address</p>
+                  <p className="text-muted-foreground">
+                    {site.address}
+                    {site.city && `, ${site.city}`}
+                    {site.postcode && ` ${site.postcode}`}
+                  </p>
+                </div>
+              </div>
+            )}
+            {site.siteContactName && (
+              <div className="flex items-start gap-3">
+                <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">Site Contact</p>
+                  <p className="text-muted-foreground">
+                    {site.siteContactName}
+                    {site.siteContactPhone && ` - ${site.siteContactPhone}`}
+                  </p>
+                  {site.siteContactEmail && (
+                    <p className="text-sm text-muted-foreground">{site.siteContactEmail}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {site.systemDescription && (
+              <div className="flex items-start gap-3">
+                <Wrench className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">System Info</p>
+                  <p className="text-muted-foreground">{site.systemDescription}</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Access Info
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {site.accessNotes ? (
+              <div>
+                <p className="font-medium text-sm">Access Notes</p>
+                <p className="text-sm text-muted-foreground">{site.accessNotes}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No access notes</p>
+            )}
+            {site.parkingInfo && (
+              <div className="flex items-start gap-2">
+                <Car className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Parking</p>
+                  <p className="text-sm text-muted-foreground">{site.parkingInfo}</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Site Assets
+              <Badge variant="secondary">{assets.length}</Badge>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search assets..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-assets"
+                />
+              </div>
+              <Button onClick={() => setIsAddAssetDialogOpen(true)} data-testid="button-add-asset">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Asset
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {assetsLoading ? (
+            <div className="text-center py-8">Loading assets...</div>
+          ) : filteredAssets.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">No Assets</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {searchQuery ? "No assets match your search" : "Add assets to this site to track them"}
+              </p>
+              {!searchQuery && (
+                <Button onClick={() => setIsAddAssetDialogOpen(true)} data-testid="button-add-asset-empty">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Asset
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Asset #</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Floor</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[60px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAssets.map((asset) => (
+                    <TableRow key={asset.id} data-testid={`row-asset-${asset.id}`}>
+                      <TableCell className="font-medium">{asset.assetNumber}</TableCell>
+                      <TableCell>{getAssetTypeLabel(asset.assetType)}</TableCell>
+                      <TableCell>{asset.floor || "-"}</TableCell>
+                      <TableCell>{asset.location || asset.area || "-"}</TableCell>
+                      <TableCell>{getStatusBadge(asset.status)}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" data-testid={`button-asset-menu-${asset.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => deleteAssetMutation.mutate(asset.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isAddAssetDialogOpen} onOpenChange={setIsAddAssetDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Asset</DialogTitle>
+            <DialogDescription>Add a new asset to {site.name}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="assetNumber">Asset Number *</Label>
+                <Input
+                  id="assetNumber"
+                  value={assetForm.assetNumber}
+                  onChange={(e) => setAssetForm(prev => ({ ...prev, assetNumber: e.target.value }))}
+                  placeholder="e.g., AOV-001"
+                  data-testid="input-asset-number"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="assetType">Asset Type *</Label>
+                <Select value={assetForm.assetType} onValueChange={(v) => setAssetForm(prev => ({ ...prev, assetType: v }))}>
+                  <SelectTrigger data-testid="select-asset-type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ASSET_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="floor">Floor</Label>
+                <Input
+                  id="floor"
+                  value={assetForm.floor}
+                  onChange={(e) => setAssetForm(prev => ({ ...prev, floor: e.target.value }))}
+                  placeholder="e.g., Ground, Level 1"
+                  data-testid="input-asset-floor"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="area">Area</Label>
+                <Input
+                  id="area"
+                  value={assetForm.area}
+                  onChange={(e) => setAssetForm(prev => ({ ...prev, area: e.target.value }))}
+                  placeholder="e.g., Lobby, Stairwell A"
+                  data-testid="input-asset-area"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Location Description</Label>
+              <Input
+                id="location"
+                value={assetForm.location}
+                onChange={(e) => setAssetForm(prev => ({ ...prev, location: e.target.value }))}
+                placeholder="e.g., Above main entrance"
+                data-testid="input-asset-location"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="manufacturer">Manufacturer</Label>
+                <Input
+                  id="manufacturer"
+                  value={assetForm.manufacturer}
+                  onChange={(e) => setAssetForm(prev => ({ ...prev, manufacturer: e.target.value }))}
+                  placeholder="Manufacturer name"
+                  data-testid="input-asset-manufacturer"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="model">Model</Label>
+                <Input
+                  id="model"
+                  value={assetForm.model}
+                  onChange={(e) => setAssetForm(prev => ({ ...prev, model: e.target.value }))}
+                  placeholder="Model number"
+                  data-testid="input-asset-model"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={assetForm.notes}
+                onChange={(e) => setAssetForm(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Additional notes"
+                data-testid="input-asset-notes"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsAddAssetDialogOpen(false);
+              resetAssetForm();
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddAsset}
+              disabled={createAssetMutation.isPending}
+              data-testid="button-save-asset"
+            >
+              Add Asset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

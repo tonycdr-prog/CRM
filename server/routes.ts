@@ -2029,7 +2029,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/staff-directory/:userId", async (req, res) => {
     try {
       const staff = await storage.getStaffDirectory(req.params.userId);
-      res.json(staff);
+      // Transform to include combined name field for frontend compatibility
+      const staffWithNames = staff.map(member => ({
+        ...member,
+        name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unknown',
+        role: member.jobTitle || member.department || 'Technician',
+      }));
+      res.json(staffWithNames);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch staff directory" });
     }
@@ -2586,6 +2592,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete site asset" });
+    }
+  });
+
+  app.get("/api/site-assets/by-site/:siteId", async (req, res) => {
+    try {
+      const items = await storage.getSiteAssetsBySite(req.params.siteId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch site assets by site" });
+    }
+  });
+
+  app.get("/api/site-assets/by-client/:clientId", async (req, res) => {
+    try {
+      const items = await storage.getSiteAssetsByClient(req.params.clientId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch site assets by client" });
+    }
+  });
+
+  // ============================================
+  // SITES (BUILDINGS) ROUTES
+  // ============================================
+
+  app.get("/api/sites/:userId", async (req, res) => {
+    try {
+      const items = await storage.getSites(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sites" });
+    }
+  });
+
+  app.get("/api/sites/by-client/:clientId", async (req, res) => {
+    try {
+      const items = await storage.getSitesByClient(req.params.clientId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sites by client" });
+    }
+  });
+
+  app.get("/api/sites/detail/:id", async (req, res) => {
+    try {
+      const site = await storage.getSite(req.params.id);
+      if (!site) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+      res.json(site);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch site" });
+    }
+  });
+
+  app.post("/api/sites", async (req, res) => {
+    try {
+      const site = await storage.createSite(req.body);
+      res.json(site);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create site" });
+    }
+  });
+
+  app.patch("/api/sites/:id", async (req, res) => {
+    try {
+      const site = await storage.updateSite(req.params.id, req.body);
+      res.json(site);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update site" });
+    }
+  });
+
+  app.delete("/api/sites/:id", async (req, res) => {
+    try {
+      await storage.deleteSite(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete site" });
+    }
+  });
+
+  // ============================================
+  // JOB SITE ASSETS ROUTES
+  // ============================================
+
+  app.get("/api/job-site-assets/:jobId", async (req, res) => {
+    try {
+      const items = await storage.getJobSiteAssets(req.params.jobId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job site assets" });
+    }
+  });
+
+  app.get("/api/job-site-assets/with-details/:jobId", async (req, res) => {
+    try {
+      const items = await storage.getJobSiteAssetsWithDetails(req.params.jobId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job site assets with details" });
+    }
+  });
+
+  app.post("/api/job-site-assets", async (req, res) => {
+    try {
+      const item = await storage.createJobSiteAsset(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to assign asset to job" });
+    }
+  });
+
+  app.post("/api/job-site-assets/bulk", async (req, res) => {
+    try {
+      const items = await storage.createJobSiteAssetsBulk(req.body.assignments);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to bulk assign assets to job" });
+    }
+  });
+
+  app.patch("/api/job-site-assets/:id", async (req, res) => {
+    try {
+      const item = await storage.updateJobSiteAsset(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update job site asset" });
+    }
+  });
+
+  app.delete("/api/job-site-assets/:id", async (req, res) => {
+    try {
+      await storage.deleteJobSiteAsset(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove asset from job" });
     }
   });
 

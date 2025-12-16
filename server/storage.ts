@@ -8,7 +8,7 @@ import {
   customerFeedback, serviceLevelAgreements, partsCatalog,
   documentTemplates, warranties, competitors,
   serviceHistory, qualityChecklists, timeOffRequests,
-  visitTypes, serviceTemplates, siteAssets, assetBatches,
+  visitTypes, serviceTemplates, siteAssets, sites, jobSiteAssets, assetBatches,
   jobAssignments, jobSkillRequirements, jobEquipmentReservations, staffAvailability,
   jobTimeWindows, shiftHandovers, dailyBriefings, serviceReminders,
   locationCoordinates, schedulingConflicts, capacitySnapshots,
@@ -148,6 +148,10 @@ type DbServiceTemplate = typeof serviceTemplates.$inferSelect;
 type NewServiceTemplate = typeof serviceTemplates.$inferInsert;
 type DbSiteAsset = typeof siteAssets.$inferSelect;
 type NewSiteAsset = typeof siteAssets.$inferInsert;
+type DbSite = typeof sites.$inferSelect;
+type NewSite = typeof sites.$inferInsert;
+type DbJobSiteAsset = typeof jobSiteAssets.$inferSelect;
+type NewJobSiteAsset = typeof jobSiteAssets.$inferInsert;
 type DbAssetBatch = typeof assetBatches.$inferSelect;
 type NewAssetBatch = typeof assetBatches.$inferInsert;
 type DbJobAssignment = typeof jobAssignments.$inferSelect;
@@ -508,13 +512,32 @@ export interface IStorage {
   updateServiceTemplate(id: string, template: Partial<NewServiceTemplate>): Promise<DbServiceTemplate | undefined>;
   deleteServiceTemplate(id: string): Promise<boolean>;
 
+  // Sites (Buildings)
+  getSites(userId: string): Promise<DbSite[]>;
+  getSitesByClient(clientId: string): Promise<DbSite[]>;
+  getSite(id: string): Promise<DbSite | undefined>;
+  createSite(site: NewSite): Promise<DbSite>;
+  updateSite(id: string, site: Partial<NewSite>): Promise<DbSite | undefined>;
+  deleteSite(id: string): Promise<boolean>;
+
   // Site Assets
   getSiteAssets(userId: string): Promise<DbSiteAsset[]>;
   getSiteAssetsByProject(projectId: string): Promise<DbSiteAsset[]>;
+  getSiteAssetsBySite(siteId: string): Promise<DbSiteAsset[]>;
+  getSiteAssetsByClient(clientId: string): Promise<DbSiteAsset[]>;
   createSiteAsset(asset: NewSiteAsset): Promise<DbSiteAsset>;
   createSiteAssetsBulk(assets: NewSiteAsset[]): Promise<DbSiteAsset[]>;
   updateSiteAsset(id: string, asset: Partial<NewSiteAsset>): Promise<DbSiteAsset | undefined>;
   deleteSiteAsset(id: string): Promise<boolean>;
+
+  // Job Site Assets (junction table)
+  getJobSiteAssets(jobId: string): Promise<DbJobSiteAsset[]>;
+  getJobSiteAssetsWithDetails(jobId: string): Promise<(DbJobSiteAsset & { asset: DbSiteAsset })[]>;
+  createJobSiteAsset(assignment: NewJobSiteAsset): Promise<DbJobSiteAsset>;
+  createJobSiteAssetsBulk(assignments: NewJobSiteAsset[]): Promise<DbJobSiteAsset[]>;
+  updateJobSiteAsset(id: string, update: Partial<NewJobSiteAsset>): Promise<DbJobSiteAsset | undefined>;
+  deleteJobSiteAsset(id: string): Promise<boolean>;
+  deleteJobSiteAssetsByJob(jobId: string): Promise<boolean>;
 
   // Asset Batches
   getAssetBatches(userId: string): Promise<DbAssetBatch[]>;
@@ -1972,6 +1995,87 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSiteAsset(id: string): Promise<boolean> {
     await db.delete(siteAssets).where(eq(siteAssets.id, id));
+    return true;
+  }
+
+  async getSiteAssetsBySite(siteId: string): Promise<DbSiteAsset[]> {
+    return db.select().from(siteAssets).where(eq(siteAssets.siteId, siteId)).orderBy(siteAssets.floor, siteAssets.assetNumber);
+  }
+
+  async getSiteAssetsByClient(clientId: string): Promise<DbSiteAsset[]> {
+    return db.select().from(siteAssets).where(eq(siteAssets.clientId, clientId)).orderBy(siteAssets.floor, siteAssets.assetNumber);
+  }
+
+  // Sites (Buildings)
+  async getSites(userId: string): Promise<DbSite[]> {
+    return db.select().from(sites).where(or(eq(sites.userId, userId), eq(sites.userId, SHARED_USER_ID))).orderBy(sites.name);
+  }
+
+  async getSitesByClient(clientId: string): Promise<DbSite[]> {
+    return db.select().from(sites).where(eq(sites.clientId, clientId)).orderBy(sites.name);
+  }
+
+  async getSite(id: string): Promise<DbSite | undefined> {
+    const [site] = await db.select().from(sites).where(eq(sites.id, id));
+    return site || undefined;
+  }
+
+  async createSite(site: NewSite): Promise<DbSite> {
+    const [newSite] = await db.insert(sites).values(site).returning();
+    return newSite;
+  }
+
+  async updateSite(id: string, site: Partial<NewSite>): Promise<DbSite | undefined> {
+    const [updated] = await db.update(sites).set({ ...site, updatedAt: new Date() }).where(eq(sites.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteSite(id: string): Promise<boolean> {
+    await db.delete(sites).where(eq(sites.id, id));
+    return true;
+  }
+
+  // Job Site Assets (junction table)
+  async getJobSiteAssets(jobId: string): Promise<DbJobSiteAsset[]> {
+    return db.select().from(jobSiteAssets).where(eq(jobSiteAssets.jobId, jobId)).orderBy(jobSiteAssets.createdAt);
+  }
+
+  async getJobSiteAssetsWithDetails(jobId: string): Promise<(DbJobSiteAsset & { asset: DbSiteAsset })[]> {
+    const results = await db
+      .select()
+      .from(jobSiteAssets)
+      .innerJoin(siteAssets, eq(jobSiteAssets.siteAssetId, siteAssets.id))
+      .where(eq(jobSiteAssets.jobId, jobId));
+    
+    return results.map(r => ({
+      ...r.job_site_assets,
+      asset: r.site_assets
+    }));
+  }
+
+  async createJobSiteAsset(assignment: NewJobSiteAsset): Promise<DbJobSiteAsset> {
+    const [newItem] = await db.insert(jobSiteAssets).values(assignment).returning();
+    return newItem;
+  }
+
+  async createJobSiteAssetsBulk(assignments: NewJobSiteAsset[]): Promise<DbJobSiteAsset[]> {
+    if (assignments.length === 0) return [];
+    const newItems = await db.insert(jobSiteAssets).values(assignments).returning();
+    return newItems;
+  }
+
+  async updateJobSiteAsset(id: string, update: Partial<NewJobSiteAsset>): Promise<DbJobSiteAsset | undefined> {
+    const [updated] = await db.update(jobSiteAssets).set({ ...update, updatedAt: new Date() }).where(eq(jobSiteAssets.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteJobSiteAsset(id: string): Promise<boolean> {
+    await db.delete(jobSiteAssets).where(eq(jobSiteAssets.id, id));
+    return true;
+  }
+
+  async deleteJobSiteAssetsByJob(jobId: string): Promise<boolean> {
+    await db.delete(jobSiteAssets).where(eq(jobSiteAssets.jobId, jobId));
     return true;
   }
 

@@ -673,6 +673,32 @@ export const insertCustomerAddressSchema = createInsertSchema(customerAddresses)
 export type InsertCustomerAddress = z.infer<typeof insertCustomerAddressSchema>;
 export type DbCustomerAddress = typeof customerAddresses.$inferSelect;
 
+// Sites table - buildings/locations belonging to clients
+export const sites = pgTable("sites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id).notNull(),
+  name: text("name").notNull(), // Building name e.g., "Tower A", "Main Building"
+  address: text("address"),
+  postcode: text("postcode"),
+  city: text("city"),
+  systemType: text("system_type"), // Primary system type at this site
+  systemDescription: text("system_description"), // Additional system info
+  accessNotes: text("access_notes"),
+  parkingInfo: text("parking_info"),
+  siteContactName: text("site_contact_name"),
+  siteContactPhone: text("site_contact_phone"),
+  siteContactEmail: text("site_contact_email"),
+  notes: text("notes"),
+  status: text("status").default("active"), // active, inactive
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSiteSchema = createInsertSchema(sites).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSite = z.infer<typeof insertSiteSchema>;
+export type DbSite = typeof sites.$inferSelect;
+
 // Contracts table - service agreements
 export const contracts = pgTable("contracts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -970,6 +996,26 @@ export const SERVICE_VISIT_TYPES = [
   { value: "access_enabling", label: "Access / Enabling Visit" },
   { value: "diagnostic_testing", label: "Diagnostic Testing Visit" },
   { value: "goodwill", label: "Free of Charge / Goodwill Visit" },
+] as const;
+
+// Asset Types for site assets
+export const ASSET_TYPES = [
+  { value: "smoke_damper", label: "Smoke Damper" },
+  { value: "fire_damper", label: "Fire Damper" },
+  { value: "combination_damper", label: "Combination Fire/Smoke Damper" },
+  { value: "aov", label: "AOV (Automatic Opening Vent)" },
+  { value: "smoke_shaft", label: "Smoke Shaft" },
+  { value: "exhaust_fan", label: "Exhaust Fan" },
+  { value: "supply_fan", label: "Supply Fan" },
+  { value: "control_panel", label: "Control Panel" },
+  { value: "smoke_detector", label: "Smoke Detector" },
+  { value: "manual_call_point", label: "Manual Call Point" },
+  { value: "pressure_sensor", label: "Pressure Sensor" },
+  { value: "air_release_damper", label: "Air Release Damper" },
+  { value: "louvre", label: "Louvre" },
+  { value: "actuator", label: "Actuator" },
+  { value: "bms_interface", label: "BMS Interface" },
+  { value: "other", label: "Other" },
 ] as const;
 
 // System Condition Options for visit reports
@@ -2483,6 +2529,7 @@ export const siteAssets = pgTable("site_assets", {
   userId: varchar("user_id").references(() => users.id),
   projectId: varchar("project_id").references(() => projects.id),
   clientId: varchar("client_id").references(() => clients.id),
+  siteId: varchar("site_id").references(() => sites.id), // Link to specific site/building
   assetNumber: text("asset_number").notNull(), // e.g., AOV-001, SCD-G01
   assetType: text("asset_type").notNull(), // aov, smoke_damper, control_panel, detector, fan, duct, firefighter_switch
   visitType: text("visit_type"), // links to visit type code
@@ -2514,6 +2561,26 @@ export const siteAssets = pgTable("site_assets", {
 export const insertSiteAssetSchema = createInsertSchema(siteAssets).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertSiteAsset = z.infer<typeof insertSiteAssetSchema>;
 export type DbSiteAsset = typeof siteAssets.$inferSelect;
+
+// Job Site Assets - Junction table linking site assets to jobs for testing/inspection
+export const jobSiteAssets = pgTable("job_site_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  siteAssetId: varchar("site_asset_id").references(() => siteAssets.id).notNull(),
+  status: text("status").default("assigned"), // assigned, in_progress, completed, skipped
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  completedBy: varchar("completed_by"),
+  notes: text("notes"),
+  testResults: jsonb("test_results").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobSiteAssetSchema = createInsertSchema(jobSiteAssets).omit({ id: true, createdAt: true, updatedAt: true, assignedAt: true });
+export type InsertJobSiteAsset = z.infer<typeof insertJobSiteAssetSchema>;
+export type DbJobSiteAsset = typeof jobSiteAssets.$inferSelect;
 
 // Phase 10: Asset Batches - Track bulk asset creation operations
 export const assetBatches = pgTable("asset_batches", {

@@ -14,6 +14,8 @@ import FieldTesting from "@/pages/field-testing";
 import Dashboard from "@/pages/dashboard";
 import Landing from "@/pages/landing";
 import Clients from "@/pages/clients";
+import Sites from "@/pages/sites";
+import SiteDetail from "@/pages/site-detail";
 import Contracts from "@/pages/contracts";
 import Jobs from "@/pages/jobs";
 import Finance from "@/pages/finance";
@@ -85,6 +87,8 @@ function LayoutRoutes() {
         <Route path="/test" component={FieldTesting} />
         <Route path="/clients" component={Clients} />
         <Route path="/clients/:id" component={ClientDetail} />
+        <Route path="/sites" component={Sites} />
+        <Route path="/sites/:id" component={SiteDetail} />
         <Route path="/contracts" component={Contracts} />
         <Route path="/jobs" component={Jobs} />
         <Route path="/jobs/:id" component={JobDetail} />

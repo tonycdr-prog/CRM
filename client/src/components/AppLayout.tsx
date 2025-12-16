@@ -102,10 +102,11 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    title: "Clients & Projects",
+    title: "Clients & Sites",
     icon: Users,
     items: [
       { title: "Clients", url: "/clients", icon: Users },
+      { title: "Sites", url: "/sites", icon: Building2 },
       { title: "Contracts", url: "/contracts", icon: FileText },
       { title: "Site Access", url: "/site-access", icon: MapPin },
       { title: "Site Access Notes", url: "/site-access-notes", icon: MapPinned },
