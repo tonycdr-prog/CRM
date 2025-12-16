@@ -486,6 +486,337 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
       }
     }
 
+    // ===== FINANCIAL DATA =====
+    const createdQuotes: any[] = [];
+    const createdInvoices: any[] = [];
+    const createdExpenses: any[] = [];
+    const createdTimesheets: any[] = [];
+    const createdMileageClaims: any[] = [];
+
+    // QUOTES - 12 quotes with various statuses
+    const quoteData = [
+      { title: "Annual Smoke Control Maintenance - Meridian Tower", status: "accepted", total: 12500 },
+      { title: "AOV System Commissioning - Northern Quarter", status: "accepted", total: 8750 },
+      { title: "Fire Damper Testing - Centenary Building", status: "sent", total: 4200 },
+      { title: "Stairwell Pressurisation Survey - Aire Heights", status: "sent", total: 6800 },
+      { title: "Emergency Repair Works - Clyde View Tower", status: "accepted", total: 3500 },
+      { title: "NShev System Annual Service", status: "draft", total: 9200 },
+      { title: "Car Park Ventilation Commissioning", status: "rejected", total: 15000 },
+      { title: "Smoke Curtain Installation Quote", status: "expired", total: 22000 },
+      { title: "Fire Damper Replacement Programme", status: "accepted", total: 45000 },
+      { title: "BMS Integration - Phase 2", status: "sent", total: 18500 },
+      { title: "Quarterly Maintenance Contract", status: "draft", total: 7600 },
+      { title: "Reactive Call-Out Agreement Renewal", status: "accepted", total: 5400 },
+    ];
+
+    for (let i = 0; i < quoteData.length; i++) {
+      const q = quoteData[i];
+      const client = createdClients[i % createdClients.length];
+      const job = createdJobs[i % createdJobs.length];
+      const validDate = new Date();
+      validDate.setDate(validDate.getDate() + (q.status === 'expired' ? -30 : 30));
+      
+      const subtotal = q.total / 1.2;
+      const vatAmount = subtotal * 0.2;
+      
+      const quote = await storage.createQuote({
+        userId: TEST_USER_ID,
+        clientId: client.id,
+        jobId: job?.id || null,
+        quoteNumber: `QUO-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}`,
+        title: q.title,
+        description: `Comprehensive quotation for ${q.title.toLowerCase()} including all labour, materials, and certification.`,
+        lineItems: [
+          { id: `line-${i}-1`, description: "Labour costs - Site attendance and testing", quantity: 1, unitPrice: subtotal * 0.6, total: subtotal * 0.6 },
+          { id: `line-${i}-2`, description: "Materials and equipment", quantity: 1, unitPrice: subtotal * 0.25, total: subtotal * 0.25 },
+          { id: `line-${i}-3`, description: "Certification and documentation", quantity: 1, unitPrice: subtotal * 0.15, total: subtotal * 0.15 },
+        ],
+        subtotal: subtotal,
+        vatRate: 20,
+        vatAmount: vatAmount,
+        total: q.total,
+        validUntil: validDate.toISOString().split('T')[0],
+        terms: "Payment due within 30 days of invoice. 50% deposit required for orders over £10,000.",
+        status: q.status,
+      });
+      createdQuotes.push(quote);
+      console.log(`Created quote: ${quote.quoteNumber}`);
+    }
+
+    // INVOICES - 15 invoices with various statuses
+    const invoiceData = [
+      { title: "Annual Maintenance - Q1 Invoice", status: "paid", total: 3125, daysAgo: 45 },
+      { title: "Emergency Call-Out - Fan Failure", status: "paid", total: 1850, daysAgo: 30 },
+      { title: "Commissioning Works - Phase 1", status: "paid", total: 8500, daysAgo: 60 },
+      { title: "Annual Maintenance - Q2 Invoice", status: "paid", total: 3125, daysAgo: 15 },
+      { title: "Damper Replacement Works", status: "paid", total: 4200, daysAgo: 20 },
+      { title: "Stairwell Testing Certificate", status: "sent", total: 2800, daysAgo: 7 },
+      { title: "Annual Maintenance - Q3 Invoice", status: "sent", total: 3125, daysAgo: 5 },
+      { title: "AOV Servicing Works", status: "sent", total: 1650, daysAgo: 3 },
+      { title: "Fire Curtain Annual Test", status: "overdue", total: 2400, daysAgo: 35 },
+      { title: "NShev System Repairs", status: "overdue", total: 5600, daysAgo: 50 },
+      { title: "Car Park Ventilation Service", status: "draft", total: 4800, daysAgo: 0 },
+      { title: "BMS Panel Upgrade", status: "draft", total: 7200, daysAgo: 0 },
+      { title: "Smoke Shaft Commissioning", status: "paid", total: 12500, daysAgo: 75 },
+      { title: "Reactive Repairs - Control Panel", status: "sent", total: 3400, daysAgo: 10 },
+      { title: "Annual Inspection Certificate", status: "paid", total: 1200, daysAgo: 40 },
+    ];
+
+    for (let i = 0; i < invoiceData.length; i++) {
+      const inv = invoiceData[i];
+      const client = createdClients[i % createdClients.length];
+      const job = createdJobs[i % createdJobs.length];
+      const contract = createdContracts[i % createdContracts.length];
+      const quote = i < createdQuotes.length ? createdQuotes[i] : null;
+      
+      const invoiceDate = new Date();
+      invoiceDate.setDate(invoiceDate.getDate() - inv.daysAgo);
+      const dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + 30);
+      
+      const subtotal = inv.total / 1.2;
+      const vatAmount = subtotal * 0.2;
+      
+      const invoice = await storage.createInvoice({
+        userId: TEST_USER_ID,
+        clientId: client.id,
+        jobId: job?.id || null,
+        contractId: contract?.id || null,
+        quoteId: quote?.id || null,
+        invoiceNumber: `INV-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}`,
+        title: inv.title,
+        description: `Invoice for ${inv.title.toLowerCase()} - completed works and certification.`,
+        lineItems: [
+          { id: `inv-line-${i}-1`, description: "Professional services rendered", quantity: 1, unitPrice: subtotal * 0.7, total: subtotal * 0.7 },
+          { id: `inv-line-${i}-2`, description: "Materials supplied", quantity: 1, unitPrice: subtotal * 0.2, total: subtotal * 0.2 },
+          { id: `inv-line-${i}-3`, description: "Documentation and certification", quantity: 1, unitPrice: subtotal * 0.1, total: subtotal * 0.1 },
+        ],
+        subtotal: subtotal,
+        vatRate: 20,
+        vatAmount: vatAmount,
+        total: inv.total,
+        dueDate: dueDate.toISOString().split('T')[0],
+        terms: "Payment due within 30 days. Bank details: Sort 40-00-01, Account 12345678",
+        status: inv.status,
+        paidAmount: inv.status === 'paid' ? inv.total : 0,
+      });
+      createdInvoices.push(invoice);
+      console.log(`Created invoice: ${invoice.invoiceNumber}`);
+    }
+
+    // EXPENSES - 25+ expenses across all categories
+    const expenseData = [
+      { category: "fuel", description: "Diesel - Company Van VN23 ABC", amount: 85.50, daysAgo: 2 },
+      { category: "fuel", description: "Diesel - Site Visit London", amount: 62.30, daysAgo: 5 },
+      { category: "fuel", description: "Diesel - Manchester Trip", amount: 95.00, daysAgo: 8 },
+      { category: "materials", description: "Smoke pellets - Testing supplies", amount: 124.99, daysAgo: 3 },
+      { category: "materials", description: "Replacement actuator - Belimo", amount: 385.00, daysAgo: 7 },
+      { category: "materials", description: "Cable and connectors", amount: 67.50, daysAgo: 12 },
+      { category: "materials", description: "Damper blade assembly", amount: 225.00, daysAgo: 15 },
+      { category: "accommodation", description: "Premier Inn - Glasgow 2 nights", amount: 178.00, daysAgo: 10 },
+      { category: "accommodation", description: "Travelodge Birmingham", amount: 65.00, daysAgo: 18 },
+      { category: "accommodation", description: "Holiday Inn Leeds", amount: 89.00, daysAgo: 25 },
+      { category: "tools", description: "Anemometer calibration", amount: 145.00, daysAgo: 30 },
+      { category: "tools", description: "Digital manometer probe", amount: 89.99, daysAgo: 35 },
+      { category: "tools", description: "PPE replacement - Hard hats", amount: 45.00, daysAgo: 20 },
+      { category: "mileage", description: "Site visit - Canary Wharf", amount: 22.50, mileage: 50, daysAgo: 1 },
+      { category: "mileage", description: "Client meeting - Westminster", amount: 18.00, mileage: 40, daysAgo: 4 },
+      { category: "mileage", description: "Emergency callout - Stratford", amount: 31.50, mileage: 70, daysAgo: 6 },
+      { category: "mileage", description: "Training course - Reading", amount: 67.50, mileage: 150, daysAgo: 14 },
+      { category: "other", description: "Parking - Meridian Tower site", amount: 15.00, daysAgo: 2 },
+      { category: "other", description: "Congestion charge - London", amount: 15.00, daysAgo: 3 },
+      { category: "other", description: "Dartford crossing", amount: 5.00, daysAgo: 5 },
+      { category: "other", description: "Site access permit fee", amount: 25.00, daysAgo: 8 },
+      { category: "fuel", description: "Diesel - Leeds site visit", amount: 78.40, daysAgo: 22 },
+      { category: "materials", description: "Sealing gaskets pack", amount: 34.50, daysAgo: 28 },
+      { category: "accommodation", description: "Premier Inn Bristol", amount: 95.00, daysAgo: 32 },
+      { category: "tools", description: "Fluke multimeter replacement", amount: 189.00, daysAgo: 45 },
+      { category: "other", description: "ULEZ charge - London zone", amount: 12.50, daysAgo: 9 },
+    ];
+
+    const expenseStatuses = ["approved", "approved", "approved", "pending", "reimbursed"];
+    for (let i = 0; i < expenseData.length; i++) {
+      const exp = expenseData[i];
+      const job = createdJobs[i % createdJobs.length];
+      const expDate = new Date();
+      expDate.setDate(expDate.getDate() - exp.daysAgo);
+      
+      const expense = await storage.createExpense({
+        userId: TEST_USER_ID,
+        jobId: job?.id || null,
+        category: exp.category,
+        description: exp.description,
+        amount: exp.amount,
+        date: expDate.toISOString().split('T')[0],
+        mileage: exp.mileage || null,
+        mileageRate: exp.category === 'mileage' ? 0.45 : null,
+        reimbursable: true,
+        reimbursed: expenseStatuses[i % expenseStatuses.length] === 'reimbursed',
+        status: expenseStatuses[i % expenseStatuses.length],
+      });
+      createdExpenses.push(expense);
+    }
+    console.log(`Created ${createdExpenses.length} expenses`);
+
+    // TIMESHEETS - 30+ entries
+    const timesheetEntries = [
+      { date: 1, start: "08:00", end: "16:30", hours: 8, desc: "Meridian Tower - Annual testing" },
+      { date: 1, start: "08:30", end: "17:00", hours: 8, desc: "Northern Quarter - Commissioning" },
+      { date: 2, start: "07:30", end: "16:00", hours: 8, desc: "Centenary Building - Damper service" },
+      { date: 2, start: "09:00", end: "17:30", hours: 8, desc: "Aire Heights - Stairwell testing" },
+      { date: 3, start: "08:00", end: "18:00", hours: 9.5, overtime: 1.5, desc: "Clyde View - Emergency repair" },
+      { date: 3, start: "08:00", end: "16:30", hours: 8, desc: "Office - Report writing" },
+      { date: 4, start: "07:00", end: "15:30", hours: 8, desc: "Early start - Harbourside Lofts" },
+      { date: 4, start: "08:00", end: "16:30", hours: 8, desc: "Client meetings - London" },
+      { date: 5, start: "08:30", end: "17:00", hours: 8, desc: "Meridian Tower - Follow-up" },
+      { date: 8, start: "08:00", end: "16:30", hours: 8, desc: "Training - Fire safety update" },
+      { date: 8, start: "08:00", end: "19:00", hours: 10.5, overtime: 2.5, desc: "Urgent callout - Fan failure" },
+      { date: 9, start: "08:00", end: "16:30", hours: 8, desc: "Documentation day" },
+      { date: 9, start: "08:30", end: "17:00", hours: 8, desc: "Northern Quarter - Phase 2" },
+      { date: 10, start: "07:30", end: "16:00", hours: 8, desc: "Birmingham - Site survey" },
+      { date: 10, start: "08:00", end: "16:30", hours: 8, desc: "Equipment maintenance" },
+      { date: 11, start: "08:00", end: "17:30", hours: 9, overtime: 1, desc: "Glasgow - Annual service" },
+      { date: 11, start: "08:00", end: "16:30", hours: 8, desc: "Quote preparation" },
+      { date: 12, start: "08:00", end: "16:30", hours: 8, desc: "Aire Heights - Completion" },
+      { date: 15, start: "08:00", end: "16:30", hours: 8, desc: "New project briefing" },
+      { date: 15, start: "08:30", end: "17:00", hours: 8, desc: "Centenary - Remedial works" },
+      { date: 16, start: "08:00", end: "16:30", hours: 8, desc: "Site handover documentation" },
+      { date: 16, start: "07:00", end: "17:00", hours: 9.5, overtime: 1.5, desc: "Long day - Multiple sites" },
+      { date: 17, start: "08:00", end: "16:30", hours: 8, desc: "Clyde View - Inspection" },
+      { date: 17, start: "08:00", end: "16:30", hours: 8, desc: "Vehicle maintenance day" },
+      { date: 18, start: "08:30", end: "17:00", hours: 8, desc: "Leeds - New installation" },
+      { date: 18, start: "08:00", end: "16:30", hours: 8, desc: "Admin and invoicing" },
+      { date: 19, start: "08:00", end: "16:30", hours: 8, desc: "Bristol - Annual test" },
+      { date: 22, start: "08:00", end: "16:30", hours: 8, desc: "Team meeting and planning" },
+      { date: 22, start: "08:00", end: "18:00", hours: 9.5, overtime: 1.5, desc: "Urgent - Control panel fault" },
+      { date: 23, start: "08:00", end: "16:30", hours: 8, desc: "Standard site work" },
+      { date: 23, start: "08:30", end: "17:00", hours: 8, desc: "Follow-up inspections" },
+      { date: 24, start: "08:00", end: "16:30", hours: 8, desc: "Certificate preparation" },
+    ];
+
+    const timesheetStatuses = ["approved", "approved", "submitted", "pending", "approved"];
+    for (let i = 0; i < timesheetEntries.length; i++) {
+      const ts = timesheetEntries[i];
+      const job = createdJobs[i % createdJobs.length];
+      const staff = createdStaff[i % createdStaff.length];
+      const tsDate = new Date();
+      tsDate.setDate(tsDate.getDate() - ts.date);
+      
+      const timesheet = await storage.createTimesheet({
+        userId: TEST_USER_ID,
+        jobId: job?.id || null,
+        technicianId: staff?.id || null,
+        date: tsDate.toISOString().split('T')[0],
+        startTime: ts.start,
+        endTime: ts.end,
+        breakDuration: 30,
+        totalHours: ts.hours,
+        hourlyRate: [28, 32, 35, 25][i % 4],
+        overtimeHours: ts.overtime || 0,
+        overtimeRate: [42, 48, 52.50, 37.50][i % 4],
+        description: ts.desc,
+        status: timesheetStatuses[i % timesheetStatuses.length],
+      });
+      createdTimesheets.push(timesheet);
+    }
+    console.log(`Created ${createdTimesheets.length} timesheets`);
+
+    // MILEAGE CLAIMS - 20+ entries
+    const mileageData = [
+      { from: "Office - Croydon", to: "Meridian Tower, Canary Wharf", miles: 18, purpose: "Annual testing" },
+      { from: "Office - Croydon", to: "Northern Quarter, Manchester", miles: 210, purpose: "Commissioning works" },
+      { from: "Home - Bromley", to: "Centenary Building, Birmingham", miles: 125, purpose: "Client meeting" },
+      { from: "Office - Croydon", to: "Aire Heights, Leeds", miles: 195, purpose: "Stairwell testing" },
+      { from: "Hotel - Glasgow", to: "Clyde View Tower", miles: 8, purpose: "Site attendance" },
+      { from: "Office - Croydon", to: "Harbourside Lofts, Bristol", miles: 118, purpose: "Annual service" },
+      { from: "Meridian Tower", to: "Office - Croydon", miles: 18, purpose: "Return from site" },
+      { from: "Manchester", to: "Office - Croydon", miles: 210, purpose: "Return journey" },
+      { from: "Office - Croydon", to: "Westminster client office", miles: 12, purpose: "Quote presentation" },
+      { from: "Office - Croydon", to: "Training centre, Reading", miles: 48, purpose: "CPD training" },
+      { from: "Reading", to: "Office - Croydon", miles: 48, purpose: "Return from training" },
+      { from: "Home - Lewisham", to: "Emergency callout - Stratford", miles: 14, purpose: "Emergency response" },
+      { from: "Stratford", to: "Home - Lewisham", miles: 14, purpose: "Return from callout" },
+      { from: "Office - Salford", to: "Glasgow Central", miles: 175, purpose: "Scottish project" },
+      { from: "Glasgow", to: "Office - Salford", miles: 175, purpose: "Return journey" },
+      { from: "Office - Birmingham", to: "Multiple sites - Midlands", miles: 85, purpose: "Multi-site inspection" },
+      { from: "Office - Croydon", to: "Heathrow Terminal 5", miles: 22, purpose: "New tender site visit" },
+      { from: "Heathrow T5", to: "Office - Croydon", miles: 22, purpose: "Return from tender" },
+      { from: "Home - Greenwich", to: "Supplier warehouse - Dartford", miles: 18, purpose: "Equipment collection" },
+      { from: "Dartford", to: "Home - Greenwich", miles: 18, purpose: "Return" },
+      { from: "Office - Croydon", to: "Victoria, London", miles: 11, purpose: "Client presentation" },
+      { from: "Victoria", to: "Office - Croydon", miles: 11, purpose: "Return from meeting" },
+    ];
+
+    const mileageStatuses = ["paid", "paid", "approved", "approved", "pending", "pending"];
+    for (let i = 0; i < mileageData.length; i++) {
+      const m = mileageData[i];
+      const job = createdJobs[i % createdJobs.length];
+      const claimDate = new Date();
+      claimDate.setDate(claimDate.getDate() - (i * 2 + 1));
+      
+      const totalAmount = m.miles * 0.45;
+      
+      const claim = await storage.createMileageClaim({
+        userId: TEST_USER_ID,
+        jobId: job?.id || null,
+        claimDate: claimDate.toISOString().split('T')[0],
+        startLocation: m.from,
+        endLocation: m.to,
+        purpose: m.purpose,
+        distanceMiles: m.miles,
+        ratePerMile: 0.45,
+        totalAmount: totalAmount,
+        isBusinessMiles: true,
+        vehicleType: "car",
+        passengerCount: 0,
+        passengerRate: 0.05,
+        status: mileageStatuses[i % mileageStatuses.length],
+        approvedBy: mileageStatuses[i % mileageStatuses.length] !== 'pending' ? 'Operations Director' : null,
+        approvedDate: mileageStatuses[i % mileageStatuses.length] !== 'pending' ? claimDate.toISOString().split('T')[0] : null,
+        paidDate: mileageStatuses[i % mileageStatuses.length] === 'paid' ? claimDate.toISOString().split('T')[0] : null,
+        notes: null,
+      });
+      createdMileageClaims.push(claim);
+    }
+    console.log(`Created ${createdMileageClaims.length} mileage claims`);
+
+    // ===== CHECK SHEET TEMPLATES =====
+    const createdTemplates: any[] = [];
+    
+    const templateDefinitions = [
+      { systemType: "pressurisation", name: "Stairwell Pressurisation System", description: "Testing template for mechanical stairwell pressurisation systems per BS EN 12101-6" },
+      { systemType: "car_park", name: "Car Park Ventilation System", description: "CO monitoring, jet fan, and impulse ventilation testing per BS 7346-7" },
+      { systemType: "mshev", name: "Mechanical Smoke Heat Exhaust (MShev)", description: "Testing template for mechanical smoke/heat exhaust ventilation per BS EN 12101-3" },
+      { systemType: "aov", name: "Automatic Opening Vent (AOV)", description: "Testing template for AOV systems per BS EN 12101-2" },
+      { systemType: "stairwell_pressurisation", name: "Stairwell Differential Pressure", description: "Complete stairwell pressure testing per BS EN 12101-6 with door force measurements" },
+      { systemType: "smoke_shaft", name: "Smoke Shaft System", description: "Smoke shaft and lobby ventilation testing per BS EN 12101-6" },
+      { systemType: "nshev", name: "Natural Smoke Heat Exhaust (NShev)", description: "Testing template for natural smoke/heat exhaust vents per BS EN 12101-2" },
+      { systemType: "compressor", name: "Compressor System", description: "Pneumatic compressor testing including pressure, receiver, and electrical readings" },
+      { systemType: "electrical_controls", name: "Electrical Control Panel", description: "Electrical testing for smoke control panels per BS 7346-8 and 18th Edition" },
+      { systemType: "fire_damper", name: "Fire Damper Inspection", description: "Fire damper inspection and drop test per BS 9999 and RRO requirements" },
+      { systemType: "smoke_fire_curtain", name: "Smoke & Fire Curtain", description: "Smoke curtain and fire curtain testing per BS EN 12101-1 and BS 8524" },
+    ];
+
+    // Import the default template fields from schema
+    const { DEFAULT_TEMPLATE_FIELDS } = await import("../shared/schema");
+
+    for (const template of templateDefinitions) {
+      const fields = DEFAULT_TEMPLATE_FIELDS[template.systemType] || [];
+      
+      const createdTemplate = await storage.createCheckSheetTemplate({
+        userId: TEST_USER_ID,
+        name: template.name,
+        description: template.description,
+        systemType: template.systemType,
+        version: "1.0",
+        isDefault: true,
+        isActive: true,
+        fields: fields,
+      });
+      createdTemplates.push(createdTemplate);
+      console.log(`Created check sheet template: ${template.name}`);
+    }
+
     const counts = {
       staff: createdStaff.length,
       clients: createdClients.length,
@@ -494,12 +825,18 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
       jobs: createdJobs.length,
       dampers: createdDampers.length,
       tests: createdTests.length,
+      quotes: createdQuotes.length,
+      invoices: createdInvoices.length,
+      expenses: createdExpenses.length,
+      timesheets: createdTimesheets.length,
+      mileageClaims: createdMileageClaims.length,
+      checkSheetTemplates: createdTemplates.length,
     };
 
     console.log("Seed complete:", counts);
     return { 
       success: true, 
-      message: "Database seeded successfully with sample data",
+      message: "Database seeded successfully with comprehensive sample data including financial records",
       counts 
     };
   } catch (error) {
