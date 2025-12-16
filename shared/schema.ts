@@ -2796,7 +2796,8 @@ export type DbCapacitySnapshot = typeof capacitySnapshots.$inferSelect;
 export const CHECK_SHEET_SYSTEM_TYPES = [
   { value: "pressurisation", label: "Pressurisation System" },
   { value: "car_park", label: "Car Park Ventilation" },
-  { value: "mshev", label: "MSHEV (Mechanical Smoke & Heat Exhaust)" },
+  { value: "mshev", label: "MShev (Mechanical Smoke & Heat Exhaust)" },
+  { value: "nshev", label: "NShev (Natural Smoke & Heat Exhaust)" },
   { value: "aov", label: "AOV (Automatic Opening Vent)" },
   { value: "stairwell_pressurisation", label: "Stairwell Pressurisation" },
   { value: "smoke_shaft", label: "Smoke Shaft" },
@@ -2804,6 +2805,10 @@ export const CHECK_SHEET_SYSTEM_TYPES = [
   { value: "lobby_extract", label: "Lobby Extract" },
   { value: "natural_vent", label: "Natural Ventilation" },
   { value: "mixed_mode", label: "Mixed Mode System" },
+  { value: "compressor", label: "Compressor System" },
+  { value: "electrical_controls", label: "Electrical Control Panel" },
+  { value: "fire_damper", label: "Fire Damper Inspection" },
+  { value: "smoke_fire_curtain", label: "Smoke & Fire Curtain" },
 ] as const;
 
 // Field types for check sheet template fields
