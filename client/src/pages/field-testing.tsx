@@ -93,7 +93,7 @@ const generatePositionLabels = (gridSize: number): string[] => {
   return labels;
 };
 
-export default function AirflowTester() {
+export default function FieldTesting() {
   // Storage state
   const [storageData, setStorageData] = useState<StorageData | null>(null);
   const [dampers, setDampers] = useState<Record<string, Damper>>({});

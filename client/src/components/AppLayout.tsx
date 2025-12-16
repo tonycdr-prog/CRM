@@ -90,7 +90,7 @@ const menuSections: MenuSection[] = [
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
       { title: "Schedule", url: "/schedule", icon: Calendar },
-      { title: "Airflow Testing", url: "/test", icon: Wind },
+      { title: "Field Testing", url: "/test", icon: Wind },
       { title: "Visit Types", url: "/visit-types", icon: ClipboardList },
       { title: "Quality Checklists", url: "/quality-checklists", icon: FileCheck },
       { title: "Check Sheets", url: "/check-sheet-readings", icon: ClipboardList },

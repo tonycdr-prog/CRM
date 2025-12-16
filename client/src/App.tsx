@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
-import AirflowTester from "@/pages/airflow-tester";
+import FieldTesting from "@/pages/field-testing";
 import Dashboard from "@/pages/dashboard";
 import Landing from "@/pages/landing";
 import Clients from "@/pages/clients";
@@ -77,7 +77,7 @@ function LayoutRoutes() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/dashboard" component={Dashboard} />
-        <Route path="/test" component={AirflowTester} />
+        <Route path="/test" component={FieldTesting} />
         <Route path="/clients" component={Clients} />
         <Route path="/clients/:id" component={ClientDetail} />
         <Route path="/contracts" component={Contracts} />
