@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -172,21 +173,37 @@ function AuthenticatedRoutes() {
   return (
     <Switch>
       <Route path="/landing" component={Landing} />
-      <Route path="/field-companion/:id" component={FieldJobDetail} />
-      <Route path="/field-companion" component={FieldCompanion} />
-      <Route component={LayoutRoutes} />
+      <Route component={ViewModeRouter} />
     </Switch>
   );
 }
 
 function ViewModeRouter() {
   const { isEngineerMode } = useViewMode();
+  const [location, setLocation] = useLocation();
+  
+  // Engineer mode routes - add any new engineer routes here
+  const engineerRoutes = ["/field-companion", "/test"];
+  const isEngineerRoute = engineerRoutes.some(route => 
+    location === route || location.startsWith(`${route}/`)
+  );
+  
+  // Redirect to appropriate default route when mode changes
+  useEffect(() => {
+    if (isEngineerMode && !isEngineerRoute) {
+      // In engineer mode but on office route - redirect to field companion
+      setLocation("/field-companion");
+    } else if (!isEngineerMode && isEngineerRoute) {
+      // In office mode but on engineer route - redirect to dashboard
+      setLocation("/");
+    }
+  }, [isEngineerMode, isEngineerRoute, location, setLocation]);
   
   if (isEngineerMode) {
     return <EngineerShell />;
   }
   
-  return <AuthenticatedRoutes />;
+  return <LayoutRoutes />;
 }
 
 function Router() {
@@ -209,7 +226,7 @@ function Router() {
     );
   }
 
-  return <ViewModeRouter />;
+  return <AuthenticatedRoutes />;
 }
 
 function App() {

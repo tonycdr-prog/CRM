@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,7 @@ interface Client {
 
 export default function FieldCompanion() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [sortOrder, setSortOrder] = useState("date-asc");
@@ -84,16 +85,17 @@ export default function FieldCompanion() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityStyles = (priority: string) => {
+    const baseStyle = "border-l-4";
     switch (priority) {
       case "urgent":
-        return "border-l-4 border-l-destructive";
+        return `${baseStyle} border-l-red-500 dark:border-l-red-400`;
       case "high":
-        return "border-l-4 border-l-primary";
+        return `${baseStyle} border-l-orange-500 dark:border-l-orange-400`;
       case "medium":
-        return "border-l-4 border-l-muted-foreground";
+        return `${baseStyle} border-l-yellow-500 dark:border-l-yellow-400`;
       default:
-        return "border-l-4 border-l-border";
+        return `${baseStyle} border-l-gray-300 dark:border-l-gray-600`;
     }
   };
 
@@ -198,7 +200,7 @@ export default function FieldCompanion() {
             return (
               <Link key={job.id} href={`/field-companion/${job.id}`}>
                 <Card
-                  className={`hover-elevate cursor-pointer ${getPriorityColor(job.priority)}`}
+                  className={`hover-elevate cursor-pointer ${getPriorityStyles(job.priority)}`}
                   data-testid={`card-job-${job.id}`}
                 >
                   <CardContent className="p-4 space-y-3">
@@ -252,9 +254,9 @@ export default function FieldCompanion() {
                         <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
                         <span className="text-muted-foreground">{job.siteAddress}</span>
                         <Button
-                          variant="link"
+                          variant="ghost"
                           size="sm"
-                          className="h-auto p-0 ml-auto text-primary"
+                          className="h-auto p-0 ml-auto text-primary underline"
                           onClick={(e) => {
                             e.preventDefault();
                             window.open(
@@ -272,14 +274,19 @@ export default function FieldCompanion() {
                     {client?.phone && (
                       <div className="flex items-center gap-1 text-sm">
                         <Phone className="h-4 w-4 text-muted-foreground" />
-                        <a
-                          href={`tel:${client.phone}`}
-                          className="text-primary hover:underline"
-                          onClick={(e) => e.stopPropagation()}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 text-primary underline"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.location.href = `tel:${client.phone}`;
+                          }}
                           data-testid={`link-call-${job.id}`}
                         >
                           {client.phone}
-                        </a>
+                        </Button>
                       </div>
                     )}
 
@@ -320,42 +327,36 @@ export default function FieldCompanion() {
 
       <nav className="sticky bottom-0 bg-background border-t">
         <div className="grid grid-cols-4">
-          <Link href="/field-companion">
-            <Button
-              variant="ghost"
-              className="w-full h-14 flex flex-col gap-1 rounded-none"
-              data-testid="nav-jobs"
-            >
-              <Briefcase className="h-5 w-5" />
-              <span className="text-xs">Jobs</span>
-            </Button>
-          </Link>
-          <Link href="/field-companion/routes">
-            <Button
-              variant="ghost"
-              className="w-full h-14 flex flex-col gap-1 rounded-none"
-              data-testid="nav-routes"
-            >
-              <Route className="h-5 w-5" />
-              <span className="text-xs">Routes</span>
-            </Button>
-          </Link>
-          <Button
-            variant="ghost"
-            className="w-full h-14 flex flex-col gap-1 rounded-none"
+          <button
+            onClick={() => setLocation("/field-companion")}
+            className="flex flex-col items-center justify-center gap-1 h-14 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+            data-testid="nav-jobs"
+          >
+            <Briefcase className="h-5 w-5" />
+            <span className="text-xs">Jobs</span>
+          </button>
+          <button
+            onClick={() => setLocation("/field-companion/routes")}
+            className="flex flex-col items-center justify-center gap-1 h-14 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+            data-testid="nav-routes"
+          >
+            <Route className="h-5 w-5" />
+            <span className="text-xs">Routes</span>
+          </button>
+          <button
+            className="flex flex-col items-center justify-center gap-1 h-14 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
             data-testid="nav-scan"
           >
             <QrCode className="h-5 w-5" />
             <span className="text-xs">Scan</span>
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full h-14 flex flex-col gap-1 rounded-none"
+          </button>
+          <button
+            className="flex flex-col items-center justify-center gap-1 h-14 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
             data-testid="nav-menu"
           >
             <Menu className="h-5 w-5" />
             <span className="text-xs">Menu</span>
-          </Button>
+          </button>
         </div>
       </nav>
     </div>
