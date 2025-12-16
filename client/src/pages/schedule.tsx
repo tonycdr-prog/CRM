@@ -766,10 +766,10 @@ export default function Schedule() {
               <div key={staff.id} className="flex border-b min-h-[60px]">
                 <div className="w-40 p-2 border-r flex-shrink-0 flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
-                    {staff.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                    {(staff.name || "??").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{staff.name}</div>
+                    <div className="text-sm font-medium truncate">{staff.name || "Unknown"}</div>
                     <div className="text-xs text-muted-foreground truncate">{staff.role || "Technician"}</div>
                   </div>
                 </div>
