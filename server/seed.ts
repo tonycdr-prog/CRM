@@ -926,3 +926,15 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
     };
   }
 }
+
+// Run seeder when script is executed directly
+const isMainModule = process.argv[1]?.includes('seed');
+if (isMainModule) {
+  seedDatabase().then(result => {
+    console.log(result.message);
+    if (result.counts) {
+      console.log("Counts:", result.counts);
+    }
+    process.exit(result.success ? 0 : 1);
+  });
+}
