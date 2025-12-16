@@ -244,6 +244,8 @@ export default function Schedule() {
   const [slotDuration, setSlotDuration] = useState(2);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [isSearchingSlots, setIsSearchingSlots] = useState(false);
+  const [draggedJob, setDraggedJob] = useState<Job | null>(null);
+  const [dropTargetDate, setDropTargetDate] = useState<string | null>(null);
 
   // Client-side only initialization for Leaflet map
   useEffect(() => {
@@ -380,6 +382,63 @@ export default function Schedule() {
       : statusMarkerColors[job.status] || statusMarkerColors.pending;
   };
 
+  const handleDragStart = (e: React.DragEvent, job: Job) => {
+    setDraggedJob(job);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", job.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedJob(null);
+    setDropTargetDate(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, dateStr: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDropTargetDate(dateStr);
+  };
+
+  const handleDragLeave = () => {
+    setDropTargetDate(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, date: Date) => {
+    e.preventDefault();
+    if (!draggedJob) return;
+    
+    const dateStr = format(date, "yyyy-MM-dd");
+    updateJobMutation.mutate({
+      id: draggedJob.id,
+      data: {
+        scheduledDate: dateStr,
+        status: "scheduled"
+      }
+    });
+    
+    setDraggedJob(null);
+    setDropTargetDate(null);
+  };
+
+  const handleDuplicateJob = async (job: Job, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await apiRequest("POST", "/api/jobs", {
+        ...job,
+        id: undefined,
+        jobNumber: `${job.jobNumber}-COPY`,
+        title: `${job.title} (Copy)`,
+        status: "pending",
+        scheduledDate: null,
+        scheduledTime: null,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
+      toast({ title: "Job duplicated" });
+    } catch {
+      toast({ title: "Failed to duplicate job", variant: "destructive" });
+    }
+  };
+
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
     setIsCreateDialogOpen(true);
@@ -443,13 +502,19 @@ export default function Schedule() {
           const isCurrentMonth = isSameMonth(day, currentDate);
           const isCurrentDay = isToday(day);
 
+          const dateStr = format(day, "yyyy-MM-dd");
+          const isDropTarget = dropTargetDate === dateStr;
+
           return (
             <div
               key={index}
-              className={`min-h-[100px] md:min-h-[120px] p-1 border-b border-r cursor-pointer hover-elevate ${
+              className={`min-h-[100px] md:min-h-[120px] p-1 border-b border-r cursor-pointer hover-elevate transition-colors ${
                 !isCurrentMonth ? "bg-muted/30 text-muted-foreground" : ""
-              } ${isCurrentDay ? "bg-primary/5" : ""}`}
+              } ${isCurrentDay ? "bg-primary/5" : ""} ${isDropTarget ? "bg-primary/20 ring-2 ring-primary ring-inset" : ""}`}
               onClick={() => handleDateClick(day)}
+              onDragOver={(e) => handleDragOver(e, dateStr)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, day)}
               data-testid={`calendar-day-${format(day, "yyyy-MM-dd")}`}
             >
               <div className={`text-right text-sm p-1 ${isCurrentDay ? "font-bold text-primary" : ""}`}>
@@ -511,14 +576,19 @@ export default function Schedule() {
               const dayJobs = getJobsForDate(day).filter(
                 job => job.scheduledTime?.startsWith(time.split(":")[0])
               );
+              const dateStr = format(day, "yyyy-MM-dd");
+              const isDropTarget = dropTargetDate === dateStr;
               return (
                 <div
                   key={`${day.toISOString()}-${time}`}
-                  className="p-1 border-r border-b hover:bg-muted/50 cursor-pointer"
+                  className={`p-1 border-r border-b hover:bg-muted/50 cursor-pointer transition-colors ${isDropTarget ? "bg-primary/20" : ""}`}
                   onClick={() => {
                     setSelectedDate(day);
                     setIsCreateDialogOpen(true);
                   }}
+                  onDragOver={(e) => handleDragOver(e, dateStr)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, day)}
                 >
                   {dayJobs.map(job => (
                     <div
@@ -708,11 +778,16 @@ export default function Schedule() {
                     const dayJobsForStaff = staffJobs.filter(job => 
                       job.scheduledDate && isSameDay(parseISO(job.scheduledDate), day)
                     );
+                    const dateStr = format(day, "yyyy-MM-dd");
+                    const isDropTarget = dropTargetDate === dateStr;
                     
                     return (
                       <div
                         key={`${staff.id}-${day.toISOString()}`}
-                        className={`relative border-r p-1 min-h-[60px] ${isToday(day) ? "bg-primary/5" : ""}`}
+                        className={`relative border-r p-1 min-h-[60px] transition-colors ${isToday(day) ? "bg-primary/5" : ""} ${isDropTarget ? "bg-primary/20" : ""}`}
+                        onDragOver={(e) => handleDragOver(e, dateStr)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, day)}
                       >
                         {dayJobsForStaff.map((job, idx) => {
                           const jobConflicts = getJobConflicts(job.id);
@@ -1136,7 +1211,7 @@ export default function Schedule() {
                       <TabsTrigger value="month" data-testid="tab-month">Month</TabsTrigger>
                       <TabsTrigger value="week" data-testid="tab-week">Week</TabsTrigger>
                       <TabsTrigger value="day" data-testid="tab-day">Day</TabsTrigger>
-                      <TabsTrigger value="timeline" data-testid="tab-timeline">Timeline</TabsTrigger>
+                      <TabsTrigger value="timeline" data-testid="tab-gantt">Gantt</TabsTrigger>
                       <TabsTrigger value="map" data-testid="tab-map">Map</TabsTrigger>
                       <TabsTrigger value="split" data-testid="tab-split">
                         <Columns className="h-4 w-4 mr-1" />
@@ -1199,11 +1274,26 @@ export default function Schedule() {
                   {unscheduledJobs.map(job => (
                     <div
                       key={job.id}
-                      className={`p-2 rounded-lg border cursor-pointer hover-elevate ${statusColors[job.status]}`}
+                      className={`p-2 rounded-lg border cursor-grab hover-elevate ${statusColors[job.status]} ${draggedJob?.id === job.id ? "opacity-50" : ""}`}
                       onClick={() => handleJobClick(job)}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, job)}
+                      onDragEnd={handleDragEnd}
                       data-testid={`unscheduled-job-${job.id}`}
                     >
-                      <div className="font-medium text-sm">{job.title}</div>
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="font-medium text-sm">{job.title}</div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-50 hover:opacity-100"
+                          onClick={(e) => handleDuplicateJob(job, e)}
+                          title="Duplicate job (Ctrl+drag)"
+                          data-testid={`button-duplicate-job-${job.id}`}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
                       <div className="text-xs text-muted-foreground">{getClientName(job.clientId)}</div>
                       <Badge variant="outline" className="mt-1 text-xs">
                         {job.priority}

@@ -3,8 +3,12 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { ViewModeProvider, useViewMode } from "@/hooks/useViewMode";
 import { AppLayout } from "@/components/AppLayout";
+import FieldCompanion from "@/pages/field-companion";
+import FieldJobDetail from "@/pages/field-job-detail";
 import FieldTesting from "@/pages/field-testing";
 import Dashboard from "@/pages/dashboard";
 import Landing from "@/pages/landing";
@@ -136,13 +140,53 @@ function LayoutRoutes() {
   );
 }
 
+function EngineerShell() {
+  const { toggleViewMode } = useViewMode();
+  
+  return (
+    <div className="flex flex-col h-screen bg-background">
+      <header className="flex items-center justify-between px-3 py-2 border-b bg-card">
+        <span className="text-sm font-medium">Field Companion</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleViewMode}
+          data-testid="button-switch-to-office"
+        >
+          Switch to Office
+        </Button>
+      </header>
+      <div className="flex-1 overflow-hidden">
+        <Switch>
+          <Route path="/field-companion/:id" component={FieldJobDetail} />
+          <Route path="/field-companion" component={FieldCompanion} />
+          <Route path="/test" component={FieldTesting} />
+          <Route component={FieldCompanion} />
+        </Switch>
+      </div>
+    </div>
+  );
+}
+
 function AuthenticatedRoutes() {
   return (
     <Switch>
       <Route path="/landing" component={Landing} />
+      <Route path="/field-companion/:id" component={FieldJobDetail} />
+      <Route path="/field-companion" component={FieldCompanion} />
       <Route component={LayoutRoutes} />
     </Switch>
   );
+}
+
+function ViewModeRouter() {
+  const { isEngineerMode } = useViewMode();
+  
+  if (isEngineerMode) {
+    return <EngineerShell />;
+  }
+  
+  return <AuthenticatedRoutes />;
 }
 
 function Router() {
@@ -165,16 +209,18 @@ function Router() {
     );
   }
 
-  return <AuthenticatedRoutes />;
+  return <ViewModeRouter />;
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ViewModeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ViewModeProvider>
     </QueryClientProvider>
   );
 }

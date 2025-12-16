@@ -16,8 +16,10 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
+import { useViewMode } from "@/hooks/useViewMode";
 import { 
   LayoutDashboard, 
   Wind, 
@@ -67,7 +69,9 @@ import {
   ScrollText,
   Settings,
   Link2,
-  Download
+  Download,
+  HardDrive,
+  Smartphone
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -90,6 +94,7 @@ const menuSections: MenuSection[] = [
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
       { title: "Schedule", url: "/schedule", icon: Calendar },
+      { title: "Field Companion", url: "/field-companion", icon: Smartphone },
       { title: "Field Testing", url: "/test", icon: Wind },
       { title: "Visit Types", url: "/visit-types", icon: ClipboardList },
       { title: "Quality Checklists", url: "/quality-checklists", icon: FileCheck },
@@ -233,8 +238,9 @@ function CollapsibleMenuSection({ section, location }: { section: MenuSection; l
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
+  const { isEngineerMode, toggleViewMode } = useViewMode();
 
   const style = {
     "--sidebar-width": "16rem",
@@ -309,7 +315,28 @@ export function AppLayout({ children }: AppLayoutProps) {
               <SidebarTrigger data-testid="button-sidebar-toggle" />
             </div>
             <GlobalSearch />
-            <div className="w-8" />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <HardDrive className="h-4 w-4" />
+                <span className="hidden sm:inline">Office</span>
+              </div>
+              <Switch
+                checked={isEngineerMode}
+                onCheckedChange={() => {
+                  toggleViewMode();
+                  if (!isEngineerMode) {
+                    setLocation("/field-companion");
+                  } else {
+                    setLocation("/dashboard");
+                  }
+                }}
+                data-testid="switch-view-mode"
+              />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Smartphone className="h-4 w-4" />
+                <span className="hidden sm:inline">Engineer</span>
+              </div>
+            </div>
           </header>
           <main className="flex-1 overflow-auto">
             {children}
