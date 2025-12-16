@@ -262,6 +262,52 @@ export default function FieldTesting() {
     }
   }, []);
 
+  // Load field test context from sessionStorage (when navigating from Field Job Detail)
+  useEffect(() => {
+    try {
+      const contextStr = sessionStorage.getItem('fieldTestContext');
+      if (contextStr) {
+        const context = JSON.parse(contextStr);
+        
+        // Pre-fill building/site info
+        if (context.siteName) {
+          setBuilding(context.siteName);
+        }
+        
+        // If there's a single asset, pre-fill its details
+        if (context.assets && context.assets.length === 1) {
+          const asset = context.assets[0];
+          if (asset.floor) setFloorNumber(asset.floor);
+          if (asset.location) setLocation(asset.location);
+        }
+        
+        // Switch to appropriate tab based on first asset type
+        if (context.assets && context.assets.length > 0) {
+          const firstAsset = context.assets[0];
+          const assetType = firstAsset?.type?.toLowerCase() || '';
+          
+          // Stairwell pressurization test types
+          if (assetType.includes('stairwell') || assetType.includes('pressure')) {
+            setActiveTab('stairwell');
+          } else {
+            // Default to damper testing for AOVs, smoke dampers, etc.
+            setActiveTab('testing');
+          }
+        }
+        
+        // Clear the context after reading to prevent re-loading on subsequent mounts
+        sessionStorage.removeItem('fieldTestContext');
+        
+        toast({
+          title: "Test Context Loaded",
+          description: `Ready to test ${context.assets?.length || 0} asset(s) at ${context.siteName || 'site'}`,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading field test context:', error);
+    }
+  }, []);
+
   // Save storage data whenever tests, dampers, or report changes (debounced)
   useEffect(() => {
     if (storageData) {

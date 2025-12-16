@@ -35,6 +35,10 @@ import {
   Search,
   Key,
   ChevronRight,
+  Play,
+  Gauge,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -96,6 +100,8 @@ export default function FieldJobDetail() {
   const [newAssetFloor, setNewAssetFloor] = useState("");
   const [newAssetLocation, setNewAssetLocation] = useState("");
   const [newAssetAssignToJob, setNewAssetAssignToJob] = useState(true);
+  const [bulkTestMode, setBulkTestMode] = useState(false);
+  const [selectedTestAssets, setSelectedTestAssets] = useState<string[]>([]);
 
   const { data: job, isLoading: jobLoading } = useQuery<JobWithSiteDetail>({
     queryKey: ["/api/jobs/detail-with-site", jobId],
@@ -149,25 +155,27 @@ export default function FieldJobDetail() {
   });
 
   const createAssetMutation = useMutation({
-    mutationFn: async (data: { name: string; assetType: string; floor: string; location: string; assignToJob: boolean }) => {
-      const assetResponse = await apiRequest("POST", "/api/site-assets", {
+    mutationFn: async (data: { assetNumber: string; assetType: string; floor: string; location: string; assignToJob: boolean }) => {
+      const response = await apiRequest("POST", "/api/site-assets", {
         siteId: job?.siteId,
-        name: data.name,
-        assetType: data.assetType || null,
+        assetNumber: data.assetNumber,
+        assetType: data.assetType || "aov",
         floor: data.floor || null,
         location: data.location || null,
         status: "active",
       });
       
-      if (data.assignToJob && assetResponse.id) {
+      const assetData = await response.json();
+      
+      if (data.assignToJob && assetData.id) {
         await apiRequest("POST", "/api/job-site-assets", {
           jobId,
-          siteAssetId: assetResponse.id,
+          siteAssetId: assetData.id,
           status: "pending",
         });
       }
       
-      return assetResponse;
+      return assetData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs/detail-with-site", jobId] });
@@ -189,12 +197,54 @@ export default function FieldJobDetail() {
   const handleCreateAsset = () => {
     if (!newAssetName.trim()) return;
     createAssetMutation.mutate({
-      name: newAssetName.trim(),
-      assetType: newAssetType,
+      assetNumber: newAssetName.trim(),
+      assetType: newAssetType || "aov",
       floor: newAssetFloor,
       location: newAssetLocation,
       assignToJob: newAssetAssignToJob,
     });
+  };
+
+  const toggleBulkTestAsset = (assetId: string) => {
+    setSelectedTestAssets(prev =>
+      prev.includes(assetId) ? prev.filter(id => id !== assetId) : [...prev, assetId]
+    );
+  };
+
+  const selectAllForTesting = () => {
+    const pendingAssets = (job?.assignedAssets || [])
+      .filter(a => a.status !== "completed")
+      .map(a => a.siteAssetId);
+    setSelectedTestAssets(pendingAssets);
+  };
+
+  const clearTestSelection = () => {
+    setSelectedTestAssets([]);
+    setBulkTestMode(false);
+  };
+
+  const navigateToTesting = (assetIds: string[]) => {
+    // Store testing context in sessionStorage for the field-testing page
+    const testContext = {
+      jobId,
+      jobNumber: job?.jobNumber,
+      siteName: job?.site?.name,
+      siteAddress: job?.site?.address,
+      building: job?.site?.name,
+      assetIds,
+      assets: assetIds.map(id => {
+        const asset = job?.siteAssets?.find(a => a.id === id);
+        return asset ? {
+          id: asset.id,
+          assetNumber: asset.assetNumber,
+          type: asset.assetType,
+          floor: asset.floor,
+          location: asset.location,
+        } : null;
+      }).filter(Boolean),
+    };
+    sessionStorage.setItem('fieldTestContext', JSON.stringify(testContext));
+    setLocation('/field-testing');
   };
 
   const handleStartJob = () => {
@@ -252,7 +302,7 @@ export default function FieldJobDetail() {
     if (!assetSearchQuery) return true;
     const q = assetSearchQuery.toLowerCase();
     return (
-      asset.name?.toLowerCase().includes(q) ||
+      asset.assetNumber?.toLowerCase().includes(q) ||
       asset.assetType?.toLowerCase().includes(q) ||
       asset.location?.toLowerCase().includes(q) ||
       asset.floor?.toLowerCase().includes(q) ||
@@ -534,18 +584,66 @@ export default function FieldJobDetail() {
                     <Package className="h-4 w-4" />
                     Assets ({job.assignedAssets?.length || 0}/{(job.siteAssets?.length || 0)})
                   </CardTitle>
-                  {availableAssets.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAssetModal(true)}
-                      data-testid="button-add-assets"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {job.assignedAssets && job.assignedAssets.length > 0 && (
+                      <Button
+                        variant={bulkTestMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          if (bulkTestMode) {
+                            clearTestSelection();
+                          } else {
+                            setBulkTestMode(true);
+                          }
+                        }}
+                        data-testid="button-bulk-test-mode"
+                      >
+                        <Gauge className="h-4 w-4 mr-1" />
+                        {bulkTestMode ? "Cancel" : "Test"}
+                      </Button>
+                    )}
+                    {availableAssets.length > 0 && !bulkTestMode && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAssetModal(true)}
+                        data-testid="button-add-assets"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                
+                {/* Bulk Test Controls */}
+                {bulkTestMode && (
+                  <div className="flex items-center justify-between gap-2 mt-3 p-2 bg-primary/10 rounded">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={selectAllForTesting}
+                        data-testid="button-select-all-tests"
+                      >
+                        <CheckSquare className="h-4 w-4 mr-1" />
+                        Select All Pending
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        {selectedTestAssets.length} selected
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={selectedTestAssets.length === 0}
+                      onClick={() => navigateToTesting(selectedTestAssets)}
+                      data-testid="button-start-bulk-test"
+                    >
+                      <Play className="h-4 w-4 mr-1" />
+                      Start Testing
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Assigned Assets */}
@@ -555,15 +653,31 @@ export default function FieldJobDetail() {
                     {job.assignedAssets.map(assignment => {
                       const asset = job.siteAssets?.find(a => a.id === assignment.siteAssetId);
                       if (!asset) return null;
+                      const isSelected = selectedTestAssets.includes(asset.id);
                       return (
                         <div
                           key={assignment.id}
-                          className="flex items-center justify-between p-3 bg-muted/50 rounded border"
+                          className={`flex items-center justify-between p-3 rounded border transition-colors ${
+                            bulkTestMode 
+                              ? isSelected 
+                                ? "bg-primary/10 border-primary/30" 
+                                : "bg-muted/50 cursor-pointer"
+                              : "bg-muted/50"
+                          }`}
+                          onClick={bulkTestMode ? () => toggleBulkTestAsset(asset.id) : undefined}
                           data-testid={`asset-assigned-${asset.id}`}
                         >
+                          {bulkTestMode && (
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleBulkTestAsset(asset.id)}
+                              className="mr-3"
+                              data-testid={`checkbox-test-${asset.id}`}
+                            />
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-sm truncate">{asset.name}</span>
+                              <span className="font-medium text-sm truncate">{asset.assetNumber}</span>
                               {asset.assetType && (
                                 <Badge variant="outline" className="text-xs">
                                   {getAssetTypeLabel(asset.assetType)}
@@ -581,7 +695,22 @@ export default function FieldJobDetail() {
                               {asset.location && <span>{asset.location}</span>}
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          {!bulkTestMode && assignment.status !== "completed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigateToTesting([asset.id]);
+                              }}
+                              data-testid={`button-test-asset-${asset.id}`}
+                            >
+                              <Gauge className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {!bulkTestMode && assignment.status === "completed" && (
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                          )}
                         </div>
                       );
                     })}
@@ -793,7 +922,7 @@ export default function FieldJobDetail() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-sm">{asset.name}</span>
+                        <span className="font-medium text-sm">{asset.assetNumber}</span>
                         {asset.assetType && (
                           <Badge variant="outline" className="text-xs">
                             {getAssetTypeLabel(asset.assetType)}

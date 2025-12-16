@@ -50,8 +50,13 @@ import {
   MoreHorizontal,
   Car,
   Key,
-  Info
+  Info,
+  Gauge,
+  CheckSquare,
+  Square,
+  Play,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,6 +120,8 @@ export default function SiteDetail() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddAssetDialogOpen, setIsAddAssetDialogOpen] = useState(false);
+  const [bulkTestMode, setBulkTestMode] = useState(false);
+  const [selectedTestAssets, setSelectedTestAssets] = useState<string[]>([]);
 
   const [assetForm, setAssetForm] = useState({
     assetNumber: "",
@@ -244,6 +251,41 @@ export default function SiteDetail() {
       default:
         return <Badge variant="secondary">{status || "Unknown"}</Badge>;
     }
+  };
+
+  const toggleTestAsset = (assetId: string) => {
+    setSelectedTestAssets(prev =>
+      prev.includes(assetId) ? prev.filter(id => id !== assetId) : [...prev, assetId]
+    );
+  };
+
+  const selectAllAssets = () => {
+    setSelectedTestAssets(filteredAssets.map(a => a.id));
+  };
+
+  const clearTestSelection = () => {
+    setSelectedTestAssets([]);
+    setBulkTestMode(false);
+  };
+
+  const navigateToTesting = (assetIds: string[]) => {
+    const selectedAssets = assets.filter(a => assetIds.includes(a.id));
+    const testContext = {
+      siteId: site?.id,
+      siteName: site?.name,
+      siteAddress: site?.address,
+      building: site?.name,
+      assetIds,
+      assets: selectedAssets.map(asset => ({
+        id: asset.id,
+        assetNumber: asset.assetNumber,
+        type: asset.assetType,
+        floor: asset.floor,
+        location: asset.location,
+      })),
+    };
+    sessionStorage.setItem('fieldTestContext', JSON.stringify(testContext));
+    setLocation('/field-testing');
   };
 
   if (siteLoading) {
@@ -393,7 +435,7 @@ export default function SiteDetail() {
               Site Assets
               <Badge variant="secondary">{assets.length}</Badge>
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -404,12 +446,59 @@ export default function SiteDetail() {
                   data-testid="input-search-assets"
                 />
               </div>
-              <Button onClick={() => setIsAddAssetDialogOpen(true)} data-testid="button-add-asset">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Asset
-              </Button>
+              {assets.length > 0 && (
+                <Button 
+                  variant={bulkTestMode ? "default" : "outline"} 
+                  onClick={() => {
+                    if (bulkTestMode) {
+                      clearTestSelection();
+                    } else {
+                      setBulkTestMode(true);
+                    }
+                  }} 
+                  data-testid="button-bulk-test-mode"
+                >
+                  <Gauge className="h-4 w-4 mr-2" />
+                  {bulkTestMode ? "Cancel" : "Test Assets"}
+                </Button>
+              )}
+              {!bulkTestMode && (
+                <Button onClick={() => setIsAddAssetDialogOpen(true)} data-testid="button-add-asset">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Asset
+                </Button>
+              )}
             </div>
           </div>
+          
+          {/* Bulk Test Controls */}
+          {bulkTestMode && (
+            <div className="flex items-center justify-between gap-2 mt-3 p-2 bg-primary/10 rounded">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={selectAllAssets}
+                  data-testid="button-select-all-assets"
+                >
+                  <CheckSquare className="h-4 w-4 mr-1" />
+                  Select All
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {selectedTestAssets.length} selected
+                </span>
+              </div>
+              <Button
+                size="sm"
+                disabled={selectedTestAssets.length === 0}
+                onClick={() => navigateToTesting(selectedTestAssets)}
+                data-testid="button-start-testing"
+              >
+                <Play className="h-4 w-4 mr-1" />
+                Start Testing
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {assetsLoading ? (
@@ -433,6 +522,7 @@ export default function SiteDetail() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {bulkTestMode && <TableHead className="w-[40px]"></TableHead>}
                     <TableHead>Asset #</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Floor</TableHead>
@@ -442,33 +532,71 @@ export default function SiteDetail() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAssets.map((asset) => (
-                    <TableRow key={asset.id} data-testid={`row-asset-${asset.id}`}>
-                      <TableCell className="font-medium">{asset.assetNumber}</TableCell>
-                      <TableCell>{getAssetTypeLabel(asset.assetType)}</TableCell>
-                      <TableCell>{asset.floor || "-"}</TableCell>
-                      <TableCell>{asset.location || asset.area || "-"}</TableCell>
-                      <TableCell>{getStatusBadge(asset.status)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" data-testid={`button-asset-menu-${asset.id}`}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => deleteAssetMutation.mutate(asset.id)}
+                  {filteredAssets.map((asset) => {
+                    const isSelected = selectedTestAssets.includes(asset.id);
+                    return (
+                      <TableRow 
+                        key={asset.id} 
+                        data-testid={`row-asset-${asset.id}`}
+                        className={bulkTestMode && isSelected ? "bg-primary/10" : ""}
+                        onClick={bulkTestMode ? () => toggleTestAsset(asset.id) : undefined}
+                        style={bulkTestMode ? { cursor: 'pointer' } : undefined}
+                      >
+                        {bulkTestMode && (
+                          <TableCell>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleTestAsset(asset.id)}
+                              data-testid={`checkbox-asset-${asset.id}`}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell className="font-medium">{asset.assetNumber}</TableCell>
+                        <TableCell>{getAssetTypeLabel(asset.assetType)}</TableCell>
+                        <TableCell>{asset.floor || "-"}</TableCell>
+                        <TableCell>{asset.location || asset.area || "-"}</TableCell>
+                        <TableCell>{getStatusBadge(asset.status)}</TableCell>
+                        <TableCell>
+                          {bulkTestMode ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigateToTesting([asset.id]);
+                              }}
+                              data-testid={`button-test-asset-${asset.id}`}
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                              <Gauge className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" data-testid={`button-asset-menu-${asset.id}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => navigateToTesting([asset.id])}
+                                >
+                                  <Gauge className="h-4 w-4 mr-2" />
+                                  Test Asset
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => deleteAssetMutation.mutate(asset.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
