@@ -8,12 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Search,
   MapPin,
   Phone,
   Clock,
   Calendar,
   ChevronRight,
+  ChevronDown,
   Navigation,
   CheckCircle2,
   PlayCircle,
@@ -23,6 +30,7 @@ import {
   Wrench,
   Package,
 } from "lucide-react";
+import { SiGooglemaps, SiApple, SiWaze } from "react-icons/si";
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import type { DbJob } from "@shared/schema";
 import { SMOKE_CONTROL_SYSTEM_TYPES } from "@shared/schema";
@@ -236,22 +244,61 @@ export default function FieldCompanion() {
               {/* Quick actions */}
               <div className="flex items-center gap-2 pt-1">
                 {job.siteAddress && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(
-                        `https://maps.google.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
-                        "_blank"
-                      );
-                    }}
-                    data-testid={`button-navigate-${job.id}`}
-                  >
-                    <Navigation className="h-3 w-3 mr-1" />
-                    Navigate
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        data-testid={`button-navigate-${job.id}`}
+                      >
+                        <Navigation className="h-3 w-3 mr-1" />
+                        Navigate
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(
+                            `https://maps.google.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
+                            "_blank"
+                          );
+                        }}
+                        data-testid={`menu-google-maps-${job.id}`}
+                      >
+                        <SiGooglemaps className="h-4 w-4 mr-2 text-[#4285F4]" />
+                        Google Maps
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(
+                            `https://maps.apple.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
+                            "_blank"
+                          );
+                        }}
+                        data-testid={`menu-apple-maps-${job.id}`}
+                      >
+                        <SiApple className="h-4 w-4 mr-2" />
+                        Apple Maps
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(
+                            `https://waze.com/ul?q=${encodeURIComponent(job.siteAddress || "")}`,
+                            "_blank"
+                          );
+                        }}
+                        data-testid={`menu-waze-${job.id}`}
+                      >
+                        <SiWaze className="h-4 w-4 mr-2 text-[#33CCFF]" />
+                        Waze
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
                 {client?.phone && (
                   <Button

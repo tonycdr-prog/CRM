@@ -13,6 +13,12 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
@@ -35,12 +41,14 @@ import {
   Search,
   Key,
   ChevronRight,
+  ChevronDown,
   Play,
   Gauge,
   CheckSquare,
   Square,
   X,
 } from "lucide-react";
+import { SiGooglemaps, SiApple, SiWaze } from "react-icons/si";
 import { format, parseISO } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -570,21 +578,58 @@ export default function FieldJobDetail() {
                 <div>
                   <p className="text-sm text-muted-foreground">Address</p>
                   <p className="font-medium">{job.siteAddress}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() =>
-                      window.open(
-                        `https://maps.google.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
-                        "_blank"
-                      )
-                    }
-                    data-testid="button-navigate"
-                  >
-                    <Navigation className="h-4 w-4 mr-2" />
-                    Open in Maps
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        data-testid="button-navigate"
+                      >
+                        <Navigation className="h-4 w-4 mr-2" />
+                        Open in Maps
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          window.open(
+                            `https://maps.google.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
+                            "_blank"
+                          )
+                        }
+                        data-testid="menu-google-maps"
+                      >
+                        <SiGooglemaps className="h-4 w-4 mr-2 text-[#4285F4]" />
+                        Google Maps
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          window.open(
+                            `https://maps.apple.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
+                            "_blank"
+                          )
+                        }
+                        data-testid="menu-apple-maps"
+                      >
+                        <SiApple className="h-4 w-4 mr-2" />
+                        Apple Maps
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          window.open(
+                            `https://waze.com/ul?q=${encodeURIComponent(job.siteAddress || "")}`,
+                            "_blank"
+                          )
+                        }
+                        data-testid="menu-waze"
+                      >
+                        <SiWaze className="h-4 w-4 mr-2 text-[#33CCFF]" />
+                        Waze
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
 
