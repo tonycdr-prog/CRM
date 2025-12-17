@@ -19,6 +19,7 @@ The application features a **React 18+** and **TypeScript** frontend, built with
 *   **Business Management Platform**: Integrated CRM for client and contract management, job scheduling, quotes/invoices, expense/timesheet tracking, asset/equipment management, and technician certification tracking. Includes features for sales pipeline, tender management, incident reporting, risk assessments, and recurring jobs.
 *   **Synchronization**: Offline delta sync with a change queue system that tracks modifications and syncs to the server upon connectivity restoration.
 *   **Security Architecture**: Session-based tenancy enforcement via Replit Auth OIDC. All API routes use an authenticated router pattern (`apiRouter`) mounted with `isAuthenticated` middleware. UserId is extracted from session (`req.user.claims.sub`) rather than client-provided parameters. Public routes (portal, auth, downloads) are explicitly exempted. Server utilities in `server/utils/routeHelpers.ts` provide `asyncHandler`, `getUserId`, and validation helpers.
+*   **Organization Management**: Multi-tenant support with organization creation, team invitations, and role-based access control. Roles include Owner, Admin, Office Staff, Engineer, and Viewer. Settings page at `/settings` provides account info, organization management, and team member management with pending invitation tracking.
 
 ## External Dependencies
 *   **Database**: Drizzle ORM, Drizzle Kit, @neondatabase/serverless (Neon PostgreSQL driver).

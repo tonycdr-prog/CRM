@@ -329,6 +329,15 @@ export function AppLayout({ children }: AppLayoutProps) {
                     {user.email}
                   </p>
                 </div>
+                <Link href="/settings">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    data-testid="button-settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
                 <Button
                   variant="ghost"
                   size="icon"

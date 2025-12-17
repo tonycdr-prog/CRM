@@ -12,7 +12,8 @@ import {
   jobAssignments, jobSkillRequirements, jobEquipmentReservations, staffAvailability, jobPartsUsed,
   jobTimeWindows, shiftHandovers, dailyBriefings, serviceReminders,
   locationCoordinates, schedulingConflicts, capacitySnapshots,
-  checkSheetTemplates, checkSheetReadings
+  checkSheetTemplates, checkSheetReadings,
+  organizations, organizationInvitations
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, or } from "drizzle-orm";
@@ -186,6 +187,10 @@ type DbCheckSheetTemplate = typeof checkSheetTemplates.$inferSelect;
 type NewCheckSheetTemplate = typeof checkSheetTemplates.$inferInsert;
 type DbCheckSheetReading = typeof checkSheetReadings.$inferSelect;
 type NewCheckSheetReading = typeof checkSheetReadings.$inferInsert;
+type DbOrganization = typeof organizations.$inferSelect;
+type NewOrganization = typeof organizations.$inferInsert;
+type DbOrganizationInvitation = typeof organizationInvitations.$inferSelect;
+type NewOrganizationInvitation = typeof organizationInvitations.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -657,6 +662,24 @@ export interface IStorage {
   createCheckSheetReading(reading: NewCheckSheetReading): Promise<DbCheckSheetReading>;
   updateCheckSheetReading(id: string, reading: Partial<NewCheckSheetReading>): Promise<DbCheckSheetReading | undefined>;
   deleteCheckSheetReading(id: string): Promise<boolean>;
+
+  // Organization methods
+  getOrganization(id: string): Promise<DbOrganization | undefined>;
+  getOrganizationByOwnerId(ownerId: string): Promise<DbOrganization | undefined>;
+  createOrganization(data: NewOrganization): Promise<DbOrganization>;
+  updateOrganization(id: string, data: Partial<NewOrganization>): Promise<DbOrganization | undefined>;
+
+  // Organization members
+  getOrganizationMembers(organizationId: string): Promise<User[]>;
+  updateUserOrganization(userId: string, organizationId: string, role: string): Promise<User | undefined>;
+  removeUserFromOrganization(userId: string): Promise<void>;
+
+  // Organization invitations
+  getOrganizationInvitations(organizationId: string): Promise<DbOrganizationInvitation[]>;
+  getInvitationByToken(token: string): Promise<DbOrganizationInvitation | undefined>;
+  createOrganizationInvitation(data: NewOrganizationInvitation): Promise<DbOrganizationInvitation>;
+  acceptInvitation(token: string, userId: string): Promise<void>;
+  deleteOrganizationInvitation(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2518,6 +2541,108 @@ export class DatabaseStorage implements IStorage {
   async deleteCheckSheetReading(id: string): Promise<boolean> {
     await db.delete(checkSheetReadings).where(eq(checkSheetReadings.id, id));
     return true;
+  }
+
+  // Organization methods
+  async getOrganization(id: string): Promise<DbOrganization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org || undefined;
+  }
+
+  async getOrganizationByOwnerId(ownerId: string): Promise<DbOrganization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.ownerId, ownerId));
+    return org || undefined;
+  }
+
+  async createOrganization(data: NewOrganization): Promise<DbOrganization> {
+    const [newOrg] = await db.insert(organizations).values(data).returning();
+    return newOrg;
+  }
+
+  async updateOrganization(id: string, data: Partial<NewOrganization>): Promise<DbOrganization | undefined> {
+    const [updated] = await db.update(organizations).set({ ...data, updatedAt: new Date() }).where(eq(organizations.id, id)).returning();
+    return updated || undefined;
+  }
+
+  // Organization members
+  async getOrganizationMembers(organizationId: string): Promise<User[]> {
+    return db.select().from(users).where(eq(users.organizationId, organizationId));
+  }
+
+  // Valid roles that can be assigned (owner is only set when creating organization)
+  private readonly VALID_ASSIGNABLE_ROLES = ["admin", "office_staff", "engineer", "viewer"];
+  private readonly ALL_VALID_ROLES = ["owner", "admin", "office_staff", "engineer", "viewer"];
+
+  async updateUserOrganization(userId: string, organizationId: string, role: string): Promise<User | undefined> {
+    // Validate role - only allow valid assignable roles (not 'owner' via this method except for initial setup)
+    if (!this.ALL_VALID_ROLES.includes(role)) {
+      throw new Error(`Invalid role: ${role}`);
+    }
+    
+    // Prevent changing role of existing owner (unless this is initial setup where user has no org)
+    const existingUser = await this.getUser(userId);
+    if (existingUser?.organizationRole === "owner" && role !== "owner") {
+      throw new Error("Cannot change owner role");
+    }
+    
+    const [updated] = await db.update(users).set({ organizationId, organizationRole: role, updatedAt: new Date() }).where(eq(users.id, userId)).returning();
+    return updated || undefined;
+  }
+
+  async removeUserFromOrganization(userId: string): Promise<void> {
+    // Prevent removing owner
+    const user = await this.getUser(userId);
+    if (user?.organizationRole === "owner") {
+      throw new Error("Cannot remove organization owner");
+    }
+    
+    await db.update(users).set({ organizationId: null, organizationRole: null, updatedAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  // Organization invitations
+  async getOrganizationInvitations(organizationId: string): Promise<DbOrganizationInvitation[]> {
+    return db.select().from(organizationInvitations).where(eq(organizationInvitations.organizationId, organizationId)).orderBy(desc(organizationInvitations.createdAt));
+  }
+
+  async getInvitationByToken(token: string): Promise<DbOrganizationInvitation | undefined> {
+    const [invitation] = await db.select().from(organizationInvitations).where(eq(organizationInvitations.token, token));
+    return invitation || undefined;
+  }
+
+  async createOrganizationInvitation(data: NewOrganizationInvitation): Promise<DbOrganizationInvitation> {
+    const [newInvitation] = await db.insert(organizationInvitations).values(data).returning();
+    return newInvitation;
+  }
+
+  async acceptInvitation(token: string, userId: string): Promise<void> {
+    const invitation = await this.getInvitationByToken(token);
+    if (!invitation || invitation.acceptedAt) {
+      throw new Error("Invalid or already accepted invitation");
+    }
+    
+    // Check invitation expiry
+    if (new Date(invitation.expiresAt) < new Date()) {
+      throw new Error("Invitation has expired");
+    }
+    
+    // Validate and clamp role to valid assignable roles (never allow owner via invitation)
+    let role = invitation.role || 'engineer';
+    if (!this.VALID_ASSIGNABLE_ROLES.includes(role)) {
+      role = 'engineer'; // Default to safe role if invalid
+    }
+    
+    // Check user doesn't already belong to an organization
+    const user = await this.getUser(userId);
+    if (user?.organizationId) {
+      throw new Error("User already belongs to an organization");
+    }
+    
+    await db.update(organizationInvitations).set({ acceptedAt: new Date() }).where(eq(organizationInvitations.token, token));
+    await db.update(users).set({ organizationId: invitation.organizationId, organizationRole: role, updatedAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  async deleteOrganizationInvitation(id: string): Promise<void> {
+    await db.delete(organizationInvitations).where(eq(organizationInvitations.id, id));
   }
 }
 

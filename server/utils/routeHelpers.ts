@@ -20,7 +20,7 @@ export type AuthenticatedHandler = (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => Promise<void> | void;
+) => Promise<unknown> | unknown;
 
 export function asyncHandler(fn: AuthenticatedHandler): RequestHandler {
   return (req, res, next) => {

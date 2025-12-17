@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { Router } from "express";
 import { createServer, type Server } from "http";
+import { z } from "zod";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
@@ -71,6 +72,288 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const userId = getUserId(req as AuthenticatedRequest);
     const user = await storage.getUser(userId);
     res.json(user);
+  }));
+
+  // ============================================
+  // ORGANIZATION ROUTES
+  // ============================================
+  
+  // Valid organization roles for validation
+  const VALID_ORG_ROLES = ["owner", "admin", "office_staff", "engineer", "viewer"] as const;
+  const ASSIGNABLE_ROLES = ["admin", "office_staff", "engineer", "viewer"] as const;
+  
+  // Validation schemas
+  const createOrgSchema = z.object({
+    name: z.string().min(1).max(255),
+  });
+  
+  const updateOrgSchema = z.object({
+    name: z.string().min(1).max(255).optional(),
+    email: z.string().email().max(255).nullable().optional(),
+    phone: z.string().max(50).nullable().optional(),
+    website: z.string().max(255).nullable().optional(),
+    address: z.string().max(500).nullable().optional(),
+  });
+  
+  const updateMemberRoleSchema = z.object({
+    role: z.enum(ASSIGNABLE_ROLES),
+  });
+  
+  const createInvitationSchema = z.object({
+    email: z.string().email(),
+    role: z.enum(ASSIGNABLE_ROLES).optional().default("engineer"),
+  });
+  
+  const acceptInvitationSchema = z.object({
+    token: z.string().min(1),
+  });
+
+  // Get current user's organization
+  apiRouter.get("/organization", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    if (!user?.organizationId) {
+      return res.json(null);
+    }
+    const org = await storage.getOrganization(user.organizationId);
+    res.json(org);
+  }));
+
+  // Create organization (for new users)
+  apiRouter.post("/organization", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    
+    if (user?.organizationId) {
+      return res.status(400).json({ error: "User already belongs to an organization" });
+    }
+    
+    const parsed = createOrgSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid organization data", details: parsed.error.issues });
+    }
+    
+    const org = await storage.createOrganization({
+      name: parsed.data.name,
+      ownerId: userId,
+    });
+    
+    await storage.updateUserOrganization(userId, org.id, "owner");
+    res.json(org);
+  }));
+
+  // Update organization
+  apiRouter.patch("/organization", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    
+    if (!user?.organizationId) {
+      return res.status(404).json({ error: "No organization found" });
+    }
+    
+    if (user.organizationRole !== "owner" && user.organizationRole !== "admin") {
+      return res.status(403).json({ error: "Not authorized to update organization" });
+    }
+    
+    const parsed = updateOrgSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid organization data", details: parsed.error.issues });
+    }
+    
+    const org = await storage.updateOrganization(user.organizationId, parsed.data);
+    res.json(org);
+  }));
+
+  // Get organization members
+  apiRouter.get("/organization/members", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    
+    if (!user?.organizationId) {
+      return res.json([]);
+    }
+    
+    const members = await storage.getOrganizationMembers(user.organizationId);
+    res.json(members);
+  }));
+
+  // Update member role
+  apiRouter.patch("/organization/members/:memberId", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    
+    if (!user?.organizationId) {
+      return res.status(404).json({ error: "No organization found" });
+    }
+    
+    if (user.organizationRole !== "owner" && user.organizationRole !== "admin") {
+      return res.status(403).json({ error: "Not authorized to manage members" });
+    }
+    
+    // Cannot change own role
+    if (req.params.memberId === userId) {
+      return res.status(400).json({ error: "Cannot change your own role" });
+    }
+    
+    // Validate role
+    const parsed = updateMemberRoleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid role", details: parsed.error.issues });
+    }
+    
+    // Verify member belongs to same organization
+    const targetMember = await storage.getUser(req.params.memberId);
+    if (!targetMember || targetMember.organizationId !== user.organizationId) {
+      return res.status(404).json({ error: "Member not found in organization" });
+    }
+    
+    // Admins cannot change owner role
+    if (targetMember.organizationRole === "owner" && user.organizationRole !== "owner") {
+      return res.status(403).json({ error: "Only owner can manage owner role" });
+    }
+    
+    const updated = await storage.updateUserOrganization(
+      req.params.memberId,
+      user.organizationId,
+      parsed.data.role
+    );
+    res.json(updated);
+  }));
+
+  // Remove member from organization
+  apiRouter.delete("/organization/members/:memberId", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    
+    if (!user?.organizationId) {
+      return res.status(404).json({ error: "No organization found" });
+    }
+    
+    if (user.organizationRole !== "owner" && user.organizationRole !== "admin") {
+      return res.status(403).json({ error: "Not authorized to remove members" });
+    }
+    
+    if (req.params.memberId === userId) {
+      return res.status(400).json({ error: "Cannot remove yourself" });
+    }
+    
+    // Verify member belongs to same organization
+    const targetMember = await storage.getUser(req.params.memberId);
+    if (!targetMember || targetMember.organizationId !== user.organizationId) {
+      return res.status(404).json({ error: "Member not found in organization" });
+    }
+    
+    // Cannot remove owner
+    if (targetMember.organizationRole === "owner") {
+      return res.status(403).json({ error: "Cannot remove the organization owner" });
+    }
+    
+    await storage.removeUserFromOrganization(req.params.memberId);
+    res.json({ success: true });
+  }));
+
+  // Get invitations
+  apiRouter.get("/organization/invitations", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    
+    if (!user?.organizationId) {
+      return res.json([]);
+    }
+    
+    const invitations = await storage.getOrganizationInvitations(user.organizationId);
+    res.json(invitations);
+  }));
+
+  // Create invitation
+  apiRouter.post("/organization/invitations", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    
+    if (!user?.organizationId) {
+      return res.status(404).json({ error: "No organization found" });
+    }
+    
+    if (user.organizationRole !== "owner" && user.organizationRole !== "admin") {
+      return res.status(403).json({ error: "Not authorized to invite members" });
+    }
+    
+    const parsed = createInvitationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid invitation data", details: parsed.error.issues });
+    }
+    
+    const { nanoid } = await import("nanoid");
+    const token = nanoid(32);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    
+    const invitation = await storage.createOrganizationInvitation({
+      organizationId: user.organizationId,
+      email: parsed.data.email,
+      role: parsed.data.role,
+      token,
+      invitedBy: userId,
+      expiresAt,
+    });
+    
+    res.json(invitation);
+  }));
+
+  // Delete invitation
+  apiRouter.delete("/organization/invitations/:id", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    
+    if (!user?.organizationId) {
+      return res.status(404).json({ error: "No organization found" });
+    }
+    
+    if (user.organizationRole !== "owner" && user.organizationRole !== "admin") {
+      return res.status(403).json({ error: "Not authorized to manage invitations" });
+    }
+    
+    // Verify invitation belongs to user's organization
+    const invitations = await storage.getOrganizationInvitations(user.organizationId);
+    const invitation = invitations.find(i => i.id === req.params.id);
+    if (!invitation) {
+      return res.status(404).json({ error: "Invitation not found" });
+    }
+    
+    await storage.deleteOrganizationInvitation(req.params.id);
+    res.json({ success: true });
+  }));
+
+  // Accept invitation (user must be authenticated)
+  apiRouter.post("/organization/accept-invitation", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    
+    const parsed = acceptInvitationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid token" });
+    }
+    
+    // Check if user already belongs to an organization
+    const user = await storage.getUser(userId);
+    if (user?.organizationId) {
+      return res.status(400).json({ error: "You already belong to an organization" });
+    }
+    
+    const invitation = await storage.getInvitationByToken(parsed.data.token);
+    if (!invitation) {
+      return res.status(404).json({ error: "Invalid or expired invitation" });
+    }
+    
+    if (invitation.acceptedAt) {
+      return res.status(400).json({ error: "Invitation already accepted" });
+    }
+    
+    if (new Date(invitation.expiresAt) < new Date()) {
+      return res.status(400).json({ error: "Invitation has expired" });
+    }
+    
+    await storage.acceptInvitation(parsed.data.token, userId);
+    const org = await storage.getOrganization(invitation.organizationId);
+    res.json({ success: true, organization: org });
   }));
 
   // ============================================

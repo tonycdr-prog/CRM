@@ -18,6 +18,53 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Organizations table - multi-tenant support
+export const ORGANIZATION_ROLES = ["owner", "admin", "office_staff", "engineer", "viewer"] as const;
+export type OrganizationRole = typeof ORGANIZATION_ROLES[number];
+
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").unique(),
+  ownerId: varchar("owner_id"),
+  logoUrl: text("logo_url"),
+  address: text("address"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  settings: jsonb("settings").$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
+
+// Organization invitations
+export const organizationInvitations = pgTable("organization_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  email: text("email").notNull(),
+  role: text("role").default("engineer"),
+  token: text("token").notNull().unique(),
+  invitedBy: varchar("invited_by"),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertOrganizationInvitationSchema = createInsertSchema(organizationInvitations).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertOrganizationInvitation = z.infer<typeof insertOrganizationInvitationSchema>;
+export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
+
 // User storage table - supports both Replit Auth and custom auth
 // User roles for permission-based access
 export const USER_ROLES = ["admin", "office_manager", "field_engineer"] as const;
@@ -34,6 +81,8 @@ export const users = pgTable("users", {
   displayName: text("display_name"),
   companyName: text("company_name"),
   role: text("role").default("field_engineer"), // admin, office_manager, field_engineer
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  organizationRole: text("organization_role").default("engineer"), // owner, admin, office_staff, engineer, viewer
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

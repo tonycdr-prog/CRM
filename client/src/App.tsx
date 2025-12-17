@@ -69,6 +69,7 @@ import EngineerPerformance from "@/pages/engineer-performance";
 import SiteHealth from "@/pages/site-health";
 import Downloads from "@/pages/downloads";
 import ClientPortal from "@/pages/client-portal";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -143,6 +144,7 @@ function LayoutRoutes() {
         <Route path="/engineer-performance" component={EngineerPerformance} />
         <Route path="/site-health" component={SiteHealth} />
         <Route path="/downloads" component={Downloads} />
+        <Route path="/settings" component={Settings} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>
