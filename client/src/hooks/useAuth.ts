@@ -16,6 +16,7 @@ const TEST_USER: User = {
   password: null,
   displayName: "Test User",
   companyName: null,
+  role: "admin", // Test user has admin role for full access
   createdAt: new Date(),
   updatedAt: new Date(),
 };

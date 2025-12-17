@@ -19,6 +19,10 @@ export const sessions = pgTable(
 );
 
 // User storage table - supports both Replit Auth and custom auth
+// User roles for permission-based access
+export const USER_ROLES = ["admin", "office_manager", "field_engineer"] as const;
+export type UserRole = typeof USER_ROLES[number];
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -29,6 +33,7 @@ export const users = pgTable("users", {
   password: text("password"),
   displayName: text("display_name"),
   companyName: text("company_name"),
+  role: text("role").default("field_engineer"), // admin, office_manager, field_engineer
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -746,6 +751,10 @@ export const jobs = pgTable("jobs", {
   scheduledTime: text("scheduled_time"),
   estimatedDuration: real("estimated_duration"), // Hours
   actualDuration: real("actual_duration"), // Hours
+  estimatedTravelTime: real("estimated_travel_time"), // Hours
+  actualTravelTime: real("actual_travel_time"), // Hours
+  checkInTime: timestamp("check_in_time"),
+  checkOutTime: timestamp("check_out_time"),
   assignedTechnicianId: varchar("assigned_technician_id"),
   assignedSubcontractorId: varchar("assigned_subcontractor_id"),
   priority: text("priority").default("normal"), // low, normal, high, urgent

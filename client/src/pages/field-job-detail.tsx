@@ -480,6 +480,33 @@ export default function FieldJobDetail() {
     );
   };
 
+  const handleCheckIn = () => {
+    updateJobMutation.mutate(
+      { 
+        status: "in_progress",
+        checkInTime: new Date(),
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Checked in", description: "Your arrival time has been recorded" });
+        },
+      }
+    );
+  };
+
+  const handleCheckOut = () => {
+    updateJobMutation.mutate(
+      { 
+        checkOutTime: new Date(),
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Checked out", description: "Your departure time has been recorded" });
+        },
+      }
+    );
+  };
+
   const handleComplete = () => {
     updateJobMutation.mutate(
       {
@@ -488,7 +515,22 @@ export default function FieldJobDetail() {
         completedAt: new Date(),
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Create notification for back office
+          try {
+            await apiRequest("POST", "/api/notifications", {
+              userId: user?.id,
+              title: "Job Completed",
+              message: `Job ${job?.jobNumber} at ${job?.site?.name || job?.siteAddress} has been completed by the field engineer.`,
+              type: "success",
+              category: "job",
+              entityType: "job",
+              entityId: jobId,
+              actionUrl: `/jobs/${jobId}`,
+            });
+          } catch (e) {
+            // Non-critical - don't block completion
+          }
           setShowCompleteDialog(false);
           toast({ title: "Job completed!" });
           setLocation("/field-companion");
@@ -578,6 +620,13 @@ export default function FieldJobDetail() {
     return null;
   };
 
+  // Check if all assigned assets are completed - triggers auto-complete prompt
+  const assignedAssets = job?.assignedAssets || [];
+  const allAssetsCompleted = assignedAssets.length > 0 && 
+    assignedAssets.every(a => a.status === "completed" || a.status === "skipped");
+  const completedAssetCount = assignedAssets.filter(a => a.status === "completed").length;
+  const canAutoComplete = allAssetsCompleted && job?.status === "in_progress";
+
   if (jobLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -626,34 +675,88 @@ export default function FieldJobDetail() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           {/* Quick Actions - Most prominent */}
-          <Card className="border-2 border-primary/50">
+          <Card className={`border-2 ${canAutoComplete ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-primary/50"}`}>
             <CardContent className="p-4 space-y-3">
+              {/* Auto-complete prompt when all assets are done */}
+              {canAutoComplete && (
+                <div className="bg-green-100 dark:bg-green-900/40 rounded-lg p-3 mb-2" data-testid="auto-complete-prompt">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
+                    <CheckCircle2 className="h-5 w-5" />
+                    <span className="font-medium">All {completedAssetCount} assets tested!</span>
+                  </div>
+                  <p className="text-sm text-green-600 dark:text-green-400 mb-3">
+                    Ready to complete this job?
+                  </p>
+                  <Button
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    onClick={() => setShowCompleteDialog(true)}
+                    disabled={updateJobMutation.isPending}
+                    data-testid="button-auto-complete-job"
+                  >
+                    <CheckCircle2 className="h-5 w-5 mr-2" />
+                    Complete Job Now
+                  </Button>
+                </div>
+              )}
+              
+              {/* Check-in/Check-out times display */}
+              {(job.checkInTime || job.checkOutTime) && (
+                <div className="flex items-center gap-4 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2 mb-2">
+                  {job.checkInTime && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>In: {format(new Date(job.checkInTime), "HH:mm")}</span>
+                    </div>
+                  )}
+                  {job.checkOutTime && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>Out: {format(new Date(job.checkOutTime), "HH:mm")}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {job.status === "scheduled" || job.status === "pending" ? (
                 <Button
                   className="w-full h-14 text-lg"
-                  onClick={handleStartJob}
+                  onClick={handleCheckIn}
                   disabled={updateJobMutation.isPending}
-                  data-testid="button-start-job"
+                  data-testid="button-check-in"
                 >
                   <PlayCircle className="h-6 w-6 mr-2" />
-                  Start Job
+                  Check In - Arrived on Site
                 </Button>
-              ) : job.status === "in_progress" ? (
-                <Button
-                  className="w-full h-14 text-lg bg-green-600 hover:bg-green-700"
-                  onClick={() => setShowCompleteDialog(true)}
-                  disabled={updateJobMutation.isPending}
-                  data-testid="button-complete-job"
-                >
-                  <CheckCircle2 className="h-6 w-6 mr-2" />
-                  Complete Job
-                </Button>
-              ) : (
+              ) : job.status === "in_progress" && !canAutoComplete ? (
+                <div className="space-y-2">
+                  {!job.checkOutTime && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleCheckOut}
+                      disabled={updateJobMutation.isPending}
+                      data-testid="button-check-out"
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      Check Out - Leaving Site
+                    </Button>
+                  )}
+                  <Button
+                    className="w-full h-14 text-lg bg-green-600 hover:bg-green-700"
+                    onClick={() => setShowCompleteDialog(true)}
+                    disabled={updateJobMutation.isPending}
+                    data-testid="button-complete-job"
+                  >
+                    <CheckCircle2 className="h-6 w-6 mr-2" />
+                    Complete Job
+                  </Button>
+                </div>
+              ) : job.status === "completed" ? (
                 <div className="flex items-center justify-center gap-2 py-4 text-green-600 dark:text-green-400">
                   <CheckCircle2 className="h-6 w-6" />
                   <span className="font-medium">Job Completed</span>
                 </div>
-              )}
+              ) : null}
 
               {job.status !== "completed" && job.status !== "cancelled" && (
                 <Button

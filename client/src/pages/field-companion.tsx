@@ -239,6 +239,11 @@ export default function FieldCompanion() {
                     {job.estimatedDuration}h
                   </span>
                 )}
+                {job.estimatedTravelTime && (
+                  <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">
+                    +{job.estimatedTravelTime}h travel
+                  </span>
+                )}
               </div>
 
               {/* Quick actions */}

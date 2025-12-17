@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,11 +15,13 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
+import { usePermissions } from "@/hooks/use-permissions";
 import { 
   LayoutDashboard, 
   Wind, 
@@ -238,10 +240,33 @@ function CollapsibleMenuSection({ section, location }: { section: MenuSection; l
   );
 }
 
+// Define which sections are restricted to certain roles
+const SECTION_PERMISSIONS: Record<string, string[]> = {
+  "Testing & Field Work": ["admin", "office_manager", "field_engineer"],
+  "Clients & Sites": ["admin", "office_manager"],
+  "Jobs & Scheduling": ["admin", "office_manager", "field_engineer"],
+  "Finance": ["admin", "office_manager"],
+  "Team & HR": ["admin", "office_manager"],
+  "Assets & Inventory": ["admin", "office_manager"],
+  "Sales & Pipeline": ["admin", "office_manager"],
+  "Compliance & Safety": ["admin", "office_manager", "field_engineer"],
+  "Documents & Reports": ["admin", "office_manager"],
+};
+
 export function AppLayout({ children }: AppLayoutProps) {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const { isEngineerMode, toggleViewMode } = useViewMode();
+  const { role, roleLabel, canAccessOffice } = usePermissions();
+
+  // Filter menu sections based on user role
+  const filteredMenuSections = useMemo(() => {
+    return menuSections.filter(section => {
+      const allowedRoles = SECTION_PERMISSIONS[section.title];
+      if (!allowedRoles) return true; // Default: show section
+      return allowedRoles.includes(role);
+    });
+  }, [role]);
 
   const style = {
     "--sidebar-width": "16rem",
@@ -268,7 +293,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
-                  {menuSections.map((section) => (
+                  {filteredMenuSections.map((section) => (
                     <SidebarMenuItem key={section.title}>
                       <CollapsibleMenuSection section={section} location={location} />
                     </SidebarMenuItem>
@@ -288,9 +313,14 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate" data-testid="text-user-name">
-                    {user.firstName || user.email?.split("@")[0] || "User"}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate" data-testid="text-user-name">
+                      {user.firstName || user.email?.split("@")[0] || "User"}
+                    </p>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0" data-testid="badge-user-role">
+                      {roleLabel}
+                    </Badge>
+                  </div>
                   <p className="text-xs text-muted-foreground truncate" data-testid="text-user-email">
                     {user.email}
                   </p>
