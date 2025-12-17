@@ -4,7 +4,7 @@ import type { User } from "@shared/schema";
 
 // TEST MODE: Bypass authentication for external testers
 // Set to false to re-enable normal authentication
-const TEST_MODE_ENABLED = true;
+const TEST_MODE_ENABLED = false;
 
 const TEST_USER: User = {
   id: "test-user-shared",
@@ -17,6 +17,8 @@ const TEST_USER: User = {
   displayName: "Test User",
   companyName: null,
   role: "admin", // Test user has admin role for full access
+  organizationId: null,
+  organizationRole: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
