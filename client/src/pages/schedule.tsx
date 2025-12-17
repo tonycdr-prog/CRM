@@ -333,6 +333,42 @@ export default function Schedule() {
     },
   });
 
+  const assignEngineerMutation = useMutation({
+    mutationFn: async ({ jobId, staffId }: { jobId: string; staffId: string }) => {
+      return apiRequest("POST", "/api/job-assignments", {
+        userId: user?.id,
+        jobId,
+        staffId,
+        role: "technician",
+        status: "assigned",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/job-assignments/${user?.id}`] });
+      toast({ title: "Engineer assigned" });
+    },
+    onError: () => {
+      toast({ title: "Failed to assign engineer", variant: "destructive" });
+    },
+  });
+
+  const unassignEngineerMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      return apiRequest("DELETE", `/api/job-assignments/${assignmentId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/job-assignments/${user?.id}`] });
+      toast({ title: "Engineer removed from job" });
+    },
+    onError: () => {
+      toast({ title: "Failed to remove engineer", variant: "destructive" });
+    },
+  });
+
+  const getAssignedEngineers = (jobId: string) => {
+    return jobAssignments.filter(a => a.jobId === jobId);
+  };
+
   const getClientName = (clientId: string | null) => {
     if (!clientId) return "No client";
     return clients.find(c => c.id === clientId)?.companyName || "Unknown";
@@ -1612,6 +1648,64 @@ export default function Schedule() {
                   {selectedJob.siteCity && <p className="text-sm text-muted-foreground">{selectedJob.siteCity}</p>}
                 </div>
               )}
+
+              <div className="border-t pt-4 space-y-3">
+                <Label>Assigned Engineers</Label>
+                {(() => {
+                  const assignments = getAssignedEngineers(selectedJob.id);
+                  const assignedStaffIds = assignments.map(a => a.staffId);
+                  const availableStaff = staffMembers.filter(s => s.status === "active" && !assignedStaffIds.includes(s.id));
+                  
+                  return (
+                    <div className="space-y-2">
+                      {assignments.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No engineers assigned</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {assignments.map(assignment => {
+                            const staffMember = staffMembers.find(s => s.id === assignment.staffId);
+                            return (
+                              <Badge key={assignment.id} variant="secondary" className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {staffMember?.name || "Unknown"}
+                                <button
+                                  onClick={() => unassignEngineerMutation.mutate(assignment.id)}
+                                  className="ml-1 hover:text-destructive"
+                                  data-testid={`button-remove-engineer-${assignment.id}`}
+                                >
+                                  ×
+                                </button>
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {availableStaff.length > 0 && (
+                        <Select
+                          onValueChange={(staffId) => {
+                            assignEngineerMutation.mutate({ jobId: selectedJob.id, staffId });
+                          }}
+                        >
+                          <SelectTrigger data-testid="select-assign-engineer">
+                            <SelectValue placeholder="Assign engineer..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableStaff.map(staff => (
+                              <SelectItem key={staff.id} value={staff.id} data-testid={`select-engineer-${staff.id}`}>
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4" />
+                                  {staff.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
 
               <div className="border-t pt-4 space-y-3">
                 <Label>Reschedule</Label>
