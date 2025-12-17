@@ -54,14 +54,14 @@ export default function Incidents() {
   });
 
   const { data: incidents = [], isLoading } = useQuery<DbIncident[]>({
-    queryKey: ["/api/incidents", user?.id],
+    queryKey: ["/api/incidents"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/incidents", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/incidents", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/incidents"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Incident reported successfully" });
@@ -71,7 +71,7 @@ export default function Incidents() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/incidents/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/incidents", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/incidents"] });
       toast({ title: "Incident deleted" });
     },
   });
@@ -80,7 +80,7 @@ export default function Incidents() {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       apiRequest("PATCH", `/api/incidents/${id}`, { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/incidents", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/incidents"] });
       toast({ title: "Status updated" });
     },
   });

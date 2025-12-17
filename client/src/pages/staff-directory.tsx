@@ -83,14 +83,14 @@ export default function StaffDirectory() {
   });
 
   const { data: staff = [], isLoading } = useQuery<DbStaffDirectory[]>({
-    queryKey: ["/api/staff-directory", user?.id],
+    queryKey: ["/api/staff-directory"],
     enabled: !!user?.id,
   });
 
   const { data: invitations = [], isLoading: invitationsLoading } = useQuery<DbTeamInvitation[]>({
-    queryKey: ["/api/team-invitations", user?.id],
+    queryKey: ["/api/team-invitations"],
     queryFn: async () => {
-      const res = await fetch(`/api/team-invitations/${user?.id}`);
+      const res = await fetch("/api/team-invitations");
       if (!res.ok) throw new Error("Failed to fetch invitations");
       return res.json();
     },
@@ -100,7 +100,7 @@ export default function StaffDirectory() {
   const createInvitationMutation = useMutation({
     mutationFn: (data: typeof inviteFormData) => apiRequest("POST", "/api/team-invitations", { ...data, userId: user?.id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/team-invitations", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team-invitations"] });
       setIsInviteDialogOpen(false);
       resetInviteForm();
       toast({ title: "Invitation sent", description: "An invitation link has been created for the new team member." });
@@ -110,7 +110,7 @@ export default function StaffDirectory() {
   const resendInvitationMutation = useMutation({
     mutationFn: (id: string) => apiRequest("POST", `/api/team-invitations/${id}/resend`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/team-invitations", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team-invitations"] });
       toast({ title: "Invitation resent", description: "A new invitation link has been generated." });
     },
   });
@@ -118,7 +118,7 @@ export default function StaffDirectory() {
   const deleteInvitationMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/team-invitations/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/team-invitations", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team-invitations"] });
       toast({ title: "Invitation cancelled" });
     },
   });
@@ -136,9 +136,9 @@ export default function StaffDirectory() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/staff-directory", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/staff-directory", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/staff-directory", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/staff-directory"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Staff member added" });
@@ -148,7 +148,7 @@ export default function StaffDirectory() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData }) => apiRequest("PATCH", `/api/staff-directory/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/staff-directory", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/staff-directory"] });
       setIsDialogOpen(false);
       setEditingMember(null);
       resetForm();
@@ -159,7 +159,7 @@ export default function StaffDirectory() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/staff-directory/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/staff-directory", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/staff-directory"] });
       toast({ title: "Staff member deleted" });
     },
   });

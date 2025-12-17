@@ -77,12 +77,12 @@ export default function ServiceAnalytics() {
   const { user } = useAuth();
 
   const { data: jobs = [] } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 

@@ -93,7 +93,7 @@ export default function JobTemplates() {
   });
 
   const { data: templates = [], isLoading } = useQuery<JobTemplate[]>({
-    queryKey: ["/api/job-templates", user?.id],
+    queryKey: ["/api/job-templates"],
     enabled: !!user?.id,
   });
 
@@ -102,7 +102,7 @@ export default function JobTemplates() {
       return apiRequest("POST", "/api/job-templates", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/job-templates", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-templates"] });
       setIsCreateDialogOpen(false);
       resetForm();
       toast({ title: "Job template created successfully" });
@@ -117,7 +117,7 @@ export default function JobTemplates() {
       return apiRequest("PATCH", `/api/job-templates/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/job-templates", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-templates"] });
       setEditingTemplate(null);
       resetForm();
       toast({ title: "Job template updated successfully" });
@@ -132,7 +132,7 @@ export default function JobTemplates() {
       return apiRequest("DELETE", `/api/job-templates/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/job-templates", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-templates"] });
       toast({ title: "Job template deleted" });
     },
     onError: () => {

@@ -49,7 +49,7 @@ export default function Notifications() {
   const [activeTab, setActiveTab] = useState("all");
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
-    queryKey: ["/api/notifications", user?.id],
+    queryKey: ["/api/notifications"],
     enabled: !!user?.id,
   });
 
@@ -58,7 +58,7 @@ export default function Notifications() {
       return apiRequest("PATCH", `/api/notifications/${id}`, { read: true, readAt: new Date().toISOString() });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     },
   });
 
@@ -70,7 +70,7 @@ export default function Notifications() {
       ));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({ title: "All notifications marked as read" });
     },
   });
@@ -80,7 +80,7 @@ export default function Notifications() {
       return apiRequest("DELETE", `/api/notifications/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({ title: "Notification deleted" });
     },
   });
@@ -93,7 +93,7 @@ export default function Notifications() {
       ));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({ title: "Read notifications cleared" });
     },
   });

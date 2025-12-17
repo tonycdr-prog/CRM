@@ -140,22 +140,22 @@ export default function ClientDetail() {
   });
 
   const { data: contracts = [] } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts", user?.id],
+    queryKey: ["/api/contracts"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices", user?.id],
+    queryKey: ["/api/invoices"],
     enabled: !!user?.id,
   });
 
   const { data: expenses = [] } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses", user?.id],
+    queryKey: ["/api/expenses"],
     enabled: !!user?.id,
   });
 

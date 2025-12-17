@@ -74,7 +74,7 @@ export default function Holidays() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: holidays = [], isLoading } = useQuery<Holiday[]>({
-    queryKey: ["/api/holidays", user?.id],
+    queryKey: ["/api/holidays"],
     enabled: !!user?.id,
   });
 
@@ -83,7 +83,7 @@ export default function Holidays() {
       return apiRequest("POST", "/api/holidays", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/holidays", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
       setIsCreateDialogOpen(false);
       toast({ title: "Holiday request submitted" });
     },
@@ -97,7 +97,7 @@ export default function Holidays() {
       return apiRequest("PATCH", `/api/holidays/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/holidays", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
       toast({ title: "Holiday updated" });
     },
     onError: () => {
@@ -110,7 +110,7 @@ export default function Holidays() {
       return apiRequest("DELETE", `/api/holidays/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/holidays", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
       toast({ title: "Holiday deleted" });
     },
     onError: () => {

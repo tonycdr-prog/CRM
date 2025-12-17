@@ -133,17 +133,17 @@ export default function Finance() {
   }, [search]);
 
   const { data: quotes = [], isLoading: quotesLoading } = useQuery<Quote[]>({
-    queryKey: ["/api/quotes", user?.id],
+    queryKey: ["/api/quotes"],
     enabled: !!user?.id,
   });
 
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices", user?.id],
+    queryKey: ["/api/invoices"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
@@ -152,7 +152,7 @@ export default function Finance() {
       return apiRequest("POST", "/api/quotes", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       setIsQuoteDialogOpen(false);
       toast({ title: "Quote created successfully" });
     },
@@ -166,7 +166,7 @@ export default function Finance() {
       return apiRequest("POST", "/api/invoices", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       setIsInvoiceDialogOpen(false);
       toast({ title: "Invoice created successfully" });
     },
@@ -180,7 +180,7 @@ export default function Finance() {
       return apiRequest("PATCH", `/api/invoices/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       toast({ title: "Invoice updated successfully" });
     },
     onError: () => {

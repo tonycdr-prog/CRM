@@ -245,13 +245,13 @@ export default function DocumentTemplatesPage() {
   const userId = "demo-user";
 
   const { data: templates = [], isLoading } = useQuery<DocumentTemplate[]>({
-    queryKey: ["/api/document-templates", userId],
+    queryKey: ["/api/document-templates"],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/document-templates", { ...data, userId }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/document-templates", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/document-templates", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/document-templates"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Template created successfully" });
@@ -261,7 +261,7 @@ export default function DocumentTemplatesPage() {
   const updateMutation = useMutation({
     mutationFn: (data: typeof formData & { id: string }) => apiRequest("PATCH", `/api/document-templates/${data.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/document-templates", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/document-templates"] });
       setIsDialogOpen(false);
       setEditingTemplate(null);
       resetForm();
@@ -272,7 +272,7 @@ export default function DocumentTemplatesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/document-templates/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/document-templates", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/document-templates"] });
       toast({ title: "Template deleted successfully" });
     },
   });

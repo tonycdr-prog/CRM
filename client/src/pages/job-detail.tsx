@@ -256,38 +256,38 @@ export default function JobDetail() {
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: contracts = [] } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts", user?.id],
+    queryKey: ["/api/contracts"],
     enabled: !!user?.id,
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices", user?.id],
+    queryKey: ["/api/invoices"],
     enabled: !!user?.id,
   });
 
   const { data: expenses = [] } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses", user?.id],
+    queryKey: ["/api/expenses"],
     enabled: !!user?.id,
   });
 
   const { data: timesheets = [] } = useQuery<Timesheet[]>({
-    queryKey: ["/api/timesheets", user?.id],
+    queryKey: ["/api/timesheets"],
     enabled: !!user?.id,
   });
 
   // Scheduling enhancement queries
   const { data: staffDirectory = [], isLoading: staffLoading } = useQuery<StaffMember[]>({
-    queryKey: ["/api/staff-directory", user?.id],
+    queryKey: ["/api/staff-directory"],
     enabled: !!user?.id,
   });
 
   const { data: equipmentList = [], isLoading: equipmentLoading } = useQuery<Equipment[]>({
-    queryKey: ["/api/equipment", user?.id],
+    queryKey: ["/api/equipment"],
     enabled: !!user?.id,
   });
 
@@ -365,7 +365,7 @@ export default function JobDetail() {
   // Assignment mutations
   const addAssignmentMutation = useMutation({
     mutationFn: async (data: { staffId: string; role: string }) => {
-      return apiRequest("POST", `/api/job-assignments/${user?.id}`, {
+      return apiRequest("POST", "/api/job-assignments", {
         jobId: id,
         staffId: data.staffId,
         role: data.role,
@@ -401,7 +401,7 @@ export default function JobDetail() {
   // Skill requirement mutations
   const addSkillMutation = useMutation({
     mutationFn: async (data: { skillType: string; skillLevel: string }) => {
-      return apiRequest("POST", `/api/job-skill-requirements/${user?.id}`, {
+      return apiRequest("POST", "/api/job-skill-requirements", {
         jobId: id,
         skillType: data.skillType,
         skillLevel: data.skillLevel,
@@ -435,7 +435,7 @@ export default function JobDetail() {
   // Equipment reservation mutations
   const addEquipmentMutation = useMutation({
     mutationFn: async (equipmentId: string) => {
-      return apiRequest("POST", `/api/job-equipment-reservations/${user?.id}`, {
+      return apiRequest("POST", "/api/job-equipment-reservations", {
         jobId: id,
         equipmentId: equipmentId,
         reservedDate: job?.scheduledDate || new Date().toISOString().split("T")[0],

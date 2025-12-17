@@ -60,19 +60,18 @@ export default function PartsCatalog() {
   });
 
   const { data: parts = [], isLoading } = useQuery<DbPartsCatalog[]>({
-    queryKey: ["/api/parts-catalog", user?.id],
+    queryKey: ["/api/parts-catalog"],
     enabled: !!user?.id,
   });
 
   const { data: suppliers = [] } = useQuery<DbSupplier[]>({
-    queryKey: ["/api/suppliers", user?.id],
+    queryKey: ["/api/suppliers"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: typeof formData) => apiRequest("POST", "/api/parts-catalog", { 
       ...data, 
-      userId: user?.id,
       costPrice: parseFloat(data.costPrice),
       sellPrice: data.sellPrice ? parseFloat(data.sellPrice) : null,
       markupPercent: data.markupPercent ? parseFloat(data.markupPercent) : null,
@@ -84,7 +83,7 @@ export default function PartsCatalog() {
       warrantyMonths: data.warrantyMonths ? parseInt(data.warrantyMonths) : null,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/parts-catalog", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/parts-catalog"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Part added to catalog" });
@@ -105,7 +104,7 @@ export default function PartsCatalog() {
       warrantyMonths: data.warrantyMonths ? parseInt(data.warrantyMonths) : null,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/parts-catalog", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/parts-catalog"] });
       setIsDialogOpen(false);
       setEditingPart(null);
       resetForm();
@@ -116,7 +115,7 @@ export default function PartsCatalog() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/parts-catalog/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/parts-catalog", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/parts-catalog"] });
       toast({ title: "Part deleted" });
     },
   });

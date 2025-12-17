@@ -102,7 +102,7 @@ export default function CheckSheetReadingsPage() {
   const userId = "test-user-shared";
 
   const { data: checkSheetReadings = [], isLoading } = useQuery<DbCheckSheetReading[]>({
-    queryKey: ["/api/check-sheet-readings", userId],
+    queryKey: ["/api/check-sheet-readings"],
   });
 
   const fields = formData.systemType ? (DEFAULT_TEMPLATE_FIELDS[formData.systemType] || []) : [];
@@ -127,9 +127,9 @@ export default function CheckSheetReadingsPage() {
   }, [editingReading, initializeReadingsForSystemType]);
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/check-sheet-readings", { ...data, userId }),
+    mutationFn: (data: any) => apiRequest("POST", "/api/check-sheet-readings", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/check-sheet-readings", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/check-sheet-readings"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Check sheet saved successfully" });
@@ -142,7 +142,7 @@ export default function CheckSheetReadingsPage() {
   const updateMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PATCH", `/api/check-sheet-readings/${data.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/check-sheet-readings", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/check-sheet-readings"] });
       setIsDialogOpen(false);
       setEditingReading(null);
       resetForm();
@@ -156,7 +156,7 @@ export default function CheckSheetReadingsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/check-sheet-readings/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/check-sheet-readings", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/check-sheet-readings"] });
       toast({ title: "Check sheet deleted" });
     },
   });

@@ -161,12 +161,12 @@ export default function Contracts() {
   };
 
   const { data: contracts = [], isLoading } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts", user?.id],
+    queryKey: ["/api/contracts"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
@@ -175,7 +175,7 @@ export default function Contracts() {
       return apiRequest("POST", "/api/contracts", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       setIsCreateDialogOpen(false);
       resetFormState();
       toast({ title: "Contract created successfully" });
@@ -190,7 +190,7 @@ export default function Contracts() {
       return apiRequest("DELETE", `/api/contracts/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       toast({ title: "Contract deleted successfully" });
     },
     onError: () => {

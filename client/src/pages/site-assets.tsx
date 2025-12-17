@@ -171,25 +171,25 @@ export default function SiteAssets() {
   });
 
   const { data: siteAssets = [], isLoading: loadingAssets } = useQuery<DbSiteAsset[]>({
-    queryKey: ["/api/site-assets", userId],
+    queryKey: ["/api/site-assets"],
   });
 
   const { data: assetBatches = [], isLoading: loadingBatches } = useQuery<DbAssetBatch[]>({
-    queryKey: ["/api/asset-batches", userId],
+    queryKey: ["/api/asset-batches"],
   });
 
   const { data: projects = [] } = useQuery<DbProject[]>({
-    queryKey: ["/api/projects", userId],
+    queryKey: ["/api/projects"],
   });
 
   const { data: visitTypes = [] } = useQuery<DbVisitType[]>({
-    queryKey: ["/api/visit-types", userId],
+    queryKey: ["/api/visit-types"],
   });
 
   const createAssetMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/site-assets", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-assets", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets"] });
       toast({ title: "Asset created successfully" });
       setDialogOpen(false);
       assetForm.reset();
@@ -202,7 +202,7 @@ export default function SiteAssets() {
   const updateAssetMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/site-assets/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-assets", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets"] });
       toast({ title: "Asset updated successfully" });
       setDialogOpen(false);
       assetForm.reset();
@@ -216,7 +216,7 @@ export default function SiteAssets() {
   const deleteAssetMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/site-assets/${id}`, undefined),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-assets", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets"] });
       toast({ title: "Asset deleted successfully" });
     },
     onError: () => {
@@ -278,8 +278,8 @@ export default function SiteAssets() {
       return batchResponse;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-assets", userId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/asset-batches", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/asset-batches"] });
       toast({ title: `${variables.quantity} assets created successfully` });
       setBulkDialogOpen(false);
       bulkForm.reset();
@@ -292,7 +292,7 @@ export default function SiteAssets() {
   const deleteBatchMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/asset-batches/${id}`, undefined),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/asset-batches", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/asset-batches"] });
       toast({ title: "Batch record deleted" });
     },
     onError: () => {

@@ -60,13 +60,13 @@ export default function ServiceHistoryPage() {
   const userId = "demo-user";
 
   const { data: historyItems = [], isLoading } = useQuery<ServiceHistoryItem[]>({
-    queryKey: ["/api/service-history", userId],
+    queryKey: ["/api/service-history"],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/service-history", { ...data, userId }),
+    mutationFn: (data: any) => apiRequest("POST", "/api/service-history", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/service-history", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/service-history"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Service record created successfully" });
@@ -76,7 +76,7 @@ export default function ServiceHistoryPage() {
   const updateMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PATCH", `/api/service-history/${data.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/service-history", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/service-history"] });
       setIsDialogOpen(false);
       setEditingItem(null);
       resetForm();
@@ -87,7 +87,7 @@ export default function ServiceHistoryPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/service-history/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/service-history", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/service-history"] });
       toast({ title: "Service record deleted successfully" });
     },
   });

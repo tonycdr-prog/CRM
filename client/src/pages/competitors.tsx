@@ -84,13 +84,13 @@ export default function CompetitorsPage() {
   const userId = "demo-user";
 
   const { data: competitors = [], isLoading } = useQuery<Competitor[]>({
-    queryKey: ["/api/competitors", userId],
+    queryKey: ["/api/competitors"],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/competitors", { ...data, userId }),
+    mutationFn: (data: any) => apiRequest("POST", "/api/competitors", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/competitors", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitors"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Competitor added successfully" });
@@ -100,7 +100,7 @@ export default function CompetitorsPage() {
   const updateMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PATCH", `/api/competitors/${data.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/competitors", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitors"] });
       setIsDialogOpen(false);
       setEditingCompetitor(null);
       resetForm();
@@ -111,7 +111,7 @@ export default function CompetitorsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/competitors/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/competitors", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitors"] });
       toast({ title: "Competitor deleted successfully" });
     },
   });

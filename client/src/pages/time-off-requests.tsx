@@ -68,13 +68,13 @@ export default function TimeOffRequestsPage() {
   const userId = "demo-user";
 
   const { data: requests = [], isLoading } = useQuery<TimeOffRequest[]>({
-    queryKey: ["/api/time-off-requests", userId],
+    queryKey: ["/api/time-off-requests"],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/time-off-requests", { ...data, userId }),
+    mutationFn: (data: any) => apiRequest("POST", "/api/time-off-requests", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-off-requests", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/time-off-requests"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Time off request created successfully" });
@@ -84,7 +84,7 @@ export default function TimeOffRequestsPage() {
   const updateMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PATCH", `/api/time-off-requests/${data.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-off-requests", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/time-off-requests"] });
       setIsDialogOpen(false);
       setEditingRequest(null);
       resetForm();
@@ -95,7 +95,7 @@ export default function TimeOffRequestsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/time-off-requests/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-off-requests", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/time-off-requests"] });
       toast({ title: "Time off request deleted successfully" });
     },
   });

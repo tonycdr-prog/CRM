@@ -75,7 +75,7 @@ export default function Subcontractors() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const { data: subcontractors = [], isLoading } = useQuery<Subcontractor[]>({
-    queryKey: ["/api/subcontractors", user?.id],
+    queryKey: ["/api/subcontractors"],
     enabled: !!user?.id,
   });
 
@@ -84,7 +84,7 @@ export default function Subcontractors() {
       return apiRequest("POST", "/api/subcontractors", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/subcontractors", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subcontractors"] });
       setIsCreateDialogOpen(false);
       toast({ title: "Subcontractor added successfully" });
     },
@@ -98,7 +98,7 @@ export default function Subcontractors() {
       return apiRequest("DELETE", `/api/subcontractors/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/subcontractors", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subcontractors"] });
       toast({ title: "Subcontractor deleted" });
     },
     onError: () => {

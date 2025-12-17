@@ -62,22 +62,22 @@ export default function EngineerPerformance() {
   const [selectedEngineer, setSelectedEngineer] = useState<string>("all");
 
   const { data: staff = [] } = useQuery<DbStaffDirectory[]>({
-    queryKey: ["/api/staff-directory", user?.id],
+    queryKey: ["/api/staff-directory"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<DbJob[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: defects = [] } = useQuery<DbDefect[]>({
-    queryKey: [`/api/defects/${user?.id}`],
+    queryKey: ["/api/defects"],
     enabled: !!user?.id,
   });
 
   const { data: partsUsed = [] } = useQuery<DbJobPartsUsed[]>({
-    queryKey: ["/api/job-parts-used", user?.id],
+    queryKey: ["/api/job-parts-used"],
     enabled: !!user?.id,
   });
 

@@ -41,14 +41,14 @@ export default function SiteAccess() {
   });
 
   const { data: notes = [], isLoading } = useQuery<DbSiteAccessNote[]>({
-    queryKey: ["/api/site-access", user?.id],
+    queryKey: ["/api/site-access"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/site-access", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-access", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-access"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Site access note saved" });
@@ -58,7 +58,7 @@ export default function SiteAccess() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/site-access/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-access", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-access"] });
       setIsDialogOpen(false);
       setEditingNote(null);
       resetForm();
@@ -69,7 +69,7 @@ export default function SiteAccess() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/site-access/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-access", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-access"] });
       toast({ title: "Site access note deleted" });
     },
   });

@@ -81,12 +81,12 @@ export default function Timesheets() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const { data: timesheets = [], isLoading } = useQuery<Timesheet[]>({
-    queryKey: ["/api/timesheets", user?.id],
+    queryKey: ["/api/timesheets"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
@@ -95,7 +95,7 @@ export default function Timesheets() {
       return apiRequest("POST", "/api/timesheets", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/timesheets", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
       setIsCreateDialogOpen(false);
       toast({ title: "Time entry created successfully" });
     },
@@ -109,7 +109,7 @@ export default function Timesheets() {
       return apiRequest("DELETE", `/api/timesheets/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/timesheets", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
       toast({ title: "Time entry deleted successfully" });
     },
     onError: () => {

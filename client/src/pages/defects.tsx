@@ -39,14 +39,14 @@ export default function DefectsPage() {
   });
 
   const { data: defects = [], isLoading } = useQuery<DbDefect[]>({
-    queryKey: ["/api/defects", user?.id],
+    queryKey: ["/api/defects"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/defects", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/defects", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/defects", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/defects"] });
       toast({ title: "Defect logged successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -57,7 +57,7 @@ export default function DefectsPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData }) => apiRequest("PATCH", `/api/defects/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/defects", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/defects"] });
       toast({ title: "Defect updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -68,7 +68,7 @@ export default function DefectsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/defects/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/defects", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/defects"] });
       toast({ title: "Defect deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete defect", variant: "destructive" }),

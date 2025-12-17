@@ -40,14 +40,14 @@ export default function DocumentRegisterPage() {
   });
 
   const { data: documents = [], isLoading } = useQuery<DbDocumentRegister[]>({
-    queryKey: ["/api/document-register", user?.id],
+    queryKey: ["/api/document-register"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/document-register", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/document-register", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/document-register", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/document-register"] });
       toast({ title: "Document registered successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -58,7 +58,7 @@ export default function DocumentRegisterPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData }) => apiRequest("PATCH", `/api/document-register/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/document-register", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/document-register"] });
       toast({ title: "Document updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -69,7 +69,7 @@ export default function DocumentRegisterPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/document-register/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/document-register", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/document-register"] });
       toast({ title: "Document deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete document", variant: "destructive" }),

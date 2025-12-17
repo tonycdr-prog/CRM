@@ -57,14 +57,14 @@ export default function Tenders() {
   });
 
   const { data: tenders = [], isLoading } = useQuery<DbTender[]>({
-    queryKey: ["/api/tenders", user?.id],
+    queryKey: ["/api/tenders"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/tenders", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenders", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tenders"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Tender added successfully" });
@@ -74,7 +74,7 @@ export default function Tenders() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/tenders/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenders", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tenders"] });
       setIsDialogOpen(false);
       setEditingTender(null);
       resetForm();
@@ -85,7 +85,7 @@ export default function Tenders() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/tenders/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenders", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tenders"] });
       toast({ title: "Tender deleted" });
     },
   });

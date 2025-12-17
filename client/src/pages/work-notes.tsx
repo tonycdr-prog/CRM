@@ -38,24 +38,24 @@ export default function WorkNotesPage() {
   });
 
   const { data: notes = [], isLoading } = useQuery<DbWorkNote[]>({
-    queryKey: ["/api/work-notes", user?.id],
+    queryKey: ["/api/work-notes"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<DbClient[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<DbJob[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/work-notes", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/work-notes", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/work-notes", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/work-notes"] });
       toast({ title: "Work note created successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -66,7 +66,7 @@ export default function WorkNotesPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData }) => apiRequest("PATCH", `/api/work-notes/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/work-notes", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/work-notes"] });
       toast({ title: "Work note updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -77,7 +77,7 @@ export default function WorkNotesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/work-notes/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/work-notes", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/work-notes"] });
       toast({ title: "Work note deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete work note", variant: "destructive" }),

@@ -61,22 +61,22 @@ export default function SiteHealth() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const { data: sites = [] } = useQuery<DbSite[]>({
-    queryKey: ["/api/sites", user?.id],
+    queryKey: ["/api/sites"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<DbJob[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<any[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: defects = [] } = useQuery<DbDefect[]>({
-    queryKey: [`/api/defects/${user?.id}`],
+    queryKey: ["/api/defects"],
     enabled: !!user?.id,
   });
 

@@ -73,7 +73,7 @@ export default function Vehicles() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const { data: vehicles = [], isLoading } = useQuery<Vehicle[]>({
-    queryKey: ["/api/vehicles", user?.id],
+    queryKey: ["/api/vehicles"],
     enabled: !!user?.id,
   });
 
@@ -82,7 +82,7 @@ export default function Vehicles() {
       return apiRequest("POST", "/api/vehicles", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vehicles", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
       setIsCreateDialogOpen(false);
       toast({ title: "Vehicle added successfully" });
     },
@@ -96,7 +96,7 @@ export default function Vehicles() {
       return apiRequest("DELETE", `/api/vehicles/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vehicles", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
       toast({ title: "Vehicle deleted successfully" });
     },
     onError: () => {

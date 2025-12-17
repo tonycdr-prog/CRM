@@ -49,14 +49,14 @@ export default function Certifications() {
   });
 
   const { data: certifications = [], isLoading } = useQuery<DbCertification[]>({
-    queryKey: ["/api/certifications", user?.id],
+    queryKey: ["/api/certifications"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/certifications", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/certifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/certifications"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Certification added successfully" });
@@ -69,7 +69,7 @@ export default function Certifications() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/certifications/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/certifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/certifications"] });
       toast({ title: "Certification deleted" });
     },
   });

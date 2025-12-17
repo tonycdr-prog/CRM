@@ -54,28 +54,27 @@ export default function CustomerFeedback() {
   });
 
   const { data: feedbackList = [], isLoading } = useQuery<DbCustomerFeedback[]>({
-    queryKey: ["/api/customer-feedback", user?.id],
+    queryKey: ["/api/customer-feedback"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<DbClient[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<DbJob[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: typeof formData) => apiRequest("POST", "/api/customer-feedback", { 
       ...data, 
-      userId: user?.id,
       rating: parseInt(data.rating),
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customer-feedback", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customer-feedback"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Feedback recorded" });
@@ -88,7 +87,7 @@ export default function CustomerFeedback() {
       rating: parseInt(data.rating),
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customer-feedback", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customer-feedback"] });
       setIsDialogOpen(false);
       setEditingFeedback(null);
       resetForm();
@@ -99,7 +98,7 @@ export default function CustomerFeedback() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/customer-feedback/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customer-feedback", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customer-feedback"] });
       toast({ title: "Feedback deleted" });
     },
   });

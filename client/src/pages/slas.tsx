@@ -60,24 +60,23 @@ export default function SLAs() {
   });
 
   const { data: slas = [], isLoading } = useQuery<DbSLA[]>({
-    queryKey: ["/api/slas", user?.id],
+    queryKey: ["/api/slas"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<DbClient[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: contracts = [] } = useQuery<DbContract[]>({
-    queryKey: ["/api/contracts", user?.id],
+    queryKey: ["/api/contracts"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: typeof formData) => apiRequest("POST", "/api/slas", { 
       ...data, 
-      userId: user?.id,
       responseTimeHours: parseInt(data.responseTimeHours),
       resolutionTimeHours: data.resolutionTimeHours ? parseInt(data.resolutionTimeHours) : null,
       escalationLevel1Hours: data.escalationLevel1Hours ? parseInt(data.escalationLevel1Hours) : null,
@@ -86,7 +85,7 @@ export default function SLAs() {
       penaltyAmount: data.penaltyAmount ? parseFloat(data.penaltyAmount) : null,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/slas", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/slas"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "SLA created" });
@@ -104,7 +103,7 @@ export default function SLAs() {
       penaltyAmount: data.penaltyAmount ? parseFloat(data.penaltyAmount) : null,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/slas", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/slas"] });
       setIsDialogOpen(false);
       setEditingSLA(null);
       resetForm();
@@ -115,7 +114,7 @@ export default function SLAs() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/slas/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/slas", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/slas"] });
       toast({ title: "SLA deleted" });
     },
   });

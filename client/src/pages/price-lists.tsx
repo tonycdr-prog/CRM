@@ -55,7 +55,7 @@ export default function PriceLists() {
   });
 
   const { data: items = [], isLoading } = useQuery<DbPriceList[]>({
-    queryKey: ["/api/price-lists", user?.id],
+    queryKey: ["/api/price-lists"],
     enabled: !!user?.id,
   });
 
@@ -63,7 +63,6 @@ export default function PriceLists() {
     mutationFn: (data: typeof formData) => {
       const payload = {
         ...data,
-        userId: user?.id,
         costPrice: data.costPrice ? parseFloat(data.costPrice) : null,
         sellPrice: parseFloat(data.sellPrice),
         marginPercent: data.marginPercent ? parseFloat(data.marginPercent) : null,
@@ -75,7 +74,7 @@ export default function PriceLists() {
       return apiRequest("POST", "/api/price-lists", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/price-lists", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/price-lists"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Price list item created" });
@@ -97,7 +96,7 @@ export default function PriceLists() {
       return apiRequest("PATCH", `/api/price-lists/${id}`, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/price-lists", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/price-lists"] });
       setIsDialogOpen(false);
       setEditingItem(null);
       resetForm();
@@ -108,7 +107,7 @@ export default function PriceLists() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/price-lists/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/price-lists", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/price-lists"] });
       toast({ title: "Price list item deleted" });
     },
   });

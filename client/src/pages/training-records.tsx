@@ -39,20 +39,19 @@ export default function TrainingRecordsPage() {
   });
 
   const { data: trainingRecords = [], isLoading } = useQuery<DbTrainingRecord[]>({
-    queryKey: ["/api/training-records", user?.id],
+    queryKey: ["/api/training-records"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/training-records", { 
       ...data, 
-      userId: user?.id,
       score: data.score ? parseFloat(data.score) : null,
       passingScore: data.passingScore ? parseFloat(data.passingScore) : null,
       cost: data.cost ? parseFloat(data.cost) : null,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/training-records", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/training-records"] });
       toast({ title: "Training record created successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -68,7 +67,7 @@ export default function TrainingRecordsPage() {
       cost: data.cost ? parseFloat(data.cost) : null,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/training-records", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/training-records"] });
       toast({ title: "Training record updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -79,7 +78,7 @@ export default function TrainingRecordsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/training-records/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/training-records", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/training-records"] });
       toast({ title: "Training record deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete training record", variant: "destructive" }),

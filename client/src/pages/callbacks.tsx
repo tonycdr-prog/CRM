@@ -39,24 +39,24 @@ export default function CallbacksPage() {
   });
 
   const { data: callbacks = [], isLoading } = useQuery<DbCallback[]>({
-    queryKey: ["/api/callbacks", user?.id],
+    queryKey: ["/api/callbacks"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<DbClient[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<DbJob[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/callbacks", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/callbacks", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/callbacks", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/callbacks"] });
       toast({ title: "Callback scheduled successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -67,7 +67,7 @@ export default function CallbacksPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData }) => apiRequest("PATCH", `/api/callbacks/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/callbacks", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/callbacks"] });
       toast({ title: "Callback updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -78,7 +78,7 @@ export default function CallbacksPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/callbacks/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/callbacks", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/callbacks"] });
       toast({ title: "Callback deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete callback", variant: "destructive" }),

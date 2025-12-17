@@ -39,14 +39,14 @@ export default function SuppliersPage() {
   });
 
   const { data: suppliers = [], isLoading } = useQuery<DbSupplier[]>({
-    queryKey: ["/api/suppliers", user?.id],
+    queryKey: ["/api/suppliers"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/suppliers", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/suppliers", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/suppliers", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
       toast({ title: "Supplier created successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -57,7 +57,7 @@ export default function SuppliersPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData }) => apiRequest("PATCH", `/api/suppliers/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/suppliers", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
       toast({ title: "Supplier updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -68,7 +68,7 @@ export default function SuppliersPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/suppliers/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/suppliers", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
       toast({ title: "Supplier deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete supplier", variant: "destructive" }),

@@ -175,7 +175,7 @@ export default function SiteDetail() {
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 

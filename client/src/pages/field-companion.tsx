@@ -69,12 +69,12 @@ export default function FieldCompanion() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<JobWithSite[]>({
-    queryKey: ["/api/jobs-with-sites", user?.id],
+    queryKey: ["/api/jobs-with-sites"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 

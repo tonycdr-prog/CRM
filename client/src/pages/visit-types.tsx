@@ -426,17 +426,17 @@ export default function VisitTypes() {
   });
 
   const { data: visitTypes = [], isLoading: loadingVisitTypes } = useQuery<DbVisitType[]>({
-    queryKey: ["/api/visit-types", userId],
+    queryKey: ["/api/visit-types"],
   });
 
   const { data: serviceTemplates = [], isLoading: loadingTemplates } = useQuery<DbServiceTemplate[]>({
-    queryKey: ["/api/service-templates", userId],
+    queryKey: ["/api/service-templates"],
   });
 
   const createVisitTypeMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/visit-types", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/visit-types", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visit-types"] });
       toast({ title: "Visit type created successfully" });
       setDialogOpen(false);
       visitTypeForm.reset();
@@ -449,7 +449,7 @@ export default function VisitTypes() {
   const updateVisitTypeMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/visit-types/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/visit-types", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visit-types"] });
       toast({ title: "Visit type updated successfully" });
       setDialogOpen(false);
       visitTypeForm.reset();
@@ -463,7 +463,7 @@ export default function VisitTypes() {
   const deleteVisitTypeMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/visit-types/${id}`, undefined),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/visit-types", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visit-types"] });
       toast({ title: "Visit type deleted successfully" });
     },
     onError: () => {
@@ -474,7 +474,7 @@ export default function VisitTypes() {
   const createTemplateMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/service-templates", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/service-templates", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/service-templates"] });
       toast({ title: "Service template created successfully" });
       setTemplateDialogOpen(false);
       templateForm.reset();
@@ -487,7 +487,7 @@ export default function VisitTypes() {
   const updateTemplateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/service-templates/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/service-templates", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/service-templates"] });
       toast({ title: "Service template updated successfully" });
       setTemplateDialogOpen(false);
       templateForm.reset();
@@ -501,7 +501,7 @@ export default function VisitTypes() {
   const deleteTemplateMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/service-templates/${id}`, undefined),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/service-templates", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/service-templates"] });
       toast({ title: "Service template deleted successfully" });
     },
     onError: () => {

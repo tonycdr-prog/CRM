@@ -85,12 +85,12 @@ export default function Expenses() {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const { data: expenses = [], isLoading } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses", user?.id],
+    queryKey: ["/api/expenses"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
@@ -99,7 +99,7 @@ export default function Expenses() {
       return apiRequest("POST", "/api/expenses", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       setIsCreateDialogOpen(false);
       toast({ title: "Expense created successfully" });
     },
@@ -113,7 +113,7 @@ export default function Expenses() {
       return apiRequest("DELETE", `/api/expenses/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       toast({ title: "Expense deleted successfully" });
     },
     onError: () => {

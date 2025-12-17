@@ -41,24 +41,24 @@ export default function MileageClaimsPage() {
   });
 
   const { data: claims = [], isLoading } = useQuery<DbMileageClaim[]>({
-    queryKey: ["/api/mileage-claims", user?.id],
+    queryKey: ["/api/mileage-claims"],
     enabled: !!user?.id,
   });
 
   const { data: vehicles = [] } = useQuery<DbVehicle[]>({
-    queryKey: ["/api/vehicles", user?.id],
+    queryKey: ["/api/vehicles"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<DbJob[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData & { totalAmount: number }) => apiRequest("POST", "/api/mileage-claims", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData & { totalAmount: number }) => apiRequest("POST", "/api/mileage-claims", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mileage-claims", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mileage-claims"] });
       toast({ title: "Mileage claim created successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -69,7 +69,7 @@ export default function MileageClaimsPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData & { totalAmount: number } }) => apiRequest("PATCH", `/api/mileage-claims/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mileage-claims", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mileage-claims"] });
       toast({ title: "Mileage claim updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -80,7 +80,7 @@ export default function MileageClaimsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/mileage-claims/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mileage-claims", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mileage-claims"] });
       toast({ title: "Mileage claim deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete mileage claim", variant: "destructive" }),

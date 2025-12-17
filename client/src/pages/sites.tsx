@@ -169,18 +169,18 @@ export default function Sites() {
   };
 
   const { data: sites = [], isLoading } = useQuery<Site[]>({
-    queryKey: ["/api/sites", user?.id],
+    queryKey: ["/api/sites"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const createSiteMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return apiRequest("POST", "/api/sites", { ...data, userId: user?.id });
+      return apiRequest("POST", "/api/sites", { ...data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sites"] });

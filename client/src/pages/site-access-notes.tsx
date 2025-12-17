@@ -51,19 +51,19 @@ export default function SiteAccessNotes() {
   });
 
   const { data: notes = [], isLoading } = useQuery<DbSiteAccessNote[]>({
-    queryKey: ["/api/site-access-notes", user?.id],
+    queryKey: ["/api/site-access-notes"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<DbClient[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/site-access-notes", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/site-access-notes", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-access-notes", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-access-notes"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Site access note created" });
@@ -73,7 +73,7 @@ export default function SiteAccessNotes() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData }) => apiRequest("PATCH", `/api/site-access-notes/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-access-notes", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-access-notes"] });
       setIsDialogOpen(false);
       setEditingNote(null);
       resetForm();
@@ -84,7 +84,7 @@ export default function SiteAccessNotes() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/site-access-notes/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-access-notes", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-access-notes"] });
       toast({ title: "Site access note deleted" });
     },
   });

@@ -100,34 +100,34 @@ export default function Profitability() {
   const { user } = useAuth();
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices", user?.id],
+    queryKey: ["/api/invoices"],
     enabled: !!user?.id,
   });
 
   const { data: expenses = [] } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses", user?.id],
+    queryKey: ["/api/expenses"],
     enabled: !!user?.id,
   });
 
   const { data: timesheets = [] } = useQuery<Timesheet[]>({
-    queryKey: ["/api/timesheets", user?.id],
+    queryKey: ["/api/timesheets"],
     enabled: !!user?.id,
   });
 
   const { data: partsUsed = [] } = useQuery<PartUsed[]>({
-    queryKey: ["/api/job-parts-used", user?.id],
+    queryKey: ["/api/job-parts-used"],
     queryFn: async () => {
-      const res = await fetch(`/api/job-parts-used/${user?.id}`);
+      const res = await fetch("/api/job-parts-used");
       if (!res.ok) throw new Error("Failed to fetch parts");
       return res.json();
     },

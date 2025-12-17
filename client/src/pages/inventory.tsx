@@ -37,19 +37,19 @@ export default function InventoryPage() {
   });
 
   const { data: inventory = [], isLoading } = useQuery<DbInventory[]>({
-    queryKey: ["/api/inventory", user?.id],
+    queryKey: ["/api/inventory"],
     enabled: !!user?.id,
   });
 
   const { data: suppliers = [] } = useQuery<DbSupplier[]>({
-    queryKey: ["/api/suppliers", user?.id],
+    queryKey: ["/api/suppliers"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/inventory", { ...data, userId: user?.id }),
+    mutationFn: (data: typeof formData) => apiRequest("POST", "/api/inventory", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({ title: "Inventory item created successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -60,7 +60,7 @@ export default function InventoryPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: typeof formData }) => apiRequest("PATCH", `/api/inventory/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({ title: "Inventory item updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -71,7 +71,7 @@ export default function InventoryPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/inventory/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({ title: "Inventory item deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete inventory item", variant: "destructive" }),

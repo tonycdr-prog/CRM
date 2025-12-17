@@ -128,7 +128,7 @@ export default function GoldenThread() {
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState("");
 
   const { data: formSubmissions = [], isLoading: isLoadingSubmissions } = useQuery<DbFormSubmission[]>({
-    queryKey: [`/api/form-submissions/${user?.id}`],
+    queryKey: ["/api/form-submissions"],
     enabled: !!user?.id,
   });
   

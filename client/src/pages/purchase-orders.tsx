@@ -44,12 +44,12 @@ export default function PurchaseOrdersPage() {
   const [newItem, setNewItem] = useState({ description: "", partNumber: "", quantity: 1, unitPrice: 0 });
 
   const { data: purchaseOrders = [], isLoading } = useQuery<DbPurchaseOrder[]>({
-    queryKey: ["/api/purchase-orders", user?.id],
+    queryKey: ["/api/purchase-orders"],
     enabled: !!user?.id,
   });
 
   const { data: suppliers = [] } = useQuery<DbSupplier[]>({
-    queryKey: ["/api/suppliers", user?.id],
+    queryKey: ["/api/suppliers"],
     enabled: !!user?.id,
   });
 
@@ -63,10 +63,10 @@ export default function PurchaseOrdersPage() {
   const createMutation = useMutation({
     mutationFn: (data: any) => {
       const { subtotal, vatAmount, totalAmount } = calculateTotals(data.items, data.vatRate);
-      return apiRequest("POST", "/api/purchase-orders", { ...data, userId: user?.id, subtotal, vatAmount, totalAmount });
+      return apiRequest("POST", "/api/purchase-orders", { ...data, subtotal, vatAmount, totalAmount });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
       toast({ title: "Purchase order created successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -80,7 +80,7 @@ export default function PurchaseOrdersPage() {
       return apiRequest("PATCH", `/api/purchase-orders/${id}`, { ...data, subtotal, vatAmount, totalAmount });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
       toast({ title: "Purchase order updated successfully" });
       resetForm();
       setIsDialogOpen(false);
@@ -91,7 +91,7 @@ export default function PurchaseOrdersPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/purchase-orders/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
       toast({ title: "Purchase order deleted successfully" });
     },
     onError: () => toast({ title: "Failed to delete purchase order", variant: "destructive" }),

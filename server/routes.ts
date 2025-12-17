@@ -1,7 +1,9 @@
 import type { Express } from "express";
+import { Router } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
 import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS } from "@shared/schema";
 import { seedDatabase } from "./seed";
@@ -30,8 +32,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // ============================================
-  // SEED DATABASE ENDPOINT (Development only)
+  // PUBLIC ROUTES (No authentication required)
   // ============================================
+
+  // SEED DATABASE ENDPOINT (Development only)
   app.post("/api/seed", async (req, res) => {
     if (process.env.NODE_ENV === "production") {
       return res.status(403).json({ success: false, message: "Seeding is disabled in production" });
@@ -45,9 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============================================
   // PDF DOWNLOAD ENDPOINT
-  // ============================================
   app.get("/api/downloads/capabilities-pdf", (req, res) => {
     const pdfPath = path.join(process.cwd(), "APP_CAPABILITIES.pdf");
     if (fs.existsSync(pdfPath)) {
@@ -59,395 +61,275 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // AUTHENTICATED API ROUTER
+  // ============================================
+  const apiRouter = Router();
+
   // Get current authenticated user
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  apiRouter.get("/auth/user", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    res.json(user);
+  }));
 
   // ============================================
   // SYNC API ROUTES
   // ============================================
   
   // Get all data for a user (for initial sync)
-  app.get("/api/sync/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const [projects, tests, dampers, templates, stairwellTests, testPacks, sessions, checklists] = await Promise.all([
-        storage.getProjects(userId),
-        storage.getTests(userId),
-        storage.getDampers(userId),
-        storage.getDamperTemplates(userId),
-        storage.getStairwellTests(userId),
-        storage.getTestPacks(userId),
-        storage.getTestSessions(userId),
-        storage.getComplianceChecklists(userId),
-      ]);
-      
-      res.json({
-        projects,
-        tests,
-        dampers,
-        damperTemplates: templates,
-        stairwellTests,
-        testPacks,
-        testSessions: sessions,
-        complianceChecklists: checklists,
-        lastSync: Date.now(),
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch sync data" });
-    }
-  });
+  apiRouter.get("/sync", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const [projects, tests, dampers, templates, stairwellTests, testPacks, sessions, checklists] = await Promise.all([
+      storage.getProjects(userId),
+      storage.getTests(userId),
+      storage.getDampers(userId),
+      storage.getDamperTemplates(userId),
+      storage.getStairwellTests(userId),
+      storage.getTestPacks(userId),
+      storage.getTestSessions(userId),
+      storage.getComplianceChecklists(userId),
+    ]);
+    
+    res.json({
+      projects,
+      tests,
+      dampers,
+      damperTemplates: templates,
+      stairwellTests,
+      testPacks,
+      testSessions: sessions,
+      complianceChecklists: checklists,
+      lastSync: Date.now(),
+    });
+  }));
 
   // Sync data from client
-  app.post("/api/sync/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const result = await storage.syncData(userId, req.body);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to sync data" });
-    }
-  });
+  apiRouter.post("/sync", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const result = await storage.syncData(userId, req.body);
+    res.json(result);
+  }));
 
   // Get sync status
-  app.get("/api/sync/:userId/status", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const status = await storage.getSyncStatus(userId);
-      res.json(status);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get sync status" });
-    }
-  });
+  apiRouter.get("/sync/status", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const status = await storage.getSyncStatus(userId);
+    res.json(status);
+  }));
 
   // ============================================
   // PROJECT ROUTES
   // ============================================
   
-  app.get("/api/projects/:userId", async (req, res) => {
-    try {
-      const projects = await storage.getProjects(req.params.userId);
-      res.json(projects);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch projects" });
-    }
-  });
+  apiRouter.get("/projects", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const projects = await storage.getProjects(userId);
+    res.json(projects);
+  }));
 
-  app.post("/api/projects", async (req, res) => {
-    try {
-      const project = await storage.createProject(req.body);
-      res.json(project);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create project" });
-    }
-  });
+  apiRouter.post("/projects", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const project = await storage.createProject({ ...req.body, userId });
+    res.json(project);
+  }));
 
-  app.patch("/api/projects/:id", async (req, res) => {
-    try {
-      const project = await storage.updateProject(req.params.id, req.body);
-      res.json(project);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update project" });
-    }
-  });
+  apiRouter.patch("/projects/:id", asyncHandler(async (req, res) => {
+    const project = await storage.updateProject(req.params.id, req.body);
+    res.json(project);
+  }));
 
-  app.delete("/api/projects/:id", async (req, res) => {
-    try {
-      await storage.deleteProject(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete project" });
-    }
-  });
+  apiRouter.delete("/projects/:id", asyncHandler(async (req, res) => {
+    await storage.deleteProject(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // TEST ROUTES
   // ============================================
   
-  app.get("/api/tests/:userId", async (req, res) => {
-    try {
-      const tests = await storage.getTests(req.params.userId);
-      res.json(tests);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch tests" });
-    }
-  });
+  apiRouter.get("/tests", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const tests = await storage.getTests(userId);
+    res.json(tests);
+  }));
 
-  app.post("/api/tests", async (req, res) => {
-    try {
-      const test = await storage.createTest(req.body);
-      res.json(test);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create test" });
-    }
-  });
+  apiRouter.post("/tests", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const test = await storage.createTest({ ...req.body, userId });
+    res.json(test);
+  }));
 
-  app.patch("/api/tests/:id", async (req, res) => {
-    try {
-      const test = await storage.updateTest(req.params.id, req.body);
-      res.json(test);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update test" });
-    }
-  });
+  apiRouter.patch("/tests/:id", asyncHandler(async (req, res) => {
+    const test = await storage.updateTest(req.params.id, req.body);
+    res.json(test);
+  }));
 
-  app.delete("/api/tests/:id", async (req, res) => {
-    try {
-      await storage.deleteTest(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete test" });
-    }
-  });
+  apiRouter.delete("/tests/:id", asyncHandler(async (req, res) => {
+    await storage.deleteTest(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // TEST PACK ROUTES
   // ============================================
   
-  app.get("/api/test-packs/:userId", async (req, res) => {
-    try {
-      const packs = await storage.getTestPacks(req.params.userId);
-      res.json(packs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch test packs" });
-    }
-  });
+  apiRouter.get("/test-packs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const packs = await storage.getTestPacks(userId);
+    res.json(packs);
+  }));
 
-  app.post("/api/test-packs", async (req, res) => {
-    try {
-      const pack = await storage.createTestPack(req.body);
-      res.json(pack);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create test pack" });
-    }
-  });
+  apiRouter.post("/test-packs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const pack = await storage.createTestPack({ ...req.body, userId });
+    res.json(pack);
+  }));
 
-  app.delete("/api/test-packs/:id", async (req, res) => {
-    try {
-      await storage.deleteTestPack(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete test pack" });
-    }
-  });
+  apiRouter.delete("/test-packs/:id", asyncHandler(async (req, res) => {
+    await storage.deleteTestPack(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // TEST SESSION ROUTES (Floor Sequencing)
   // ============================================
   
-  app.get("/api/test-sessions/:userId", async (req, res) => {
-    try {
-      const sessions = await storage.getTestSessions(req.params.userId);
-      res.json(sessions);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch test sessions" });
-    }
-  });
+  apiRouter.get("/test-sessions", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const sessions = await storage.getTestSessions(userId);
+    res.json(sessions);
+  }));
 
-  app.get("/api/test-sessions/detail/:id", async (req, res) => {
-    try {
-      const session = await storage.getTestSession(req.params.id);
-      res.json(session);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch test session" });
-    }
-  });
+  apiRouter.get("/test-sessions/detail/:id", asyncHandler(async (req, res) => {
+    const session = await storage.getTestSession(req.params.id);
+    res.json(session);
+  }));
 
-  app.post("/api/test-sessions", async (req, res) => {
-    try {
-      const session = await storage.createTestSession(req.body);
-      res.json(session);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create test session" });
-    }
-  });
+  apiRouter.post("/test-sessions", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const session = await storage.createTestSession({ ...req.body, userId });
+    res.json(session);
+  }));
 
-  app.patch("/api/test-sessions/:id", async (req, res) => {
-    try {
-      const session = await storage.updateTestSession(req.params.id, req.body);
-      res.json(session);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update test session" });
-    }
-  });
+  apiRouter.patch("/test-sessions/:id", asyncHandler(async (req, res) => {
+    const session = await storage.updateTestSession(req.params.id, req.body);
+    res.json(session);
+  }));
 
-  app.delete("/api/test-sessions/:id", async (req, res) => {
-    try {
-      await storage.deleteTestSession(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete test session" });
-    }
-  });
+  apiRouter.delete("/test-sessions/:id", asyncHandler(async (req, res) => {
+    await storage.deleteTestSession(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // COMPLIANCE CHECKLIST ROUTES
   // ============================================
   
-  app.get("/api/compliance-checklists/:userId", async (req, res) => {
-    try {
-      const checklists = await storage.getComplianceChecklists(req.params.userId);
-      res.json(checklists);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch compliance checklists" });
-    }
-  });
+  apiRouter.get("/compliance-checklists", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const checklists = await storage.getComplianceChecklists(userId);
+    res.json(checklists);
+  }));
 
-  app.post("/api/compliance-checklists", async (req, res) => {
-    try {
-      const checklist = await storage.createComplianceChecklist(req.body);
-      res.json(checklist);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create compliance checklist" });
-    }
-  });
+  apiRouter.post("/compliance-checklists", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const checklist = await storage.createComplianceChecklist({ ...req.body, userId });
+    res.json(checklist);
+  }));
 
-  app.patch("/api/compliance-checklists/:id", async (req, res) => {
-    try {
-      const checklist = await storage.updateComplianceChecklist(req.params.id, req.body);
-      res.json(checklist);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update compliance checklist" });
-    }
-  });
+  apiRouter.patch("/compliance-checklists/:id", asyncHandler(async (req, res) => {
+    const checklist = await storage.updateComplianceChecklist(req.params.id, req.body);
+    res.json(checklist);
+  }));
 
   // ============================================
   // DAMPER TEMPLATE ROUTES
   // ============================================
   
-  app.get("/api/damper-templates/:userId", async (req, res) => {
-    try {
-      const templates = await storage.getDamperTemplates(req.params.userId);
-      res.json(templates);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch damper templates" });
-    }
-  });
+  apiRouter.get("/damper-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const templates = await storage.getDamperTemplates(userId);
+    res.json(templates);
+  }));
 
-  app.post("/api/damper-templates", async (req, res) => {
-    try {
-      const template = await storage.createDamperTemplate(req.body);
-      res.json(template);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create damper template" });
-    }
-  });
+  apiRouter.post("/damper-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const template = await storage.createDamperTemplate({ ...req.body, userId });
+    res.json(template);
+  }));
 
-  app.delete("/api/damper-templates/:id", async (req, res) => {
-    try {
-      await storage.deleteDamperTemplate(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete damper template" });
-    }
-  });
+  apiRouter.delete("/damper-templates/:id", asyncHandler(async (req, res) => {
+    await storage.deleteDamperTemplate(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // STAIRWELL TEST ROUTES
   // ============================================
   
-  app.get("/api/stairwell-tests/:userId", async (req, res) => {
-    try {
-      const tests = await storage.getStairwellTests(req.params.userId);
-      res.json(tests);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch stairwell tests" });
-    }
-  });
+  apiRouter.get("/stairwell-tests", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const tests = await storage.getStairwellTests(userId);
+    res.json(tests);
+  }));
 
-  app.post("/api/stairwell-tests", async (req, res) => {
-    try {
-      const test = await storage.createStairwellTest(req.body);
-      res.json(test);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create stairwell test" });
-    }
-  });
+  apiRouter.post("/stairwell-tests", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const test = await storage.createStairwellTest({ ...req.body, userId });
+    res.json(test);
+  }));
 
-  app.delete("/api/stairwell-tests/:id", async (req, res) => {
-    try {
-      await storage.deleteStairwellTest(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete stairwell test" });
-    }
-  });
+  apiRouter.delete("/stairwell-tests/:id", asyncHandler(async (req, res) => {
+    await storage.deleteStairwellTest(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - CLIENTS
   // ============================================
 
-  app.get("/api/clients/:userId", async (req, res) => {
-    try {
-      const clients = await storage.getClients(req.params.userId);
-      res.json(clients);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch clients" });
-    }
-  });
+  apiRouter.get("/clients", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const clients = await storage.getClients(userId);
+    res.json(clients);
+  }));
 
-  app.get("/api/clients/detail/:id", async (req, res) => {
-    try {
-      const client = await storage.getClient(req.params.id);
-      res.json(client);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch client" });
-    }
-  });
+  apiRouter.get("/clients/detail/:id", asyncHandler(async (req, res) => {
+    const client = await storage.getClient(req.params.id);
+    res.json(client);
+  }));
 
-  app.post("/api/clients", async (req, res) => {
-    try {
-      const client = await storage.createClient(req.body);
-      res.json(client);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create client" });
-    }
-  });
+  apiRouter.post("/clients", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const client = await storage.createClient({ ...req.body, userId });
+    res.json(client);
+  }));
 
-  app.patch("/api/clients/:id", async (req, res) => {
-    try {
-      const client = await storage.updateClient(req.params.id, req.body);
-      res.json(client);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update client" });
-    }
-  });
+  apiRouter.patch("/clients/:id", asyncHandler(async (req, res) => {
+    const client = await storage.updateClient(req.params.id, req.body);
+    res.json(client);
+  }));
 
-  app.delete("/api/clients/:id", async (req, res) => {
-    try {
-      await storage.deleteClient(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete client" });
-    }
-  });
+  apiRouter.delete("/clients/:id", asyncHandler(async (req, res) => {
+    await storage.deleteClient(req.params.id);
+    res.json({ success: true });
+  }));
+
+  // Generate portal token for client (requires authentication - on apiRouter)
+  apiRouter.post("/clients/:id/portal-token", asyncHandler(async (req, res) => {
+    const { nanoid } = await import("nanoid");
+    const token = nanoid(32);
+    const client = await storage.updateClient(req.params.id, {
+      portalToken: token,
+      portalEnabled: true
+    });
+    res.json({ token, portalLink: `/client-portal/${token}` });
+  }));
 
   // ============================================
   // CLIENT PORTAL ROUTES (Public access via token)
   // ============================================
-
-  // Generate portal token for client (requires authentication)
-  app.post("/api/clients/:id/portal-token", isAuthenticated, async (req, res) => {
-    try {
-      const { nanoid } = await import("nanoid");
-      const token = nanoid(32);
-      const client = await storage.updateClient(req.params.id, {
-        portalToken: token,
-        portalEnabled: true
-      });
-      res.json({ token, portalLink: `/client-portal/${token}` });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to generate portal token" });
-    }
-  });
 
   // Get client data by portal token (public route)
   app.get("/api/portal/:token", async (req, res) => {
@@ -543,715 +425,470 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // BUSINESS MANAGEMENT - CUSTOMER CONTACTS
   // ============================================
 
-  app.get("/api/customer-contacts/:clientId", async (req, res) => {
-    try {
-      const contacts = await storage.getCustomerContacts(req.params.clientId);
-      res.json(contacts);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch customer contacts" });
-    }
-  });
+  apiRouter.get("/customer-contacts/:clientId", asyncHandler(async (req, res) => {
+    const contacts = await storage.getCustomerContacts(req.params.clientId);
+    res.json(contacts);
+  }));
 
-  app.post("/api/customer-contacts", async (req, res) => {
-    try {
-      const contact = await storage.createCustomerContact(req.body);
-      res.json(contact);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create customer contact" });
-    }
-  });
+  apiRouter.post("/customer-contacts", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const contact = await storage.createCustomerContact({ ...req.body, userId });
+    res.json(contact);
+  }));
 
-  app.patch("/api/customer-contacts/:id", async (req, res) => {
-    try {
-      const contact = await storage.updateCustomerContact(req.params.id, req.body);
-      res.json(contact);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update customer contact" });
-    }
-  });
+  apiRouter.patch("/customer-contacts/:id", asyncHandler(async (req, res) => {
+    const contact = await storage.updateCustomerContact(req.params.id, req.body);
+    res.json(contact);
+  }));
 
-  app.delete("/api/customer-contacts/:id", async (req, res) => {
-    try {
-      await storage.deleteCustomerContact(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete customer contact" });
-    }
-  });
+  apiRouter.delete("/customer-contacts/:id", asyncHandler(async (req, res) => {
+    await storage.deleteCustomerContact(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - CUSTOMER ADDRESSES
   // ============================================
 
-  app.get("/api/customer-addresses/:clientId", async (req, res) => {
-    try {
-      const addresses = await storage.getCustomerAddresses(req.params.clientId);
-      res.json(addresses);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch customer addresses" });
-    }
-  });
+  apiRouter.get("/customer-addresses/:clientId", asyncHandler(async (req, res) => {
+    const addresses = await storage.getCustomerAddresses(req.params.clientId);
+    res.json(addresses);
+  }));
 
-  app.post("/api/customer-addresses", async (req, res) => {
-    try {
-      const address = await storage.createCustomerAddress(req.body);
-      res.json(address);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create customer address" });
-    }
-  });
+  apiRouter.post("/customer-addresses", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const address = await storage.createCustomerAddress({ ...req.body, userId });
+    res.json(address);
+  }));
 
-  app.patch("/api/customer-addresses/:id", async (req, res) => {
-    try {
-      const address = await storage.updateCustomerAddress(req.params.id, req.body);
-      res.json(address);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update customer address" });
-    }
-  });
+  apiRouter.patch("/customer-addresses/:id", asyncHandler(async (req, res) => {
+    const address = await storage.updateCustomerAddress(req.params.id, req.body);
+    res.json(address);
+  }));
 
-  app.delete("/api/customer-addresses/:id", async (req, res) => {
-    try {
-      await storage.deleteCustomerAddress(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete customer address" });
-    }
-  });
+  apiRouter.delete("/customer-addresses/:id", asyncHandler(async (req, res) => {
+    await storage.deleteCustomerAddress(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - CONTRACTS
   // ============================================
 
-  app.get("/api/contracts/:userId", async (req, res) => {
-    try {
-      const contracts = await storage.getContracts(req.params.userId);
-      res.json(contracts);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch contracts" });
-    }
-  });
+  apiRouter.get("/contracts", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const contracts = await storage.getContracts(userId);
+    res.json(contracts);
+  }));
 
-  app.get("/api/contracts/detail/:id", async (req, res) => {
-    try {
-      const contract = await storage.getContract(req.params.id);
-      res.json(contract);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch contract" });
-    }
-  });
+  apiRouter.get("/contracts/detail/:id", asyncHandler(async (req, res) => {
+    const contract = await storage.getContract(req.params.id);
+    res.json(contract);
+  }));
 
-  app.post("/api/contracts", async (req, res) => {
-    try {
-      const contract = await storage.createContract(req.body);
-      res.json(contract);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create contract" });
-    }
-  });
+  apiRouter.post("/contracts", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const contract = await storage.createContract({ ...req.body, userId });
+    res.json(contract);
+  }));
 
-  app.patch("/api/contracts/:id", async (req, res) => {
-    try {
-      const contract = await storage.updateContract(req.params.id, req.body);
-      res.json(contract);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update contract" });
-    }
-  });
+  apiRouter.patch("/contracts/:id", asyncHandler(async (req, res) => {
+    const contract = await storage.updateContract(req.params.id, req.body);
+    res.json(contract);
+  }));
 
-  app.delete("/api/contracts/:id", async (req, res) => {
-    try {
-      await storage.deleteContract(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete contract" });
-    }
-  });
+  apiRouter.delete("/contracts/:id", asyncHandler(async (req, res) => {
+    await storage.deleteContract(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - JOBS
   // ============================================
 
-  app.get("/api/jobs/:userId", async (req, res) => {
-    try {
-      const jobs = await storage.getJobs(req.params.userId);
-      res.json(jobs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch jobs" });
-    }
-  });
+  apiRouter.get("/jobs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const jobs = await storage.getJobs(userId);
+    res.json(jobs);
+  }));
 
-  // Enhanced jobs endpoint with site info for field companion
-  app.get("/api/jobs-with-sites/:userId", async (req, res) => {
-    try {
-      const jobs = await storage.getJobs(req.params.userId);
-      const sites = await storage.getSites(req.params.userId);
-      
-      // Create a map of sites by ID for quick lookup
-      const siteMap = new Map(sites.map(s => [s.id, s]));
-      
-      // Enhance jobs with site data
-      const jobsWithSites = await Promise.all(jobs.map(async (job) => {
-        const site = job.siteId ? siteMap.get(job.siteId) : null;
-        const jobAssets = await storage.getJobSiteAssets(job.id);
-        return {
-          ...job,
-          site: site ? {
-            id: site.id,
-            name: site.name,
-            address: site.address,
-            city: site.city,
-            postcode: site.postcode,
-            systemType: site.systemType,
-            accessNotes: site.accessNotes,
-            parkingInfo: site.parkingInfo,
-            siteContactName: site.siteContactName,
-            siteContactPhone: site.siteContactPhone,
-          } : null,
-          assetCount: jobAssets.length,
-          completedAssetCount: jobAssets.filter(a => a.status === "completed").length,
-        };
-      }));
-      
-      res.json(jobsWithSites);
-    } catch (error) {
-      console.error("Error fetching jobs with sites:", error);
-      res.status(500).json({ error: "Failed to fetch jobs with sites" });
-    }
-  });
-
-  app.get("/api/jobs/detail/:id", async (req, res) => {
-    try {
-      const job = await storage.getJob(req.params.id);
-      res.json(job);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job" });
-    }
-  });
-
-  // Enhanced job detail with site and asset info for field companion
-  app.get("/api/jobs/detail-with-site/:id", async (req, res) => {
-    try {
-      const job = await storage.getJob(req.params.id);
-      if (!job) {
-        return res.status(404).json({ error: "Job not found" });
-      }
-      
-      const site = job.siteId ? await storage.getSite(job.siteId) : null;
-      const jobAssets = await storage.getJobSiteAssetsWithDetails(job.id);
-      const allSiteAssets = job.siteId ? await storage.getSiteAssetsBySite(job.siteId) : [];
-      
-      res.json({
+  apiRouter.get("/jobs-with-sites", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const jobs = await storage.getJobs(userId);
+    const sites = await storage.getSites(userId);
+    
+    const siteMap = new Map(sites.map(s => [s.id, s]));
+    
+    const jobsWithSites = await Promise.all(jobs.map(async (job) => {
+      const site = job.siteId ? siteMap.get(job.siteId) : null;
+      const jobAssets = await storage.getJobSiteAssets(job.id);
+      return {
         ...job,
-        site: site || null,
-        assignedAssets: jobAssets,
-        siteAssets: allSiteAssets,
-      });
-    } catch (error) {
-      console.error("Error fetching job with site:", error);
-      res.status(500).json({ error: "Failed to fetch job details" });
-    }
-  });
+        site: site ? {
+          id: site.id,
+          name: site.name,
+          address: site.address,
+          city: site.city,
+          postcode: site.postcode,
+          systemType: site.systemType,
+          accessNotes: site.accessNotes,
+          parkingInfo: site.parkingInfo,
+          siteContactName: site.siteContactName,
+          siteContactPhone: site.siteContactPhone,
+        } : null,
+        assetCount: jobAssets.length,
+        completedAssetCount: jobAssets.filter(a => a.status === "completed").length,
+      };
+    }));
+    
+    res.json(jobsWithSites);
+  }));
 
-  app.post("/api/jobs", async (req, res) => {
-    try {
-      console.log("Creating job with data:", JSON.stringify(req.body, null, 2));
-      const job = await storage.createJob(req.body);
-      res.json(job);
-    } catch (error) {
-      console.error("Error creating job:", error);
-      res.status(500).json({ error: "Failed to create job" });
-    }
-  });
+  apiRouter.get("/jobs/detail/:id", asyncHandler(async (req, res) => {
+    const job = await storage.getJob(req.params.id);
+    res.json(job);
+  }));
 
-  app.patch("/api/jobs/:id", async (req, res) => {
-    try {
-      const job = await storage.updateJob(req.params.id, req.body);
-      res.json(job);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update job" });
+  apiRouter.get("/jobs/detail-with-site/:id", asyncHandler(async (req, res) => {
+    const job = await storage.getJob(req.params.id);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
     }
-  });
+    
+    const site = job.siteId ? await storage.getSite(job.siteId) : null;
+    const jobAssets = await storage.getJobSiteAssetsWithDetails(job.id);
+    const allSiteAssets = job.siteId ? await storage.getSiteAssetsBySite(job.siteId) : [];
+    
+    res.json({
+      ...job,
+      site: site || null,
+      assignedAssets: jobAssets,
+      siteAssets: allSiteAssets,
+    });
+  }));
 
-  app.delete("/api/jobs/:id", async (req, res) => {
-    try {
-      await storage.deleteJob(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete job" });
-    }
-  });
+  apiRouter.post("/jobs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const job = await storage.createJob({ ...req.body, userId });
+    res.json(job);
+  }));
+
+  apiRouter.patch("/jobs/:id", asyncHandler(async (req, res) => {
+    const job = await storage.updateJob(req.params.id, req.body);
+    res.json(job);
+  }));
+
+  apiRouter.delete("/jobs/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJob(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - QUOTES
   // ============================================
 
-  app.get("/api/quotes/:userId", async (req, res) => {
-    try {
-      const quotes = await storage.getQuotes(req.params.userId);
-      res.json(quotes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch quotes" });
-    }
-  });
+  apiRouter.get("/quotes", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const quotes = await storage.getQuotes(userId);
+    res.json(quotes);
+  }));
 
-  app.get("/api/quotes/detail/:id", async (req, res) => {
-    try {
-      const quote = await storage.getQuote(req.params.id);
-      res.json(quote);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch quote" });
-    }
-  });
+  apiRouter.get("/quotes/detail/:id", asyncHandler(async (req, res) => {
+    const quote = await storage.getQuote(req.params.id);
+    res.json(quote);
+  }));
 
-  app.post("/api/quotes", async (req, res) => {
-    try {
-      const quote = await storage.createQuote(req.body);
-      res.json(quote);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create quote" });
-    }
-  });
+  apiRouter.post("/quotes", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const quote = await storage.createQuote({ ...req.body, userId });
+    res.json(quote);
+  }));
 
-  app.patch("/api/quotes/:id", async (req, res) => {
-    try {
-      const quote = await storage.updateQuote(req.params.id, req.body);
-      res.json(quote);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update quote" });
-    }
-  });
+  apiRouter.patch("/quotes/:id", asyncHandler(async (req, res) => {
+    const quote = await storage.updateQuote(req.params.id, req.body);
+    res.json(quote);
+  }));
 
-  app.delete("/api/quotes/:id", async (req, res) => {
-    try {
-      await storage.deleteQuote(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete quote" });
-    }
-  });
+  apiRouter.delete("/quotes/:id", asyncHandler(async (req, res) => {
+    await storage.deleteQuote(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - INVOICES
   // ============================================
 
-  app.get("/api/invoices/:userId", async (req, res) => {
-    try {
-      const invoices = await storage.getInvoices(req.params.userId);
-      res.json(invoices);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch invoices" });
-    }
-  });
+  apiRouter.get("/invoices", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const invoices = await storage.getInvoices(userId);
+    res.json(invoices);
+  }));
 
-  app.get("/api/invoices/detail/:id", async (req, res) => {
-    try {
-      const invoice = await storage.getInvoice(req.params.id);
-      res.json(invoice);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch invoice" });
-    }
-  });
+  apiRouter.get("/invoices/detail/:id", asyncHandler(async (req, res) => {
+    const invoice = await storage.getInvoice(req.params.id);
+    res.json(invoice);
+  }));
 
-  app.post("/api/invoices", async (req, res) => {
-    try {
-      const invoice = await storage.createInvoice(req.body);
-      res.json(invoice);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create invoice" });
-    }
-  });
+  apiRouter.post("/invoices", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const invoice = await storage.createInvoice({ ...req.body, userId });
+    res.json(invoice);
+  }));
 
-  app.patch("/api/invoices/:id", async (req, res) => {
-    try {
-      const invoice = await storage.updateInvoice(req.params.id, req.body);
-      res.json(invoice);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update invoice" });
-    }
-  });
+  apiRouter.patch("/invoices/:id", asyncHandler(async (req, res) => {
+    const invoice = await storage.updateInvoice(req.params.id, req.body);
+    res.json(invoice);
+  }));
 
-  app.delete("/api/invoices/:id", async (req, res) => {
-    try {
-      await storage.deleteInvoice(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete invoice" });
-    }
-  });
+  apiRouter.delete("/invoices/:id", asyncHandler(async (req, res) => {
+    await storage.deleteInvoice(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - EXPENSES
   // ============================================
 
-  app.get("/api/expenses/:userId", async (req, res) => {
-    try {
-      const expenses = await storage.getExpenses(req.params.userId);
-      res.json(expenses);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch expenses" });
-    }
-  });
+  apiRouter.get("/expenses", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const expenses = await storage.getExpenses(userId);
+    res.json(expenses);
+  }));
 
-  app.post("/api/expenses", async (req, res) => {
-    try {
-      const expense = await storage.createExpense(req.body);
-      res.json(expense);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create expense" });
-    }
-  });
+  apiRouter.post("/expenses", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const expense = await storage.createExpense({ ...req.body, userId });
+    res.json(expense);
+  }));
 
-  app.patch("/api/expenses/:id", async (req, res) => {
-    try {
-      const expense = await storage.updateExpense(req.params.id, req.body);
-      res.json(expense);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update expense" });
-    }
-  });
+  apiRouter.patch("/expenses/:id", asyncHandler(async (req, res) => {
+    const expense = await storage.updateExpense(req.params.id, req.body);
+    res.json(expense);
+  }));
 
-  app.delete("/api/expenses/:id", async (req, res) => {
-    try {
-      await storage.deleteExpense(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete expense" });
-    }
-  });
+  apiRouter.delete("/expenses/:id", asyncHandler(async (req, res) => {
+    await storage.deleteExpense(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - TIMESHEETS
   // ============================================
 
-  app.get("/api/timesheets/:userId", async (req, res) => {
-    try {
-      const timesheets = await storage.getTimesheets(req.params.userId);
-      res.json(timesheets);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch timesheets" });
-    }
-  });
+  apiRouter.get("/timesheets", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const timesheets = await storage.getTimesheets(userId);
+    res.json(timesheets);
+  }));
 
-  app.post("/api/timesheets", async (req, res) => {
-    try {
-      const timesheet = await storage.createTimesheet(req.body);
-      res.json(timesheet);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create timesheet" });
-    }
-  });
+  apiRouter.post("/timesheets", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const timesheet = await storage.createTimesheet({ ...req.body, userId });
+    res.json(timesheet);
+  }));
 
-  app.patch("/api/timesheets/:id", async (req, res) => {
-    try {
-      const timesheet = await storage.updateTimesheet(req.params.id, req.body);
-      res.json(timesheet);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update timesheet" });
-    }
-  });
+  apiRouter.patch("/timesheets/:id", asyncHandler(async (req, res) => {
+    const timesheet = await storage.updateTimesheet(req.params.id, req.body);
+    res.json(timesheet);
+  }));
 
-  app.delete("/api/timesheets/:id", async (req, res) => {
-    try {
-      await storage.deleteTimesheet(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete timesheet" });
-    }
-  });
+  apiRouter.delete("/timesheets/:id", asyncHandler(async (req, res) => {
+    await storage.deleteTimesheet(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - VEHICLES
   // ============================================
 
-  app.get("/api/vehicles/:userId", async (req, res) => {
-    try {
-      const vehicles = await storage.getVehicles(req.params.userId);
-      res.json(vehicles);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch vehicles" });
-    }
-  });
+  apiRouter.get("/vehicles", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const vehicles = await storage.getVehicles(userId);
+    res.json(vehicles);
+  }));
 
-  app.post("/api/vehicles", async (req, res) => {
-    try {
-      const vehicle = await storage.createVehicle(req.body);
-      res.json(vehicle);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create vehicle" });
-    }
-  });
+  apiRouter.post("/vehicles", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const vehicle = await storage.createVehicle({ ...req.body, userId });
+    res.json(vehicle);
+  }));
 
-  app.patch("/api/vehicles/:id", async (req, res) => {
-    try {
-      const vehicle = await storage.updateVehicle(req.params.id, req.body);
-      res.json(vehicle);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update vehicle" });
-    }
-  });
+  apiRouter.patch("/vehicles/:id", asyncHandler(async (req, res) => {
+    const vehicle = await storage.updateVehicle(req.params.id, req.body);
+    res.json(vehicle);
+  }));
 
-  app.delete("/api/vehicles/:id", async (req, res) => {
-    try {
-      await storage.deleteVehicle(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete vehicle" });
-    }
-  });
+  apiRouter.delete("/vehicles/:id", asyncHandler(async (req, res) => {
+    await storage.deleteVehicle(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - VEHICLE BOOKINGS
   // ============================================
 
-  app.get("/api/vehicle-bookings/:userId", async (req, res) => {
-    try {
-      const bookings = await storage.getVehicleBookings(req.params.userId);
-      res.json(bookings);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch vehicle bookings" });
-    }
-  });
+  apiRouter.get("/vehicle-bookings", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const bookings = await storage.getVehicleBookings(userId);
+    res.json(bookings);
+  }));
 
-  app.post("/api/vehicle-bookings", async (req, res) => {
-    try {
-      const booking = await storage.createVehicleBooking(req.body);
-      res.json(booking);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create vehicle booking" });
-    }
-  });
+  apiRouter.post("/vehicle-bookings", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const booking = await storage.createVehicleBooking({ ...req.body, userId });
+    res.json(booking);
+  }));
 
-  app.patch("/api/vehicle-bookings/:id", async (req, res) => {
-    try {
-      const booking = await storage.updateVehicleBooking(req.params.id, req.body);
-      res.json(booking);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update vehicle booking" });
-    }
-  });
+  apiRouter.patch("/vehicle-bookings/:id", asyncHandler(async (req, res) => {
+    const booking = await storage.updateVehicleBooking(req.params.id, req.body);
+    res.json(booking);
+  }));
 
-  app.delete("/api/vehicle-bookings/:id", async (req, res) => {
-    try {
-      await storage.deleteVehicleBooking(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete vehicle booking" });
-    }
-  });
+  apiRouter.delete("/vehicle-bookings/:id", asyncHandler(async (req, res) => {
+    await storage.deleteVehicleBooking(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - SUBCONTRACTORS
   // ============================================
 
-  app.get("/api/subcontractors/:userId", async (req, res) => {
-    try {
-      const subcontractors = await storage.getSubcontractors(req.params.userId);
-      res.json(subcontractors);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch subcontractors" });
-    }
-  });
+  apiRouter.get("/subcontractors", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const subcontractors = await storage.getSubcontractors(userId);
+    res.json(subcontractors);
+  }));
 
-  app.post("/api/subcontractors", async (req, res) => {
-    try {
-      const subcontractor = await storage.createSubcontractor(req.body);
-      res.json(subcontractor);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create subcontractor" });
-    }
-  });
+  apiRouter.post("/subcontractors", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const subcontractor = await storage.createSubcontractor({ ...req.body, userId });
+    res.json(subcontractor);
+  }));
 
-  app.patch("/api/subcontractors/:id", async (req, res) => {
-    try {
-      const subcontractor = await storage.updateSubcontractor(req.params.id, req.body);
-      res.json(subcontractor);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update subcontractor" });
-    }
-  });
+  apiRouter.patch("/subcontractors/:id", asyncHandler(async (req, res) => {
+    const subcontractor = await storage.updateSubcontractor(req.params.id, req.body);
+    res.json(subcontractor);
+  }));
 
-  app.delete("/api/subcontractors/:id", async (req, res) => {
-    try {
-      await storage.deleteSubcontractor(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete subcontractor" });
-    }
-  });
+  apiRouter.delete("/subcontractors/:id", asyncHandler(async (req, res) => {
+    await storage.deleteSubcontractor(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - DOCUMENTS
   // ============================================
 
-  app.get("/api/documents/:userId", async (req, res) => {
-    try {
-      const documents = await storage.getDocuments(req.params.userId);
-      res.json(documents);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch documents" });
-    }
-  });
+  apiRouter.get("/documents", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const documents = await storage.getDocuments(userId);
+    res.json(documents);
+  }));
 
-  app.post("/api/documents", async (req, res) => {
-    try {
-      const document = await storage.createDocument(req.body);
-      res.json(document);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create document" });
-    }
-  });
+  apiRouter.post("/documents", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const document = await storage.createDocument({ ...req.body, userId });
+    res.json(document);
+  }));
 
-  app.patch("/api/documents/:id", async (req, res) => {
-    try {
-      const document = await storage.updateDocument(req.params.id, req.body);
-      res.json(document);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update document" });
-    }
-  });
+  apiRouter.patch("/documents/:id", asyncHandler(async (req, res) => {
+    const document = await storage.updateDocument(req.params.id, req.body);
+    res.json(document);
+  }));
 
-  app.delete("/api/documents/:id", async (req, res) => {
-    try {
-      await storage.deleteDocument(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete document" });
-    }
-  });
+  apiRouter.delete("/documents/:id", asyncHandler(async (req, res) => {
+    await storage.deleteDocument(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - COMMUNICATION LOGS
   // ============================================
 
-  app.get("/api/communication-logs/:userId", async (req, res) => {
-    try {
-      const logs = await storage.getCommunicationLogs(req.params.userId);
-      res.json(logs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch communication logs" });
-    }
-  });
+  apiRouter.get("/communication-logs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const logs = await storage.getCommunicationLogs(userId);
+    res.json(logs);
+  }));
 
-  app.post("/api/communication-logs", async (req, res) => {
-    try {
-      const log = await storage.createCommunicationLog(req.body);
-      res.json(log);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create communication log" });
-    }
-  });
+  apiRouter.post("/communication-logs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const log = await storage.createCommunicationLog({ ...req.body, userId });
+    res.json(log);
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - SURVEYS
   // ============================================
 
-  app.get("/api/surveys/:userId", async (req, res) => {
-    try {
-      const surveys = await storage.getSurveys(req.params.userId);
-      res.json(surveys);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch surveys" });
-    }
-  });
+  apiRouter.get("/surveys", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const surveys = await storage.getSurveys(userId);
+    res.json(surveys);
+  }));
 
-  app.post("/api/surveys", async (req, res) => {
-    try {
-      const survey = await storage.createSurvey(req.body);
-      res.json(survey);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create survey" });
-    }
-  });
+  apiRouter.post("/surveys", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const survey = await storage.createSurvey({ ...req.body, userId });
+    res.json(survey);
+  }));
 
-  app.patch("/api/surveys/:id", async (req, res) => {
-    try {
-      const survey = await storage.updateSurvey(req.params.id, req.body);
-      res.json(survey);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update survey" });
-    }
-  });
+  apiRouter.patch("/surveys/:id", asyncHandler(async (req, res) => {
+    const survey = await storage.updateSurvey(req.params.id, req.body);
+    res.json(survey);
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - ABSENCES (Holidays)
   // ============================================
 
-  app.get("/api/absences/:userId", async (req, res) => {
-    try {
-      const absences = await storage.getAbsences(req.params.userId);
-      res.json(absences);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch absences" });
-    }
-  });
+  apiRouter.get("/absences", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const absences = await storage.getAbsences(userId);
+    res.json(absences);
+  }));
 
-  app.post("/api/absences", async (req, res) => {
-    try {
-      const absence = await storage.createAbsence(req.body);
-      res.json(absence);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create absence" });
-    }
-  });
+  apiRouter.post("/absences", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const absence = await storage.createAbsence({ ...req.body, userId });
+    res.json(absence);
+  }));
 
-  app.patch("/api/absences/:id", async (req, res) => {
-    try {
-      const absence = await storage.updateAbsence(req.params.id, req.body);
-      res.json(absence);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update absence" });
-    }
-  });
+  apiRouter.patch("/absences/:id", asyncHandler(async (req, res) => {
+    const absence = await storage.updateAbsence(req.params.id, req.body);
+    res.json(absence);
+  }));
 
-  app.delete("/api/absences/:id", async (req, res) => {
-    try {
-      await storage.deleteAbsence(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete absence" });
-    }
-  });
+  apiRouter.delete("/absences/:id", asyncHandler(async (req, res) => {
+    await storage.deleteAbsence(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // BUSINESS MANAGEMENT - REMINDERS
   // ============================================
 
-  app.get("/api/reminders/:userId", async (req, res) => {
-    try {
-      const reminders = await storage.getReminders(req.params.userId);
-      res.json(reminders);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch reminders" });
-    }
-  });
+  apiRouter.get("/reminders", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const reminders = await storage.getReminders(userId);
+    res.json(reminders);
+  }));
 
-  app.post("/api/reminders", async (req, res) => {
-    try {
-      const reminder = await storage.createReminder(req.body);
-      res.json(reminder);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create reminder" });
-    }
-  });
+  apiRouter.post("/reminders", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const reminder = await storage.createReminder({ ...req.body, userId });
+    res.json(reminder);
+  }));
 
-  app.patch("/api/reminders/:id", async (req, res) => {
-    try {
-      const reminder = await storage.updateReminder(req.params.id, req.body);
-      res.json(reminder);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update reminder" });
-    }
-  });
+  apiRouter.patch("/reminders/:id", asyncHandler(async (req, res) => {
+    const reminder = await storage.updateReminder(req.params.id, req.body);
+    res.json(reminder);
+  }));
 
-  app.delete("/api/reminders/:id", async (req, res) => {
-    try {
-      await storage.deleteReminder(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete reminder" });
-    }
-  });
+  apiRouter.delete("/reminders/:id", asyncHandler(async (req, res) => {
+    await storage.deleteReminder(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // CUSTOM AUTH ROUTES (Optional - for username/password auth)
@@ -1314,2249 +951,1449 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // JOB TEMPLATES ROUTES
   // ============================================
 
-  app.get("/api/job-templates/:userId", async (req, res) => {
-    try {
-      const templates = await storage.getJobTemplates(req.params.userId);
-      res.json(templates);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job templates" });
-    }
-  });
+  apiRouter.get("/job-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const templates = await storage.getJobTemplates(userId);
+    res.json(templates);
+  }));
 
-  app.post("/api/job-templates", async (req, res) => {
-    try {
-      const template = await storage.createJobTemplate(req.body);
-      res.json(template);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create job template" });
-    }
-  });
+  apiRouter.post("/job-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const template = await storage.createJobTemplate({ ...req.body, userId });
+    res.json(template);
+  }));
 
-  app.delete("/api/job-templates/:id", async (req, res) => {
-    try {
-      await storage.deleteJobTemplate(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete job template" });
-    }
-  });
+  apiRouter.delete("/job-templates/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJobTemplate(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // SITE ACCESS NOTES ROUTES
   // ============================================
 
-  app.get("/api/site-access/:userId", async (req, res) => {
-    try {
-      const notes = await storage.getSiteAccessNotes(req.params.userId);
-      res.json(notes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch site access notes" });
-    }
-  });
+  apiRouter.get("/site-access", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const notes = await storage.getSiteAccessNotes(userId);
+    res.json(notes);
+  }));
 
-  app.post("/api/site-access", async (req, res) => {
-    try {
-      const note = await storage.createSiteAccessNote(req.body);
-      res.json(note);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create site access note" });
-    }
-  });
+  apiRouter.post("/site-access", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const note = await storage.createSiteAccessNote({ ...req.body, userId });
+    res.json(note);
+  }));
 
-  app.patch("/api/site-access/:id", async (req, res) => {
-    try {
-      const note = await storage.updateSiteAccessNote(req.params.id, req.body);
-      res.json(note);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update site access note" });
-    }
-  });
+  apiRouter.patch("/site-access/:id", asyncHandler(async (req, res) => {
+    const note = await storage.updateSiteAccessNote(req.params.id, req.body);
+    res.json(note);
+  }));
 
-  app.delete("/api/site-access/:id", async (req, res) => {
-    try {
-      await storage.deleteSiteAccessNote(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete site access note" });
-    }
-  });
+  apiRouter.delete("/site-access/:id", asyncHandler(async (req, res) => {
+    await storage.deleteSiteAccessNote(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // EQUIPMENT ROUTES
   // ============================================
 
-  app.get("/api/equipment/:userId", async (req, res) => {
-    try {
-      const items = await storage.getEquipment(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch equipment" });
-    }
-  });
+  apiRouter.get("/equipment", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getEquipment(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/equipment", async (req, res) => {
-    try {
-      const item = await storage.createEquipment(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create equipment" });
-    }
-  });
+  apiRouter.post("/equipment", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createEquipment({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/equipment/:id", async (req, res) => {
-    try {
-      const item = await storage.updateEquipment(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update equipment" });
-    }
-  });
+  apiRouter.patch("/equipment/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateEquipment(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/equipment/:id", async (req, res) => {
-    try {
-      await storage.deleteEquipment(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete equipment" });
-    }
-  });
+  apiRouter.delete("/equipment/:id", asyncHandler(async (req, res) => {
+    await storage.deleteEquipment(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // CERTIFICATIONS ROUTES
   // ============================================
 
-  app.get("/api/certifications/:userId", async (req, res) => {
-    try {
-      const certs = await storage.getCertifications(req.params.userId);
-      res.json(certs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch certifications" });
-    }
-  });
+  apiRouter.get("/certifications", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const certs = await storage.getCertifications(userId);
+    res.json(certs);
+  }));
 
-  app.post("/api/certifications", async (req, res) => {
-    try {
-      const cert = await storage.createCertification(req.body);
-      res.json(cert);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create certification" });
-    }
-  });
+  apiRouter.post("/certifications", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const cert = await storage.createCertification({ ...req.body, userId });
+    res.json(cert);
+  }));
 
-  app.patch("/api/certifications/:id", async (req, res) => {
-    try {
-      const cert = await storage.updateCertification(req.params.id, req.body);
-      res.json(cert);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update certification" });
-    }
-  });
+  apiRouter.patch("/certifications/:id", asyncHandler(async (req, res) => {
+    const cert = await storage.updateCertification(req.params.id, req.body);
+    res.json(cert);
+  }));
 
-  app.delete("/api/certifications/:id", async (req, res) => {
-    try {
-      await storage.deleteCertification(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete certification" });
-    }
-  });
+  apiRouter.delete("/certifications/:id", asyncHandler(async (req, res) => {
+    await storage.deleteCertification(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // INCIDENTS ROUTES
   // ============================================
 
-  app.get("/api/incidents/:userId", async (req, res) => {
-    try {
-      const incidents = await storage.getIncidents(req.params.userId);
-      res.json(incidents);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch incidents" });
-    }
-  });
+  apiRouter.get("/incidents", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const incidents = await storage.getIncidents(userId);
+    res.json(incidents);
+  }));
 
-  app.post("/api/incidents", async (req, res) => {
-    try {
-      const incident = await storage.createIncident(req.body);
-      res.json(incident);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create incident" });
-    }
-  });
+  apiRouter.post("/incidents", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const incident = await storage.createIncident({ ...req.body, userId });
+    res.json(incident);
+  }));
 
-  app.patch("/api/incidents/:id", async (req, res) => {
-    try {
-      const incident = await storage.updateIncident(req.params.id, req.body);
-      res.json(incident);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update incident" });
-    }
-  });
+  apiRouter.patch("/incidents/:id", asyncHandler(async (req, res) => {
+    const incident = await storage.updateIncident(req.params.id, req.body);
+    res.json(incident);
+  }));
 
-  app.delete("/api/incidents/:id", async (req, res) => {
-    try {
-      await storage.deleteIncident(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete incident" });
-    }
-  });
+  apiRouter.delete("/incidents/:id", asyncHandler(async (req, res) => {
+    await storage.deleteIncident(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // AUDIT LOGS ROUTES
   // ============================================
 
-  app.get("/api/audit-logs/:userId", async (req, res) => {
-    try {
-      const logs = await storage.getAuditLogs(req.params.userId);
-      res.json(logs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch audit logs" });
-    }
-  });
+  apiRouter.get("/audit-logs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const logs = await storage.getAuditLogs(userId);
+    res.json(logs);
+  }));
 
-  app.post("/api/audit-logs", async (req, res) => {
-    try {
-      const log = await storage.createAuditLog(req.body);
-      res.json(log);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create audit log" });
-    }
-  });
+  apiRouter.post("/audit-logs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const log = await storage.createAuditLog({ ...req.body, userId });
+    res.json(log);
+  }));
 
   // ============================================
   // FORM SUBMISSIONS ROUTES (Golden Thread)
   // ============================================
 
-  app.get("/api/form-submissions/:userId", async (req, res) => {
-    try {
-      const submissions = await storage.getFormSubmissions(req.params.userId);
-      res.json(submissions);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch form submissions" });
-    }
-  });
+  apiRouter.get("/form-submissions", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const submissions = await storage.getFormSubmissions(userId);
+    res.json(submissions);
+  }));
 
-  app.get("/api/form-submissions/site/:siteId", async (req, res) => {
-    try {
-      const submissions = await storage.getFormSubmissionsBySite(req.params.siteId);
-      res.json(submissions);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch form submissions for site" });
-    }
-  });
+  apiRouter.get("/form-submissions/site/:siteId", asyncHandler(async (req, res) => {
+    const submissions = await storage.getFormSubmissionsBySite(req.params.siteId);
+    res.json(submissions);
+  }));
 
-  app.get("/api/form-submissions/job/:jobId", async (req, res) => {
-    try {
-      const submissions = await storage.getFormSubmissionsByJob(req.params.jobId);
-      res.json(submissions);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch form submissions for job" });
-    }
-  });
+  apiRouter.get("/form-submissions/job/:jobId", asyncHandler(async (req, res) => {
+    const submissions = await storage.getFormSubmissionsByJob(req.params.jobId);
+    res.json(submissions);
+  }));
 
-  app.get("/api/form-submission/:id", async (req, res) => {
-    try {
-      const submission = await storage.getFormSubmission(req.params.id);
-      if (!submission) {
-        return res.status(404).json({ error: "Form submission not found" });
-      }
-      res.json(submission);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch form submission" });
+  apiRouter.get("/form-submission/:id", asyncHandler(async (req, res) => {
+    const submission = await storage.getFormSubmission(req.params.id);
+    if (!submission) {
+      return res.status(404).json({ error: "Form submission not found" });
     }
-  });
+    res.json(submission);
+  }));
 
-  app.post("/api/form-submissions", async (req, res) => {
-    try {
-      const submission = await storage.createFormSubmission(req.body);
-      res.json(submission);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create form submission" });
-    }
-  });
+  apiRouter.post("/form-submissions", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const submission = await storage.createFormSubmission({ ...req.body, userId });
+    res.json(submission);
+  }));
 
-  app.patch("/api/form-submissions/:id", async (req, res) => {
-    try {
-      const submission = await storage.updateFormSubmission(req.params.id, req.body);
-      res.json(submission);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update form submission" });
-    }
-  });
+  apiRouter.patch("/form-submissions/:id", asyncHandler(async (req, res) => {
+    const submission = await storage.updateFormSubmission(req.params.id, req.body);
+    res.json(submission);
+  }));
 
   // ============================================
   // LEADS ROUTES
   // ============================================
 
-  app.get("/api/leads/:userId", async (req, res) => {
-    try {
-      const leads = await storage.getLeads(req.params.userId);
-      res.json(leads);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch leads" });
-    }
-  });
+  apiRouter.get("/leads", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const leads = await storage.getLeads(userId);
+    res.json(leads);
+  }));
 
-  app.post("/api/leads", async (req, res) => {
-    try {
-      const lead = await storage.createLead(req.body);
-      res.json(lead);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create lead" });
-    }
-  });
+  apiRouter.post("/leads", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const lead = await storage.createLead({ ...req.body, userId });
+    res.json(lead);
+  }));
 
-  app.patch("/api/leads/:id", async (req, res) => {
-    try {
-      const lead = await storage.updateLead(req.params.id, req.body);
-      res.json(lead);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update lead" });
-    }
-  });
+  apiRouter.patch("/leads/:id", asyncHandler(async (req, res) => {
+    const lead = await storage.updateLead(req.params.id, req.body);
+    res.json(lead);
+  }));
 
-  app.delete("/api/leads/:id", async (req, res) => {
-    try {
-      await storage.deleteLead(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete lead" });
-    }
-  });
+  apiRouter.delete("/leads/:id", asyncHandler(async (req, res) => {
+    await storage.deleteLead(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // TENDERS ROUTES
   // ============================================
 
-  app.get("/api/tenders/:userId", async (req, res) => {
-    try {
-      const tenders = await storage.getTenders(req.params.userId);
-      res.json(tenders);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch tenders" });
-    }
-  });
+  apiRouter.get("/tenders", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const tenders = await storage.getTenders(userId);
+    res.json(tenders);
+  }));
 
-  app.post("/api/tenders", async (req, res) => {
-    try {
-      const tender = await storage.createTender(req.body);
-      res.json(tender);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create tender" });
-    }
-  });
+  apiRouter.post("/tenders", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const tender = await storage.createTender({ ...req.body, userId });
+    res.json(tender);
+  }));
 
-  app.patch("/api/tenders/:id", async (req, res) => {
-    try {
-      const tender = await storage.updateTender(req.params.id, req.body);
-      res.json(tender);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update tender" });
-    }
-  });
+  apiRouter.patch("/tenders/:id", asyncHandler(async (req, res) => {
+    const tender = await storage.updateTender(req.params.id, req.body);
+    res.json(tender);
+  }));
 
-  app.delete("/api/tenders/:id", async (req, res) => {
-    try {
-      await storage.deleteTender(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete tender" });
-    }
-  });
+  apiRouter.delete("/tenders/:id", asyncHandler(async (req, res) => {
+    await storage.deleteTender(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // RECURRING SCHEDULES ROUTES
   // ============================================
 
-  app.get("/api/recurring-schedules/:userId", async (req, res) => {
-    try {
-      const schedules = await storage.getRecurringSchedules(req.params.userId);
-      res.json(schedules);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch recurring schedules" });
-    }
-  });
+  apiRouter.get("/recurring-schedules", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const schedules = await storage.getRecurringSchedules(userId);
+    res.json(schedules);
+  }));
 
-  app.post("/api/recurring-schedules", async (req, res) => {
-    try {
-      const schedule = await storage.createRecurringSchedule(req.body);
-      res.json(schedule);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create recurring schedule" });
-    }
-  });
+  apiRouter.post("/recurring-schedules", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const schedule = await storage.createRecurringSchedule({ ...req.body, userId });
+    res.json(schedule);
+  }));
 
-  app.patch("/api/recurring-schedules/:id", async (req, res) => {
-    try {
-      const schedule = await storage.updateRecurringSchedule(req.params.id, req.body);
-      res.json(schedule);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update recurring schedule" });
-    }
-  });
+  apiRouter.patch("/recurring-schedules/:id", asyncHandler(async (req, res) => {
+    const schedule = await storage.updateRecurringSchedule(req.params.id, req.body);
+    res.json(schedule);
+  }));
 
-  app.delete("/api/recurring-schedules/:id", async (req, res) => {
-    try {
-      await storage.deleteRecurringSchedule(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete recurring schedule" });
-    }
-  });
+  apiRouter.delete("/recurring-schedules/:id", asyncHandler(async (req, res) => {
+    await storage.deleteRecurringSchedule(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // RISK ASSESSMENTS ROUTES
   // ============================================
 
-  app.get("/api/risk-assessments/:userId", async (req, res) => {
-    try {
-      const assessments = await storage.getRiskAssessments(req.params.userId);
-      res.json(assessments);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch risk assessments" });
-    }
-  });
+  apiRouter.get("/risk-assessments", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const assessments = await storage.getRiskAssessments(userId);
+    res.json(assessments);
+  }));
 
-  app.post("/api/risk-assessments", async (req, res) => {
-    try {
-      const assessment = await storage.createRiskAssessment(req.body);
-      res.json(assessment);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create risk assessment" });
-    }
-  });
+  apiRouter.post("/risk-assessments", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const assessment = await storage.createRiskAssessment({ ...req.body, userId });
+    res.json(assessment);
+  }));
 
-  app.patch("/api/risk-assessments/:id", async (req, res) => {
-    try {
-      const assessment = await storage.updateRiskAssessment(req.params.id, req.body);
-      res.json(assessment);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update risk assessment" });
-    }
-  });
+  apiRouter.patch("/risk-assessments/:id", asyncHandler(async (req, res) => {
+    const assessment = await storage.updateRiskAssessment(req.params.id, req.body);
+    res.json(assessment);
+  }));
 
-  app.delete("/api/risk-assessments/:id", async (req, res) => {
-    try {
-      await storage.deleteRiskAssessment(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete risk assessment" });
-    }
-  });
+  apiRouter.delete("/risk-assessments/:id", asyncHandler(async (req, res) => {
+    await storage.deleteRiskAssessment(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // PERFORMANCE METRICS ROUTES
   // ============================================
 
-  app.get("/api/performance-metrics/:userId", async (req, res) => {
-    try {
-      const metrics = await storage.getPerformanceMetrics(req.params.userId);
-      res.json(metrics);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch performance metrics" });
-    }
-  });
+  apiRouter.get("/performance-metrics", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const metrics = await storage.getPerformanceMetrics(userId);
+    res.json(metrics);
+  }));
 
-  app.post("/api/performance-metrics", async (req, res) => {
-    try {
-      const metric = await storage.createPerformanceMetric(req.body);
-      res.json(metric);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create performance metric" });
-    }
-  });
+  apiRouter.post("/performance-metrics", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const metric = await storage.createPerformanceMetric({ ...req.body, userId });
+    res.json(metric);
+  }));
 
   // ============================================
   // NOTIFICATIONS ROUTES
   // ============================================
 
-  app.get("/api/notifications/:userId", async (req, res) => {
-    try {
-      const notifications = await storage.getNotifications(req.params.userId);
-      res.json(notifications);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch notifications" });
-    }
-  });
+  apiRouter.get("/notifications", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const notifications = await storage.getNotifications(userId);
+    res.json(notifications);
+  }));
 
-  app.post("/api/notifications", async (req, res) => {
-    try {
-      const notification = await storage.createNotification(req.body);
-      res.json(notification);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create notification" });
-    }
-  });
+  apiRouter.post("/notifications", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const notification = await storage.createNotification({ ...req.body, userId });
+    res.json(notification);
+  }));
 
-  app.patch("/api/notifications/:id", async (req, res) => {
-    try {
-      const notification = await storage.updateNotification(req.params.id, req.body);
-      res.json(notification);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update notification" });
-    }
-  });
+  apiRouter.patch("/notifications/:id", asyncHandler(async (req, res) => {
+    const notification = await storage.updateNotification(req.params.id, req.body);
+    res.json(notification);
+  }));
 
-  app.delete("/api/notifications/:id", async (req, res) => {
-    try {
-      await storage.deleteNotification(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete notification" });
-    }
-  });
+  apiRouter.delete("/notifications/:id", asyncHandler(async (req, res) => {
+    await storage.deleteNotification(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // RECURRING JOBS ROUTES
   // ============================================
 
-  app.get("/api/recurring-jobs/:userId", async (req, res) => {
-    try {
-      const jobs = await storage.getRecurringJobs(req.params.userId);
-      res.json(jobs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch recurring jobs" });
-    }
-  });
+  apiRouter.get("/recurring-jobs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const jobs = await storage.getRecurringJobs(userId);
+    res.json(jobs);
+  }));
 
-  app.post("/api/recurring-jobs", async (req, res) => {
-    try {
-      const job = await storage.createRecurringJob(req.body);
-      res.json(job);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create recurring job" });
-    }
-  });
+  apiRouter.post("/recurring-jobs", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const job = await storage.createRecurringJob({ ...req.body, userId });
+    res.json(job);
+  }));
 
-  app.patch("/api/recurring-jobs/:id", async (req, res) => {
-    try {
-      const job = await storage.updateRecurringJob(req.params.id, req.body);
-      res.json(job);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update recurring job" });
-    }
-  });
+  apiRouter.patch("/recurring-jobs/:id", asyncHandler(async (req, res) => {
+    const job = await storage.updateRecurringJob(req.params.id, req.body);
+    res.json(job);
+  }));
 
-  app.delete("/api/recurring-jobs/:id", async (req, res) => {
-    try {
-      await storage.deleteRecurringJob(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete recurring job" });
-    }
-  });
+  apiRouter.delete("/recurring-jobs/:id", asyncHandler(async (req, res) => {
+    await storage.deleteRecurringJob(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // JOB CHECKLISTS ROUTES
   // ============================================
 
-  app.get("/api/job-checklists/:userId", async (req, res) => {
-    try {
-      const checklists = await storage.getJobChecklists(req.params.userId);
-      res.json(checklists);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job checklists" });
-    }
-  });
+  apiRouter.get("/job-checklists", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const checklists = await storage.getJobChecklists(userId);
+    res.json(checklists);
+  }));
 
-  app.get("/api/job-checklists/job/:jobId", async (req, res) => {
-    try {
-      const checklist = await storage.getJobChecklistByJobId(req.params.jobId);
-      res.json(checklist || null);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job checklist" });
-    }
-  });
+  apiRouter.get("/job-checklists/job/:jobId", asyncHandler(async (req, res) => {
+    const checklist = await storage.getJobChecklistByJobId(req.params.jobId);
+    res.json(checklist || null);
+  }));
 
-  app.post("/api/job-checklists", async (req, res) => {
-    try {
-      const checklist = await storage.createJobChecklist(req.body);
-      res.json(checklist);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create job checklist" });
-    }
-  });
+  apiRouter.post("/job-checklists", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const checklist = await storage.createJobChecklist({ ...req.body, userId });
+    res.json(checklist);
+  }));
 
-  app.patch("/api/job-checklists/:id", async (req, res) => {
-    try {
-      const checklist = await storage.updateJobChecklist(req.params.id, req.body);
-      res.json(checklist);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update job checklist" });
-    }
-  });
+  apiRouter.patch("/job-checklists/:id", asyncHandler(async (req, res) => {
+    const checklist = await storage.updateJobChecklist(req.params.id, req.body);
+    res.json(checklist);
+  }));
 
-  app.delete("/api/job-checklists/:id", async (req, res) => {
-    try {
-      await storage.deleteJobChecklist(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete job checklist" });
-    }
-  });
+  apiRouter.delete("/job-checklists/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJobChecklist(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // SUPPLIERS ROUTES
   // ============================================
 
-  app.get("/api/suppliers/:userId", async (req, res) => {
-    try {
-      const suppliersList = await storage.getSuppliers(req.params.userId);
-      res.json(suppliersList);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch suppliers" });
-    }
-  });
+  apiRouter.get("/suppliers", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const suppliersList = await storage.getSuppliers(userId);
+    res.json(suppliersList);
+  }));
 
-  app.post("/api/suppliers", async (req, res) => {
-    try {
-      const supplier = await storage.createSupplier(req.body);
-      res.json(supplier);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create supplier" });
-    }
-  });
+  apiRouter.post("/suppliers", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const supplier = await storage.createSupplier({ ...req.body, userId });
+    res.json(supplier);
+  }));
 
-  app.patch("/api/suppliers/:id", async (req, res) => {
-    try {
-      const supplier = await storage.updateSupplier(req.params.id, req.body);
-      res.json(supplier);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update supplier" });
-    }
-  });
+  apiRouter.patch("/suppliers/:id", asyncHandler(async (req, res) => {
+    const supplier = await storage.updateSupplier(req.params.id, req.body);
+    res.json(supplier);
+  }));
 
-  app.delete("/api/suppliers/:id", async (req, res) => {
-    try {
-      await storage.deleteSupplier(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete supplier" });
-    }
-  });
+  apiRouter.delete("/suppliers/:id", asyncHandler(async (req, res) => {
+    await storage.deleteSupplier(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // PURCHASE ORDERS ROUTES
   // ============================================
 
-  app.get("/api/purchase-orders/:userId", async (req, res) => {
-    try {
-      const orders = await storage.getPurchaseOrders(req.params.userId);
-      res.json(orders);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch purchase orders" });
-    }
-  });
+  apiRouter.get("/purchase-orders", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const orders = await storage.getPurchaseOrders(userId);
+    res.json(orders);
+  }));
 
-  app.post("/api/purchase-orders", async (req, res) => {
-    try {
-      const order = await storage.createPurchaseOrder(req.body);
-      res.json(order);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create purchase order" });
-    }
-  });
+  apiRouter.post("/purchase-orders", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const order = await storage.createPurchaseOrder({ ...req.body, userId });
+    res.json(order);
+  }));
 
-  app.patch("/api/purchase-orders/:id", async (req, res) => {
-    try {
-      const order = await storage.updatePurchaseOrder(req.params.id, req.body);
-      res.json(order);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update purchase order" });
-    }
-  });
+  apiRouter.patch("/purchase-orders/:id", asyncHandler(async (req, res) => {
+    const order = await storage.updatePurchaseOrder(req.params.id, req.body);
+    res.json(order);
+  }));
 
-  app.delete("/api/purchase-orders/:id", async (req, res) => {
-    try {
-      await storage.deletePurchaseOrder(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete purchase order" });
-    }
-  });
+  apiRouter.delete("/purchase-orders/:id", asyncHandler(async (req, res) => {
+    await storage.deletePurchaseOrder(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // TRAINING RECORDS ROUTES
   // ============================================
 
-  app.get("/api/training-records/:userId", async (req, res) => {
-    try {
-      const records = await storage.getTrainingRecords(req.params.userId);
-      res.json(records);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch training records" });
-    }
-  });
+  apiRouter.get("/training-records", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const records = await storage.getTrainingRecords(userId);
+    res.json(records);
+  }));
 
-  app.post("/api/training-records", async (req, res) => {
-    try {
-      const record = await storage.createTrainingRecord(req.body);
-      res.json(record);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create training record" });
-    }
-  });
+  apiRouter.post("/training-records", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const record = await storage.createTrainingRecord({ ...req.body, userId });
+    res.json(record);
+  }));
 
-  app.patch("/api/training-records/:id", async (req, res) => {
-    try {
-      const record = await storage.updateTrainingRecord(req.params.id, req.body);
-      res.json(record);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update training record" });
-    }
-  });
+  apiRouter.patch("/training-records/:id", asyncHandler(async (req, res) => {
+    const record = await storage.updateTrainingRecord(req.params.id, req.body);
+    res.json(record);
+  }));
 
-  app.delete("/api/training-records/:id", async (req, res) => {
-    try {
-      await storage.deleteTrainingRecord(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete training record" });
-    }
-  });
+  apiRouter.delete("/training-records/:id", asyncHandler(async (req, res) => {
+    await storage.deleteTrainingRecord(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // INVENTORY ROUTES
   // ============================================
 
-  app.get("/api/inventory/:userId", async (req, res) => {
-    try {
-      const items = await storage.getInventory(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch inventory" });
-    }
-  });
+  apiRouter.get("/inventory", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getInventory(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/inventory", async (req, res) => {
-    try {
-      const item = await storage.createInventoryItem(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create inventory item" });
-    }
-  });
+  apiRouter.post("/inventory", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createInventoryItem({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/inventory/:id", async (req, res) => {
-    try {
-      const item = await storage.updateInventoryItem(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update inventory item" });
-    }
-  });
+  apiRouter.patch("/inventory/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateInventoryItem(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/inventory/:id", async (req, res) => {
-    try {
-      await storage.deleteInventoryItem(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete inventory item" });
-    }
-  });
+  apiRouter.delete("/inventory/:id", asyncHandler(async (req, res) => {
+    await storage.deleteInventoryItem(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // DEFECTS ROUTES
   // ============================================
 
-  app.get("/api/defects/:userId", async (req, res) => {
-    try {
-      const defects = await storage.getDefects(req.params.userId);
-      res.json(defects);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch defects" });
-    }
-  });
+  apiRouter.get("/defects", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const defects = await storage.getDefects(userId);
+    res.json(defects);
+  }));
 
-  app.post("/api/defects", async (req, res) => {
-    try {
-      const defect = await storage.createDefect(req.body);
-      res.json(defect);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create defect" });
-    }
-  });
+  apiRouter.post("/defects", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const defect = await storage.createDefect({ ...req.body, userId });
+    res.json(defect);
+  }));
 
-  app.patch("/api/defects/:id", async (req, res) => {
-    try {
-      const defect = await storage.updateDefect(req.params.id, req.body);
-      res.json(defect);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update defect" });
-    }
-  });
+  apiRouter.patch("/defects/:id", asyncHandler(async (req, res) => {
+    const defect = await storage.updateDefect(req.params.id, req.body);
+    res.json(defect);
+  }));
 
-  app.delete("/api/defects/:id", async (req, res) => {
-    try {
-      await storage.deleteDefect(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete defect" });
-    }
-  });
+  apiRouter.delete("/defects/:id", asyncHandler(async (req, res) => {
+    await storage.deleteDefect(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // DOCUMENT REGISTER ROUTES
   // ============================================
 
-  app.get("/api/document-register/:userId", async (req, res) => {
-    try {
-      const docs = await storage.getDocumentRegister(req.params.userId);
-      res.json(docs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch document register" });
-    }
-  });
+  apiRouter.get("/document-register", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const docs = await storage.getDocumentRegister(userId);
+    res.json(docs);
+  }));
 
-  app.post("/api/document-register", async (req, res) => {
-    try {
-      const doc = await storage.createDocumentRegisterItem(req.body);
-      res.json(doc);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create document" });
-    }
-  });
+  apiRouter.post("/document-register", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const doc = await storage.createDocumentRegisterItem({ ...req.body, userId });
+    res.json(doc);
+  }));
 
-  app.patch("/api/document-register/:id", async (req, res) => {
-    try {
-      const doc = await storage.updateDocumentRegisterItem(req.params.id, req.body);
-      res.json(doc);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update document" });
-    }
-  });
+  apiRouter.patch("/document-register/:id", asyncHandler(async (req, res) => {
+    const doc = await storage.updateDocumentRegisterItem(req.params.id, req.body);
+    res.json(doc);
+  }));
 
-  app.delete("/api/document-register/:id", async (req, res) => {
-    try {
-      await storage.deleteDocumentRegisterItem(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete document" });
-    }
-  });
+  apiRouter.delete("/document-register/:id", asyncHandler(async (req, res) => {
+    await storage.deleteDocumentRegisterItem(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // MILEAGE CLAIMS ROUTES
   // ============================================
 
-  app.get("/api/mileage-claims/:userId", async (req, res) => {
-    try {
-      const claims = await storage.getMileageClaims(req.params.userId);
-      res.json(claims);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch mileage claims" });
-    }
-  });
+  apiRouter.get("/mileage-claims", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const claims = await storage.getMileageClaims(userId);
+    res.json(claims);
+  }));
 
-  app.post("/api/mileage-claims", async (req, res) => {
-    try {
-      const claim = await storage.createMileageClaim(req.body);
-      res.json(claim);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create mileage claim" });
-    }
-  });
+  apiRouter.post("/mileage-claims", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const claim = await storage.createMileageClaim({ ...req.body, userId });
+    res.json(claim);
+  }));
 
-  app.patch("/api/mileage-claims/:id", async (req, res) => {
-    try {
-      const claim = await storage.updateMileageClaim(req.params.id, req.body);
-      res.json(claim);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update mileage claim" });
-    }
-  });
+  apiRouter.patch("/mileage-claims/:id", asyncHandler(async (req, res) => {
+    const claim = await storage.updateMileageClaim(req.params.id, req.body);
+    res.json(claim);
+  }));
 
-  app.delete("/api/mileage-claims/:id", async (req, res) => {
-    try {
-      await storage.deleteMileageClaim(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete mileage claim" });
-    }
-  });
+  apiRouter.delete("/mileage-claims/:id", asyncHandler(async (req, res) => {
+    await storage.deleteMileageClaim(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // WORK NOTES ROUTES
   // ============================================
 
-  app.get("/api/work-notes/:userId", async (req, res) => {
-    try {
-      const notes = await storage.getWorkNotes(req.params.userId);
-      res.json(notes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch work notes" });
-    }
-  });
+  apiRouter.get("/work-notes", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const notes = await storage.getWorkNotes(userId);
+    res.json(notes);
+  }));
 
-  app.get("/api/work-notes/by-job/:jobId", async (req, res) => {
-    try {
-      const notes = await storage.getWorkNotesByJob(req.params.jobId);
-      res.json(notes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch work notes for job" });
-    }
-  });
+  apiRouter.get("/work-notes/by-job/:jobId", asyncHandler(async (req, res) => {
+    const notes = await storage.getWorkNotesByJob(req.params.jobId);
+    res.json(notes);
+  }));
 
-  app.post("/api/work-notes", async (req, res) => {
-    try {
-      const note = await storage.createWorkNote(req.body);
-      res.json(note);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create work note" });
-    }
-  });
+  apiRouter.post("/work-notes", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const note = await storage.createWorkNote({ ...req.body, userId });
+    res.json(note);
+  }));
 
-  app.patch("/api/work-notes/:id", async (req, res) => {
-    try {
-      const note = await storage.updateWorkNote(req.params.id, req.body);
-      res.json(note);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update work note" });
-    }
-  });
+  apiRouter.patch("/work-notes/:id", asyncHandler(async (req, res) => {
+    const note = await storage.updateWorkNote(req.params.id, req.body);
+    res.json(note);
+  }));
 
-  app.delete("/api/work-notes/:id", async (req, res) => {
-    try {
-      await storage.deleteWorkNote(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete work note" });
-    }
-  });
+  apiRouter.delete("/work-notes/:id", asyncHandler(async (req, res) => {
+    await storage.deleteWorkNote(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // CALLBACKS ROUTES
   // ============================================
 
-  app.get("/api/callbacks/:userId", async (req, res) => {
-    try {
-      const callbacks = await storage.getCallbacks(req.params.userId);
-      res.json(callbacks);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch callbacks" });
-    }
-  });
+  apiRouter.get("/callbacks", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const callbacks = await storage.getCallbacks(userId);
+    res.json(callbacks);
+  }));
 
-  app.post("/api/callbacks", async (req, res) => {
-    try {
-      const callback = await storage.createCallback(req.body);
-      res.json(callback);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create callback" });
-    }
-  });
+  apiRouter.post("/callbacks", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const callback = await storage.createCallback({ ...req.body, userId });
+    res.json(callback);
+  }));
 
-  app.patch("/api/callbacks/:id", async (req, res) => {
-    try {
-      const callback = await storage.updateCallback(req.params.id, req.body);
-      res.json(callback);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update callback" });
-    }
-  });
+  apiRouter.patch("/callbacks/:id", asyncHandler(async (req, res) => {
+    const callback = await storage.updateCallback(req.params.id, req.body);
+    res.json(callback);
+  }));
 
-  app.delete("/api/callbacks/:id", async (req, res) => {
-    try {
-      await storage.deleteCallback(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete callback" });
-    }
-  });
+  apiRouter.delete("/callbacks/:id", asyncHandler(async (req, res) => {
+    await storage.deleteCallback(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // STAFF DIRECTORY ROUTES
   // ============================================
 
-  app.get("/api/staff-directory/:userId", async (req, res) => {
-    try {
-      const staff = await storage.getStaffDirectory(req.params.userId);
-      // Transform to include combined name field for frontend compatibility
-      const staffWithNames = staff.map(member => ({
-        ...member,
-        name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unknown',
-        role: member.jobTitle || member.department || 'Technician',
-      }));
-      res.json(staffWithNames);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch staff directory" });
-    }
-  });
+  apiRouter.get("/staff-directory", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const staff = await storage.getStaffDirectory(userId);
+    const staffWithNames = staff.map(member => ({
+      ...member,
+      name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unknown',
+      role: member.jobTitle || member.department || 'Technician',
+    }));
+    res.json(staffWithNames);
+  }));
 
-  app.post("/api/staff-directory", async (req, res) => {
-    try {
-      const member = await storage.createStaffMember(req.body);
-      res.json(member);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create staff member" });
-    }
-  });
+  apiRouter.post("/staff-directory", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const member = await storage.createStaffMember({ ...req.body, userId });
+    res.json(member);
+  }));
 
-  app.patch("/api/staff-directory/:id", async (req, res) => {
-    try {
-      const member = await storage.updateStaffMember(req.params.id, req.body);
-      res.json(member);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update staff member" });
-    }
-  });
+  apiRouter.patch("/staff-directory/:id", asyncHandler(async (req, res) => {
+    const member = await storage.updateStaffMember(req.params.id, req.body);
+    res.json(member);
+  }));
 
-  app.delete("/api/staff-directory/:id", async (req, res) => {
-    try {
-      await storage.deleteStaffMember(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete staff member" });
-    }
-  });
+  apiRouter.delete("/staff-directory/:id", asyncHandler(async (req, res) => {
+    await storage.deleteStaffMember(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // TEAM INVITATIONS ROUTES
   // ============================================
 
-  app.get("/api/team-invitations/:userId", async (req, res) => {
-    try {
-      const invitations = await storage.getTeamInvitations(req.params.userId);
-      res.json(invitations);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch team invitations" });
-    }
-  });
+  apiRouter.get("/team-invitations", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const invitations = await storage.getTeamInvitations(userId);
+    res.json(invitations);
+  }));
 
-  app.post("/api/team-invitations", async (req, res) => {
-    try {
-      const { nanoid } = await import("nanoid");
-      const token = nanoid(32);
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const invitation = await storage.createTeamInvitation({
-        ...req.body,
-        token,
-        expiresAt,
-      });
-      res.json(invitation);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create team invitation" });
-    }
-  });
+  apiRouter.post("/team-invitations", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const { nanoid } = await import("nanoid");
+    const token = nanoid(32);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const invitation = await storage.createTeamInvitation({
+      ...req.body,
+      userId,
+      token,
+      expiresAt,
+    });
+    res.json(invitation);
+  }));
 
-  app.post("/api/team-invitations/:id/resend", async (req, res) => {
-    try {
-      const { nanoid } = await import("nanoid");
-      const token = nanoid(32);
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const invitation = await storage.updateTeamInvitation(req.params.id, {
-        token,
-        expiresAt,
-        status: "pending",
-      });
-      res.json(invitation);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to resend invitation" });
-    }
-  });
+  apiRouter.post("/team-invitations/:id/resend", asyncHandler(async (req, res) => {
+    const { nanoid } = await import("nanoid");
+    const token = nanoid(32);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const invitation = await storage.updateTeamInvitation(req.params.id, {
+      token,
+      expiresAt,
+      status: "pending",
+    });
+    res.json(invitation);
+  }));
 
-  app.delete("/api/team-invitations/:id", async (req, res) => {
-    try {
-      await storage.deleteTeamInvitation(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete team invitation" });
-    }
-  });
+  apiRouter.delete("/team-invitations/:id", asyncHandler(async (req, res) => {
+    await storage.deleteTeamInvitation(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // PRICE LISTS ROUTES
   // ============================================
 
-  app.get("/api/price-lists/:userId", async (req, res) => {
-    try {
-      const items = await storage.getPriceLists(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch price lists" });
-    }
-  });
+  apiRouter.get("/price-lists", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getPriceLists(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/price-lists", async (req, res) => {
-    try {
-      const item = await storage.createPriceList(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create price list item" });
-    }
-  });
+  apiRouter.post("/price-lists", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createPriceList({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/price-lists/:id", async (req, res) => {
-    try {
-      const item = await storage.updatePriceList(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update price list item" });
-    }
-  });
+  apiRouter.patch("/price-lists/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updatePriceList(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/price-lists/:id", async (req, res) => {
-    try {
-      await storage.deletePriceList(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete price list item" });
-    }
-  });
+  apiRouter.delete("/price-lists/:id", asyncHandler(async (req, res) => {
+    await storage.deletePriceList(req.params.id);
+    res.json({ success: true });
+  }));
 
-  // Customer Feedback routes
-  app.get("/api/customer-feedback/:userId", async (req, res) => {
-    try {
-      const items = await storage.getCustomerFeedback(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch customer feedback" });
-    }
-  });
+  // ============================================
+  // CUSTOMER FEEDBACK ROUTES
+  // ============================================
 
-  app.post("/api/customer-feedback", async (req, res) => {
-    try {
-      const item = await storage.createCustomerFeedback(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create customer feedback" });
-    }
-  });
+  apiRouter.get("/customer-feedback", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getCustomerFeedback(userId);
+    res.json(items);
+  }));
 
-  app.patch("/api/customer-feedback/:id", async (req, res) => {
-    try {
-      const item = await storage.updateCustomerFeedback(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update customer feedback" });
-    }
-  });
+  apiRouter.post("/customer-feedback", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createCustomerFeedback({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.delete("/api/customer-feedback/:id", async (req, res) => {
-    try {
-      await storage.deleteCustomerFeedback(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete customer feedback" });
-    }
-  });
+  apiRouter.patch("/customer-feedback/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateCustomerFeedback(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  // SLA routes
-  app.get("/api/slas/:userId", async (req, res) => {
-    try {
-      const items = await storage.getSLAs(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch SLAs" });
-    }
-  });
+  apiRouter.delete("/customer-feedback/:id", asyncHandler(async (req, res) => {
+    await storage.deleteCustomerFeedback(req.params.id);
+    res.json({ success: true });
+  }));
 
-  app.post("/api/slas", async (req, res) => {
-    try {
-      const item = await storage.createSLA(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create SLA" });
-    }
-  });
+  // ============================================
+  // SLA ROUTES
+  // ============================================
 
-  app.patch("/api/slas/:id", async (req, res) => {
-    try {
-      const item = await storage.updateSLA(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update SLA" });
-    }
-  });
+  apiRouter.get("/slas", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getSLAs(userId);
+    res.json(items);
+  }));
 
-  app.delete("/api/slas/:id", async (req, res) => {
-    try {
-      await storage.deleteSLA(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete SLA" });
-    }
-  });
+  apiRouter.post("/slas", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createSLA({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  // Parts Catalog routes
-  app.get("/api/parts-catalog/:userId", async (req, res) => {
-    try {
-      const items = await storage.getPartsCatalog(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch parts catalog" });
-    }
-  });
+  apiRouter.patch("/slas/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateSLA(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.post("/api/parts-catalog", async (req, res) => {
-    try {
-      const item = await storage.createPart(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create part" });
-    }
-  });
+  apiRouter.delete("/slas/:id", asyncHandler(async (req, res) => {
+    await storage.deleteSLA(req.params.id);
+    res.json({ success: true });
+  }));
 
-  app.patch("/api/parts-catalog/:id", async (req, res) => {
-    try {
-      const item = await storage.updatePart(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update part" });
-    }
-  });
+  // ============================================
+  // PARTS CATALOG ROUTES
+  // ============================================
 
-  app.delete("/api/parts-catalog/:id", async (req, res) => {
-    try {
-      await storage.deletePart(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete part" });
-    }
-  });
+  apiRouter.get("/parts-catalog", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getPartsCatalog(userId);
+    res.json(items);
+  }));
+
+  apiRouter.post("/parts-catalog", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createPart({ ...req.body, userId });
+    res.json(item);
+  }));
+
+  apiRouter.patch("/parts-catalog/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updatePart(req.params.id, req.body);
+    res.json(item);
+  }));
+
+  apiRouter.delete("/parts-catalog/:id", asyncHandler(async (req, res) => {
+    await storage.deletePart(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // PHASE 8: DOCUMENT TEMPLATES, WARRANTIES, COMPETITORS
   // ============================================
 
-  // Document Templates routes
-  app.get("/api/document-templates/:userId", async (req, res) => {
-    try {
-      const items = await storage.getDocumentTemplates(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch document templates" });
-    }
-  });
+  apiRouter.get("/document-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getDocumentTemplates(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/document-templates", async (req, res) => {
-    try {
-      const item = await storage.createDocumentTemplate(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create document template" });
-    }
-  });
+  apiRouter.post("/document-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createDocumentTemplate({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/document-templates/:id", async (req, res) => {
-    try {
-      const item = await storage.updateDocumentTemplate(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update document template" });
-    }
-  });
+  apiRouter.patch("/document-templates/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateDocumentTemplate(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/document-templates/:id", async (req, res) => {
-    try {
-      await storage.deleteDocumentTemplate(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete document template" });
-    }
-  });
+  apiRouter.delete("/document-templates/:id", asyncHandler(async (req, res) => {
+    await storage.deleteDocumentTemplate(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Warranties routes
-  app.get("/api/warranties/:userId", async (req, res) => {
-    try {
-      const items = await storage.getWarranties(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch warranties" });
-    }
-  });
+  apiRouter.get("/warranties", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getWarranties(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/warranties", async (req, res) => {
-    try {
-      const item = await storage.createWarranty(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create warranty" });
-    }
-  });
+  apiRouter.post("/warranties", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createWarranty({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/warranties/:id", async (req, res) => {
-    try {
-      const item = await storage.updateWarranty(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update warranty" });
-    }
-  });
+  apiRouter.patch("/warranties/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateWarranty(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/warranties/:id", async (req, res) => {
-    try {
-      await storage.deleteWarranty(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete warranty" });
-    }
-  });
+  apiRouter.delete("/warranties/:id", asyncHandler(async (req, res) => {
+    await storage.deleteWarranty(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Competitors routes
-  app.get("/api/competitors/:userId", async (req, res) => {
-    try {
-      const items = await storage.getCompetitors(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch competitors" });
-    }
-  });
+  apiRouter.get("/competitors", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getCompetitors(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/competitors", async (req, res) => {
-    try {
-      const item = await storage.createCompetitor(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create competitor" });
-    }
-  });
+  apiRouter.post("/competitors", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createCompetitor({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/competitors/:id", async (req, res) => {
-    try {
-      const item = await storage.updateCompetitor(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update competitor" });
-    }
-  });
+  apiRouter.patch("/competitors/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateCompetitor(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/competitors/:id", async (req, res) => {
-    try {
-      await storage.deleteCompetitor(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete competitor" });
-    }
-  });
+  apiRouter.delete("/competitors/:id", asyncHandler(async (req, res) => {
+    await storage.deleteCompetitor(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // PHASE 9: SERVICE HISTORY, QUALITY CHECKLISTS, TIME OFF REQUESTS
   // ============================================
 
-  // Service History routes
-  app.get("/api/service-history/:userId", async (req, res) => {
-    try {
-      const items = await storage.getServiceHistory(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch service history" });
-    }
-  });
+  apiRouter.get("/service-history", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getServiceHistory(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/service-history", async (req, res) => {
-    try {
-      const item = await storage.createServiceHistory(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create service history" });
-    }
-  });
+  apiRouter.post("/service-history", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createServiceHistory({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/service-history/:id", async (req, res) => {
-    try {
-      const item = await storage.updateServiceHistory(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update service history" });
-    }
-  });
+  apiRouter.patch("/service-history/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateServiceHistory(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/service-history/:id", async (req, res) => {
-    try {
-      await storage.deleteServiceHistory(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete service history" });
-    }
-  });
+  apiRouter.delete("/service-history/:id", asyncHandler(async (req, res) => {
+    await storage.deleteServiceHistory(req.params.id);
+    res.json({ success: true });
+  }));
 
-  // Quality Checklists routes
-  app.get("/api/quality-checklists/:userId", async (req, res) => {
-    try {
-      const items = await storage.getQualityChecklists(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch quality checklists" });
-    }
-  });
+  // Quality Checklists routes (different from compliance-checklists)
+  apiRouter.get("/quality-checklists", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getQualityChecklists(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/quality-checklists", async (req, res) => {
-    try {
-      const item = await storage.createQualityChecklist(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create quality checklist" });
-    }
-  });
+  apiRouter.post("/quality-checklists", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createQualityChecklist({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/quality-checklists/:id", async (req, res) => {
-    try {
-      const item = await storage.updateQualityChecklist(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update quality checklist" });
-    }
-  });
+  apiRouter.patch("/quality-checklists/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateQualityChecklist(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/quality-checklists/:id", async (req, res) => {
-    try {
-      await storage.deleteQualityChecklist(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete quality checklist" });
-    }
-  });
+  apiRouter.delete("/quality-checklists/:id", asyncHandler(async (req, res) => {
+    await storage.deleteQualityChecklist(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Time Off Requests routes
-  app.get("/api/time-off-requests/:userId", async (req, res) => {
-    try {
-      const items = await storage.getTimeOffRequests(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch time off requests" });
-    }
-  });
+  apiRouter.get("/time-off-requests", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getTimeOffRequests(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/time-off-requests", async (req, res) => {
-    try {
-      const item = await storage.createTimeOffRequest(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create time off request" });
-    }
-  });
+  apiRouter.post("/time-off-requests", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createTimeOffRequest({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/time-off-requests/:id", async (req, res) => {
-    try {
-      const item = await storage.updateTimeOffRequest(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update time off request" });
-    }
-  });
+  apiRouter.patch("/time-off-requests/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateTimeOffRequest(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/time-off-requests/:id", async (req, res) => {
-    try {
-      await storage.deleteTimeOffRequest(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete time off request" });
-    }
-  });
+  apiRouter.delete("/time-off-requests/:id", asyncHandler(async (req, res) => {
+    await storage.deleteTimeOffRequest(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // PHASE 10: VISIT TYPES & SERVICE TEMPLATES
   // ============================================
 
-  // Visit Types routes
-  app.get("/api/visit-types/:userId", async (req, res) => {
-    try {
-      const items = await storage.getVisitTypes(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch visit types" });
-    }
-  });
+  apiRouter.get("/visit-types", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getVisitTypes(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/visit-types", async (req, res) => {
-    try {
-      const item = await storage.createVisitType(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create visit type" });
-    }
-  });
+  apiRouter.post("/visit-types", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createVisitType({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/visit-types/:id", async (req, res) => {
-    try {
-      const item = await storage.updateVisitType(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update visit type" });
-    }
-  });
+  apiRouter.patch("/visit-types/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateVisitType(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/visit-types/:id", async (req, res) => {
-    try {
-      await storage.deleteVisitType(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete visit type" });
-    }
-  });
+  apiRouter.delete("/visit-types/:id", asyncHandler(async (req, res) => {
+    await storage.deleteVisitType(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Service Templates routes
-  app.get("/api/service-templates/:userId", async (req, res) => {
-    try {
-      const items = await storage.getServiceTemplates(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch service templates" });
-    }
-  });
+  apiRouter.get("/service-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getServiceTemplates(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/service-templates/by-visit-type/:visitTypeId", async (req, res) => {
-    try {
-      const items = await storage.getServiceTemplatesByVisitType(req.params.visitTypeId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch service templates by visit type" });
-    }
-  });
+  apiRouter.get("/service-templates/by-visit-type/:visitTypeId", asyncHandler(async (req, res) => {
+    const items = await storage.getServiceTemplatesByVisitType(req.params.visitTypeId);
+    res.json(items);
+  }));
 
-  app.post("/api/service-templates", async (req, res) => {
-    try {
-      const item = await storage.createServiceTemplate(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create service template" });
-    }
-  });
+  apiRouter.post("/service-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createServiceTemplate({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/service-templates/:id", async (req, res) => {
-    try {
-      const item = await storage.updateServiceTemplate(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update service template" });
-    }
-  });
+  apiRouter.patch("/service-templates/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateServiceTemplate(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/service-templates/:id", async (req, res) => {
-    try {
-      await storage.deleteServiceTemplate(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete service template" });
-    }
-  });
+  apiRouter.delete("/service-templates/:id", asyncHandler(async (req, res) => {
+    await storage.deleteServiceTemplate(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // PHASE 10: SITE ASSETS & BULK ADD
   // ============================================
 
-  // Site Assets routes
-  app.get("/api/site-assets/:userId", async (req, res) => {
-    try {
-      const items = await storage.getSiteAssets(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch site assets" });
-    }
-  });
+  apiRouter.get("/site-assets", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getSiteAssets(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/site-assets/by-project/:projectId", async (req, res) => {
-    try {
-      const items = await storage.getSiteAssetsByProject(req.params.projectId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch site assets by project" });
-    }
-  });
+  apiRouter.get("/site-assets/by-project/:projectId", asyncHandler(async (req, res) => {
+    const items = await storage.getSiteAssetsByProject(req.params.projectId);
+    res.json(items);
+  }));
 
-  app.post("/api/site-assets", async (req, res) => {
-    try {
-      const item = await storage.createSiteAsset(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create site asset" });
-    }
-  });
+  apiRouter.post("/site-assets", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createSiteAsset({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.post("/api/site-assets/bulk", async (req, res) => {
-    try {
-      const items = await storage.createSiteAssetsBulk(req.body.assets);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create bulk site assets" });
-    }
-  });
+  apiRouter.post("/site-assets/bulk", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const assetsWithUserId = req.body.assets.map((asset: any) => ({ ...asset, userId }));
+    const items = await storage.createSiteAssetsBulk(assetsWithUserId);
+    res.json(items);
+  }));
 
-  app.patch("/api/site-assets/:id", async (req, res) => {
-    try {
-      const item = await storage.updateSiteAsset(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update site asset" });
-    }
-  });
+  apiRouter.patch("/site-assets/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateSiteAsset(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/site-assets/:id", async (req, res) => {
-    try {
-      await storage.deleteSiteAsset(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete site asset" });
-    }
-  });
+  apiRouter.delete("/site-assets/:id", asyncHandler(async (req, res) => {
+    await storage.deleteSiteAsset(req.params.id);
+    res.json({ success: true });
+  }));
 
-  app.get("/api/site-assets/by-site/:siteId", async (req, res) => {
-    try {
-      const items = await storage.getSiteAssetsBySite(req.params.siteId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch site assets by site" });
-    }
-  });
+  apiRouter.get("/site-assets/by-site/:siteId", asyncHandler(async (req, res) => {
+    const items = await storage.getSiteAssetsBySite(req.params.siteId);
+    res.json(items);
+  }));
 
-  app.get("/api/site-assets/by-client/:clientId", async (req, res) => {
-    try {
-      const items = await storage.getSiteAssetsByClient(req.params.clientId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch site assets by client" });
-    }
-  });
+  apiRouter.get("/site-assets/by-client/:clientId", asyncHandler(async (req, res) => {
+    const items = await storage.getSiteAssetsByClient(req.params.clientId);
+    res.json(items);
+  }));
 
   // ============================================
   // SITES (BUILDINGS) ROUTES
   // ============================================
 
-  app.get("/api/sites/:userId", async (req, res) => {
-    try {
-      const items = await storage.getSites(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch sites" });
-    }
-  });
+  apiRouter.get("/sites", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getSites(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/sites/by-client/:clientId", async (req, res) => {
-    try {
-      const items = await storage.getSitesByClient(req.params.clientId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch sites by client" });
-    }
-  });
+  apiRouter.get("/sites/by-client/:clientId", asyncHandler(async (req, res) => {
+    const items = await storage.getSitesByClient(req.params.clientId);
+    res.json(items);
+  }));
 
-  app.get("/api/sites/detail/:id", async (req, res) => {
-    try {
-      const site = await storage.getSite(req.params.id);
-      if (!site) {
-        return res.status(404).json({ error: "Site not found" });
-      }
-      res.json(site);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch site" });
+  apiRouter.get("/sites/detail/:id", asyncHandler(async (req, res) => {
+    const site = await storage.getSite(req.params.id);
+    if (!site) {
+      return res.status(404).json({ error: "Site not found" });
     }
-  });
+    res.json(site);
+  }));
 
-  app.post("/api/sites", async (req, res) => {
-    try {
-      const site = await storage.createSite(req.body);
-      res.json(site);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create site" });
-    }
-  });
+  apiRouter.post("/sites", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const site = await storage.createSite({ ...req.body, userId });
+    res.json(site);
+  }));
 
-  app.patch("/api/sites/:id", async (req, res) => {
-    try {
-      const site = await storage.updateSite(req.params.id, req.body);
-      res.json(site);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update site" });
-    }
-  });
+  apiRouter.patch("/sites/:id", asyncHandler(async (req, res) => {
+    const site = await storage.updateSite(req.params.id, req.body);
+    res.json(site);
+  }));
 
-  app.delete("/api/sites/:id", async (req, res) => {
-    try {
-      await storage.deleteSite(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete site" });
-    }
-  });
+  apiRouter.delete("/sites/:id", asyncHandler(async (req, res) => {
+    await storage.deleteSite(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // JOB SITE ASSETS ROUTES
   // ============================================
 
-  app.get("/api/job-site-assets/:jobId", async (req, res) => {
-    try {
-      const items = await storage.getJobSiteAssets(req.params.jobId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job site assets" });
-    }
-  });
+  apiRouter.get("/job-site-assets/:jobId", asyncHandler(async (req, res) => {
+    const items = await storage.getJobSiteAssets(req.params.jobId);
+    res.json(items);
+  }));
 
-  app.get("/api/job-site-assets/with-details/:jobId", async (req, res) => {
-    try {
-      const items = await storage.getJobSiteAssetsWithDetails(req.params.jobId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job site assets with details" });
-    }
-  });
+  apiRouter.get("/job-site-assets/with-details/:jobId", asyncHandler(async (req, res) => {
+    const items = await storage.getJobSiteAssetsWithDetails(req.params.jobId);
+    res.json(items);
+  }));
 
-  app.post("/api/job-site-assets", async (req, res) => {
-    try {
-      const item = await storage.createJobSiteAsset(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to assign asset to job" });
-    }
-  });
+  apiRouter.post("/job-site-assets", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createJobSiteAsset({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.post("/api/job-site-assets/bulk", async (req, res) => {
-    try {
-      const items = await storage.createJobSiteAssetsBulk(req.body.assignments);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to bulk assign assets to job" });
-    }
-  });
+  apiRouter.post("/job-site-assets/bulk", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const assignments = req.body.assignments.map((a: any) => ({ ...a, userId }));
+    const items = await storage.createJobSiteAssetsBulk(assignments);
+    res.json(items);
+  }));
 
-  app.patch("/api/job-site-assets/:id", async (req, res) => {
-    try {
-      const item = await storage.updateJobSiteAsset(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update job site asset" });
-    }
-  });
+  apiRouter.patch("/job-site-assets/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateJobSiteAsset(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/job-site-assets/:id", async (req, res) => {
-    try {
-      await storage.deleteJobSiteAsset(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to remove asset from job" });
-    }
-  });
+  apiRouter.delete("/job-site-assets/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJobSiteAsset(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Asset Batches routes
-  app.get("/api/asset-batches/:userId", async (req, res) => {
-    try {
-      const items = await storage.getAssetBatches(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch asset batches" });
-    }
-  });
+  apiRouter.get("/asset-batches", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getAssetBatches(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/asset-batches", async (req, res) => {
-    try {
-      const item = await storage.createAssetBatch(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create asset batch" });
-    }
-  });
+  apiRouter.post("/asset-batches", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createAssetBatch({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/asset-batches/:id", async (req, res) => {
-    try {
-      const item = await storage.updateAssetBatch(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update asset batch" });
-    }
-  });
+  apiRouter.patch("/asset-batches/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateAssetBatch(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/asset-batches/:id", async (req, res) => {
-    try {
-      await storage.deleteAssetBatch(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete asset batch" });
-    }
-  });
+  apiRouter.delete("/asset-batches/:id", asyncHandler(async (req, res) => {
+    await storage.deleteAssetBatch(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // PHASE 11: SCHEDULING ENHANCEMENTS
   // ============================================
 
   // Job Assignments routes
-  app.get("/api/job-assignments/:userId", async (req, res) => {
-    try {
-      const items = await storage.getJobAssignments(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job assignments" });
-    }
-  });
+  apiRouter.get("/job-assignments", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getJobAssignments(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/job-assignments/by-job/:jobId", async (req, res) => {
-    try {
-      const items = await storage.getJobAssignmentsByJob(req.params.jobId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job assignments by job" });
-    }
-  });
+  apiRouter.get("/job-assignments/by-job/:jobId", asyncHandler(async (req, res) => {
+    const items = await storage.getJobAssignmentsByJob(req.params.jobId);
+    res.json(items);
+  }));
 
-  app.post("/api/job-assignments", async (req, res) => {
-    try {
-      const item = await storage.createJobAssignment(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create job assignment" });
-    }
-  });
+  apiRouter.post("/job-assignments", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createJobAssignment({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/job-assignments/:id", async (req, res) => {
-    try {
-      const item = await storage.updateJobAssignment(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update job assignment" });
-    }
-  });
+  apiRouter.patch("/job-assignments/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateJobAssignment(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/job-assignments/:id", async (req, res) => {
-    try {
-      await storage.deleteJobAssignment(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete job assignment" });
-    }
-  });
+  apiRouter.delete("/job-assignments/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJobAssignment(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Job Skill Requirements routes
-  app.get("/api/job-skill-requirements/:userId", async (req, res) => {
-    try {
-      const items = await storage.getJobSkillRequirements(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job skill requirements" });
-    }
-  });
+  apiRouter.get("/job-skill-requirements", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getJobSkillRequirements(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/job-skill-requirements/by-job/:jobId", async (req, res) => {
-    try {
-      const items = await storage.getJobSkillRequirementsByJob(req.params.jobId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job skill requirements by job" });
-    }
-  });
+  apiRouter.get("/job-skill-requirements/by-job/:jobId", asyncHandler(async (req, res) => {
+    const items = await storage.getJobSkillRequirementsByJob(req.params.jobId);
+    res.json(items);
+  }));
 
-  app.post("/api/job-skill-requirements", async (req, res) => {
-    try {
-      const item = await storage.createJobSkillRequirement(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create job skill requirement" });
-    }
-  });
+  apiRouter.post("/job-skill-requirements", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createJobSkillRequirement({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/job-skill-requirements/:id", async (req, res) => {
-    try {
-      const item = await storage.updateJobSkillRequirement(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update job skill requirement" });
-    }
-  });
+  apiRouter.patch("/job-skill-requirements/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateJobSkillRequirement(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/job-skill-requirements/:id", async (req, res) => {
-    try {
-      await storage.deleteJobSkillRequirement(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete job skill requirement" });
-    }
-  });
+  apiRouter.delete("/job-skill-requirements/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJobSkillRequirement(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Job Equipment Reservations routes
-  app.get("/api/job-equipment-reservations/:userId", async (req, res) => {
-    try {
-      const items = await storage.getJobEquipmentReservations(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job equipment reservations" });
-    }
-  });
+  apiRouter.get("/job-equipment-reservations", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getJobEquipmentReservations(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/job-equipment-reservations/by-job/:jobId", async (req, res) => {
-    try {
-      const items = await storage.getJobEquipmentReservationsByJob(req.params.jobId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job equipment reservations by job" });
-    }
-  });
+  apiRouter.get("/job-equipment-reservations/by-job/:jobId", asyncHandler(async (req, res) => {
+    const items = await storage.getJobEquipmentReservationsByJob(req.params.jobId);
+    res.json(items);
+  }));
 
-  app.post("/api/job-equipment-reservations", async (req, res) => {
-    try {
-      const item = await storage.createJobEquipmentReservation(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create job equipment reservation" });
-    }
-  });
+  apiRouter.post("/job-equipment-reservations", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createJobEquipmentReservation({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/job-equipment-reservations/:id", async (req, res) => {
-    try {
-      const item = await storage.updateJobEquipmentReservation(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update job equipment reservation" });
-    }
-  });
+  apiRouter.patch("/job-equipment-reservations/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateJobEquipmentReservation(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/job-equipment-reservations/:id", async (req, res) => {
-    try {
-      await storage.deleteJobEquipmentReservation(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete job equipment reservation" });
-    }
-  });
+  apiRouter.delete("/job-equipment-reservations/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJobEquipmentReservation(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Job Parts Used routes
-  app.get("/api/job-parts-used/:userId", async (req, res) => {
-    try {
-      const items = await storage.getJobPartsUsed(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job parts used" });
-    }
-  });
+  apiRouter.get("/job-parts-used", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getJobPartsUsed(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/job-parts-used/by-job/:jobId", async (req, res) => {
-    try {
-      const items = await storage.getJobPartsUsedByJob(req.params.jobId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job parts used by job" });
-    }
-  });
+  apiRouter.get("/job-parts-used/by-job/:jobId", asyncHandler(async (req, res) => {
+    const items = await storage.getJobPartsUsedByJob(req.params.jobId);
+    res.json(items);
+  }));
 
-  app.post("/api/job-parts-used", async (req, res) => {
-    try {
-      const item = await storage.createJobPartsUsed(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create job part used" });
-    }
-  });
+  apiRouter.post("/job-parts-used", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createJobPartsUsed({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/job-parts-used/:id", async (req, res) => {
-    try {
-      const item = await storage.updateJobPartsUsed(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update job part used" });
-    }
-  });
+  apiRouter.patch("/job-parts-used/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateJobPartsUsed(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/job-parts-used/:id", async (req, res) => {
-    try {
-      await storage.deleteJobPartsUsed(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete job part used" });
-    }
-  });
+  apiRouter.delete("/job-parts-used/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJobPartsUsed(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Staff Availability routes
-  app.get("/api/staff-availability/:userId", async (req, res) => {
-    try {
-      const items = await storage.getStaffAvailability(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch staff availability" });
-    }
-  });
+  apiRouter.get("/staff-availability", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getStaffAvailability(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/staff-availability/by-staff/:staffId", async (req, res) => {
-    try {
-      const items = await storage.getStaffAvailabilityByStaff(req.params.staffId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch staff availability by staff" });
-    }
-  });
+  apiRouter.get("/staff-availability/by-staff/:staffId", asyncHandler(async (req, res) => {
+    const items = await storage.getStaffAvailabilityByStaff(req.params.staffId);
+    res.json(items);
+  }));
 
-  app.post("/api/staff-availability", async (req, res) => {
-    try {
-      const item = await storage.createStaffAvailability(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create staff availability" });
-    }
-  });
+  apiRouter.post("/staff-availability", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createStaffAvailability({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/staff-availability/:id", async (req, res) => {
-    try {
-      const item = await storage.updateStaffAvailability(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update staff availability" });
-    }
-  });
+  apiRouter.patch("/staff-availability/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateStaffAvailability(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/staff-availability/:id", async (req, res) => {
-    try {
-      await storage.deleteStaffAvailability(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete staff availability" });
-    }
-  });
+  apiRouter.delete("/staff-availability/:id", asyncHandler(async (req, res) => {
+    await storage.deleteStaffAvailability(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Job Time Windows routes
-  app.get("/api/job-time-windows/:userId", async (req, res) => {
-    try {
-      const items = await storage.getJobTimeWindows(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job time windows" });
-    }
-  });
+  apiRouter.get("/job-time-windows", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getJobTimeWindows(userId);
+    res.json(items);
+  }));
 
-  app.get("/api/job-time-windows/by-job/:jobId", async (req, res) => {
-    try {
-      const items = await storage.getJobTimeWindowsByJob(req.params.jobId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch job time windows by job" });
-    }
-  });
+  apiRouter.get("/job-time-windows/by-job/:jobId", asyncHandler(async (req, res) => {
+    const items = await storage.getJobTimeWindowsByJob(req.params.jobId);
+    res.json(items);
+  }));
 
-  app.post("/api/job-time-windows", async (req, res) => {
-    try {
-      const item = await storage.createJobTimeWindow(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create job time window" });
-    }
-  });
+  apiRouter.post("/job-time-windows", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createJobTimeWindow({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/job-time-windows/:id", async (req, res) => {
-    try {
-      const item = await storage.updateJobTimeWindow(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update job time window" });
-    }
-  });
+  apiRouter.patch("/job-time-windows/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateJobTimeWindow(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/job-time-windows/:id", async (req, res) => {
-    try {
-      await storage.deleteJobTimeWindow(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete job time window" });
-    }
-  });
+  apiRouter.delete("/job-time-windows/:id", asyncHandler(async (req, res) => {
+    await storage.deleteJobTimeWindow(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Shift Handovers routes
-  app.get("/api/shift-handovers/:userId", async (req, res) => {
-    try {
-      const items = await storage.getShiftHandovers(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch shift handovers" });
-    }
-  });
+  apiRouter.get("/shift-handovers", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getShiftHandovers(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/shift-handovers", async (req, res) => {
-    try {
-      const item = await storage.createShiftHandover(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create shift handover" });
-    }
-  });
+  apiRouter.post("/shift-handovers", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createShiftHandover({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/shift-handovers/:id", async (req, res) => {
-    try {
-      const item = await storage.updateShiftHandover(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update shift handover" });
-    }
-  });
+  apiRouter.patch("/shift-handovers/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateShiftHandover(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/shift-handovers/:id", async (req, res) => {
-    try {
-      await storage.deleteShiftHandover(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete shift handover" });
-    }
-  });
+  apiRouter.delete("/shift-handovers/:id", asyncHandler(async (req, res) => {
+    await storage.deleteShiftHandover(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Daily Briefings routes
-  app.get("/api/daily-briefings/:userId", async (req, res) => {
-    try {
-      const items = await storage.getDailyBriefings(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch daily briefings" });
-    }
-  });
+  apiRouter.get("/daily-briefings", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getDailyBriefings(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/daily-briefings", async (req, res) => {
-    try {
-      const item = await storage.createDailyBriefing(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create daily briefing" });
-    }
-  });
+  apiRouter.post("/daily-briefings", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createDailyBriefing({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/daily-briefings/:id", async (req, res) => {
-    try {
-      const item = await storage.updateDailyBriefing(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update daily briefing" });
-    }
-  });
+  apiRouter.patch("/daily-briefings/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateDailyBriefing(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/daily-briefings/:id", async (req, res) => {
-    try {
-      await storage.deleteDailyBriefing(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete daily briefing" });
-    }
-  });
+  apiRouter.delete("/daily-briefings/:id", asyncHandler(async (req, res) => {
+    await storage.deleteDailyBriefing(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Service Reminders routes
-  app.get("/api/service-reminders/:userId", async (req, res) => {
-    try {
-      const items = await storage.getServiceReminders(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch service reminders" });
-    }
-  });
+  apiRouter.get("/service-reminders", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getServiceReminders(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/service-reminders", async (req, res) => {
-    try {
-      const item = await storage.createServiceReminder(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create service reminder" });
-    }
-  });
+  apiRouter.post("/service-reminders", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createServiceReminder({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/service-reminders/:id", async (req, res) => {
-    try {
-      const item = await storage.updateServiceReminder(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update service reminder" });
-    }
-  });
+  apiRouter.patch("/service-reminders/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateServiceReminder(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/service-reminders/:id", async (req, res) => {
-    try {
-      await storage.deleteServiceReminder(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete service reminder" });
-    }
-  });
+  apiRouter.delete("/service-reminders/:id", asyncHandler(async (req, res) => {
+    await storage.deleteServiceReminder(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Location Coordinates routes
-  app.get("/api/location-coordinates/:userId", async (req, res) => {
-    try {
-      const items = await storage.getLocationCoordinates(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch location coordinates" });
-    }
-  });
+  apiRouter.get("/location-coordinates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getLocationCoordinates(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/location-coordinates", async (req, res) => {
-    try {
-      const item = await storage.createLocationCoordinate(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create location coordinate" });
-    }
-  });
+  apiRouter.post("/location-coordinates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createLocationCoordinate({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/location-coordinates/:id", async (req, res) => {
-    try {
-      const item = await storage.updateLocationCoordinate(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update location coordinate" });
-    }
-  });
+  apiRouter.patch("/location-coordinates/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateLocationCoordinate(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/location-coordinates/:id", async (req, res) => {
-    try {
-      await storage.deleteLocationCoordinate(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete location coordinate" });
-    }
-  });
+  apiRouter.delete("/location-coordinates/:id", asyncHandler(async (req, res) => {
+    await storage.deleteLocationCoordinate(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Scheduling Conflicts routes
-  app.get("/api/scheduling-conflicts/:userId", async (req, res) => {
-    try {
-      const items = await storage.getSchedulingConflicts(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch scheduling conflicts" });
-    }
-  });
+  apiRouter.get("/scheduling-conflicts", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getSchedulingConflicts(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/scheduling-conflicts", async (req, res) => {
-    try {
-      const item = await storage.createSchedulingConflict(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create scheduling conflict" });
-    }
-  });
+  apiRouter.post("/scheduling-conflicts", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createSchedulingConflict({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.patch("/api/scheduling-conflicts/:id", async (req, res) => {
-    try {
-      const item = await storage.updateSchedulingConflict(req.params.id, req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update scheduling conflict" });
-    }
-  });
+  apiRouter.patch("/scheduling-conflicts/:id", asyncHandler(async (req, res) => {
+    const item = await storage.updateSchedulingConflict(req.params.id, req.body);
+    res.json(item);
+  }));
 
-  app.delete("/api/scheduling-conflicts/:id", async (req, res) => {
-    try {
-      await storage.deleteSchedulingConflict(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete scheduling conflict" });
-    }
-  });
+  apiRouter.delete("/scheduling-conflicts/:id", asyncHandler(async (req, res) => {
+    await storage.deleteSchedulingConflict(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Capacity Snapshots routes
-  app.get("/api/capacity-snapshots/:userId", async (req, res) => {
-    try {
-      const items = await storage.getCapacitySnapshots(req.params.userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch capacity snapshots" });
-    }
-  });
+  apiRouter.get("/capacity-snapshots", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const items = await storage.getCapacitySnapshots(userId);
+    res.json(items);
+  }));
 
-  app.post("/api/capacity-snapshots", async (req, res) => {
-    try {
-      const item = await storage.createCapacitySnapshot(req.body);
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create capacity snapshot" });
-    }
-  });
+  apiRouter.post("/capacity-snapshots", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const item = await storage.createCapacitySnapshot({ ...req.body, userId });
+    res.json(item);
+  }));
 
-  app.delete("/api/capacity-snapshots/:id", async (req, res) => {
-    try {
-      await storage.deleteCapacitySnapshot(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete capacity snapshot" });
-    }
-  });
+  apiRouter.delete("/capacity-snapshots/:id", asyncHandler(async (req, res) => {
+    await storage.deleteCapacitySnapshot(req.params.id);
+    res.json({ success: true });
+  }));
 
   // Haversine formula for calculating distance between two coordinates
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -3578,705 +2415,645 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Travel time estimation endpoint
-  app.get("/api/travel-time/:userId", async (req, res) => {
-    try {
-      const { from, to } = req.query;
-      
-      if (!from || !to) {
-        res.status(400).json({ error: "Both 'from' and 'to' job IDs are required" });
-        return;
-      }
-
-      const coordinates = await storage.getLocationCoordinates(req.params.userId);
-      const fromCoord = coordinates.find(c => c.entityType === "job" && c.entityId === from);
-      const toCoord = coordinates.find(c => c.entityType === "job" && c.entityId === to);
-
-      if (!fromCoord || !toCoord) {
-        res.json({ 
-          available: false, 
-          message: "Coordinates not available for one or both jobs" 
-        });
-        return;
-      }
-
-      const distance = calculateDistance(
-        fromCoord.latitude, fromCoord.longitude,
-        toCoord.latitude, toCoord.longitude
-      );
-      const travelTimeMinutes = estimateTravelTime(distance);
-
-      res.json({
-        available: true,
-        fromJobId: from,
-        toJobId: to,
-        distanceKm: Math.round(distance * 10) / 10,
-        distanceMiles: Math.round(distance * 0.621371 * 10) / 10,
-        travelTimeMinutes,
-        travelTimeFormatted: travelTimeMinutes < 60 
-          ? `${travelTimeMinutes} mins`
-          : `${Math.floor(travelTimeMinutes / 60)}h ${travelTimeMinutes % 60}m`
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to calculate travel time" });
+  apiRouter.get("/travel-time", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const { from, to } = req.query;
+    
+    if (!from || !to) {
+      res.status(400).json({ error: "Both 'from' and 'to' job IDs are required" });
+      return;
     }
-  });
+
+    const coordinates = await storage.getLocationCoordinates(userId);
+    const fromCoord = coordinates.find(c => c.entityType === "job" && c.entityId === from);
+    const toCoord = coordinates.find(c => c.entityType === "job" && c.entityId === to);
+
+    if (!fromCoord || !toCoord) {
+      res.json({ 
+        available: false, 
+        message: "Coordinates not available for one or both jobs" 
+      });
+      return;
+    }
+
+    const distance = calculateDistance(
+      fromCoord.latitude, fromCoord.longitude,
+      toCoord.latitude, toCoord.longitude
+    );
+    const travelTimeMinutes = estimateTravelTime(distance);
+
+    res.json({
+      available: true,
+      fromJobId: from,
+      toJobId: to,
+      distanceKm: Math.round(distance * 10) / 10,
+      distanceMiles: Math.round(distance * 0.621371 * 10) / 10,
+      travelTimeMinutes,
+      travelTimeFormatted: travelTimeMinutes < 60 
+        ? `${travelTimeMinutes} mins`
+        : `${Math.floor(travelTimeMinutes / 60)}h ${travelTimeMinutes % 60}m`
+    });
+  }));
 
   // Conflict detection endpoint - analyzes all jobs and detects scheduling conflicts
-  app.get("/api/detect-conflicts/:userId", async (req, res) => {
-    try {
-      const userId = req.params.userId;
-      const jobs = await storage.getJobs(userId);
-      const assignments = await storage.getJobAssignments(userId);
-      const coordinates = await storage.getLocationCoordinates(userId);
-      
-      interface Conflict {
-        type: string;
-        severity: "warning" | "error" | "info";
-        job1Id: string;
-        job2Id: string;
-        job1Title: string;
-        job2Title: string;
-        staffId?: string;
-        staffName?: string;
-        conflictDate: string;
-        details: string;
-        travelTimeMinutes?: number;
-        gapMinutes?: number;
-      }
-
-      const conflicts: Conflict[] = [];
-      const staffMembers = await storage.getStaffDirectory(userId);
-
-      // Filter scheduled jobs with dates
-      const scheduledJobs = jobs.filter(j => 
-        j.scheduledDate && j.status !== "cancelled" && j.status !== "completed"
-      );
-
-      // Group jobs by staff member and date
-      const jobsByStaffAndDate: Record<string, typeof scheduledJobs> = {};
-
-      for (const job of scheduledJobs) {
-        // Get staff from assignments or assignedTechnicianId
-        const jobAssignments = assignments.filter(a => a.jobId === job.id);
-        const staffIds = jobAssignments.map(a => a.staffId).filter(Boolean) as string[];
-        
-        if (job.assignedTechnicianId) {
-          staffIds.push(job.assignedTechnicianId);
-        }
-
-        for (const staffId of Array.from(new Set(staffIds))) {
-          const key = `${staffId}_${job.scheduledDate}`;
-          if (!jobsByStaffAndDate[key]) {
-            jobsByStaffAndDate[key] = [];
-          }
-          jobsByStaffAndDate[key].push(job);
-        }
-      }
-
-      // Check for conflicts within each staff/date group
-      for (const [key, dayJobs] of Object.entries(jobsByStaffAndDate)) {
-        if (dayJobs.length < 2) continue;
-
-        const [staffId, date] = key.split("_");
-        const staff = staffMembers.find(s => s.id === staffId);
-
-        // Sort jobs by scheduled time
-        const sortedJobs = dayJobs.sort((a, b) => {
-          const timeA = a.scheduledTime || "00:00";
-          const timeB = b.scheduledTime || "00:00";
-          return timeA.localeCompare(timeB);
-        });
-
-        // Check consecutive job pairs for conflicts
-        for (let i = 0; i < sortedJobs.length - 1; i++) {
-          const job1 = sortedJobs[i];
-          const job2 = sortedJobs[i + 1];
-
-          const time1 = job1.scheduledTime || "08:00";
-          const time2 = job2.scheduledTime || "08:00";
-          const duration1 = job1.estimatedDuration || 2; // Default 2 hours
-
-          // Calculate job1 end time
-          const [h1, m1] = time1.split(":").map(Number);
-          const endMinutes1 = h1 * 60 + m1 + duration1 * 60;
-
-          // Calculate job2 start time in minutes
-          const [h2, m2] = time2.split(":").map(Number);
-          const startMinutes2 = h2 * 60 + m2;
-
-          // Gap between jobs
-          const gapMinutes = startMinutes2 - endMinutes1;
-
-          // Calculate travel time if coordinates available
-          let travelTimeMinutes = 0;
-          const coord1 = coordinates.find(c => c.entityType === "job" && c.entityId === job1.id);
-          const coord2 = coordinates.find(c => c.entityType === "job" && c.entityId === job2.id);
-
-          if (coord1 && coord2) {
-            const distance = calculateDistance(
-              coord1.latitude, coord1.longitude,
-              coord2.latitude, coord2.longitude
-            );
-            travelTimeMinutes = estimateTravelTime(distance);
-          }
-
-          // Check for overlapping jobs (job2 starts before job1 ends)
-          if (gapMinutes < 0) {
-            conflicts.push({
-              type: "staff_double_booking",
-              severity: "error",
-              job1Id: job1.id,
-              job2Id: job2.id,
-              job1Title: job1.title,
-              job2Title: job2.title,
-              staffId,
-              staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
-              conflictDate: date,
-              details: `Jobs overlap by ${Math.abs(gapMinutes)} minutes`,
-              gapMinutes
-            });
-          }
-          // Check for insufficient travel time (gap less than travel time)
-          else if (travelTimeMinutes > 0 && gapMinutes < travelTimeMinutes) {
-            conflicts.push({
-              type: "insufficient_travel_time",
-              severity: "warning",
-              job1Id: job1.id,
-              job2Id: job2.id,
-              job1Title: job1.title,
-              job2Title: job2.title,
-              staffId,
-              staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
-              conflictDate: date,
-              details: `Gap of ${gapMinutes} mins is less than ${travelTimeMinutes} mins travel time`,
-              travelTimeMinutes,
-              gapMinutes
-            });
-          }
-          // Tight schedule warning (less than 15 mins buffer after travel)
-          else if (travelTimeMinutes > 0 && gapMinutes < travelTimeMinutes + 15) {
-            conflicts.push({
-              type: "tight_schedule",
-              severity: "info",
-              job1Id: job1.id,
-              job2Id: job2.id,
-              job1Title: job1.title,
-              job2Title: job2.title,
-              staffId,
-              staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
-              conflictDate: date,
-              details: `Only ${gapMinutes - travelTimeMinutes} mins buffer after ${travelTimeMinutes} mins travel`,
-              travelTimeMinutes,
-              gapMinutes
-            });
-          }
-        }
-      }
-
-      res.json({
-        conflicts,
-        totalConflicts: conflicts.length,
-        errorCount: conflicts.filter(c => c.severity === "error").length,
-        warningCount: conflicts.filter(c => c.severity === "warning").length,
-        infoCount: conflicts.filter(c => c.severity === "info").length
-      });
-    } catch (error) {
-      console.error("Conflict detection error:", error);
-      res.status(500).json({ error: "Failed to detect conflicts" });
+  apiRouter.get("/detect-conflicts", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const jobs = await storage.getJobs(userId);
+    const assignments = await storage.getJobAssignments(userId);
+    const coordinates = await storage.getLocationCoordinates(userId);
+    
+    interface Conflict {
+      type: string;
+      severity: "warning" | "error" | "info";
+      job1Id: string;
+      job2Id: string;
+      job1Title: string;
+      job2Title: string;
+      staffId?: string;
+      staffName?: string;
+      conflictDate: string;
+      details: string;
+      travelTimeMinutes?: number;
+      gapMinutes?: number;
     }
-  });
+
+    const conflicts: Conflict[] = [];
+    const staffMembers = await storage.getStaffDirectory(userId);
+
+    // Filter scheduled jobs with dates
+    const scheduledJobs = jobs.filter(j => 
+      j.scheduledDate && j.status !== "cancelled" && j.status !== "completed"
+    );
+
+    // Group jobs by staff member and date
+    const jobsByStaffAndDate: Record<string, typeof scheduledJobs> = {};
+
+    for (const job of scheduledJobs) {
+      // Get staff from assignments or assignedTechnicianId
+      const jobAssignments = assignments.filter(a => a.jobId === job.id);
+      const staffIds = jobAssignments.map(a => a.staffId).filter(Boolean) as string[];
+      
+      if (job.assignedTechnicianId) {
+        staffIds.push(job.assignedTechnicianId);
+      }
+
+      for (const staffId of Array.from(new Set(staffIds))) {
+        const key = `${staffId}_${job.scheduledDate}`;
+        if (!jobsByStaffAndDate[key]) {
+          jobsByStaffAndDate[key] = [];
+        }
+        jobsByStaffAndDate[key].push(job);
+      }
+    }
+
+    // Check for conflicts within each staff/date group
+    for (const [key, dayJobs] of Object.entries(jobsByStaffAndDate)) {
+      if (dayJobs.length < 2) continue;
+
+      const [staffId, date] = key.split("_");
+      const staff = staffMembers.find(s => s.id === staffId);
+
+      // Sort jobs by scheduled time
+      const sortedJobs = dayJobs.sort((a, b) => {
+        const timeA = a.scheduledTime || "00:00";
+        const timeB = b.scheduledTime || "00:00";
+        return timeA.localeCompare(timeB);
+      });
+
+      // Check consecutive job pairs for conflicts
+      for (let i = 0; i < sortedJobs.length - 1; i++) {
+        const job1 = sortedJobs[i];
+        const job2 = sortedJobs[i + 1];
+
+        const time1 = job1.scheduledTime || "08:00";
+        const time2 = job2.scheduledTime || "08:00";
+        const duration1 = job1.estimatedDuration || 2; // Default 2 hours
+
+        // Calculate job1 end time
+        const [h1, m1] = time1.split(":").map(Number);
+        const endMinutes1 = h1 * 60 + m1 + duration1 * 60;
+
+        // Calculate job2 start time in minutes
+        const [h2, m2] = time2.split(":").map(Number);
+        const startMinutes2 = h2 * 60 + m2;
+
+        // Gap between jobs
+        const gapMinutes = startMinutes2 - endMinutes1;
+
+        // Calculate travel time if coordinates available
+        let travelTimeMinutes = 0;
+        const coord1 = coordinates.find(c => c.entityType === "job" && c.entityId === job1.id);
+        const coord2 = coordinates.find(c => c.entityType === "job" && c.entityId === job2.id);
+
+        if (coord1 && coord2) {
+          const distance = calculateDistance(
+            coord1.latitude, coord1.longitude,
+            coord2.latitude, coord2.longitude
+          );
+          travelTimeMinutes = estimateTravelTime(distance);
+        }
+
+        // Check for overlapping jobs (job2 starts before job1 ends)
+        if (gapMinutes < 0) {
+          conflicts.push({
+            type: "staff_double_booking",
+            severity: "error",
+            job1Id: job1.id,
+            job2Id: job2.id,
+            job1Title: job1.title,
+            job2Title: job2.title,
+            staffId,
+            staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
+            conflictDate: date,
+            details: `Jobs overlap by ${Math.abs(gapMinutes)} minutes`,
+            gapMinutes
+          });
+        }
+        // Check for insufficient travel time (gap less than travel time)
+        else if (travelTimeMinutes > 0 && gapMinutes < travelTimeMinutes) {
+          conflicts.push({
+            type: "insufficient_travel_time",
+            severity: "warning",
+            job1Id: job1.id,
+            job2Id: job2.id,
+            job1Title: job1.title,
+            job2Title: job2.title,
+            staffId,
+            staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
+            conflictDate: date,
+            details: `Gap of ${gapMinutes} mins is less than ${travelTimeMinutes} mins travel time`,
+            travelTimeMinutes,
+            gapMinutes
+          });
+        }
+        // Tight schedule warning (less than 15 mins buffer after travel)
+        else if (travelTimeMinutes > 0 && gapMinutes < travelTimeMinutes + 15) {
+          conflicts.push({
+            type: "tight_schedule",
+            severity: "info",
+            job1Id: job1.id,
+            job2Id: job2.id,
+            job1Title: job1.title,
+            job2Title: job2.title,
+            staffId,
+            staffName: staff ? `${staff.firstName} ${staff.lastName}` : "Unknown",
+            conflictDate: date,
+            details: `Only ${gapMinutes - travelTimeMinutes} mins buffer after ${travelTimeMinutes} mins travel`,
+            travelTimeMinutes,
+            gapMinutes
+          });
+        }
+      }
+    }
+
+    res.json({
+      conflicts,
+      totalConflicts: conflicts.length,
+      errorCount: conflicts.filter(c => c.severity === "error").length,
+      warningCount: conflicts.filter(c => c.severity === "warning").length,
+      infoCount: conflicts.filter(c => c.severity === "info").length
+    });
+  }));
 
   // ============================================
   // NEXT AVAILABLE SLOT FINDER
   // ============================================
   
   // Find next available time slots for scheduling a job
-  app.post("/api/find-available-slot/:userId", async (req, res) => {
-    try {
-      const userId = req.params.userId;
-      const { 
-        durationHours = 2, 
-        preferredStaffId, 
-        startDate, 
-        endDate, 
-        maxResults = 10 
-      } = req.body;
+  apiRouter.post("/find-available-slot", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const { 
+      durationHours = 2, 
+      preferredStaffId, 
+      startDate, 
+      endDate, 
+      maxResults = 10 
+    } = req.body;
 
-      const jobs = await storage.getJobs(userId);
-      const assignments = await storage.getJobAssignments(userId);
-      const staffMembers = await storage.getStaffDirectory(userId);
+    const jobs = await storage.getJobs(userId);
+    const assignments = await storage.getJobAssignments(userId);
+    const staffMembers = await storage.getStaffDirectory(userId);
 
-      // Guard against null/empty staff directory
-      if (!staffMembers || staffMembers.length === 0) {
-        res.json({ slots: [], message: "No staff members found. Please add staff first." });
-        return;
-      }
+    // Guard against null/empty staff directory
+    if (!staffMembers || staffMembers.length === 0) {
+      res.json({ slots: [], message: "No staff members found. Please add staff first." });
+      return;
+    }
 
-      // Filter active staff
-      const activeStaff = preferredStaffId 
-        ? staffMembers.filter(s => s.id === preferredStaffId && s.status !== "inactive")
-        : staffMembers.filter(s => s.status !== "inactive");
+    // Filter active staff
+    const activeStaff = preferredStaffId 
+      ? staffMembers.filter(s => s.id === preferredStaffId && s.status !== "inactive")
+      : staffMembers.filter(s => s.status !== "inactive");
 
-      if (activeStaff.length === 0) {
-        res.json({ slots: [], message: "No active staff available" });
-        return;
-      }
+    if (activeStaff.length === 0) {
+      res.json({ slots: [], message: "No active staff available" });
+      return;
+    }
 
-      // Parse date range
-      const rangeStart = startDate ? new Date(startDate) : new Date();
-      const rangeEnd = endDate ? new Date(endDate) : new Date(rangeStart.getTime() + 14 * 24 * 60 * 60 * 1000);
+    // Parse date range
+    const rangeStart = startDate ? new Date(startDate) : new Date();
+    const rangeEnd = endDate ? new Date(endDate) : new Date(rangeStart.getTime() + 14 * 24 * 60 * 60 * 1000);
 
-      // Working hours: 8 AM to 5 PM
-      const WORK_START = 8;
-      const WORK_END = 17;
-      const SLOT_INCREMENT = 30; // Check every 30 minutes
+    // Working hours: 8 AM to 5 PM
+    const WORK_START = 8;
+    const WORK_END = 17;
+    const SLOT_INCREMENT = 30; // Check every 30 minutes
 
-      interface AvailableSlot {
-        date: string;
-        startTime: string;
-        endTime: string;
-        staffId: string;
-        staffName: string;
-        durationHours: number;
-      }
+    interface AvailableSlot {
+      date: string;
+      startTime: string;
+      endTime: string;
+      staffId: string;
+      staffName: string;
+      durationHours: number;
+    }
 
-      const availableSlots: AvailableSlot[] = [];
+    const availableSlots: AvailableSlot[] = [];
 
-      // Helper to get jobs for a staff member on a specific date
-      const getStaffJobsOnDate = (staffId: string, date: string) => {
-        const staffJobIds = assignments
-          .filter(a => a.staffId === staffId)
-          .map(a => a.jobId);
-        
-        return jobs.filter(job => {
-          if (job.scheduledDate !== date) return false;
-          if (job.status === "cancelled" || job.status === "completed") return false;
-          const isAssigned = staffJobIds.includes(job.id) || job.assignedTo === staffId;
-          return isAssigned;
-        });
-      };
+    // Helper to get jobs for a staff member on a specific date
+    const getStaffJobsOnDate = (staffId: string, date: string) => {
+      const staffJobIds = assignments
+        .filter(a => a.staffId === staffId)
+        .map(a => a.jobId);
+      
+      return jobs.filter(job => {
+        if (job.scheduledDate !== date) return false;
+        if (job.status === "cancelled" || job.status === "completed") return false;
+        const isAssigned = staffJobIds.includes(job.id) || job.assignedTo === staffId;
+        return isAssigned;
+      });
+    };
 
-      // Helper to check if a slot is available
-      const isSlotAvailable = (staffId: string, date: string, startHour: number, startMinute: number, duration: number): boolean => {
-        const existingJobs = getStaffJobsOnDate(staffId, date);
-        const slotStart = startHour * 60 + startMinute;
-        const slotEnd = slotStart + duration * 60;
+    // Helper to check if a slot is available
+    const isSlotAvailable = (staffId: string, date: string, startHour: number, startMinute: number, duration: number): boolean => {
+      const existingJobs = getStaffJobsOnDate(staffId, date);
+      const slotStart = startHour * 60 + startMinute;
+      const slotEnd = slotStart + duration * 60;
 
-        for (const job of existingJobs) {
-          const jobTime = job.scheduledTime || "08:00";
-          const [h, m] = jobTime.split(":").map(Number);
-          const jobStart = h * 60 + m;
-          const jobDuration = job.estimatedDuration || 2;
-          const jobEnd = jobStart + jobDuration * 60;
+      for (const job of existingJobs) {
+        const jobTime = job.scheduledTime || "08:00";
+        const [h, m] = jobTime.split(":").map(Number);
+        const jobStart = h * 60 + m;
+        const jobDuration = job.estimatedDuration || 2;
+        const jobEnd = jobStart + jobDuration * 60;
 
-          // Check for overlap (add 15 mins buffer for travel)
-          if (slotStart < jobEnd + 15 && slotEnd > jobStart - 15) {
-            return false;
-          }
+        // Check for overlap (add 15 mins buffer for travel)
+        if (slotStart < jobEnd + 15 && slotEnd > jobStart - 15) {
+          return false;
         }
+      }
 
-        return true;
-      };
+      return true;
+    };
 
-      // Iterate through date range
-      let currentDate = new Date(rangeStart);
-      while (currentDate <= rangeEnd && availableSlots.length < maxResults) {
-        // Skip weekends
-        const dayOfWeek = currentDate.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          const dateStr = currentDate.toISOString().split("T")[0];
+    // Iterate through date range
+    let currentDate = new Date(rangeStart);
+    while (currentDate <= rangeEnd && availableSlots.length < maxResults) {
+      // Skip weekends
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        const dateStr = currentDate.toISOString().split("T")[0];
 
-          // Check each staff member
-          for (const staff of activeStaff) {
-            if (availableSlots.length >= maxResults) break;
+        // Check each staff member
+        for (const staff of activeStaff) {
+          if (availableSlots.length >= maxResults) break;
 
-            // Check each time slot
-            for (let hour = WORK_START; hour <= WORK_END - durationHours; hour++) {
-              for (let minute = 0; minute < 60; minute += SLOT_INCREMENT) {
-                if (availableSlots.length >= maxResults) break;
+          // Check each time slot
+          for (let hour = WORK_START; hour <= WORK_END - durationHours; hour++) {
+            for (let minute = 0; minute < 60; minute += SLOT_INCREMENT) {
+              if (availableSlots.length >= maxResults) break;
 
-                // Ensure slot doesn't go past work end
-                const slotEndHour = hour + durationHours + minute / 60;
-                if (slotEndHour > WORK_END) break;
+              // Ensure slot doesn't go past work end
+              const slotEndHour = hour + durationHours + minute / 60;
+              if (slotEndHour > WORK_END) break;
 
-                if (isSlotAvailable(staff.id, dateStr, hour, minute, durationHours)) {
-                  const startTime = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
-                  const endHour = Math.floor(hour + durationHours);
-                  const endMinute = minute;
-                  const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
+              if (isSlotAvailable(staff.id, dateStr, hour, minute, durationHours)) {
+                const startTime = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+                const endHour = Math.floor(hour + durationHours);
+                const endMinute = minute;
+                const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
 
-                  availableSlots.push({
-                    date: dateStr,
-                    startTime,
-                    endTime,
-                    staffId: staff.id,
-                    staffName: `${staff.firstName} ${staff.lastName}`,
-                    durationHours
-                  });
-                  
-                  // Move to next time block to avoid adjacent slots
-                  break;
-                }
+                availableSlots.push({
+                  date: dateStr,
+                  startTime,
+                  endTime,
+                  staffId: staff.id,
+                  staffName: `${staff.firstName} ${staff.lastName}`,
+                  durationHours
+                });
+                
+                // Move to next time block to avoid adjacent slots
+                break;
               }
             }
           }
         }
-
-        currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      res.json({
-        slots: availableSlots,
-        totalFound: availableSlots.length,
-        searchParams: {
-          durationHours,
-          preferredStaffId,
-          startDate: rangeStart.toISOString().split("T")[0],
-          endDate: rangeEnd.toISOString().split("T")[0]
-        }
-      });
-    } catch (error) {
-      console.error("Find available slot error:", error);
-      res.status(500).json({ error: "Failed to find available slots" });
+      currentDate.setDate(currentDate.getDate() + 1);
     }
-  });
+
+    res.json({
+      slots: availableSlots,
+      totalFound: availableSlots.length,
+      searchParams: {
+        durationHours,
+        preferredStaffId,
+        startDate: rangeStart.toISOString().split("T")[0],
+        endDate: rangeEnd.toISOString().split("T")[0]
+      }
+    });
+  }));
 
   // ============================================
   // CAPACITY PLANNING
   // ============================================
   
   // Get capacity metrics for staff workload analysis
-  app.get("/api/capacity-metrics/:userId", async (req, res) => {
-    try {
-      const userId = req.params.userId;
-      const { startDate, endDate } = req.query;
+  apiRouter.get("/capacity-metrics", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const { startDate, endDate } = req.query;
 
-      const jobs = await storage.getJobs(userId);
-      const assignments = await storage.getJobAssignments(userId);
-      const staffMembers = await storage.getStaffDirectory(userId);
+    const jobs = await storage.getJobs(userId);
+    const assignments = await storage.getJobAssignments(userId);
+    const staffMembers = await storage.getStaffDirectory(userId);
 
-      // Guard against null/empty staff directory - return structured empty response
-      if (!staffMembers || staffMembers.length === 0) {
-        const now = new Date();
-        const defaultStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
-        const defaultEnd = new Date(defaultStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-        res.json({
-          hasStaff: false,
-          message: "No staff members found. Please add staff to view capacity metrics.",
-          dateRange: { 
-            start: defaultStart.toISOString().split("T")[0], 
-            end: defaultEnd.toISOString().split("T")[0], 
-            workingDays: 5 
-          },
-          teamMetrics: {
-            totalStaff: 0,
-            totalScheduledHours: 0,
-            totalAvailableHours: 0,
-            overallUtilization: 0,
-            totalJobsScheduled: 0
-          },
-          staffCapacities: [],
-          alerts: { overloadedStaff: [], underutilizedStaff: [] }
-        });
-        return;
-      }
-
-      // Parse date range (default to current week)
+    // Guard against null/empty staff directory - return structured empty response
+    if (!staffMembers || staffMembers.length === 0) {
       const now = new Date();
-      const rangeStart = startDate 
-        ? new Date(startDate as string) 
-        : new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
-      const rangeEnd = endDate 
-        ? new Date(endDate as string) 
-        : new Date(rangeStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-
-      // Standard working hours per day (8 hours)
-      const HOURS_PER_DAY = 8;
-      
-      // Calculate working days in range (exclude weekends)
-      let workingDays = 0;
-      let checkDate = new Date(rangeStart);
-      while (checkDate <= rangeEnd) {
-        const day = checkDate.getDay();
-        if (day !== 0 && day !== 6) workingDays++;
-        checkDate.setDate(checkDate.getDate() + 1);
-      }
-
-      // Per-staff capacity for the period (e.g., 5 days * 8 hours = 40 hours per person)
-      const perStaffCapacityHours = workingDays * HOURS_PER_DAY;
-
-      interface StaffCapacity {
-        staffId: string;
-        staffName: string;
-        role: string;
-        scheduledHours: number;
-        availableHours: number;
-        utilizationPercent: number;
-        jobCount: number;
-        dailyBreakdown: Record<string, { hours: number; jobs: number }>;
-      }
-
-      const activeStaff = staffMembers.filter(s => s.status !== "inactive");
-      const staffCapacities: StaffCapacity[] = [];
-
-      // Filter jobs in date range
-      const rangeJobs = jobs.filter(job => {
-        if (!job.scheduledDate) return false;
-        if (job.status === "cancelled") return false;
-        const jobDate = new Date(job.scheduledDate);
-        return jobDate >= rangeStart && jobDate <= rangeEnd;
-      });
-
-      for (const staff of activeStaff) {
-        const staffJobIds = assignments
-          .filter(a => a.staffId === staff.id)
-          .map(a => a.jobId);
-
-        const staffJobs = rangeJobs.filter(job => 
-          staffJobIds.includes(job.id) || job.assignedTo === staff.id
-        );
-
-        // Calculate scheduled hours
-        let scheduledHours = 0;
-        const dailyBreakdown: Record<string, { hours: number; jobs: number }> = {};
-
-        for (const job of staffJobs) {
-          const duration = job.estimatedDuration || 2;
-          scheduledHours += duration;
-
-          const dateKey = job.scheduledDate!;
-          if (!dailyBreakdown[dateKey]) {
-            dailyBreakdown[dateKey] = { hours: 0, jobs: 0 };
-          }
-          dailyBreakdown[dateKey].hours += duration;
-          dailyBreakdown[dateKey].jobs++;
-        }
-
-        // Per-staff available = their individual capacity minus their scheduled hours
-        const availableHours = Math.max(0, perStaffCapacityHours - scheduledHours);
-        const utilizationPercent = perStaffCapacityHours > 0 
-          ? Math.round((scheduledHours / perStaffCapacityHours) * 100)
-          : 0;
-
-        staffCapacities.push({
-          staffId: staff.id,
-          staffName: `${staff.firstName} ${staff.lastName}`,
-          role: staff.role || "Technician",
-          scheduledHours,
-          availableHours,
-          utilizationPercent,
-          jobCount: staffJobs.length,
-          dailyBreakdown
-        });
-      }
-
-      // Calculate team totals (team capacity = staff count * per-staff capacity)
-      const totalScheduledHours = staffCapacities.reduce((sum, s) => sum + s.scheduledHours, 0);
-      const totalTeamCapacity = activeStaff.length * perStaffCapacityHours;
-      const overallUtilization = totalTeamCapacity > 0 
-        ? Math.round((totalScheduledHours / totalTeamCapacity) * 100)
-        : 0;
-
-      // Identify overloaded staff (>90% utilization)
-      const overloadedStaff = staffCapacities.filter(s => s.utilizationPercent > 90);
-      
-      // Identify underutilized staff (<50% utilization)
-      const underutilizedStaff = staffCapacities.filter(s => s.utilizationPercent < 50);
-
+      const defaultStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
+      const defaultEnd = new Date(defaultStart.getTime() + 6 * 24 * 60 * 60 * 1000);
       res.json({
-        dateRange: {
-          start: rangeStart.toISOString().split("T")[0],
-          end: rangeEnd.toISOString().split("T")[0],
-          workingDays
+        hasStaff: false,
+        message: "No staff members found. Please add staff to view capacity metrics.",
+        dateRange: { 
+          start: defaultStart.toISOString().split("T")[0], 
+          end: defaultEnd.toISOString().split("T")[0], 
+          workingDays: 5 
         },
         teamMetrics: {
-          totalStaff: activeStaff.length,
-          totalScheduledHours,
-          totalAvailableHours: totalTeamCapacity,
-          overallUtilization,
-          totalJobsScheduled: rangeJobs.length
+          totalStaff: 0,
+          totalScheduledHours: 0,
+          totalAvailableHours: 0,
+          overallUtilization: 0,
+          totalJobsScheduled: 0
         },
-        staffCapacities: staffCapacities.sort((a, b) => b.utilizationPercent - a.utilizationPercent),
-        alerts: {
-          overloadedStaff: overloadedStaff.map(s => ({
-            staffId: s.staffId,
-            staffName: s.staffName,
-            utilization: s.utilizationPercent
-          })),
-          underutilizedStaff: underutilizedStaff.map(s => ({
-            staffId: s.staffId,
-            staffName: s.staffName,
-            utilization: s.utilizationPercent
-          }))
-        }
+        staffCapacities: [],
+        alerts: { overloadedStaff: [], underutilizedStaff: [] }
       });
-    } catch (error) {
-      console.error("Capacity metrics error:", error);
-      res.status(500).json({ error: "Failed to calculate capacity metrics" });
+      return;
     }
-  });
+
+    // Parse date range (default to current week)
+    const now = new Date();
+    const rangeStart = startDate 
+      ? new Date(startDate as string) 
+      : new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
+    const rangeEnd = endDate 
+      ? new Date(endDate as string) 
+      : new Date(rangeStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    // Standard working hours per day (8 hours)
+    const HOURS_PER_DAY = 8;
+    
+    // Calculate working days in range (exclude weekends)
+    let workingDays = 0;
+    let checkDate = new Date(rangeStart);
+    while (checkDate <= rangeEnd) {
+      const day = checkDate.getDay();
+      if (day !== 0 && day !== 6) workingDays++;
+      checkDate.setDate(checkDate.getDate() + 1);
+    }
+
+    // Per-staff capacity for the period (e.g., 5 days * 8 hours = 40 hours per person)
+    const perStaffCapacityHours = workingDays * HOURS_PER_DAY;
+
+    interface StaffCapacity {
+      staffId: string;
+      staffName: string;
+      role: string;
+      scheduledHours: number;
+      availableHours: number;
+      utilizationPercent: number;
+      jobCount: number;
+      dailyBreakdown: Record<string, { hours: number; jobs: number }>;
+    }
+
+    const activeStaff = staffMembers.filter(s => s.status !== "inactive");
+    const staffCapacities: StaffCapacity[] = [];
+
+    // Filter jobs in date range
+    const rangeJobs = jobs.filter(job => {
+      if (!job.scheduledDate) return false;
+      if (job.status === "cancelled") return false;
+      const jobDate = new Date(job.scheduledDate);
+      return jobDate >= rangeStart && jobDate <= rangeEnd;
+    });
+
+    for (const staff of activeStaff) {
+      const staffJobIds = assignments
+        .filter(a => a.staffId === staff.id)
+        .map(a => a.jobId);
+
+      const staffJobs = rangeJobs.filter(job => 
+        staffJobIds.includes(job.id) || job.assignedTo === staff.id
+      );
+
+      // Calculate scheduled hours
+      let scheduledHours = 0;
+      const dailyBreakdown: Record<string, { hours: number; jobs: number }> = {};
+
+      for (const job of staffJobs) {
+        const duration = job.estimatedDuration || 2;
+        scheduledHours += duration;
+
+        const dateKey = job.scheduledDate!;
+        if (!dailyBreakdown[dateKey]) {
+          dailyBreakdown[dateKey] = { hours: 0, jobs: 0 };
+        }
+        dailyBreakdown[dateKey].hours += duration;
+        dailyBreakdown[dateKey].jobs++;
+      }
+
+      // Per-staff available = their individual capacity minus their scheduled hours
+      const availableHours = Math.max(0, perStaffCapacityHours - scheduledHours);
+      const utilizationPercent = perStaffCapacityHours > 0 
+        ? Math.round((scheduledHours / perStaffCapacityHours) * 100)
+        : 0;
+
+      staffCapacities.push({
+        staffId: staff.id,
+        staffName: `${staff.firstName} ${staff.lastName}`,
+        role: staff.role || "Technician",
+        scheduledHours,
+        availableHours,
+        utilizationPercent,
+        jobCount: staffJobs.length,
+        dailyBreakdown
+      });
+    }
+
+    // Calculate team totals (team capacity = staff count * per-staff capacity)
+    const totalScheduledHours = staffCapacities.reduce((sum, s) => sum + s.scheduledHours, 0);
+    const totalTeamCapacity = activeStaff.length * perStaffCapacityHours;
+    const overallUtilization = totalTeamCapacity > 0 
+      ? Math.round((totalScheduledHours / totalTeamCapacity) * 100)
+      : 0;
+
+    // Identify overloaded staff (>90% utilization)
+    const overloadedStaff = staffCapacities.filter(s => s.utilizationPercent > 90);
+    
+    // Identify underutilized staff (<50% utilization)
+    const underutilizedStaff = staffCapacities.filter(s => s.utilizationPercent < 50);
+
+    res.json({
+      dateRange: {
+        start: rangeStart.toISOString().split("T")[0],
+        end: rangeEnd.toISOString().split("T")[0],
+        workingDays
+      },
+      teamMetrics: {
+        totalStaff: activeStaff.length,
+        totalScheduledHours,
+        totalAvailableHours: totalTeamCapacity,
+        overallUtilization,
+        totalJobsScheduled: rangeJobs.length
+      },
+      staffCapacities: staffCapacities.sort((a, b) => b.utilizationPercent - a.utilizationPercent),
+      alerts: {
+        overloadedStaff: overloadedStaff.map(s => ({
+          staffId: s.staffId,
+          staffName: s.staffName,
+          utilization: s.utilizationPercent
+        })),
+        underutilizedStaff: underutilizedStaff.map(s => ({
+          staffId: s.staffId,
+          staffName: s.staffName,
+          utilization: s.utilizationPercent
+        }))
+      }
+    });
+  }));
 
   // ============================================
   // CHECK SHEET TEMPLATES
   // ============================================
 
-  app.get("/api/check-sheet-templates/:userId", async (req, res) => {
-    try {
-      const templates = await storage.getCheckSheetTemplates(req.params.userId);
-      res.json(templates);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch check sheet templates" });
-    }
-  });
+  apiRouter.get("/check-sheet-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const templates = await storage.getCheckSheetTemplates(userId);
+    res.json(templates);
+  }));
 
-  app.get("/api/check-sheet-templates/detail/:id", async (req, res) => {
-    try {
-      const template = await storage.getCheckSheetTemplate(req.params.id);
-      if (!template) {
-        return res.status(404).json({ error: "Check sheet template not found" });
-      }
-      res.json(template);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch check sheet template" });
+  apiRouter.get("/check-sheet-templates/detail/:id", asyncHandler(async (req, res) => {
+    const template = await storage.getCheckSheetTemplate(req.params.id);
+    if (!template) {
+      return res.status(404).json({ error: "Check sheet template not found" });
     }
-  });
+    res.json(template);
+  }));
 
-  app.get("/api/check-sheet-templates/system/:userId/:systemType", async (req, res) => {
-    try {
-      const templates = await storage.getCheckSheetTemplatesBySystemType(req.params.userId, req.params.systemType);
-      res.json(templates);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch check sheet templates by system type" });
-    }
-  });
+  apiRouter.get("/check-sheet-templates/system/:systemType", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const templates = await storage.getCheckSheetTemplatesBySystemType(userId, req.params.systemType);
+    res.json(templates);
+  }));
 
   // Get default template fields for a system type
-  app.get("/api/check-sheet-templates/defaults/:systemType", async (req, res) => {
-    try {
-      const { systemType } = req.params;
-      const defaultFields = DEFAULT_TEMPLATE_FIELDS[systemType] || [];
-      res.json({ systemType, fields: defaultFields });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch default template fields" });
-    }
-  });
+  apiRouter.get("/check-sheet-templates/defaults/:systemType", asyncHandler(async (req, res) => {
+    const { systemType } = req.params;
+    const defaultFields = DEFAULT_TEMPLATE_FIELDS[systemType] || [];
+    res.json({ systemType, fields: defaultFields });
+  }));
 
-  app.post("/api/check-sheet-templates", async (req, res) => {
-    try {
-      const validation = insertCheckSheetTemplateSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
-      }
-      // Apply default fields if not provided but systemType is given
-      const data = validation.data;
-      if (data.systemType && (!data.fields || (Array.isArray(data.fields) && data.fields.length === 0))) {
-        data.fields = DEFAULT_TEMPLATE_FIELDS[data.systemType] || [];
-      }
-      const template = await storage.createCheckSheetTemplate(data);
-      res.json(template);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create check sheet template" });
+  apiRouter.post("/check-sheet-templates", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const validation = insertCheckSheetTemplateSchema.safeParse({ ...req.body, userId });
+    if (!validation.success) {
+      return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
     }
-  });
+    // Apply default fields if not provided but systemType is given
+    const data = validation.data;
+    if (data.systemType && (!data.fields || (Array.isArray(data.fields) && data.fields.length === 0))) {
+      data.fields = DEFAULT_TEMPLATE_FIELDS[data.systemType] || [];
+    }
+    const template = await storage.createCheckSheetTemplate(data);
+    res.json(template);
+  }));
 
-  app.patch("/api/check-sheet-templates/:id", async (req, res) => {
-    try {
-      const existing = await storage.getCheckSheetTemplate(req.params.id);
-      if (!existing) {
-        return res.status(404).json({ error: "Check sheet template not found" });
-      }
-      const template = await storage.updateCheckSheetTemplate(req.params.id, req.body);
-      res.json(template);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update check sheet template" });
+  apiRouter.patch("/check-sheet-templates/:id", asyncHandler(async (req, res) => {
+    const existing = await storage.getCheckSheetTemplate(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Check sheet template not found" });
     }
-  });
+    const template = await storage.updateCheckSheetTemplate(req.params.id, req.body);
+    res.json(template);
+  }));
 
-  app.delete("/api/check-sheet-templates/:id", async (req, res) => {
-    try {
-      const existing = await storage.getCheckSheetTemplate(req.params.id);
-      if (!existing) {
-        return res.status(404).json({ error: "Check sheet template not found" });
-      }
-      await storage.deleteCheckSheetTemplate(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete check sheet template" });
+  apiRouter.delete("/check-sheet-templates/:id", asyncHandler(async (req, res) => {
+    const existing = await storage.getCheckSheetTemplate(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Check sheet template not found" });
     }
-  });
+    await storage.deleteCheckSheetTemplate(req.params.id);
+    res.json({ success: true });
+  }));
 
   // ============================================
   // CHECK SHEET READINGS
   // ============================================
 
-  app.get("/api/check-sheet-readings/:userId", async (req, res) => {
-    try {
-      const readings = await storage.getCheckSheetReadings(req.params.userId);
-      res.json(readings);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch check sheet readings" });
-    }
-  });
+  apiRouter.get("/check-sheet-readings", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const readings = await storage.getCheckSheetReadings(userId);
+    res.json(readings);
+  }));
 
-  app.get("/api/check-sheet-readings/detail/:id", async (req, res) => {
-    try {
-      const reading = await storage.getCheckSheetReading(req.params.id);
-      if (!reading) {
-        return res.status(404).json({ error: "Check sheet reading not found" });
-      }
-      res.json(reading);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch check sheet reading" });
+  apiRouter.get("/check-sheet-readings/detail/:id", asyncHandler(async (req, res) => {
+    const reading = await storage.getCheckSheetReading(req.params.id);
+    if (!reading) {
+      return res.status(404).json({ error: "Check sheet reading not found" });
     }
-  });
+    res.json(reading);
+  }));
 
-  app.get("/api/check-sheet-readings/job/:jobId", async (req, res) => {
-    try {
-      const readings = await storage.getCheckSheetReadingsByJob(req.params.jobId);
-      res.json(readings);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch check sheet readings by job" });
-    }
-  });
+  apiRouter.get("/check-sheet-readings/job/:jobId", asyncHandler(async (req, res) => {
+    const readings = await storage.getCheckSheetReadingsByJob(req.params.jobId);
+    res.json(readings);
+  }));
 
-  app.post("/api/check-sheet-readings", async (req, res) => {
-    try {
-      const validation = insertCheckSheetReadingSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
-      }
-      const reading = await storage.createCheckSheetReading(validation.data);
-      res.json(reading);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create check sheet reading" });
+  apiRouter.post("/check-sheet-readings", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const validation = insertCheckSheetReadingSchema.safeParse({ ...req.body, userId });
+    if (!validation.success) {
+      return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
     }
-  });
+    const reading = await storage.createCheckSheetReading(validation.data);
+    res.json(reading);
+  }));
 
-  app.patch("/api/check-sheet-readings/:id", async (req, res) => {
-    try {
-      const existing = await storage.getCheckSheetReading(req.params.id);
-      if (!existing) {
-        return res.status(404).json({ error: "Check sheet reading not found" });
-      }
-      const reading = await storage.updateCheckSheetReading(req.params.id, req.body);
-      res.json(reading);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update check sheet reading" });
+  apiRouter.patch("/check-sheet-readings/:id", asyncHandler(async (req, res) => {
+    const existing = await storage.getCheckSheetReading(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Check sheet reading not found" });
     }
-  });
+    const reading = await storage.updateCheckSheetReading(req.params.id, req.body);
+    res.json(reading);
+  }));
 
-  app.delete("/api/check-sheet-readings/:id", async (req, res) => {
-    try {
-      const existing = await storage.getCheckSheetReading(req.params.id);
-      if (!existing) {
-        return res.status(404).json({ error: "Check sheet reading not found" });
-      }
-      await storage.deleteCheckSheetReading(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete check sheet reading" });
+  apiRouter.delete("/check-sheet-readings/:id", asyncHandler(async (req, res) => {
+    const existing = await storage.getCheckSheetReading(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Check sheet reading not found" });
     }
-  });
+    await storage.deleteCheckSheetReading(req.params.id);
+    res.json({ success: true });
+  }));
+
+  // ============================================
+  // MOUNT AUTHENTICATED API ROUTER
+  // ============================================
+  app.use("/api", isAuthenticated, apiRouter);
 
   const httpServer = createServer(app);
   return httpServer;

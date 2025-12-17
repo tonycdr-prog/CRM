@@ -76,13 +76,13 @@ export default function WarrantiesPage() {
   const userId = "demo-user";
 
   const { data: warranties = [], isLoading } = useQuery<Warranty[]>({
-    queryKey: ["/api/warranties", userId],
+    queryKey: ["/api/warranties"],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/warranties", { ...data, userId }),
+    mutationFn: (data: any) => apiRequest("POST", "/api/warranties", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/warranties", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warranties"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Warranty created successfully" });
@@ -92,7 +92,7 @@ export default function WarrantiesPage() {
   const updateMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PATCH", `/api/warranties/${data.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/warranties", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warranties"] });
       setIsDialogOpen(false);
       setEditingWarranty(null);
       resetForm();
@@ -103,7 +103,7 @@ export default function WarrantiesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/warranties/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/warranties", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warranties"] });
       toast({ title: "Warranty deleted successfully" });
     },
   });

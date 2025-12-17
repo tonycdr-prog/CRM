@@ -197,7 +197,7 @@ export default function FieldJobDetail() {
   });
 
   const { data: jobDefects = [] } = useQuery<DbDefect[]>({
-    queryKey: [`/api/defects/${job?.userId}`],
+    queryKey: ["/api/defects"],
     enabled: !!job?.userId,
     select: (data) => data.filter(d => d.jobId === jobId),
   });
@@ -495,7 +495,7 @@ export default function FieldJobDetail() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/defects/${job?.userId}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/defects"] });
       setShowDefectModal(false);
       setDefectCategory("damper");
       setDefectSeverity("medium");

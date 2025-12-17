@@ -111,12 +111,12 @@ export default function RecurringJobs() {
   });
 
   const { data: recurringJobs = [], isLoading } = useQuery<RecurringJob[]>({
-    queryKey: ["/api/recurring-jobs", user?.id],
+    queryKey: ["/api/recurring-jobs"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
@@ -125,7 +125,7 @@ export default function RecurringJobs() {
       return apiRequest("POST", "/api/recurring-jobs", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/recurring-jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/recurring-jobs"] });
       setIsCreateDialogOpen(false);
       resetForm();
       toast({ title: "Recurring job created successfully" });
@@ -140,7 +140,7 @@ export default function RecurringJobs() {
       return apiRequest("PATCH", `/api/recurring-jobs/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/recurring-jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/recurring-jobs"] });
       setEditingJob(null);
       resetForm();
       toast({ title: "Recurring job updated successfully" });
@@ -155,7 +155,7 @@ export default function RecurringJobs() {
       return apiRequest("DELETE", `/api/recurring-jobs/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/recurring-jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/recurring-jobs"] });
       toast({ title: "Recurring job deleted" });
     },
     onError: () => {

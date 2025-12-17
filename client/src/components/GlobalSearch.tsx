@@ -46,22 +46,22 @@ export function GlobalSearch() {
   const { user } = useAuth();
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: contracts = [] } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts", user?.id],
+    queryKey: ["/api/contracts"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices", user?.id],
+    queryKey: ["/api/invoices"],
     enabled: !!user?.id,
   });
 

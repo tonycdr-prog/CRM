@@ -47,14 +47,14 @@ export default function Leads() {
   });
 
   const { data: leads = [], isLoading } = useQuery<DbLead[]>({
-    queryKey: ["/api/leads", user?.id],
+    queryKey: ["/api/leads"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/leads", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Lead added successfully" });
@@ -64,7 +64,7 @@ export default function Leads() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/leads/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       setIsDialogOpen(false);
       setEditingLead(null);
       resetForm();
@@ -75,7 +75,7 @@ export default function Leads() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/leads/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       toast({ title: "Lead deleted" });
     },
   });

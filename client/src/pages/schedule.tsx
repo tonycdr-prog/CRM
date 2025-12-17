@@ -253,38 +253,38 @@ export default function Schedule() {
   }, []);
 
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: staffMembers = [] } = useQuery<StaffMember[]>({
-    queryKey: [`/api/staff-directory/${user?.id}`],
+    queryKey: ["/api/staff-directory"],
     enabled: !!user?.id,
   });
 
   const { data: jobAssignments = [] } = useQuery<JobAssignment[]>({
-    queryKey: [`/api/job-assignments/${user?.id}`],
+    queryKey: ["/api/job-assignments"],
     enabled: !!user?.id,
   });
 
   const { data: locationCoordinates = [] } = useQuery<LocationCoordinate[]>({
-    queryKey: [`/api/location-coordinates/${user?.id}`],
+    queryKey: ["/api/location-coordinates"],
     enabled: !!user?.id,
   });
 
   const { data: conflictData } = useQuery<ConflictResponse>({
-    queryKey: [`/api/detect-conflicts/${user?.id}`],
+    queryKey: ["/api/detect-conflicts"],
     enabled: !!user?.id,
     refetchInterval: 60000,
   });
 
   const { data: capacityMetrics } = useQuery<CapacityMetrics>({
-    queryKey: [`/api/capacity-metrics/${user?.id}`],
+    queryKey: ["/api/capacity-metrics"],
     enabled: !!user?.id && showCapacity,
   });
 
@@ -292,7 +292,7 @@ export default function Schedule() {
     if (!user?.id) return;
     setIsSearchingSlots(true);
     try {
-      const response = await fetch(`/api/find-available-slot/${user.id}`, {
+      const response = await fetch("/api/find-available-slot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -324,7 +324,7 @@ export default function Schedule() {
       return apiRequest("PATCH", `/api/jobs/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       toast({ title: "Job updated" });
       setIsJobDialogOpen(false);
     },
@@ -336,7 +336,6 @@ export default function Schedule() {
   const assignEngineerMutation = useMutation({
     mutationFn: async ({ jobId, staffId }: { jobId: string; staffId: string }) => {
       return apiRequest("POST", "/api/job-assignments", {
-        userId: user?.id,
         jobId,
         staffId,
         role: "technician",
@@ -344,7 +343,7 @@ export default function Schedule() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/job-assignments/${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-assignments"] });
       toast({ title: "Engineer assigned" });
     },
     onError: () => {
@@ -357,7 +356,7 @@ export default function Schedule() {
       return apiRequest("DELETE", `/api/job-assignments/${assignmentId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/job-assignments/${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-assignments"] });
       toast({ title: "Engineer removed from job" });
     },
     onError: () => {
@@ -468,7 +467,7 @@ export default function Schedule() {
         scheduledDate: null,
         scheduledTime: null,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       toast({ title: "Job duplicated" });
     } catch {
       toast({ title: "Failed to duplicate job", variant: "destructive" });

@@ -59,13 +59,13 @@ export default function QualityChecklistsPage() {
   const userId = "demo-user";
 
   const { data: checklists = [], isLoading } = useQuery<QualityChecklist[]>({
-    queryKey: ["/api/quality-checklists", userId],
+    queryKey: ["/api/quality-checklists"],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/quality-checklists", { ...data, userId }),
+    mutationFn: (data: any) => apiRequest("POST", "/api/quality-checklists", { ...data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quality-checklists", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-checklists"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Checklist created successfully" });
@@ -75,7 +75,7 @@ export default function QualityChecklistsPage() {
   const updateMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PATCH", `/api/quality-checklists/${data.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quality-checklists", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-checklists"] });
       setIsDialogOpen(false);
       setEditingChecklist(null);
       resetForm();
@@ -86,7 +86,7 @@ export default function QualityChecklistsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/quality-checklists/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quality-checklists", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-checklists"] });
       toast({ title: "Checklist deleted successfully" });
     },
   });

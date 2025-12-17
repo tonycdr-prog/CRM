@@ -471,17 +471,17 @@ export default function Jobs() {
   };
 
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: contracts = [] } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts", user?.id],
+    queryKey: ["/api/contracts"],
     enabled: !!user?.id,
   });
 
@@ -494,7 +494,7 @@ export default function Jobs() {
       return apiRequest("POST", "/api/jobs", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       setIsCreateDialogOpen(false);
       resetFormState();
       toast({ title: "Job created successfully" });
@@ -509,7 +509,7 @@ export default function Jobs() {
       return apiRequest("PATCH", `/api/jobs/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       toast({ title: "Job updated successfully" });
     },
     onError: () => {
@@ -522,7 +522,7 @@ export default function Jobs() {
       return apiRequest("DELETE", `/api/jobs/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       toast({ title: "Job deleted successfully" });
     },
     onError: () => {
@@ -535,7 +535,7 @@ export default function Jobs() {
       return apiRequest("PATCH", `/api/jobs/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       setIsCompleteDialogOpen(false);
       resetCompleteFormState();
       toast({ title: "Visit completed successfully" });

@@ -54,14 +54,14 @@ export default function Equipment() {
   });
 
   const { data: equipment = [], isLoading } = useQuery<DbEquipment[]>({
-    queryKey: ["/api/equipment", user?.id],
+    queryKey: ["/api/equipment"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/equipment", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Equipment added successfully" });
@@ -74,7 +74,7 @@ export default function Equipment() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/equipment/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
       toast({ title: "Equipment deleted" });
     },
   });

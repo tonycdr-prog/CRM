@@ -213,7 +213,7 @@ export default function FieldTesting() {
   }
   
   const { data: sites = [] } = useQuery<Site[]>({
-    queryKey: ["/api/sites", user?.id],
+    queryKey: ["/api/sites"],
     enabled: !!user?.id,
   });
 

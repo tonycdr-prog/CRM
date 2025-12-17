@@ -140,7 +140,7 @@ export function useOfflineSync(userId?: string) {
         stairwellTests: queue.filter(i => i.entityType === "stairwellTest").map(i => i.data),
       };
 
-      const response = await fetch(`/api/sync/${userId}`, {
+      const response = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(changes),
@@ -177,7 +177,7 @@ export function useOfflineSync(userId?: string) {
     if (!userId || !navigator.onLine) return null;
 
     try {
-      const response = await fetch(`/api/sync/${userId}`);
+      const response = await fetch("/api/sync");
       if (!response.ok) {
         throw new Error("Failed to fetch data");
       }

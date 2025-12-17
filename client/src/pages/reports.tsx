@@ -120,37 +120,37 @@ export default function Reports() {
   const [period, setPeriod] = useState<"month" | "quarter" | "year">("month");
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices", user?.id],
+    queryKey: ["/api/invoices"],
     enabled: !!user?.id,
   });
 
   const { data: jobs = [] } = useQuery<Job[]>({
-    queryKey: ["/api/jobs", user?.id],
+    queryKey: ["/api/jobs"],
     enabled: !!user?.id,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: expenses = [] } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses", user?.id],
+    queryKey: ["/api/expenses"],
     enabled: !!user?.id,
   });
 
   const { data: timesheets = [] } = useQuery<Timesheet[]>({
-    queryKey: ["/api/timesheets", user?.id],
+    queryKey: ["/api/timesheets"],
     enabled: !!user?.id,
   });
 
   const { data: vehicles = [] } = useQuery<Vehicle[]>({
-    queryKey: ["/api/vehicles", user?.id],
+    queryKey: ["/api/vehicles"],
     enabled: !!user?.id,
   });
 
   const { data: subcontractors = [] } = useQuery<Subcontractor[]>({
-    queryKey: ["/api/subcontractors", user?.id],
+    queryKey: ["/api/subcontractors"],
     enabled: !!user?.id,
   });
 

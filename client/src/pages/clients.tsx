@@ -122,12 +122,12 @@ export default function Clients() {
   };
 
   const { data: clients = [], isLoading } = useQuery<Client[]>({
-    queryKey: ["/api/clients", user?.id],
+    queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
 
   const { data: communicationLogs = [] } = useQuery<CommunicationLog[]>({
-    queryKey: ["/api/communication-logs", user?.id],
+    queryKey: ["/api/communication-logs"],
     enabled: !!user?.id,
   });
 
@@ -136,7 +136,7 @@ export default function Clients() {
       return apiRequest("POST", "/api/clients", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setIsCreateDialogOpen(false);
       toast({ title: "Client created successfully" });
     },
@@ -150,7 +150,7 @@ export default function Clients() {
       return apiRequest("PATCH", `/api/clients/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setSelectedClient(null);
       toast({ title: "Client updated successfully" });
     },
@@ -164,7 +164,7 @@ export default function Clients() {
       return apiRequest("DELETE", `/api/clients/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       toast({ title: "Client deleted successfully" });
     },
     onError: () => {
@@ -177,7 +177,7 @@ export default function Clients() {
       return apiRequest("POST", "/api/communication-logs", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/communication-logs", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/communication-logs"] });
       setIsLogDialogOpen(false);
       toast({ title: "Communication logged successfully" });
     },

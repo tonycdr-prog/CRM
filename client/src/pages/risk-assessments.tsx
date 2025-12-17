@@ -44,14 +44,14 @@ export default function RiskAssessments() {
   });
 
   const { data: assessments = [], isLoading } = useQuery<DbRiskAssessment[]>({
-    queryKey: ["/api/risk-assessments", user?.id],
+    queryKey: ["/api/risk-assessments"],
     enabled: !!user?.id,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/risk-assessments", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/risk-assessments", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/risk-assessments"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Risk assessment created" });
@@ -61,7 +61,7 @@ export default function RiskAssessments() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/risk-assessments/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/risk-assessments", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/risk-assessments"] });
       setIsDialogOpen(false);
       setEditingAssessment(null);
       resetForm();
@@ -72,7 +72,7 @@ export default function RiskAssessments() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/risk-assessments/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/risk-assessments", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/risk-assessments"] });
       toast({ title: "Risk assessment deleted" });
     },
   });
