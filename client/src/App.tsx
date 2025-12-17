@@ -68,6 +68,7 @@ import ServiceAnalytics from "@/pages/service-analytics";
 import EngineerPerformance from "@/pages/engineer-performance";
 import SiteHealth from "@/pages/site-health";
 import Downloads from "@/pages/downloads";
+import ClientPortal from "@/pages/client-portal";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -216,6 +217,16 @@ function ViewModeRouter() {
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
+
+  // Client Portal is a public route - check before auth
+  if (location.startsWith("/client-portal/")) {
+    return (
+      <Switch>
+        <Route path="/client-portal/:token" component={ClientPortal} />
+      </Switch>
+    );
+  }
 
   if (isLoading) {
     return (

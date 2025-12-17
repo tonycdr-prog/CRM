@@ -431,6 +431,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // CLIENT PORTAL ROUTES (Public access via token)
+  // ============================================
+
+  // Generate portal token for client (requires authentication)
+  app.post("/api/clients/:id/portal-token", isAuthenticated, async (req, res) => {
+    try {
+      const { nanoid } = await import("nanoid");
+      const token = nanoid(32);
+      const client = await storage.updateClient(req.params.id, {
+        portalToken: token,
+        portalEnabled: true
+      });
+      res.json({ token, portalLink: `/client-portal/${token}` });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate portal token" });
+    }
+  });
+
+  // Get client data by portal token (public route)
+  app.get("/api/portal/:token", async (req, res) => {
+    try {
+      const client = await storage.getClientByPortalToken(req.params.token);
+      if (!client || !client.portalEnabled) {
+        return res.status(404).json({ error: "Invalid portal access" });
+      }
+      res.json({
+        id: client.id,
+        companyName: client.companyName,
+        contactName: client.contactName,
+        email: client.email,
+        phone: client.phone,
+        address: client.address,
+        city: client.city,
+        postcode: client.postcode
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch client portal data" });
+    }
+  });
+
+  // Get invoices for portal client
+  app.get("/api/portal/:token/invoices", async (req, res) => {
+    try {
+      const client = await storage.getClientByPortalToken(req.params.token);
+      if (!client || !client.portalEnabled) {
+        return res.status(404).json({ error: "Invalid portal access" });
+      }
+      const invoices = await storage.getInvoicesByClient(client.id);
+      res.json(invoices);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invoices" });
+    }
+  });
+
+  // Get jobs/service history for portal client
+  app.get("/api/portal/:token/jobs", async (req, res) => {
+    try {
+      const client = await storage.getClientByPortalToken(req.params.token);
+      if (!client || !client.portalEnabled) {
+        return res.status(404).json({ error: "Invalid portal access" });
+      }
+      const jobs = await storage.getJobsByClient(client.id);
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch jobs" });
+    }
+  });
+
+  // Get documents for portal client
+  app.get("/api/portal/:token/documents", async (req, res) => {
+    try {
+      const client = await storage.getClientByPortalToken(req.params.token);
+      if (!client || !client.portalEnabled) {
+        return res.status(404).json({ error: "Invalid portal access" });
+      }
+      const documents = await storage.getDocumentsByClient(client.id);
+      res.json(documents);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch documents" });
+    }
+  });
+
+  // Submit service request from portal
+  app.post("/api/portal/:token/service-request", async (req, res) => {
+    try {
+      const client = await storage.getClientByPortalToken(req.params.token);
+      if (!client || !client.portalEnabled) {
+        return res.status(404).json({ error: "Invalid portal access" });
+      }
+      // Create a job with pending status
+      const job = await storage.createJob({
+        userId: client.userId,
+        clientId: client.id,
+        jobNumber: `SR-${Date.now()}`,
+        title: req.body.title || "Service Request from Portal",
+        description: req.body.description,
+        siteAddress: req.body.siteAddress || client.address,
+        scheduledDate: req.body.preferredDate,
+        status: "pending",
+        priority: "normal",
+        jobType: req.body.serviceType || "service"
+      });
+      res.json({ success: true, jobId: job.id, message: "Service request submitted" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to submit service request" });
+    }
+  });
+
+  // ============================================
   // BUSINESS MANAGEMENT - CUSTOMER CONTACTS
   // ============================================
 

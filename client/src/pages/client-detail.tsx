@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   ArrowLeft,
   Building2,
@@ -26,7 +38,10 @@ import {
   TrendingUp,
   Calendar,
   Plus,
-  Clock
+  Clock,
+  ExternalLink,
+  Copy,
+  Globe
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -93,6 +108,31 @@ interface Expense {
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [isPortalDialogOpen, setIsPortalDialogOpen] = useState(false);
+  const [portalLink, setPortalLink] = useState<string | null>(null);
+
+  const generatePortalLinkMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/clients/${id}/portal-token`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      const fullLink = `${window.location.origin}${data.portalLink}`;
+      setPortalLink(fullLink);
+      setIsPortalDialogOpen(true);
+    },
+    onError: () => {
+      toast({ title: "Failed to generate portal link", variant: "destructive" });
+    }
+  });
+
+  const copyToClipboard = () => {
+    if (portalLink) {
+      navigator.clipboard.writeText(portalLink);
+      toast({ title: "Link copied to clipboard" });
+    }
+  };
 
   const { data: client, isLoading: clientLoading } = useQuery<Client>({
     queryKey: [`/api/clients/detail/${id}`],
@@ -196,6 +236,15 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button 
+            variant="outline" 
+            onClick={() => generatePortalLinkMutation.mutate()}
+            disabled={generatePortalLinkMutation.isPending}
+            data-testid="button-generate-portal"
+          >
+            <Globe className="h-4 w-4 mr-2" />
+            Client Portal
+          </Button>
           <Link href={`/contracts?createContract=true&clientId=${id}`}>
             <Button variant="outline" data-testid="button-add-contract">
               <FileText className="h-4 w-4 mr-2" />
@@ -427,6 +476,46 @@ export default function ClientDetail() {
           </Tabs>
         </Card>
       </div>
+
+      <Dialog open={isPortalDialogOpen} onOpenChange={setIsPortalDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Client Portal Link</DialogTitle>
+            <DialogDescription>
+              Share this link with your client to give them access to their portal.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Portal Link</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  value={portalLink || ""}
+                  readOnly
+                  className="font-mono text-sm"
+                  data-testid="input-portal-link"
+                />
+                <Button variant="outline" size="icon" onClick={copyToClipboard} data-testid="button-copy-link">
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => portalLink && window.open(portalLink, "_blank")}
+                  data-testid="button-open-portal"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              This link allows your client to view their invoices, service history, 
+              documents, and submit new service requests. The link does not expire 
+              but can be regenerated at any time.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

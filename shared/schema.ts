@@ -623,6 +623,8 @@ export const clients = pgTable("clients", {
   notes: text("notes"),
   clientType: text("client_type").default("commercial"), // commercial, residential, public_sector
   status: text("status").default("active"), // active, inactive, prospect
+  portalToken: text("portal_token"),
+  portalEnabled: boolean("portal_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

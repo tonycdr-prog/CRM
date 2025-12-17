@@ -245,9 +245,15 @@ export interface IStorage {
   // Clients
   getClients(userId: string): Promise<DbClient[]>;
   getClient(id: string): Promise<DbClient | undefined>;
+  getClientByPortalToken(token: string): Promise<DbClient | undefined>;
   createClient(client: NewClient): Promise<DbClient>;
   updateClient(id: string, client: Partial<NewClient>): Promise<DbClient | undefined>;
   deleteClient(id: string): Promise<boolean>;
+  
+  // Client Portal helpers
+  getInvoicesByClient(clientId: string): Promise<DbInvoice[]>;
+  getJobsByClient(clientId: string): Promise<DbJob[]>;
+  getDocumentsByClient(clientId: string): Promise<DbDocument[]>;
   
   // Customer Contacts
   getCustomerContacts(clientId: string): Promise<DbCustomerContact[]>;
@@ -948,6 +954,23 @@ export class DatabaseStorage implements IStorage {
   async deleteClient(id: string): Promise<boolean> {
     await db.delete(clients).where(eq(clients.id, id));
     return true;
+  }
+
+  async getClientByPortalToken(token: string): Promise<DbClient | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.portalToken, token));
+    return client || undefined;
+  }
+
+  async getInvoicesByClient(clientId: string): Promise<DbInvoice[]> {
+    return db.select().from(invoices).where(eq(invoices.clientId, clientId)).orderBy(desc(invoices.createdAt));
+  }
+
+  async getJobsByClient(clientId: string): Promise<DbJob[]> {
+    return db.select().from(jobs).where(eq(jobs.clientId, clientId)).orderBy(desc(jobs.createdAt));
+  }
+
+  async getDocumentsByClient(clientId: string): Promise<DbDocument[]> {
+    return db.select().from(documents).where(eq(documents.clientId, clientId)).orderBy(desc(documents.createdAt));
   }
 
   // Customer Contacts
