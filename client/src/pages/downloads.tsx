@@ -24,22 +24,26 @@ export default function Downloads() {
                 <BookOpen className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">App Capabilities Guide</CardTitle>
-                <CardDescription>Complete feature documentation</CardDescription>
+                <CardTitle className="text-lg">Operations Guide</CardTitle>
+                <CardDescription>Complete how-to manual</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              A comprehensive 20-page guide demonstrating all features of the Airflow Velocity Testing application, including:
+              A comprehensive operations guide for Life Safety Ops covering all platform features in detail:
             </p>
             <ul className="text-sm text-muted-foreground mb-4 space-y-1">
-              <li>• Smoke damper velocity testing</li>
+              <li>• Getting started & organisation setup</li>
+              <li>• Smoke control damper testing</li>
               <li>• Stairwell pressure testing</li>
-              <li>• Professional PDF reports</li>
-              <li>• Business management CRM</li>
-              <li>• Staff & equipment tracking</li>
-              <li>• Trend analysis features</li>
+              <li>• Full CRM: clients, contracts, jobs</li>
+              <li>• Finance: quotes, invoices, expenses</li>
+              <li>• Asset & equipment management</li>
+              <li>• Field Companion mobile app</li>
+              <li>• Golden Thread compliance</li>
+              <li>• Team & certification management</li>
+              <li>• Reporting & analytics</li>
             </ul>
             <Button 
               onClick={handleDownload}
@@ -47,7 +51,7 @@ export default function Downloads() {
               data-testid="button-download-capabilities-pdf"
             >
               <Download className="h-4 w-4 mr-2" />
-              Download PDF
+              Download Operations Guide (PDF)
             </Button>
           </CardContent>
         </Card>

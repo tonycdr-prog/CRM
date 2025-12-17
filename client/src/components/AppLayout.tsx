@@ -287,8 +287,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <Wind className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h2 className="font-semibold text-sm">Airflow Pro</h2>
-                <p className="text-xs text-muted-foreground">Business Suite</p>
+                <h2 className="font-semibold text-sm">Life Safety Ops</h2>
+                <p className="text-xs text-muted-foreground">Compliance Platform</p>
               </div>
             </div>
           </SidebarHeader>

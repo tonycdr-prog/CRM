@@ -1,7 +1,7 @@
-# Airflow Velocity Testing - Smoke Control Damper
+# Life Safety Ops - Life Safety Operations & Compliance Management Platform
 
 ## Overview
-This application provides a professional, UK regulation-compliant utility for visualizing and documenting airflow velocity readings across smoke control dampers. It automates grid size calculation (5x5, 6x6, or 7x7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The tool is designed for on-site use with touch-friendly controls and is available as a web and native mobile application (iOS/Android). Its purpose is to streamline commissioning, annual inspection, and reactive testing of smoke control systems by offering comprehensive reporting, trend analysis, and efficient workflows. The project aims to enhance compliance, provide valuable insights into system performance, and improve field technician efficiency.
+This application provides a professional, UK regulation-compliant life safety operations and compliance management platform. It automates grid size calculation (5x5, 6x6, or 7x7) based on damper dimensions per BS EN 12101-8 and BSRIA BG 49/2024 standards. The tool is designed for on-site use with touch-friendly controls and is available as a web and native mobile application (iOS/Android). Its purpose is to streamline commissioning, annual inspection, and reactive testing of smoke control systems by offering comprehensive reporting, trend analysis, and efficient workflows. The project aims to enhance compliance, provide valuable insights into system performance, and improve field technician efficiency.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

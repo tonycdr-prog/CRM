@@ -1,909 +1,1703 @@
-# Airflow Velocity Testing - Complete App Capabilities
+# Life Safety Ops
+## Life Safety Operations & Compliance Management Platform
+### Complete Operations Guide & How-To Manual
 
-*A demonstration guide showing exactly what this application can do*
-
----
-
-## Overview
-
-This is a professional, UK regulation-compliant application for smoke control system testing, commissioning, and business management. It's designed for fire safety engineers and technicians working on-site, available as both a web application and native mobile app (iOS/Android).
-
-**Who is this for?** Fire safety contractors, commissioning engineers, building services consultants, and smoke ventilation specialists who need to test smoke control dampers and stairwell pressurisation systems to UK standards.
+**Version 1.0 | December 2024**
 
 ---
 
-## Core Testing Features
+## Table of Contents
 
-### Smoke Control Damper Velocity Testing
-
-**What it does:** Measures and documents airflow velocity readings across smoke control dampers to verify they meet design specifications.
-
-**How to use it:**
-
-1. **Create a new test** - Navigate to the Testing section and tap "New Damper Test"
-2. **Enter damper dimensions** - Input the width and height in millimetres (e.g., 600mm x 400mm)
-3. **Watch the grid auto-calculate** - The system automatically determines whether you need a 5x5, 6x6, or 7x7 measurement grid based on BSRIA BG 49/2024 standards:
-   - Dampers under 0.5m²: 5x5 grid (25 readings)
-   - Dampers 0.5m² to 1.0m²: 6x6 grid (36 readings)
-   - Dampers over 1.0m²: 7x7 grid (49 readings)
-4. **Enter your readings** - Tap each cell in the grid and enter your anemometer reading. Use keyboard navigation (Tab or arrow keys) to move quickly between cells.
-5. **See instant calculations** - As you enter readings, the average velocity updates in real-time. You'll see:
-   - Overall average velocity (m/s)
-   - Minimum and maximum readings
-   - Calculated airflow volume (m³/s)
-
-**What you'll see on screen:**
-- A visual grid matching the damper face
-- Each cell showing its reading value
-- Colour coding: green for readings within tolerance, amber for borderline, red for out of spec
-- The calculated average prominently displayed
-- Pass/fail status against the design velocity
-
-**Real-world example:** You're commissioning a smoke shaft serving floors 1-10 of a new residential tower. Each floor has a 750mm x 500mm motorised damper. You set up the test, enter the dimensions, and the app creates a 6x6 grid. You take your 36 readings across the damper face using your anemometer, entering each value. The app shows an average of 8.2 m/s against a design requirement of 8.0 m/s - a clear pass.
-
-**System types supported:**
-- **Push systems** - Supply air into protected areas
-- **Pull systems** - Extract smoke from affected areas  
-- **Push-pull systems** - Combined supply and extract
-
-**Visit types you can record:**
-- Initial commissioning (new installation)
-- Annual inspection (maintenance contract)
-- Remedial works (after repairs)
-- Final verification (sign-off testing)
+1. [Executive Overview](#executive-overview)
+2. [Getting Started](#getting-started)
+3. [Dashboard & Navigation](#dashboard--navigation)
+4. [Office Application](#office-application)
+   - [Client Management](#client-management)
+   - [Site Management](#site-management)
+   - [Contract Management](#contract-management)
+   - [Job Management](#job-management)
+   - [Finance & Invoicing](#finance--invoicing)
+   - [Asset & Equipment Management](#asset--equipment-management)
+   - [Team & Certification Management](#team--certification-management)
+   - [Reporting & Analytics](#reporting--analytics)
+5. [Field Companion Application](#field-companion-application)
+   - [Mobile Interface Overview](#mobile-interface-overview)
+   - [Smoke Control Damper Testing](#smoke-control-damper-testing)
+   - [Stairwell Pressure Testing](#stairwell-pressure-testing)
+   - [Offline Synchronisation](#offline-synchronisation)
+   - [Job Execution & Updates](#job-execution--updates)
+   - [Defect Logging & Risk Assessments](#defect-logging--risk-assessments)
+6. [Compliance & Regulations](#compliance--regulations)
+   - [BS EN 12101 Standards](#bs-en-12101-standards)
+   - [Building Safety Act Compliance](#building-safety-act-compliance)
+   - [Golden Thread Documentation](#golden-thread-documentation)
+   - [Professional PDF Reports](#professional-pdf-reports)
+7. [Organisation Management](#organisation-management)
+8. [Appendices](#appendices)
 
 ---
 
-### Stairwell Differential Pressure Testing
-
-**What it does:** Measures and documents pressure differentials in pressurised stairwells to verify they meet building standards for escape route protection.
-
-**How to use it:**
-
-1. **Select your building standard** - Choose from:
-   - BS EN 12101-6:2022 (current standard)
-   - BS EN 12101-6:2005 (legacy installations)
-   - BS 5588-4:1998 (older buildings)
-
-2. **Choose the pressure class** - Options range from Class A to Class F, each with different pressure requirements:
-   - Class A: 50 Pa (±10%)
-   - Class B: 45 Pa (±10%)
-   - And so on...
-
-3. **Add floors to test** - List each floor in the stairwell (Ground, 1, 2, 3... up to the roof level)
-
-4. **Record measurements for each scenario:**
-
-   **Doors Closed Test:**
-   - Enter the pressure differential (Pa) across the stairwell door at each level
-   - The app shows whether each reading is within the acceptable range
-   
-   **Single Door Open Test:**
-   - Open one door at a time and measure the minimum pressure at other levels
-   - Records which door was opened and resulting pressures
-   
-   **Door Force Test:**
-   - Measure the force (Newtons) required to open each door
-   - App checks against 100N limit (or 140N for fire doors)
-   - Flags any doors exceeding the maximum opening force
-
-**What you'll see on screen:**
-- A floor-by-floor table of all readings
-- Green/red indicators for pass/fail at each level
-- Automatic calculation of average pressures
-- Door force compliance status
-- Overall system pass/fail summary
-
-**Real-world example:** You're conducting an annual inspection of a 15-storey pressurised stairwell. You select BS EN 12101-6:2022, Class B. Starting at ground level, you work your way up, recording the pressure at each floor with all doors closed (target: 45 Pa ±10%). You then repeat with the ground floor door open, then first floor door open, and so on. Finally, you measure door opening forces. The app compiles all results and shows 2 floors failing the single-door-open test - you know exactly where remedial work is needed.
-
----
-
-### Test Scenarios Supported
-
-The app handles various testing configurations:
-
-- **All doors closed** - Standard operating condition testing
-- **Single door open** - Tests pressure maintenance when occupants use the stairwell
-- **Multiple doors open** - Simulates evacuation conditions
-- **Fire service override** - Tests firefighter switch operation and bypass modes
-
----
-
-## Compliance & Reporting
-
-### UK Building Standards Reference
-
-The app includes built-in reference to key standards:
-
-| Standard | Description | When to use |
-|----------|-------------|-------------|
-| BS EN 12101-8:2020 | Smoke control dampers | All damper testing |
-| BS EN 12101-6:2022 | Stairwell pressurisation | Current installations |
-| BS 5588-4:1998 | Smoke control in escape routes | Older buildings |
-| BSRIA BG 49/2024 | Commissioning air systems | All commissioning work |
-
-**What you'll see:** When you select a standard, the app automatically applies the correct:
-- Measurement grid requirements
-- Pressure tolerances
-- Door force limits
-- Commissioning checklist items
-
----
-
-### Professional PDF Reports
-
-**What it does:** Generates polished, client-ready reports that you can email or print directly from the app.
-
-**How to use it:**
-
-1. **Complete your testing** - All readings must be entered
-2. **Add project details** - Client name, site address, your engineer details
-3. **Capture signatures** - Both tester and witness signatures using touch screen
-4. **Tap "Generate Report"** - The PDF is created in seconds
-
-**What you'll see in the report:**
-- Your company logo and branding (upload once, used on all reports)
-- Executive summary with pass/fail status
-- Complete test data with the measurement grid
-- Visual representation of readings
-- Compliance checklist with tick marks
-- Digital signatures
-- Report reference number and date
-- Standard references
-
-**Report types available:**
-- Commissioning certificate (new installations)
-- Annual inspection report (maintenance visits)
-- Remedial works report (after repairs)
-- Summary report (quick overview)
-
-**Real-world example:** After completing damper testing across a 6-floor office building (12 dampers total), you tap "Generate Report". In 10 seconds, you have a 25-page PDF with all test data, a summary showing 11 pass and 1 fail, photographs of the failed damper, and both signatures. You email it to the client before leaving site.
-
----
-
-### Compliance Checklists
-
-**What it does:** Provides structured checklists aligned to UK standards to ensure nothing is missed during testing.
-
-**How to use it:**
-
-1. **Select the checklist type** - Choose from pre-test, functional, performance, or documentation checklists
-2. **Work through each item** - Tick off items as you verify them
-3. **Add notes** - Record observations against specific items
-4. **Mark completion** - The checklist becomes part of your test record
-
-**Checklist categories:**
-
-**Pre-Test Verification:**
-- [ ] Damper accessible for testing
-- [ ] Control panel in manual mode
-- [ ] Building HVAC system status confirmed
-- [ ] Test equipment calibrated (date checked)
-- [ ] Site access arrangements in place
-
-**Functional Testing:**
-- [ ] Damper opens on command
-- [ ] Damper closes on command
-- [ ] End switches operate correctly
-- [ ] Manual release functions
-- [ ] Position indicators accurate
-
-**Performance Testing:**
-- [ ] Design airflow rate documented
-- [ ] Measurement grid completed
-- [ ] Average velocity calculated
-- [ ] Leakage rate within tolerance
-- [ ] System response time acceptable
-
-**Documentation:**
-- [ ] As-built drawings available
-- [ ] O&M manual present
-- [ ] Previous test results reviewed
-- [ ] Calibration certificates checked
-
----
-
-### Golden Thread Document Management
-
-**What it does:** Supports Building Safety Act compliance by maintaining a structured audit trail of all testing documentation.
-
-**How to use it:**
-
-1. **Upload existing documents** - Add as-built drawings, O&M manuals, previous reports
-2. **Link to tests** - Connect documents to specific dampers or projects
-3. **Track versions** - When documents are updated, the history is preserved
-4. **View audit trail** - See who uploaded/modified what and when
-
-**What you'll see:**
-- Document library organised by building and system
-- Version numbers on each document
-- Upload dates and user names
-- Links to related test records
-- Export capability for handover packs
-
-**Why this matters:** The Building Safety Act requires a "golden thread" of building safety information. This feature ensures your testing records are part of that thread, properly linked to the building's safety case documentation.
-
----
-
-## Business Management Platform (CRM)
-
-### Client Management
-
-**What it does:** Maintains a complete database of all your clients with their contact details, sites, and preferences.
-
-**How to use it:**
-
-1. **Add a new client** - Tap "New Client" and enter:
-   - Company name (e.g., "Jones Property Management Ltd")
-   - Primary contact person and their role
-   - Phone numbers (office and mobile)
-   - Email addresses
-   - Company address
-
-2. **Add multiple contacts** - Each client can have several contacts:
-   - Building manager: Sarah Thompson, sarah@jonesproperty.com
-   - Accounts: accounts@jonesproperty.com
-   - Emergency out-of-hours: 07xxx xxxxxx
-
-3. **Add multiple addresses** - Useful for clients with several sites:
-   - Head Office: 45 High Street, Manchester M1 1AA
-   - London Office: 22 Fleet Street, London EC4Y 1AA
-   - Birmingham Site: Unit 4, Industrial Estate, B1 2CD
-
-4. **Set client priority** - Helps you prioritise:
-   - Standard: Normal service levels
-   - Preferred: Priority scheduling
-   - VIP: Immediate response
-
-5. **Record financial details**:
-   - VAT number
-   - Account reference
-   - Payment terms (30 days, 60 days, etc.)
-
-**What you'll see on the client screen:**
-- Client summary card with key details
-- List of all contacts with click-to-call/email
-- All associated addresses on a map
-- Contract summary (active contracts, value)
-- Job history
-- Outstanding invoices
-- Notes and activity log
-
-**Real-world example:** You receive a call from "Green Facilities Ltd". You search for them, see they're a VIP client with 3 active contracts worth £45,000/year. You can see their 5 sites on a map, their preferred engineer is Dave (who knows their systems), and they have one overdue invoice. You have everything you need to handle the call professionally.
-
----
-
-### Contract Management
-
-**What it does:** Tracks all your service agreements, their value, renewal dates, and SLA requirements.
-
-**How to use it:**
-
-1. **Create a new contract** - Enter:
-   - Contract name (e.g., "Annual Smoke Vent Maintenance - Tower Court")
-   - Client (select from your list)
-   - Start date and end date
-   - Contract value (e.g., £3,500 per year)
-   - Billing frequency (monthly, quarterly, annually)
-   - Auto-renewal: Yes/No
-
-2. **Set SLA levels**:
-   - Basic: 5-day response, 10-day resolution
-   - Standard: 2-day response, 5-day resolution
-   - Premium: Same-day response, 2-day resolution
-
-3. **Add covered sites** - List which addresses are included
-
-4. **Define scope** - What's included:
-   - Number of dampers covered
-   - Annual tests included
-   - Emergency callouts (included/chargeable)
-   - Parts (included/chargeable)
-
-**What you'll see:**
-- Contract dashboard showing all active contracts
-- Upcoming renewals (next 30, 60, 90 days)
-- Contract value totals
-- SLA performance metrics
-- Linked jobs and invoices
-
-**Real-world example:** It's October and you want to see which contracts renew in January. You filter by renewal date and see 8 contracts worth £28,000 are due for renewal. You can generate renewal letters directly, see the service history for each, and plan your retention calls.
-
----
-
-### Job Scheduling
-
-**What it does:** Creates and tracks work orders from initial request through to completion and invoicing.
-
-**How to use it:**
-
-1. **Create a new job**:
-   - Job type: Testing / Installation / Repair / Maintenance
-   - Client: Select from list
-   - Site address: Select from client's addresses
-   - Description: "Annual smoke damper testing - 12 dampers across 6 floors"
-   - Priority: Low / Normal / High / Urgent
-
-2. **Schedule the job**:
-   - Planned date: Pick from calendar
-   - Estimated duration: 4 hours
-   - Assigned engineer: Select from staff list
-
-3. **Add site access notes**:
-   - "Report to main reception, ask for security"
-   - "Parking in loading bay, need permit from security"
-   - "Out of hours access: call 07xxx before arrival"
-
-4. **Track progress** - Job statuses:
-   - Pending: Created but not scheduled
-   - Scheduled: Date and engineer assigned
-   - In Progress: Engineer has started work
-   - Completed: Work finished
-   - Invoiced: Invoice sent to client
-   - Cancelled: Job cancelled (with reason)
-
-**What you'll see:**
-- Job board showing all jobs by status
-- Calendar view of scheduled work
-- Engineer diary view
-- Job details with all notes and history
-- Linked test records
-- Time and materials logged
-
-**Real-world example:** A client calls with an urgent fault - one damper failed to open during a fire alarm test. You create an Urgent job, see that Dave is free tomorrow morning, assign it to him. Dave gets a notification on his phone with all the site details. He arrives, fixes the issue, marks the job complete, and logs 2 hours labour plus a new actuator. You invoice the same day.
-
----
-
-### Quotes & Invoices
-
-**What it does:** Creates professional quotes and invoices linked to your jobs and contracts.
-
-**How to create a quote:**
-
-1. **Start a new quote**:
-   - Select client
-   - Enter quote description
-   - Add line items:
-     - "Annual smoke damper testing (12 dampers)" - £1,800.00
-     - "Fire stopping inspection" - £350.00
-     - "Report production and handover" - £150.00
-   - Subtotal, VAT, and total calculate automatically
-
-2. **Send to client** - Generate PDF and email directly
-
-3. **Convert to invoice** - When accepted, one tap converts the quote to an invoice
-
-4. **Track payment**:
-   - Mark as sent
-   - Record payment received
-   - Chase overdue invoices
-
-**What you'll see:**
-- Quote/invoice list with status (Draft, Sent, Accepted, Paid, Overdue)
-- Outstanding amounts
-- Payment history
-- Aged debtor reports
-
----
-
-### Financial Tracking
-
-**What it does:** Records all costs associated with jobs so you can see true profitability.
-
-**How to record expenses:**
-
-1. **Add an expense**:
-   - Date
-   - Category: Materials / Travel / Subcontractor / Equipment / Other
-   - Description: "Replacement actuator for Tower Court"
-   - Amount: £245.00
-   - Receipt: Capture photo of receipt
-
-2. **Record mileage**:
-   - Start location
-   - End location
-   - Miles travelled
-   - Rate (e.g., 45p/mile)
-   - Auto-calculates value
-
-3. **Log time**:
-   - Job reference
-   - Hours worked
-   - Engineer
-   - Activity type (travel, testing, paperwork)
-
-**What you'll see:**
-- Expense reports by category
-- Mileage summaries
-- Job costing: revenue vs expenses = profit
-- Margin calculations per job
-- Monthly financial summaries
-
-**Real-world example:** You complete a job invoiced at £2,400. Looking at the job costing:
-- Labour (8 hours × £45): £360
-- Materials: £245
-- Travel (85 miles): £38
-- Total costs: £643
-- Profit: £1,757 (73% margin)
-
----
-
-## Staff & Resource Management
-
-### Staff Directory
-
-**What it does:** Maintains complete records for all your employees and contractors.
-
-**Information stored for each person:**
-- Full name and job title
-- Contact details (phone, email, address)
-- Employment type: Full-time / Part-time / Contractor / Apprentice
-- Start date
-- Line manager
-- Emergency contact
-- National Insurance number
-- Driving licence details (including expiry date)
-
-**What you'll see:**
-- Staff list with quick search
-- Individual profile cards
-- Organisation chart
-- Upcoming driving licence renewals
-- Employment anniversary dates
-
----
-
-### Skills & Qualifications
-
-**What it does:** Tracks all certifications, training, and competencies for each team member.
-
-**How to use it:**
-
-1. **Add qualifications**:
-   - Type: CSCS Card / NVQ / Manufacturer Training / In-house
-   - Name: "Fire Door Inspection - FDIS Level 1"
-   - Issue date
-   - Expiry date
-   - Certification number
-   - Upload certificate image
-
-2. **Record skills**:
-   - Skill name: "Smoke Damper Testing"
-   - Competency level: Trainee / Competent / Specialist / Trainer
-   - Date assessed
-
-3. **Set up alerts** - Get notified before certifications expire
-
-**What you'll see:**
-- Skills matrix across the team
-- Who is qualified for what
-- Upcoming certificate renewals
-- Training needs identification
-- Competency gaps
-
-**Real-world example:** A client specifically requests a BSRIA-trained engineer. You search by qualification and see Dave and Maria both hold BSRIA CP/47 certification. Maria's is due to expire next month - you make a note to book her refresher course.
-
-**Sample engineers in the demo data:**
-
-| Name | Level | Key Skills |
-|------|-------|------------|
-| David Thompson | Senior | Smoke dampers, Stairwell pressurisation, BSRIA CP/47 |
-| Sarah Mitchell | Competent | Damper testing, AOV servicing |
-| James Wilson | Trainee | Under supervision, learning damper testing |
-| Michael Brown | Specialist | Complex commissioning, training delivery |
-| Emma Davis | Competent | Testing, inspection |
-| Robert Taylor | Senior | Pressure systems, commissioning |
-| Lisa Anderson | Trainee | Basic testing under supervision |
-| Chris Martin | Specialist | System design, witness testing |
-
----
-
-### Staff Scheduling
-
-**What it does:** Manages availability, time-off, and shift patterns.
-
-**Features:**
-- Availability patterns (Mon-Fri 8am-5pm, etc.)
-- Time-off requests and approvals
-- Shift handover notes
-- Daily briefing distribution
-
----
-
-### Equipment & Vehicles
-
-**What it does:** Tracks all your test equipment and company vehicles.
-
-**For equipment:**
-- Asset register with descriptions
-- Serial numbers
-- Calibration status and due dates
-- Current location/custodian
-- Service history
-- Reservation for specific jobs
-
-**For vehicles:**
-- Fleet list
-- MOT and service due dates
-- Mileage tracking
-- Driver assignments
-- Booking calendar
-
-**Real-world example:** You need to send an engineer to a job requiring a calibrated anemometer. You check equipment availability - see that anemometer #3 is calibrated until March and currently with Dave (who has a job nearby). You can reassign it to Maria's job next week.
-
----
-
-## Intelligent Features
-
-### Trend Analysis
-
-**What it does:** Charts historical velocity data so you can spot declining performance over time.
-
-**How to use it:**
-
-1. **Select a damper** - Choose from your damper registry
-2. **View history** - See all tests performed on that damper
-3. **See the trend chart** - X-axis shows dates, Y-axis shows average velocities
-
-**What you'll see:**
-- Line chart showing velocity over time
-- Design velocity baseline for comparison
-- Trend line (is it declining?)
-- Anomaly markers (unusual readings highlighted)
-- Comparison with similar dampers
-
-**Why this matters:** If a damper tested at 8.5 m/s last year now tests at 7.2 m/s, that's a 15% decline. The trend chart makes this immediately visible. You can recommend preventive maintenance before it fails completely.
-
----
-
-### Anomaly Detection
-
-**What it does:** Automatically flags readings that are statistically unusual.
-
-**How it works:**
-- Uses MAD (Median Absolute Deviation) algorithm
-- Compares each reading against historical patterns
-- Flags readings more than 2 standard deviations from normal
-
-**What you'll see:**
-- Unusual readings highlighted in orange/red
-- Explanation of why it's flagged
-- Comparison to historical average
-- Suggested action (investigate, retest, service required)
-
-**Real-world example:** You enter readings for a damper. Most cells show 7-8 m/s, but one shows 3.2 m/s. The app immediately highlights this reading with an alert: "This reading is 58% below the damper average. Check for obstruction or damage in this quadrant."
-
----
-
-### Predictive Maintenance
-
-**What it does:** Uses historical data to predict when maintenance will be needed.
-
-**Features:**
-- Velocity decline rate calculation
-- Time to reach minimum acceptable velocity
-- Maintenance scheduling recommendations
-- Pre-loaded predictive readings based on history
-
-**What you'll see:**
-- Predicted test results before you start (based on trend)
-- Expected maintenance date
-- Recommended service items
-- Comparison of actual vs predicted
-
-**Real-world example:** The app shows a damper has declined 5% per year over the last 3 tests. At this rate, it will drop below the minimum 6.5 m/s requirement in approximately 18 months. You can schedule preventive maintenance now rather than waiting for failure.
-
----
-
-## Project & Site Management
-
-### Projects
-
-**What it does:** Groups related buildings and dampers together for efficient management.
-
-**How to use it:**
-
-1. **Create a project**:
-   - Project name: "Tower Court Residential Development"
-   - Client: Select from list
-   - Site address
-   - Main contractor (if applicable)
-   - Project status: Planning / Active / Complete / On Hold
-
-2. **Add buildings**:
-   - Building A: 15-storey residential
-   - Building B: 12-storey residential
-   - Podium: 2-storey retail
-
-3. **Add dampers to each building** - See Damper Registry below
-
-**What you'll see:**
-- Project overview dashboard
-- Building list with damper counts
-- Testing progress (12 of 45 dampers tested)
-- Linked contracts and jobs
-- Document library
-
----
-
-### Damper Registry
-
-**What it does:** Maintains a complete database of every damper you manage.
-
-**Information stored for each damper:**
-- Unique damper ID (e.g., "TC-A-L05-SD01")
-- Building and location (Tower Court, Building A, Level 05)
-- Shaft identifier (Smoke Shaft 1)
-- Dimensions (600mm × 400mm)
-- System type (Push/Pull/Push-Pull)
-- Manufacturer and model
-- Installation date
-- All historical test records
-
-**What you'll see:**
-- Searchable damper list
-- Filter by building, floor, system type
-- Test status (never tested, passed, failed, due soon)
-- Quick access to test history
-- Photo gallery
-
-**Damper ID naming convention:**
-The app suggests a standardised format:
-`[Building]-[Floor]-[Type]-[Number]`
-Example: TC-A-L05-SD01 = Tower Court, Building A, Level 05, Smoke Damper 01
-
----
-
-### Damper Templates
-
-**What it does:** Saves commonly-used damper configurations for quick reuse.
-
-**How to use it:**
-
-1. **Create a template**:
-   - Template name: "Standard AOV 600x400 Push"
-   - Default dimensions
-   - Default system type
-   - Standard manufacturer
-
-2. **Apply to new dampers** - Select template, adjust only what's different
-
-**Real-world example:** A development has 45 identical dampers. You create a template with the standard settings, then apply it to each damper, only changing the floor and location identifier. Saves significant time versus entering all details manually 45 times.
-
----
-
-### Floor Sequencing Mode
-
-**What it does:** Provides structured floor-by-floor testing to ensure nothing is missed.
-
-**How to use it:**
-
-1. **Start floor sequence** - Select the building
-2. **Work through floors** - App presents dampers floor by floor
-3. **Mark completion** - Each floor shows complete/incomplete status
-4. **Track progress** - Visual indicator of progress through building
-
-**What you'll see:**
-- Floor-by-floor list
-- Number of dampers per floor
-- Completion status
-- Time spent per floor
-- Estimated time remaining
-
----
-
-## Data Management
-
-### Export Options
-
-**PDF Reports:**
-- Professional client-ready documents
-- Company branding
-- Digital signatures
-- Pass/fail summaries
-
-**CSV Export:**
-- Raw data for spreadsheet analysis
-- All readings in tabular format
-- Suitable for client data systems
-
-**JSON Backup:**
-- Complete data export
-- Suitable for backup and restore
-- Can transfer to another device
-
-**ZIP Archives:**
-- Bundle multiple reports
-- Include photos and documents
-- Complete project handover package
-
----
-
-### Offline Capability
-
-**What it does:** Works fully without internet connection - essential for basement and core testing where signal is poor.
-
-**How it works:**
-- All data stored locally on device
-- Create and complete tests offline
-- Offline indicator shows when disconnected
-- Changes queued for sync when back online
-- Automatic sync when connection restored
-
-**What you'll see:**
-- Connectivity indicator in header
-- Pending sync count (e.g., "3 changes waiting to sync")
-- Sync status animation when connecting
-- Confirmation when sync complete
-
-**Real-world example:** You're testing dampers in a basement car park with no signal. You complete 6 damper tests over 2 hours. When you return to the surface and get signal, the app automatically syncs all 6 tests to the server within seconds.
-
----
-
-### Auto-Save
-
-**What it does:** Continuously saves your work so you never lose data.
-
-**What you'll see:**
-- Save indicator: "Saved" with timestamp
-- Auto-saves every few seconds during data entry
-- Confirmation when manually saving
-- Recovery of unsaved work if app closes unexpectedly
-
----
-
-## User Experience
-
-### Touch-Optimised Interface
-
-**Designed for field use:**
-- Large tap targets (no tiny buttons)
-- Works with gloves
-- Works in bright sunlight
-- Minimal scrolling required
-- Key actions always visible
-
----
-
-### Navigation
-
-**Keyboard shortcuts for efficiency:**
-- Tab: Move to next cell
-- Shift+Tab: Move to previous cell
-- Arrow keys: Move within grid
-- Enter: Confirm and move down
-- Escape: Cancel edit
-
-**Quick navigation:**
-- Recent items list
-- Search across all data
-- Breadcrumb trails showing where you are
-- Back button always available
-
----
-
-### Visual Feedback
-
-**Clear status indicators:**
-- Saving: Subtle animation
-- Saved: Green checkmark with timestamp
-- Offline: Orange indicator
-- Error: Red alert with explanation
-- Success: Green toast notification
-
----
-
-### Image Documentation
-
-**What it does:** Captures photos of dampers and attaches them to test records.
-
-**How to use it:**
-
-1. **Tap camera icon** on damper or test
-2. **Capture photo** - Shows preview
-3. **Annotate** - Draw on image to highlight issues
-4. **Save** - Attached to record
-
-**Photo types:**
-- Damper in open position
-- Damper in closed position
-- Defects or damage
-- Location/identification plate
-- General installation views
-
----
-
-## Mobile App Features (Capacitor)
-
-### Native Functionality
-
-The mobile app provides:
-- **iOS and Android versions** - Install from app stores
-- **Camera integration** - Native camera for quality photos
-- **Splash screen** - Professional branding on launch
-- **Status bar** - Customised to match app design
-
-### Offline-First Design
-
-- Full functionality without internet
-- Local data persistence
-- Background sync when online
-- Battery optimised
-
----
-
-## Security & Authentication
-
-### User Management
-
-**Login options:**
-- Replit Auth (quick social login)
-- Username/password (traditional)
-- Session management (stay logged in)
-
-### Data Isolation
-
-- Each user sees only their own data
-- Shared demo data for training new users
-- Role-based access ready for team implementation
-
----
-
-## Sample Data (Pre-loaded)
-
-The app comes pre-loaded with realistic UK demo data to explore:
-
-**8 Staff Members:**
-- Mix of experience levels (Trainee to Specialist)
-- Various qualifications (CSCS, NVQ, BSRIA)
-- Complete profile information
-
-**6 Client Companies:**
-- Spread across UK regions
-- Different sectors (commercial, residential, public)
-- Multiple contacts and addresses
-
-**9 Service Contracts:**
-- Various values and terms
-- Different SLA levels
-- Renewal dates spread throughout year
-
-**6 Building Projects:**
-- Different sizes and types
-- Multiple dampers per building
-- Complete test histories
-
-**18 Jobs:**
-- Various statuses (pending to completed)
-- Different types (testing, maintenance, repair)
-- Assigned to different engineers
-
-**Dampers and Test Records:**
-- Multiple damper configurations
-- Historical velocity readings
-- Trend data for analysis demos
+## Executive Overview
+
+Life Safety Ops is a comprehensive life safety operations and compliance management platform designed specifically for UK fire safety professionals. The platform provides a complete solution for managing smoke control system testing, compliance documentation, and business operations.
+
+### Who Is This For?
+
+- **Fire Safety Contractors**: Companies providing smoke control maintenance and testing services
+- **Commissioning Engineers**: Professionals commissioning new smoke control installations
+- **Building Services Consultants**: Consultancies advising on fire safety compliance
+- **Smoke Ventilation Specialists**: Technicians maintaining smoke exhaust and pressurisation systems
+- **Property Management Companies**: Organisations responsible for building safety compliance
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Dual-Mode Interface** | Seamlessly switch between Office mode for administrative tasks and Engineer mode for field work |
+| **Regulatory Compliance** | Full support for BS EN 12101-8, BSRIA BG 49/2024, and Building Safety Act requirements |
+| **Automatic Calculations** | Grid size determination (5×5, 6×6, or 7×7) based on damper dimensions |
+| **Professional Reporting** | Generate QR-verified PDF certificates with full compliance documentation |
+| **Offline Capability** | Complete field testing functionality without internet connectivity |
+| **Business Management** | Integrated CRM, invoicing, scheduling, and asset tracking |
+| **Multi-Tenant Support** | Organisations can manage multiple team members with role-based access |
+| **Golden Thread** | Building Safety Act compliant document management and audit trails |
+
+### Platform Architecture
+
+The platform consists of two primary modes:
+
+**1. Office Mode**
+Full CRM functionality with sidebar navigation for managing:
+- Clients and contacts
+- Contracts and service agreements
+- Job scheduling and tracking
+- Quotes, invoices, and expenses
+- Asset and equipment registers
+- Team members and certifications
+- Reports and analytics
+- Golden Thread documentation
+
+**2. Engineer Mode (Field Companion)**
+Mobile-first interface optimised for on-site work:
+- Touch-friendly controls for field use
+- Offline testing capability
+- Job execution and status updates
+- Photo documentation and annotation
+- Signature capture
+- Defect logging
+- Time tracking
 
 ---
 
 ## Getting Started
 
-1. **Log in** using your preferred method
-2. **Explore the demo data** - All features have sample data to try
-3. **Create your first client** - Start building your own database
-4. **Add a project and dampers** - Set up your first site
-5. **Run a test** - Experience the touch-optimised testing workflow
-6. **Generate a report** - See the professional PDF output
+### System Requirements
+
+**Web Application**
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+- Internet connection for initial login
+- Desktop or tablet screen recommended for Office mode
+
+**Mobile Application (Field Companion)**
+- iOS 14+ or Android 10+
+- Internet connection for synchronisation
+- Works offline for field testing
+
+### Logging In
+
+1. Navigate to the Life Safety Ops website
+2. Click **Log In** or **Get Started**
+3. Authenticate using your Replit account credentials
+4. Upon first login, you will be prompted to create or join an organisation
+
+**Screenshot: Login Screen**
+The login screen displays the Life Safety Ops branding with options to sign in or create an account.
+
+### Creating an Organisation
+
+If you are the first user from your company:
+
+1. Navigate to **Settings** from the sidebar footer (click the cog icon)
+2. Select the **Organisation** tab
+3. Enter your company name (e.g., "SafeVent Solutions Ltd")
+4. Click **Create Organisation**
+5. You will automatically be assigned the **Owner** role
+
+**Screenshot: Organisation Creation**
+The Settings page showing the Organisation tab with fields for company name and create button.
+
+### Inviting Team Members
+
+Owners and Administrators can invite team members:
+
+1. Go to **Settings** → **Team** tab
+2. Click **Invite Member**
+3. Enter the email address of the person you wish to invite
+4. Select their role from the dropdown:
+   - **Admin**: Full management access
+   - **Office Staff**: CRM access, scheduling, invoicing
+   - **Engineer**: Field work, test data, job updates
+   - **Viewer**: Read-only access
+5. Click **Send Invitation**
+6. Share the invitation link with your colleague
+7. The invitation expires after 7 days
+
+**Screenshot: Team Invitations**
+The Team tab showing current members, pending invitations, and the invitation dialog.
+
+### Accepting an Invitation
+
+1. Click the invitation link received via email or from your colleague
+2. Log in or create a Replit account if needed
+3. You will be automatically added to the organisation with the assigned role
+4. Access the platform immediately
+
+### Switching Between Modes
+
+Use the toggle switch in the header to switch between:
+- **Office Mode**: Full desktop interface with sidebar navigation
+- **Engineer Mode**: Mobile-optimised Field Companion interface
+
+The mode preference is saved and persists across sessions. Engineers default to Field Companion mode, while office staff default to Office mode.
+
+**Screenshot: Mode Toggle**
+Header bar showing the toggle switch between Office and Engineer modes.
 
 ---
 
-## Technical Stack
+## Dashboard & Navigation
 
-For developers and technical teams:
+### Office Dashboard
 
-- **Frontend**: React 18+, TypeScript, Vite, shadcn/ui, Tailwind CSS
-- **Backend**: Express.js, TypeScript, RESTful API
-- **Database**: PostgreSQL with Drizzle ORM
-- **Mobile**: Capacitor for iOS/Android
-- **Charts**: Recharts
-- **PDF**: jsPDF, html-to-image
-- **Forms**: React Hook Form, Zod validation
+The dashboard provides an at-a-glance overview of your operations:
+
+**Key Metrics Cards**
+- **Active Jobs**: Number of jobs currently in progress
+- **Pending Jobs**: Jobs awaiting scheduling or assignment
+- **Due This Week**: Upcoming scheduled work
+- **Overdue Items**: Jobs or invoices requiring attention
+
+**Quick Actions Panel**
+- Create New Job
+- Create New Quote
+- Add New Client
+- Schedule Visit
+
+**Recent Activity Feed**
+- Latest job updates
+- New client additions
+- Invoice payments received
+- Test completions
+
+**Upcoming Schedule**
+- Today's appointments
+- This week's jobs
+- Calendar integration
+
+**Screenshot: Dashboard Overview**
+The main dashboard showing all key metrics, quick actions, recent activity, and upcoming schedule in a clean grid layout.
+
+### Navigation Structure
+
+The sidebar organises features into logical groups. Click on a section header to expand it and reveal sub-pages.
+
+**Testing & Field Work**
+| Page | Description |
+|------|-------------|
+| Dashboard | Overview and quick actions |
+| Field Testing | Damper and stairwell testing interface |
+| Check Sheet Readings | Form-based data capture |
+
+**CRM & Clients**
+| Page | Description |
+|------|-------------|
+| Clients | Client company records |
+| Sites | Physical locations and buildings |
+| Contracts | Service agreements and SLAs |
+| Jobs | Work orders and appointments |
+| Schedule | Calendar view of all work |
+
+**Finance**
+| Page | Description |
+|------|-------------|
+| Finance Overview | Summary of quotes, invoices, expenses |
+| Quotes | Estimates and proposals |
+| Invoices | Billing and payments |
+| Expenses | Cost tracking and reimbursements |
+| Timesheets | Time recording and payroll data |
+
+**Operations**
+| Page | Description |
+|------|-------------|
+| Vehicles | Fleet management |
+| Subcontractors | Third-party supplier management |
+| Holidays | Staff leave management |
+| Mileage Claims | Travel expense recording |
+| Work Notes | General operational notes |
+| Callbacks | Follow-up task tracking |
+
+**Asset Management**
+| Page | Description |
+|------|-------------|
+| Site Assets | Assets at customer sites (dampers, AOVs) |
+| Equipment | Company-owned tools and instruments |
+| Inventory | Stock and consumables |
+| Suppliers | Vendor contacts and details |
+| Purchase Orders | Procurement management |
+
+**HR & Training**
+| Page | Description |
+|------|-------------|
+| Staff Directory | Team member profiles |
+| Training Records | CPD and course tracking |
+| Certifications | Qualification management |
+| Time Off Requests | Leave approval workflow |
+
+**Sales & Pipeline**
+| Page | Description |
+|------|-------------|
+| Leads | Prospective clients |
+| Tenders | Bid management |
+| Competitors | Market intelligence |
+
+**Compliance & Safety**
+| Page | Description |
+|------|-------------|
+| Golden Thread | Building Safety Act documentation |
+| Incidents | Safety incident reporting |
+| Risk Assessments | Site risk documentation |
+| Defect Register | Outstanding defects tracking |
+
+**Documents & Reports**
+| Page | Description |
+|------|-------------|
+| Document Register | Centralised document library |
+| Document Templates | Reusable templates |
+| Reports | Analytical reports |
+| Service Analytics | Performance dashboards |
+| Engineer Performance | Staff productivity metrics |
+| Site Health | Asset condition overview |
+| Downloads | PDF exports and guides |
+| Notifications | System alerts and messages |
+
+**Screenshot: Sidebar Navigation**
+The collapsed and expanded sidebar showing all navigation sections with icons.
+
+---
+
+## Office Application
+
+### Client Management
+
+#### Creating a New Client
+
+1. Navigate to **CRM & Clients** → **Clients**
+2. Click the **Add Client** button (top right)
+3. Complete the client details form:
+
+**Basic Information**
+- **Company Name**: Full legal name (e.g., "Tower Properties Ltd")
+- **Trading Name**: If different from legal name
+- **Account Reference**: Your internal reference code
+- **Client Type**: Commercial / Residential / Mixed-Use
+
+**Contact Information**
+- **Primary Email**: Main contact email
+- **Phone Number**: Office telephone
+- **Website**: Company website URL
+
+**Address**
+- **Address Line 1**: Street address
+- **Address Line 2**: Building/Suite (optional)
+- **City**: Town or city
+- **Postcode**: UK postcode
+- **Country**: Default UK
+
+**Account Settings**
+- **Payment Terms**: 14 days / 30 days / 60 days
+- **VAT Number**: If VAT registered
+- **Priority Level**: Standard / Preferred / VIP
+- **Account Manager**: Assigned staff member
+
+4. Click **Save** to create the client record
+
+**Screenshot: New Client Form**
+The client creation form showing all fields organised in logical sections.
+
+#### Managing Client Contacts
+
+Each client can have multiple contacts with different roles:
+
+1. Open the client record by clicking on their name
+2. Scroll to the **Contacts** section
+3. Click **Add Contact**
+4. Enter contact details:
+   - **Full Name**: First and last name
+   - **Job Title**: Their role (e.g., "Building Manager")
+   - **Email**: Individual email address
+   - **Phone**: Direct dial or mobile
+   - **Mobile**: Mobile number
+   - **Is Primary**: Toggle if main contact
+   - **Notes**: Any relevant notes
+5. Click **Save**
+
+**Example Contact List**:
+| Name | Role | Email | Primary |
+|------|------|-------|---------|
+| Sarah Thompson | Building Manager | sarah@towerprop.com | Yes |
+| Michael Chen | Facilities Coordinator | m.chen@towerprop.com | No |
+| Accounts Team | Accounts Payable | accounts@towerprop.com | No |
+
+**Screenshot: Client Contacts**
+The contacts section within a client record showing the list and add contact dialog.
+
+#### Client Addresses
+
+Clients may have multiple site addresses:
+
+1. Within the client record, find **Addresses**
+2. Click **Add Address**
+3. Enter address details:
+   - **Address Type**: Registered / Billing / Site
+   - **Address Name**: Friendly name (e.g., "Head Office")
+   - **Full Address**: Complete postal address
+   - **Postcode**: UK postcode
+   - **Access Notes**: Parking, entry codes, etc.
+4. Click **Save**
+
+**Screenshot: Client Addresses**
+The addresses section showing multiple locations on a map with details panel.
+
+### Site Management
+
+Sites are physical locations where testing and services are performed. Sites link to clients and contain assets.
+
+#### Creating a Site
+
+1. Navigate to **CRM & Clients** → **Sites**
+2. Click **Add Site**
+3. Complete the site form:
+
+**Site Information**
+- **Site Name**: Descriptive name (e.g., "Tower Court - Block A")
+- **Client**: Select from existing clients (dropdown)
+- **Site Reference**: Your reference number
+
+**Address Details**
+- **Address**: Full postal address
+- **Postcode**: UK postcode
+- **What3Words**: Location reference (optional)
+
+**Building Information**
+- **Building Type**: Residential / Commercial / Industrial / Mixed-Use
+- **Number of Floors**: Total floors including basement
+- **Year Built**: Original construction year
+- **Responsible Person**: Building manager name
+
+**Access Requirements**
+- **Access Instructions**: How to enter the building
+- **Key Safe Location**: If applicable
+- **Parking Information**: Where to park
+- **Security Contact**: Phone number
+
+**Emergency Procedures**
+- **Assembly Point**: Evacuation meeting point
+- **Emergency Contact**: 24/7 contact number
+- **Special Hazards**: Any known hazards
+
+4. Click **Save**
+
+**Screenshot: New Site Form**
+The site creation form with all sections expanded showing field details.
+
+#### Site Assets
+
+Each site contains assets that require testing and maintenance:
+
+1. Open the site record
+2. Navigate to the **Assets** tab
+3. Click **Add Asset**
+4. Enter asset details:
+
+**Asset Identification**
+- **Asset Type**: Smoke Damper / AOV / Pressure System / Fire Curtain
+- **Asset Reference**: Your ID code (e.g., "SD-A-01")
+- **Manufacturer**: Equipment manufacturer
+- **Model Number**: Manufacturer model
+- **Serial Number**: Equipment serial
+
+**Location**
+- **Floor/Level**: Building floor
+- **Zone**: Fire zone designation
+- **Location Description**: Specific location (e.g., "Corridor L1, above Room 103")
+
+**Technical Details**
+- **Size**: Dimensions (e.g., "600mm x 400mm")
+- **System Type**: Push / Pull / Push-Pull / Pressure Differential
+- **Design Velocity**: Target airflow (m/s)
+- **Design Pressure**: Target pressure (Pa) for pressure systems
+
+**Maintenance Schedule**
+- **Testing Frequency**: Weekly / Monthly / Quarterly / Annual
+- **Last Test Date**: Most recent test
+- **Next Due Date**: Calculated automatically
+- **Warranty Expiry**: End of warranty period
+
+5. Click **Save**
+
+**Screenshot: Site Asset Register**
+The asset tab showing a table of all assets at a site with status indicators.
+
+### Contract Management
+
+Contracts define the scope of services provided to clients.
+
+#### Creating a Contract
+
+1. Navigate to **CRM & Clients** → **Contracts**
+2. Click **Add Contract**
+3. Enter contract details:
+
+**Contract Details**
+- **Contract Title**: Descriptive name (e.g., "Annual Smoke Control Maintenance")
+- **Contract Number**: Reference number
+- **Client**: Select from clients
+- **Contract Type**: Maintenance / Reactive / Commissioning / Project
+
+**Dates and Value**
+- **Start Date**: Contract commencement
+- **End Date**: Contract expiry
+- **Auto-Renew**: Toggle for automatic renewal
+- **Notice Period**: Days notice to cancel (e.g., 90 days)
+- **Contract Value**: Annual or total value
+- **Billing Frequency**: Monthly / Quarterly / Annually
+
+**Service Level Agreement**
+- **Response Time**: Hours to respond (e.g., 4 hours)
+- **Resolution Time**: Hours to resolve (e.g., 24 hours)
+- **Priority Level**: Standard / Enhanced / Premium
+
+**Scope of Work**
+- **Sites Covered**: Select included sites
+- **Services Included**: Testing, maintenance, repairs
+- **Exclusions**: What is not covered
+- **Additional Terms**: Special conditions
+
+4. Click **Save**
+
+**Screenshot: Contract Form**
+The contract creation form showing all fields with sample data.
+
+#### Contract Types
+
+| Type | Description | Typical Duration |
+|------|-------------|------------------|
+| Annual Maintenance | Scheduled preventive maintenance visits | 1-3 years |
+| Reactive | On-demand callout services | Rolling |
+| Commissioning | New system installation testing | Project-based |
+| Project | One-off testing or remediation | Fixed term |
+
+**Screenshot: Contracts Dashboard**
+The contracts overview showing active contracts, upcoming renewals, and key metrics.
+
+### Job Management
+
+Jobs represent individual pieces of work to be completed.
+
+#### Creating a Job
+
+**Method 1: From Jobs Page**
+1. Navigate to **CRM & Clients** → **Jobs**
+2. Click **Add Job**
+
+**Method 2: From Contract**
+1. Open a contract
+2. Click **Create Job from Contract**
+3. Job is pre-populated with contract details
+
+**Method 3: From Quote (Conversion)**
+1. Open an approved quote
+2. Click **Convert to Job**
+3. Job is created with quote line items
+
+**Job Form Fields**:
+
+**Basic Information**
+- **Job Title**: Brief description (e.g., "Annual Damper Testing")
+- **Job Number**: Auto-generated or manual
+- **Client**: Select client
+- **Site**: Select from client's sites
+- **Contract**: Link to contract (if applicable)
+
+**Job Details**
+- **Job Type**: Testing / Maintenance / Repair / Commissioning / Inspection
+- **Priority**: Low / Normal / High / Urgent
+- **Estimated Duration**: Hours expected
+- **Description**: Detailed scope of work
+
+**Scheduling**
+- **Planned Date**: Target completion date
+- **Scheduled Date**: Confirmed appointment
+- **Time Slot**: Morning / Afternoon / All Day / Specific time
+- **Assigned Engineer(s)**: Select from staff
+
+**Site Access**
+- **Access Instructions**: How to enter
+- **Contact on Site**: Person to meet
+- **Contact Phone**: Their number
+- **Special Requirements**: Equipment, PPE, etc.
+
+4. Click **Save**
+
+**Screenshot: New Job Form**
+The job creation form with all fields and smart defaults.
+
+#### Job Statuses
+
+Jobs progress through defined statuses:
+
+| Status | Meaning | Actions Available |
+|--------|---------|-------------------|
+| Pending | Created but not scheduled | Schedule, assign, edit |
+| Scheduled | Date and engineer assigned | Start, reschedule |
+| In Progress | Work underway | Update, complete, pause |
+| On Hold | Temporarily paused | Resume, cancel |
+| Completed | Work finished | Generate report, invoice |
+| Invoiced | Invoice generated | Mark paid |
+| Cancelled | Job cancelled | View only |
+
+**Screenshot: Job Board**
+The job board showing jobs organised by status in columns with drag-and-drop functionality.
+
+#### Job Templates
+
+Create templates for recurring job types:
+
+1. Navigate to **Operations** → **Job Templates** (or create from any job)
+2. Click **Add Template**
+3. Define standard job parameters:
+   - Template name
+   - Default job type
+   - Standard description
+   - Estimated duration
+   - Checklist items
+   - Required equipment
+4. When creating a new job, select "Use Template"
+
+**Screenshot: Job Templates**
+The template library showing available templates with quick-use buttons.
+
+### Finance & Invoicing
+
+#### Creating Quotes
+
+1. Navigate to **Finance** → **Finance Overview**
+2. Click **Add Quote** or go to **Finance** → **Quotes**
+3. Complete the quote form:
+
+**Quote Details**
+- **Client**: Select client
+- **Quote Number**: Auto-generated
+- **Quote Date**: Date of quote
+- **Valid Until**: Expiry date (e.g., 30 days)
+- **Reference**: Your reference
+
+**Line Items**
+Add one or more line items:
+- **Description**: Service or product description
+- **Quantity**: Number of units
+- **Unit Price**: Price per unit (exc. VAT)
+- **VAT Rate**: 20% / 5% / 0% / Exempt
+- **Total**: Calculated automatically
+
+**Example Line Items**:
+| Description | Qty | Unit Price | VAT | Total |
+|-------------|-----|------------|-----|-------|
+| Annual smoke damper testing (12 dampers) | 1 | £1,800.00 | 20% | £2,160.00 |
+| Travel and access charges | 1 | £85.00 | 20% | £102.00 |
+| Report production | 1 | £150.00 | 20% | £180.00 |
+
+**Totals**
+- Subtotal: £2,035.00
+- VAT: £407.00
+- **Total: £2,442.00**
+
+**Terms & Conditions**
+- Standard terms (from settings)
+- Custom terms for this quote
+
+4. Click **Save as Draft** or **Send to Client**
+
+**Screenshot: Quote Builder**
+The quote creation interface with line item entry, calculations, and preview.
+
+#### Converting Quotes to Jobs
+
+1. Open an approved/accepted quote
+2. Click **Convert to Job**
+3. Review job details (pre-populated from quote)
+4. Adjust schedule, assignment as needed
+5. Click **Create Job**
+
+The job is linked to the quote for traceability.
+
+**Screenshot: Quote to Job Conversion**
+The conversion dialog showing the quote summary and job creation options.
+
+#### Creating Invoices
+
+**Method 1: From Completed Job**
+1. Open a completed job
+2. Click **Generate Invoice**
+3. Invoice is created with job details
+
+**Method 2: From Quote**
+1. Open an accepted quote
+2. Click **Convert to Invoice**
+3. Invoice is created with quote line items
+
+**Method 3: Manual Creation**
+1. Navigate to **Finance** → **Invoices**
+2. Click **Add Invoice**
+3. Complete the invoice form (similar to quotes)
+
+**Invoice Fields**:
+- **Invoice Number**: Sequential or custom
+- **Invoice Date**: Issue date
+- **Due Date**: Payment due date
+- **Payment Terms**: Reference to terms
+- **Line Items**: Services/products billed
+- **Notes**: Additional information
+- **Payment Instructions**: Bank details, etc.
+
+4. Click **Save** or **Send to Client**
+
+**Screenshot: Invoice Generation**
+The invoice interface showing completed invoice with PDF preview.
+
+#### Expense Tracking
+
+Record business expenses for cost tracking and reimbursement:
+
+1. Navigate to **Finance** → **Expenses**
+2. Click **Add Expense**
+3. Enter expense details:
+
+**Expense Information**
+- **Date**: When expense occurred
+- **Category**: Materials / Travel / Subsistence / Equipment / Training / Other
+- **Description**: What was purchased
+- **Amount**: Total cost
+- **VAT**: VAT amount (if claimable)
+- **Receipt**: Upload photo or PDF
+
+**Allocation**
+- **Job**: Link to job (if job-related)
+- **Cost Centre**: Department or project
+- **Paid By**: Staff member
+- **Reimbursement Status**: Pending / Approved / Paid
+
+4. Click **Save**
+
+**Screenshot: Expense Entry**
+The expense form showing fields and receipt upload.
+
+#### Timesheets
+
+Record time worked for billing and payroll:
+
+1. Navigate to **Finance** → **Timesheets**
+2. Click **Add Entry**
+3. Record time:
+
+**Time Entry Fields**
+- **Date**: Work date
+- **Job/Activity**: Select job or general activity
+- **Start Time**: When work began
+- **End Time**: When work finished
+- **Break Duration**: Unpaid break time
+- **Notes**: What was done
+
+**Entry Types**
+- Job Work
+- Travel
+- Training
+- Admin
+- Meeting
+
+4. Click **Save**
+
+**Screenshot: Timesheet Entry**
+The timesheet interface showing weekly view with entries.
+
+### Asset & Equipment Management
+
+#### Equipment Register
+
+Track company-owned equipment and tools:
+
+1. Navigate to **Asset Management** → **Equipment**
+2. Click **Add Equipment**
+3. Enter details:
+
+**Equipment Information**
+- **Name**: Equipment name (e.g., "TSI VelociCalc Anemometer")
+- **Category**: Anemometer / Manometer / Smoke Generator / Hand Tools / PPE
+- **Make/Model**: Manufacturer and model
+- **Serial Number**: Unique identifier
+- **Asset Tag**: Your internal tag
+
+**Acquisition**
+- **Purchase Date**: When bought
+- **Purchase Cost**: Original price
+- **Supplier**: Where purchased
+- **Warranty End**: Warranty expiry
+
+**Calibration** (for test equipment)
+- **Calibration Required**: Yes / No
+- **Last Calibration**: Date last calibrated
+- **Calibration Due**: Next due date
+- **Calibration Interval**: Months between calibrations
+- **Certificate Number**: Latest certificate reference
+
+**Assignment**
+- **Current Custodian**: Who has it
+- **Location**: Where stored
+- **Status**: Available / In Use / Under Repair / Retired
+
+4. Click **Save**
+
+**Screenshot: Equipment Register**
+The equipment list showing all items with calibration status indicators.
+
+#### Calibration Tracking
+
+The system alerts you before calibration expires:
+
+- **Green**: Calibration current, more than 30 days until due
+- **Amber**: Calibration due within 30 days
+- **Red**: Calibration overdue
+
+**Screenshot: Calibration Dashboard**
+A dashboard showing equipment calibration status with countdown timers.
+
+#### Inventory Management
+
+Track consumables and stock:
+
+1. Navigate to **Asset Management** → **Inventory**
+2. View current stock levels
+3. Record stock movements:
+   - **Stock In**: Items received
+   - **Stock Out**: Items used
+   - **Adjustment**: Corrections
+4. Set reorder thresholds for alerts
+5. Generate stock reports
+
+**Screenshot: Inventory Management**
+The inventory list with stock levels and reorder indicators.
+
+#### Supplier Management
+
+Maintain supplier contacts:
+
+1. Navigate to **Asset Management** → **Suppliers**
+2. Click **Add Supplier**
+3. Enter supplier information:
+   - Company name and contact
+   - Address and phone
+   - Products/services supplied
+   - Account number
+   - Payment terms
+4. Link to purchase orders
+
+**Screenshot: Supplier Directory**
+The supplier list with contact details and order history summary.
+
+### Team & Certification Management
+
+#### Staff Directory
+
+View and manage all team members:
+
+1. Navigate to **HR & Training** → **Staff Directory**
+2. View staff list with:
+   - Name and photo
+   - Role and department
+   - Contact details
+   - Employment status
+   - Assigned jobs
+
+3. Click on a team member to view their full profile:
+   - Personal details
+   - Emergency contact
+   - Qualifications and certifications
+   - Training history
+   - Performance metrics
+   - Assigned equipment
+
+**Screenshot: Staff Directory**
+The staff grid showing team member cards with key information.
+
+#### Certification Tracking
+
+Track engineer certifications and expiry dates:
+
+1. Navigate to **HR & Training** → **Certifications**
+2. Click **Add Certification**
+3. Enter certification details:
+
+**Certification Information**
+- **Staff Member**: Select person
+- **Certificate Type**: CSCS / NVQ / Manufacturer / Industry Body
+- **Certificate Name**: Full title (e.g., "BSRIA CP/47 Smoke Control Commissioning")
+- **Issuing Body**: Organisation that issued it
+- **Certificate Number**: Reference number
+
+**Dates**
+- **Issue Date**: When obtained
+- **Expiry Date**: When it expires
+- **Renewal Period**: Months/years
+
+**Documentation**
+- **Upload Certificate**: PDF or image of certificate
+
+4. Click **Save**
+
+**Expiry Alerts**:
+- 90 days before: Notification to staff member
+- 60 days before: Notification to manager
+- 30 days before: Urgent alert
+- Expired: Cannot be assigned to jobs requiring this certification
+
+**Screenshot: Certification Tracking**
+The certification matrix showing all staff with their qualifications and expiry dates.
+
+#### Training Records
+
+Log training completed:
+
+1. Navigate to **HR & Training** → **Training Records**
+2. Click **Add Training**
+3. Enter details:
+   - Training title
+   - Provider/trainer
+   - Date completed
+   - Duration (hours)
+   - CPD points earned
+   - Certificate uploaded
+4. Track CPD requirements
+
+**Screenshot: Training Records**
+The training log for an individual showing completed courses.
+
+### Reporting & Analytics
+
+#### Service Analytics
+
+Navigate to **Documents & Reports** → **Service Analytics** to view:
+
+**Key Performance Indicators**
+- Jobs completed this month/quarter/year
+- Revenue by service type
+- Average job value
+- First-time fix rate
+- Response times vs SLA
+
+**Trend Charts**
+- Monthly job volumes
+- Revenue trends
+- Seasonal patterns
+- Year-on-year comparison
+
+**Breakdown Reports**
+- Revenue by client
+- Jobs by engineer
+- Services by type
+- Geographic distribution
+
+**Screenshot: Service Analytics Dashboard**
+Interactive charts and KPI cards showing operational performance.
+
+#### Engineer Performance
+
+Navigate to **Documents & Reports** → **Engineer Performance** to view:
+
+**Per-Engineer Metrics**
+- Jobs completed
+- Average completion time
+- Customer feedback scores
+- Utilisation rate
+- Distance travelled
+- Revenue generated
+
+**Leaderboards**
+- Top performers by month
+- Improvement trends
+- Certification compliance
+
+**Screenshot: Engineer Performance**
+Performance comparison charts for the engineering team.
+
+#### Site Health
+
+Navigate to **Documents & Reports** → **Site Health** to view:
+
+**Asset Status Overview**
+- Assets due for testing
+- Overdue tests
+- Pass/fail rates by site
+- Outstanding defects
+
+**Compliance Scores**
+- Sites with 100% compliance
+- Sites requiring attention
+- Risk-ranked site list
+
+**Historical Trends**
+- Test results over time
+- Velocity decline trends
+- Pressure maintenance trends
+
+**Screenshot: Site Health Dashboard**
+Traffic light dashboard showing compliance status for all sites.
+
+---
+
+## Field Companion Application
+
+### Mobile Interface Overview
+
+The Field Companion provides a streamlined, touch-optimised interface for engineers working on site.
+
+#### Accessing Field Companion
+
+**On Mobile Device:**
+1. Open the Life Safety Ops app
+2. Log in with your credentials
+3. The app automatically opens in Engineer mode
+
+**On Desktop/Tablet:**
+1. Click the **Engineer Mode** toggle in the header
+2. The interface switches to the mobile-optimised view
+
+**Screenshot: Field Companion Home**
+The mobile home screen showing assigned jobs and quick actions.
+
+#### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Touch-Optimised Controls** | Large buttons and input areas for easy use with gloves |
+| **Offline Capability** | Full functionality without internet connection |
+| **Quick Job Access** | View and update assigned jobs |
+| **Test Data Entry** | Record damper and stairwell readings |
+| **Photo Documentation** | Capture and annotate images |
+| **Signature Capture** | Obtain client sign-off on site |
+| **Time Tracking** | Record arrival, departure, and work time |
+| **Defect Logging** | Report issues found during testing |
+
+#### Engineer Home Screen
+
+The home screen displays:
+- **Today's Jobs**: Jobs scheduled for today
+- **Assigned Jobs**: All jobs assigned to you
+- **Recent Activity**: Your latest actions
+- **Quick Actions**: Start new test, log defect, etc.
+- **Sync Status**: Online/offline indicator
+
+**Screenshot: Engineer Dashboard**
+The mobile dashboard showing job list and status indicators.
+
+### Smoke Control Damper Testing
+
+#### Understanding Grid Sizes
+
+The platform automatically calculates the appropriate test grid based on damper dimensions per BSRIA BG 49/2024:
+
+| Damper Face Area | Grid Size | Measurement Points |
+|------------------|-----------|-------------------|
+| Less than 0.25m² | 5×5 | 25 readings |
+| 0.25m² to 0.50m² | 6×6 | 36 readings |
+| Greater than 0.50m² | 7×7 | 49 readings |
+
+**Calculation Example**:
+- Damper dimensions: 750mm × 400mm
+- Face area: 0.75 × 0.4 = 0.30m²
+- Grid size: 6×6 (36 readings required)
+
+**Screenshot: Grid Size Calculator**
+The damper dimension entry screen showing automatic grid calculation.
+
+#### Conducting a Damper Test
+
+**Step 1: Select or Create Test**
+1. Open the assigned job in Field Companion
+2. Navigate to the damper to be tested
+3. Tap **Start Test** or **Add New Damper**
+
+**Step 2: Enter Damper Details**
+1. Enter damper reference (e.g., "SD-A-01")
+2. Enter dimensions:
+   - Width (mm): e.g., 750
+   - Height (mm): e.g., 400
+3. Grid size calculates automatically
+4. Enter design velocity (m/s): e.g., 8.0
+5. Select system type: Push / Pull / Push-Pull
+
+**Screenshot: Damper Details Entry**
+The damper setup screen with dimension fields and calculated grid preview.
+
+**Step 3: Take Readings**
+1. The test grid appears on screen
+2. Position yourself at the damper face
+3. Start at top-left corner (Cell A1)
+4. Take velocity reading with anemometer
+5. Tap cell and enter reading
+6. Move to next cell (Tab or tap)
+7. Continue until all cells complete
+
+**Navigation Options**:
+- Tap next cell directly
+- Use on-screen arrows
+- Swipe to navigate
+- Use external keyboard Tab key
+
+**Screenshot: Test Grid Entry**
+The interactive grid showing partially completed readings with colour coding.
+
+**Step 4: Review Results**
+As you enter readings, the system displays:
+- **Average Velocity**: Mean of all readings (m/s)
+- **Minimum Reading**: Lowest value recorded
+- **Maximum Reading**: Highest value recorded
+- **Standard Deviation**: Measure of consistency
+- **Pass/Fail Status**: Compared to design velocity
+- **Volumetric Flow Rate**: Calculated in m³/s
+
+**Colour Coding**:
+- **Green**: Reading within acceptable range
+- **Amber**: Reading borderline (within 10% of limit)
+- **Red**: Reading outside acceptable range
+
+**Screenshot: Test Results Summary**
+The completed grid with statistics and pass/fail indication.
+
+**Step 5: Add Documentation**
+1. Tap **Add Photo** to capture damper image
+2. Annotate photo if needed (mark areas of concern)
+3. Add notes about conditions
+4. Record any observations
+
+**Screenshot: Photo Annotation**
+The photo capture and annotation interface.
+
+**Step 6: Complete and Save**
+1. Review all entered data
+2. Tap **Complete Test**
+3. Data saves locally (syncs when online)
+4. Proceed to next damper or job
+
+#### Interpreting Results
+
+**Pass Criteria** (typical):
+- Average velocity within ±10% of design
+- No individual reading more than 20% below average
+- Airflow direction correct
+
+**Result Status**:
+| Status | Meaning | Action |
+|--------|---------|--------|
+| Pass | Meets all criteria | Document and move on |
+| Marginal Pass | Borderline acceptable | Note and monitor |
+| Fail | Does not meet criteria | Log defect, arrange remedial |
+
+**Screenshot: Pass/Fail Determination**
+The results screen showing clear pass or fail indication with criteria.
+
+#### Anomaly Detection
+
+The system uses statistical analysis to flag unusual readings:
+
+**How It Works**:
+- Uses Median Absolute Deviation (MAD) algorithm
+- Compares each reading to the damper average
+- Flags readings more than 2 standard deviations from median
+
+**Anomaly Indicators**:
+- Orange highlight: Moderate anomaly
+- Red highlight: Significant anomaly
+- Alert icon with explanation
+
+**Example Alert**:
+"Cell C4 (3.2 m/s) is 58% below the damper average (7.6 m/s). This may indicate:
+- Obstruction in this quadrant
+- Damper blade damage
+- Measurement error"
+
+**Screenshot: Anomaly Detection**
+A grid showing highlighted anomalous readings with explanation panel.
+
+#### Trend Analysis
+
+For previously tested dampers, view historical performance:
+
+1. Open damper record
+2. Navigate to **History** tab
+3. View trend chart showing:
+   - All previous test results
+   - Date of each test
+   - Average velocity over time
+   - Trend line (increasing/stable/declining)
+   - Design velocity reference line
+
+**Predictive Features**:
+- Velocity decline rate calculation
+- Predicted time to minimum acceptable velocity
+- Recommended maintenance date
+
+**Screenshot: Trend Analysis Chart**
+Line chart showing historical test results with trend projection.
+
+### Stairwell Pressure Testing
+
+#### Overview
+
+For stairwell pressure differential testing per BS EN 12101-6:
+
+**Test Scenarios**:
+1. **All Doors Closed**: Baseline pressure measurement
+2. **Single Door Open**: Pressure maintenance test
+3. **Multiple Doors Open**: Evacuation simulation
+4. **Door Force Test**: Opening force measurement
+
+**Screenshot: Stairwell Test Selection**
+The test type selection screen for pressure testing.
+
+#### Setting Up a Stairwell Test
+
+1. Select **Stairwell Test** from the job
+2. Enter stairwell details:
+   - Building name
+   - Stairwell identifier (e.g., "Stair A")
+   - Number of floors
+   - Building standard: BS EN 12101-6:2022 / BS EN 12101-6:2005 / BS 5588-4:1998
+   - Pressure class: A / B / C / D / E / F
+3. Add floor levels (e.g., B1, G, 1, 2, 3... Roof)
+4. System generates the test form
+
+**Pressure Class Requirements**:
+| Class | Minimum Pressure (Doors Closed) |
+|-------|--------------------------------|
+| A | 50 Pa ±10% |
+| B | 45 Pa ±10% |
+| C | 40 Pa ±10% |
+| D | 35 Pa ±10% |
+| E | 30 Pa ±10% |
+| F | 25 Pa ±10% |
+
+**Screenshot: Stairwell Setup**
+The stairwell configuration screen with floor list.
+
+#### Recording Pressure Readings
+
+**Doors Closed Test**:
+1. Ensure all stairwell doors are closed
+2. At each floor, measure differential pressure across door
+3. Enter reading (Pa) in corresponding field
+4. System indicates pass/fail against class requirement
+
+**Single Door Open Test**:
+1. Open door at Ground floor
+2. Measure pressure at all other floors
+3. Enter readings
+4. Repeat for each floor (open one door at a time)
+
+**Door Force Test**:
+1. At each floor, measure force to open door (Newton gauge)
+2. Enter reading in corresponding field
+3. Maximum typically 100N (140N for fire doors)
+
+**Screenshot: Pressure Reading Entry**
+The pressure test form showing floor-by-floor readings.
+
+#### Compliance Criteria
+
+**Doors Closed**:
+- Minimum pressure: Per selected class
+- Maximum pressure: Limited by door opening force
+
+**Single Door Open**:
+- Maintain minimum pressure at all other levels
+- Airflow from stairwell into building (positive pressure)
+
+**Door Opening Force**:
+- Maximum 100N (general)
+- Maximum 140N (fire doors in certain conditions)
+
+**Screenshot: Pressure Test Results**
+The summary showing overall pass/fail with floor-by-floor breakdown.
+
+### Offline Synchronisation
+
+#### How Offline Mode Works
+
+The Field Companion maintains full functionality without internet:
+
+**Offline Capabilities**:
+- View assigned jobs and site details
+- Conduct damper and stairwell tests
+- Enter all readings and notes
+- Capture and annotate photos
+- Log defects
+- Update job status
+- Record time entries
+
+**Data Storage**:
+- All data stored securely on device
+- Changes queued in sync queue
+- Queue persists even if app closed
+
+**Screenshot: Offline Indicator**
+The status bar showing offline mode with pending sync count.
+
+#### Syncing Data
+
+**Automatic Sync**:
+1. Reconnect to WiFi or mobile data
+2. System automatically detects connection
+3. Queued changes upload in background
+4. New data downloads to device
+5. Sync status indicator shows progress
+
+**Manual Sync**:
+1. Tap the sync icon in header
+2. View pending changes
+3. Tap **Sync Now** to force sync
+
+**Conflict Resolution**:
+If the same record was modified online and offline:
+1. System notifies you of conflict
+2. Shows both versions
+3. Choose which version to keep
+4. Or merge changes manually
+
+**Screenshot: Sync Status**
+The sync panel showing queue, progress, and last sync time.
+
+### Job Execution & Updates
+
+#### Starting a Job
+
+1. Open the job from your assigned list
+2. Review job details, site access notes
+3. Tap **Start Job** or **I've Arrived**
+4. Time tracking begins automatically
+5. Job status updates to **In Progress**
+
+**Screenshot: Job Start**
+The job detail screen with start button and site access information.
+
+#### Updating Job Progress
+
+**Progress Updates**:
+- Add notes as you work
+- Upload photos of work completed
+- Log materials used
+- Record any issues encountered
+
+**Status Updates**:
+- **On Hold**: Tap to pause (with reason)
+- **Resume**: Continue after pause
+- **Request Parts**: Flag need for materials
+- **Request Assistance**: Flag need for help
+
+**Screenshot: Job Progress Update**
+The progress panel showing notes, photos, and status options.
+
+#### Completing a Job
+
+1. Finish all testing and work
+2. Tap **Complete Job**
+3. Enter completion details:
+   - Summary of work done
+   - Any follow-up required
+   - Client representative name
+4. Capture client signature (touch to sign)
+5. Confirm completion
+6. Job status updates to **Completed**
+
+**Screenshot: Job Completion**
+The completion dialog with signature capture.
+
+### Defect Logging & Risk Assessments
+
+#### Logging a Defect
+
+If issues are found during testing or inspection:
+
+1. From the job or asset, tap **Log Defect**
+2. Enter defect details:
+
+**Defect Information**
+- **Title**: Brief description (e.g., "Damper blade bent")
+- **Description**: Detailed observation
+- **Asset**: Select affected asset
+- **Location**: Specific location
+
+**Classification**
+- **Severity**: Critical / Major / Minor
+- **Category**: Mechanical / Electrical / Controls / Structural
+
+**Evidence**
+- **Photo**: Capture image of defect
+- **Annotation**: Mark up photo to highlight issue
+
+**Recommendation**
+- **Recommended Action**: What should be done
+- **Urgency**: Immediate / Within 7 days / Within 30 days / At next service
+
+3. Click **Save**
+
+Defect is logged and:
+- Appears in Defect Register
+- Links to asset and job
+- Triggers notification to office
+- Flagged for follow-up
+
+**Screenshot: Defect Logging**
+The defect entry form with photo annotation.
+
+#### Risk Assessments
+
+Before starting work, complete risk assessment:
+
+1. From job, tap **Risk Assessment**
+2. Review standard hazards checklist
+3. Add site-specific hazards
+4. Record control measures
+5. Sign to confirm assessment complete
+6. Risk assessment attached to job record
+
+**Screenshot: Risk Assessment**
+The risk assessment checklist with signature.
+
+---
+
+## Compliance & Regulations
+
+### BS EN 12101 Standards
+
+The platform supports compliance with the full BS EN 12101 series:
+
+| Standard | Title | Application |
+|----------|-------|-------------|
+| BS EN 12101-1 | Smoke barriers | Smoke curtain specifications |
+| BS EN 12101-2 | Natural smoke and heat exhaust ventilators | AOV testing |
+| BS EN 12101-3 | Powered smoke and heat control ventilators | Fan system testing |
+| BS EN 12101-4 | Smoke and heat exhaust ventilation systems | System design |
+| BS EN 12101-5 | Guidelines on functional recommendations | Design guidance |
+| BS EN 12101-6 | Pressure differential systems | Stairwell testing |
+| BS EN 12101-7 | Smoke duct sections | Ductwork specifications |
+| BS EN 12101-8 | Smoke control dampers | Damper testing |
+| BS EN 12101-10 | Power supplies | Electrical requirements |
+| BS EN 12101-13 | Pressure differential systems kits | Kit specifications |
+| BS ISO 21927-9 | Control panels | Panel specifications |
+
+**Additional Standards Referenced**:
+- BS 7346-8: Smoke control systems
+- BS 9999: Fire safety in buildings
+- BS 9991: Fire safety in residential buildings
+- RRFSO 2005: Regulatory Reform (Fire Safety) Order
+- BSRIA BG 49/2024: Commissioning air systems
+
+**Screenshot: Standards Reference**
+The built-in standards reference library.
+
+### Building Safety Act Compliance
+
+The platform supports Building Safety Act requirements through:
+
+**Key BSA Features**:
+- **Golden Thread Documentation**: Complete audit trail of all safety information
+- **Traceability**: Every test, change, and decision is recorded
+- **Access Control**: Role-based permissions ensure data integrity
+- **Historical Records**: Full history maintained for accountability
+- **Version Control**: Track document changes over time
+- **Resident Engagement**: Share safety information appropriately
+
+**Screenshot: BSA Compliance Dashboard**
+The compliance overview showing Building Safety Act readiness.
+
+### Golden Thread Documentation
+
+Navigate to **Compliance & Safety** → **Golden Thread** to access:
+
+#### Document Vault
+
+The Golden Thread vault stores all safety-critical building information:
+
+**Document Categories**:
+- Design Documents
+- As-Built Drawings
+- Test Certificates
+- Risk Assessments
+- Maintenance Records
+- Incident Reports
+- O&M Manuals
+- Specifications
+
+**Screenshot: Golden Thread Vault**
+The document library showing categorised documents.
+
+#### Uploading Documents
+
+1. Navigate to **Golden Thread**
+2. Click **Upload Document**
+3. Select document type from list
+4. Add metadata:
+   - **Title**: Document name
+   - **Version**: Version number
+   - **Author**: Who created it
+   - **Date**: Document date
+   - **Related Asset/Site**: Link to asset or site
+   - **Tags**: Searchable keywords
+5. Upload the file (PDF, Word, Excel, images)
+6. Click **Save**
+
+**Screenshot: Document Upload**
+The upload dialog with metadata fields.
+
+#### Version Control
+
+When updating a document:
+1. Open existing document
+2. Click **Upload New Version**
+3. Add version notes (what changed)
+4. Upload new file
+5. Previous versions remain accessible
+
+**Audit Trail**:
+- Who uploaded/modified
+- When changes made
+- What changed
+- Full version history
+
+**Screenshot: Version History**
+The version history panel showing all document versions.
+
+### Professional PDF Reports
+
+#### Report Types Available
+
+| Report Type | Purpose | When Used |
+|-------------|---------|-----------|
+| Commissioning Certificate | New installation verification | Project handover |
+| Annual Inspection Report | Regular compliance check | Maintenance contract |
+| Remedial Works Report | After repairs/modifications | Post-remediation |
+| Summary Report | Quick overview | Client updates |
+| Test Certificate | Individual test record | Per-damper/system |
+
+**Screenshot: Report Type Selection**
+The report generation menu showing available types.
+
+#### Generating a Report
+
+1. Complete all required testing
+2. Navigate to job or tests
+3. Click **Generate Report**
+4. Select report type
+5. Review and complete:
+   - Company branding (from settings)
+   - Engineer details
+   - Witness details (if applicable)
+   - Summary notes
+   - Recommendations
+6. Capture digital signatures
+7. Click **Generate PDF**
+8. Report creates in seconds
+
+**Report Contents**:
+- Cover page with branding
+- Executive summary
+- Site and system details
+- All test data with grids
+- Visual representations
+- Compliance statements
+- Standard references
+- Digital signatures
+- Unique report reference
+- QR code for verification
+
+**Screenshot: PDF Report Preview**
+A sample generated PDF showing professional layout.
+
+#### QR Code Verification
+
+Each report includes a unique QR code that:
+- Links to online verification page
+- Confirms report authenticity
+- Shows issue date and engineer
+- Cannot be forged or altered
+
+**Screenshot: QR Verification**
+The QR code on a report and the verification page.
+
+---
+
+## Organisation Management
+
+### Role-Based Access Control
+
+The platform uses role-based permissions to control access:
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| **Owner** | Organisation creator/owner | Full access including billing, deletion, all features |
+| **Admin** | Full administrator | Manage team, full data access, cannot delete org |
+| **Office Staff** | Office-based users | CRM, scheduling, invoicing, reports |
+| **Engineer** | Field technicians | Jobs, testing, defects, time tracking |
+| **Viewer** | Read-only access | View data only, no modifications |
+
+**Permission Matrix**:
+
+| Feature | Owner | Admin | Office | Engineer | Viewer |
+|---------|-------|-------|--------|----------|--------|
+| View Dashboard | Yes | Yes | Yes | Yes | Yes |
+| Create Clients | Yes | Yes | Yes | No | No |
+| Create Jobs | Yes | Yes | Yes | No | No |
+| Assign Jobs | Yes | Yes | Yes | No | No |
+| Complete Jobs | Yes | Yes | Yes | Yes | No |
+| Enter Test Data | Yes | Yes | Yes | Yes | No |
+| Generate Reports | Yes | Yes | Yes | Yes | No |
+| Create Invoices | Yes | Yes | Yes | No | No |
+| Manage Team | Yes | Yes | No | No | No |
+| Organisation Settings | Yes | Yes | No | No | No |
+| Delete Organisation | Yes | No | No | No | No |
+
+**Screenshot: Permissions Matrix**
+The settings page showing role permissions.
+
+### Managing Team Members
+
+1. Navigate to **Settings** → **Team**
+2. View all current team members with:
+   - Name and email
+   - Role badge
+   - Status (active/invited)
+   - Last active date
+
+**Available Actions**:
+- **Change Role**: Update member's role (Admin/Owner only)
+- **Remove Member**: Remove from organisation
+- **Resend Invitation**: For pending invitations
+- **Cancel Invitation**: Remove pending invitation
+
+**Screenshot: Team Management**
+The team tab showing members and management options.
+
+### Organisation Settings
+
+1. Navigate to **Settings** → **Organisation**
+2. Update organisation details:
+   - **Organisation Name**: Company name
+   - **Email**: Primary contact email
+   - **Phone**: Office phone number
+   - **Address**: Business address
+   - **Website**: Company website
+3. Click **Save Changes**
+
+Settings sync to all users in the organisation.
+
+**Screenshot: Organisation Settings**
+The organisation settings form with branding options.
+
+---
+
+## Appendices
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl + N | New item (context-sensitive) |
+| Ctrl + S | Save current record |
+| Ctrl + F | Open search |
+| Escape | Close dialog/cancel |
+| Tab | Move to next field |
+| Shift + Tab | Move to previous field |
+| Arrow Keys | Navigate grid cells |
+| Enter | Confirm/submit |
+
+### Troubleshooting
+
+**Problem: Data not syncing**
+- Check internet connection status
+- Refresh the page (Ctrl + R)
+- Check sync status indicator for errors
+- Try manual sync from settings
+
+**Problem: Cannot log in**
+- Clear browser cache and cookies
+- Try a different browser
+- Check for service announcements
+- Contact support
+
+**Problem: Missing menu items**
+- Check your role permissions
+- Contact your administrator
+- Verify organisation membership
+
+**Problem: Report generation fails**
+- Ensure all required data is entered
+- Check for validation errors
+- Try generating in a different browser
+
+**Problem: Photos not uploading**
+- Check available storage on device
+- Reduce image size if very large
+- Check internet connection
+
+### Support
+
+For technical support:
+- **In-App Help**: Click help icon in header
+- **Documentation**: Downloads section in app
+- **Email**: support@lifesafetyops.com
+
+### Glossary
+
+| Term | Definition |
+|------|------------|
+| AOV | Automatic Opening Vent - a vent that opens automatically on fire signal |
+| BSA | Building Safety Act 2022 |
+| CPD | Continuing Professional Development |
+| m/s | Metres per second (velocity unit) |
+| N | Newton (force unit) |
+| O&M | Operation and Maintenance |
+| Pa | Pascal (pressure unit) |
+| PDC | Pressure Differential System |
+| SHEVS | Smoke and Heat Exhaust Ventilation System |
+| SLA | Service Level Agreement |
+| VAT | Value Added Tax |
+
+### System Requirements
+
+**Web Application**:
+- Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+- JavaScript enabled
+- 1280×720 minimum resolution recommended
+
+**Mobile Application**:
+- iOS 14.0 or later
+- Android 10.0 or later
+- 100MB storage space
+- Camera access (for photos)
+
+---
+
+**Document Version**: 1.0
+**Last Updated**: December 2024
+**Platform**: Life Safety Ops - Life Safety Operations & Compliance Management Platform
+
+**© 2024 All Rights Reserved**

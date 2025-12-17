@@ -139,21 +139,21 @@ doc.setFillColor(0, 51, 102);
 doc.rect(0, 0, pageWidth, 80, 'F');
 
 doc.setTextColor(255, 255, 255);
-doc.setFontSize(32);
+doc.setFontSize(28);
 doc.setFont('helvetica', 'bold');
-doc.text('Airflow Velocity Testing', pageWidth / 2, 35, { align: 'center' });
-doc.setFontSize(18);
-doc.text('Complete App Capabilities', pageWidth / 2, 50, { align: 'center' });
-doc.setFontSize(12);
+doc.text('Life Safety Ops', pageWidth / 2, 30, { align: 'center' });
+doc.setFontSize(14);
+doc.text('Life Safety Operations & Compliance Management Platform', pageWidth / 2, 45, { align: 'center' });
+doc.setFontSize(16);
 doc.setFont('helvetica', 'normal');
-doc.text('A Demonstration Guide', pageWidth / 2, 65, { align: 'center' });
+doc.text('Complete Operations Guide & How-To Manual', pageWidth / 2, 62, { align: 'center' });
 
 y = 100;
 doc.setTextColor(100, 100, 100);
 doc.setFontSize(10);
-doc.text('Professional UK-Compliant Smoke Control Testing', pageWidth / 2, y, { align: 'center' });
+doc.text('Professional UK-Compliant Life Safety Testing & Business Management', pageWidth / 2, y, { align: 'center' });
 y += 8;
-doc.text('Web & Mobile Application (iOS/Android)', pageWidth / 2, y, { align: 'center' });
+doc.text('Web & Mobile Application (iOS/Android) with Offline Support', pageWidth / 2, y, { align: 'center' });
 y += 20;
 
 doc.setTextColor(0, 0, 0);
@@ -161,11 +161,13 @@ doc.setFontSize(11);
 const features = [
   'Smoke Control Damper Velocity Testing',
   'Stairwell Differential Pressure Testing',
-  'Professional PDF Report Generation',
-  'UK Building Standards Compliance',
-  'Business Management CRM',
-  'Offline-First Mobile App',
-  'Trend Analysis & Anomaly Detection'
+  'Building Safety Act Compliance & Golden Thread',
+  'Professional PDF Report Generation with QR Verification',
+  'Full CRM: Clients, Contracts, Jobs, Invoicing',
+  'Asset & Equipment Management with Calibration Tracking',
+  'Field Companion Mobile App with Offline Sync',
+  'Multi-Tenant Organisation & Team Management',
+  'Trend Analysis & Predictive Maintenance'
 ];
 
 for (const feature of features) {
@@ -173,16 +175,18 @@ for (const feature of features) {
   y += 7;
 }
 
-y += 20;
+y += 15;
 doc.setFontSize(9);
 doc.setTextColor(100, 100, 100);
+doc.text('Version 1.0 | December 2024', pageWidth / 2, y, { align: 'center' });
+y += 5;
 doc.text('Generated: ' + new Date().toLocaleDateString('en-GB'), pageWidth / 2, y, { align: 'center' });
 
 // Start content on new page
 addPage();
 
 // Process the markdown content (skip the first title since we have a cover page)
-const contentWithoutTitle = markdown.replace(/^# Airflow Velocity Testing - Complete App Capabilities\n*/, '');
+const contentWithoutTitle = markdown.replace(/^# Life Safety Ops\n*/, '').replace(/## Life Safety Operations & Compliance Management Platform\n*/, '').replace(/### Complete Operations Guide & How-To Manual\n*/, '');
 processMarkdown(contentWithoutTitle);
 
 // Add page numbers

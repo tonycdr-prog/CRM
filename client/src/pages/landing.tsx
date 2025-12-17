@@ -177,7 +177,7 @@ const PRICING_TIERS = [
   {
     name: "Enterprise",
     price: 399,
-    description: "Complete solution for large organizations",
+    description: "Complete solution for large organisations",
     features: [
       "Everything in Professional",
       "Unlimited users",
@@ -209,7 +209,7 @@ const FAQ_ITEMS = [
   },
   {
     question: "What's included in the PDF reports?",
-    answer: "Reports include cover pages with company branding, executive summaries, grid visualizations, trend charts, individual test details, pass/fail statistics, digital signatures, and QR codes linking to online verification."
+    answer: "Reports include cover pages with company branding, executive summaries, grid visualisations, trend charts, individual test details, pass/fail statistics, digital signatures, and QR codes linking to online verification."
   },
   {
     question: "How does the CRM integrate with testing?",
@@ -312,8 +312,8 @@ export default function Landing() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-6 flex-wrap">
             <div className="flex items-center gap-2">
-              <Gauge className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold">Airflow Velocity Testing</span>
+              <Shield className="h-8 w-8 text-primary" />
+              <span className="text-xl font-bold">Life Safety Ops</span>
             </div>
             <nav className="hidden md:flex items-center gap-1">
               <Button variant="ghost" size="sm" asChild data-testid="button-features">
@@ -330,6 +330,9 @@ export default function Landing() {
               </Button>
               <Button variant="ghost" size="sm" asChild data-testid="button-faq">
                 <a href="#faq">FAQ</a>
+              </Button>
+              <Button variant="ghost" size="sm" asChild data-testid="button-downloads-nav">
+                <a href="#downloads">Downloads</a>
               </Button>
             </nav>
             <div className="flex items-center gap-2">
@@ -356,11 +359,11 @@ export default function Landing() {
               UK Regulation Compliant
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              Complete Smoke Control Testing &amp; Business Management Platform
+              Life Safety Operations &amp; Compliance Management Platform
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Professional airflow velocity testing tools combined with a full-featured CRM 
-              for smoke control service companies. From field testing to invoicing, all in one platform.
+              Professional UK life safety testing platform with full business management. 
+              From field testing to invoicing, Building Safety Act compliance to Golden Thread documentation - all in one platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
               <Button size="lg" asChild data-testid="button-get-started">
@@ -473,7 +476,7 @@ export default function Landing() {
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
-                    PDF exports with cover pages, grid visualizations, trend charts, signatures, and QR code verification
+                    PDF exports with cover pages, grid visualisations, trend charts, signatures, and QR code verification
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -518,7 +521,7 @@ export default function Landing() {
                 <div>
                   <h3 className="font-semibold mb-1">Project Management</h3>
                   <p className="text-muted-foreground text-sm">
-                    Organize tests by building and project with floor sequencing mode for efficient testing
+                    Organise tests by building and project with floor sequencing mode for efficient testing
                   </p>
                 </div>
               </div>
@@ -728,7 +731,7 @@ export default function Landing() {
                   <Users className="h-8 w-8 text-primary mb-2" />
                   <CardTitle>Client Management</CardTitle>
                   <CardDescription>
-                    Full CRM with company and contact details, communication logs, status tracking, and client type categorization
+                    Full CRM with company and contact details, communication logs, status tracking, and client type categorisation
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1147,6 +1150,89 @@ export default function Landing() {
           </div>
         </section>
 
+        <section id="downloads" className="py-16 md:py-24 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <Badge variant="outline" className="mb-4">
+                <Download className="h-3 w-3 mr-1" />
+                Resources
+              </Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Download Our Operations Guide</h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Get the comprehensive guide to using Life Safety Ops, including detailed how-to instructions, 
+                feature documentation, and best practices.
+              </p>
+            </div>
+
+            <div className="max-w-3xl mx-auto">
+              <Card className="border-2 hover-elevate">
+                <CardContent className="p-8">
+                  <div className="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 bg-primary/10 rounded-lg">
+                          <BookOpen className="h-8 w-8 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold">Operations Guide</h3>
+                          <p className="text-sm text-muted-foreground">Complete How-To Manual</p>
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground mb-6">
+                        Everything you need to know about Life Safety Ops, from initial setup to advanced features. 
+                        Over 50 pages of detailed documentation with step-by-step instructions.
+                      </p>
+                      <Button size="lg" className="w-full" asChild data-testid="button-download-guide">
+                        <a href="/api/downloads/capabilities-pdf">
+                          <Download className="mr-2 h-4 w-4" />
+                          Download PDF Guide
+                        </a>
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      <h4 className="font-semibold mb-3">What's included:</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span>Getting started & organisation setup</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span>Smoke control damper testing guide</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span>Stairwell pressure testing</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span>Full CRM documentation</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span>Field Companion mobile app</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span>Golden Thread compliance</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span>Team & certification management</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span>Reporting & analytics</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
         <section id="demo" className="py-16 md:py-24">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
@@ -1207,11 +1293,11 @@ export default function Landing() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Gauge className="h-6 w-6 text-primary" />
-                <span className="font-semibold">Airflow Velocity Testing</span>
+                <Shield className="h-6 w-6 text-primary" />
+                <span className="font-semibold">Life Safety Ops</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Complete smoke control testing and business management platform for UK service companies.
+                Life Safety Operations & Compliance Management Platform for UK fire safety professionals.
               </p>
             </div>
             <div>
@@ -1249,7 +1335,7 @@ export default function Landing() {
                 Compliant with BS EN 12101 (Parts 1-13), BS ISO 21927-9, BS 7346-8, BS 9999, BS 9991, RRFSO 2005, and BSRIA BG 49/2024
               </p>
               <p className="text-muted-foreground text-sm">
-                © 2024 Airflow Velocity Testing. All rights reserved.
+                © 2024 Life Safety Ops. All rights reserved.
               </p>
             </div>
           </div>
