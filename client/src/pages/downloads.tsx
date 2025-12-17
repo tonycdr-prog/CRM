@@ -4,11 +4,11 @@ import { Download, FileText, BookOpen, FolderArchive } from "lucide-react";
 
 export default function Downloads() {
   const handlePdfDownload = () => {
-    window.location.href = "/api/downloads/capabilities-pdf";
+    window.location.href = "/downloads/capabilities-pdf";
   };
 
   const handleZipDownload = () => {
-    window.location.href = "/api/downloads/project-zip";
+    window.location.href = "/downloads/project-zip";
   };
 
   return (

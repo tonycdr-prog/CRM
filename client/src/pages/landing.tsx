@@ -1183,7 +1183,7 @@ export default function Landing() {
                         Over 50 pages of detailed documentation with step-by-step instructions.
                       </p>
                       <Button size="lg" className="w-full" asChild data-testid="button-download-guide">
-                        <a href="/api/downloads/capabilities-pdf">
+                        <a href="/downloads/capabilities-pdf">
                           <Download className="mr-2 h-4 w-4" />
                           Download PDF Guide
                         </a>

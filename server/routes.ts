@@ -50,8 +50,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PDF DOWNLOAD ENDPOINT
-  app.get("/api/downloads/capabilities-pdf", (req, res) => {
+  // PDF DOWNLOAD ENDPOINT (Public - no auth required)
+  app.get("/downloads/capabilities-pdf", (req, res) => {
     const pdfPath = path.join(process.cwd(), "APP_CAPABILITIES.pdf");
     if (fs.existsSync(pdfPath)) {
       res.setHeader("Content-Type", "application/pdf");
@@ -62,8 +62,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PROJECT ZIP DOWNLOAD ENDPOINT
-  app.get("/api/downloads/project-zip", (req, res) => {
+  // PROJECT ZIP DOWNLOAD ENDPOINT (Public - no auth required)
+  app.get("/downloads/project-zip", (req, res) => {
     const zipPath = path.join(process.cwd(), "project-export.zip");
     if (fs.existsSync(zipPath)) {
       res.setHeader("Content-Type", "application/zip");
