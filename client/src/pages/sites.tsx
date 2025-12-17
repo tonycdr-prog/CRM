@@ -50,7 +50,9 @@ import {
   Briefcase,
   Phone,
   Mail,
-  Wrench
+  Wrench,
+  Layers,
+  X
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -95,6 +97,23 @@ interface SiteAsset {
   status: string | null;
 }
 
+interface BulkAssetEntry {
+  assetNumber: string;
+  assetType: string;
+  floor: string;
+  location: string;
+}
+
+const ASSET_TYPES = [
+  { value: "aov", label: "AOV" },
+  { value: "smoke_damper", label: "Smoke Damper" },
+  { value: "fire_damper", label: "Fire Damper" },
+  { value: "fan", label: "Fan" },
+  { value: "control_panel", label: "Control Panel" },
+  { value: "sensor", label: "Sensor" },
+  { value: "other", label: "Other" },
+];
+
 export default function Sites() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -103,6 +122,16 @@ export default function Sites() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>("all");
+  const [isBulkAddDialogOpen, setIsBulkAddDialogOpen] = useState(false);
+  const [bulkAddSite, setBulkAddSite] = useState<Site | null>(null);
+  const [bulkAssets, setBulkAssets] = useState<BulkAssetEntry[]>([
+    { assetNumber: "", assetType: "aov", floor: "", location: "" }
+  ]);
+  const [bulkPrefix, setBulkPrefix] = useState("");
+  const [bulkCount, setBulkCount] = useState(1);
+  const [bulkDefaultType, setBulkDefaultType] = useState("aov");
+  const [bulkDefaultFloor, setBulkDefaultFloor] = useState("");
+  const [bulkDefaultLocation, setBulkDefaultLocation] = useState("");
 
   const [formData, setFormData] = useState({
     clientId: "",
@@ -191,6 +220,91 @@ export default function Sites() {
       toast({ title: "Error", description: "Failed to delete site", variant: "destructive" });
     },
   });
+
+  const bulkCreateAssetsMutation = useMutation({
+    mutationFn: async (data: { site: Site; assets: BulkAssetEntry[] }) => {
+      const validAssets = data.assets.filter(a => a.assetNumber.trim() && a.assetType);
+      const promises = validAssets.map(asset =>
+        apiRequest("POST", "/api/site-assets", {
+          userId: user?.id,
+          siteId: data.site.id,
+          clientId: data.site.clientId,
+          assetNumber: asset.assetNumber.trim(),
+          assetType: asset.assetType,
+          floor: asset.floor || null,
+          location: asset.location || null,
+          status: "active",
+        })
+      );
+      return Promise.all(promises);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets/by-site", variables.site.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets"] });
+      setIsBulkAddDialogOpen(false);
+      setBulkAddSite(null);
+      resetBulkForm();
+      const count = variables.assets.filter(a => a.assetNumber.trim() && a.assetType).length;
+      toast({ title: "Assets created", description: `${count} asset(s) added to ${variables.site.name}` });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create assets", variant: "destructive" });
+    },
+  });
+
+  const resetBulkForm = () => {
+    setBulkAssets([{ assetNumber: "", assetType: "aov", floor: "", location: "" }]);
+    setBulkPrefix("");
+    setBulkCount(1);
+    setBulkDefaultType("aov");
+    setBulkDefaultFloor("");
+    setBulkDefaultLocation("");
+  };
+
+  const handleGenerateBulkAssets = () => {
+    if (!bulkPrefix || bulkCount < 1) return;
+    const newAssets: BulkAssetEntry[] = [];
+    for (let i = 1; i <= bulkCount; i++) {
+      newAssets.push({
+        assetNumber: `${bulkPrefix}${i.toString().padStart(2, '0')}`,
+        assetType: bulkDefaultType,
+        floor: bulkDefaultFloor,
+        location: bulkDefaultLocation,
+      });
+    }
+    setBulkAssets(newAssets);
+  };
+
+  const handleAddBulkRow = () => {
+    setBulkAssets([...bulkAssets, { assetNumber: "", assetType: "aov", floor: "", location: "" }]);
+  };
+
+  const handleRemoveBulkRow = (index: number) => {
+    if (bulkAssets.length <= 1) return;
+    setBulkAssets(bulkAssets.filter((_, i) => i !== index));
+  };
+
+  const updateBulkAsset = (index: number, field: keyof BulkAssetEntry, value: string) => {
+    setBulkAssets(prev => prev.map((asset, i) => 
+      i === index ? { ...asset, [field]: value } : asset
+    ));
+  };
+
+  const handleBulkAddAssets = () => {
+    if (!bulkAddSite) return;
+    const validAssets = bulkAssets.filter(a => a.assetNumber.trim() && a.assetType);
+    if (validAssets.length === 0) {
+      toast({ title: "Error", description: "Please add at least one asset with a number and type", variant: "destructive" });
+      return;
+    }
+    bulkCreateAssetsMutation.mutate({ site: bulkAddSite, assets: bulkAssets });
+  };
+
+  const openBulkAddDialog = (site: Site) => {
+    setBulkAddSite(site);
+    resetBulkForm();
+    setIsBulkAddDialogOpen(true);
+  };
 
   const handleCreateSite = () => {
     if (!formData.name || !formData.clientId) {
@@ -352,13 +466,22 @@ export default function Sites() {
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Link href={`/sites/${site.id}`}>
                               <Button variant="outline" size="sm" data-testid={`button-view-site-${site.id}`}>
                                 <Package className="h-4 w-4 mr-1" />
                                 Assets
                               </Button>
                             </Link>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => openBulkAddDialog(site)}
+                              data-testid={`button-bulk-add-${site.id}`}
+                            >
+                              <Layers className="h-4 w-4 mr-1" />
+                              Bulk Add
+                            </Button>
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -576,6 +699,193 @@ export default function Sites() {
               data-testid="button-save-site"
             >
               {editingSite ? "Save Changes" : "Add Site"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isBulkAddDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsBulkAddDialogOpen(false);
+          setBulkAddSite(null);
+          resetBulkForm();
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bulk Add Assets to {bulkAddSite?.name}</DialogTitle>
+            <DialogDescription>
+              Add multiple assets at once using sequential numbering or manual entry
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Quick Generate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Prefix</Label>
+                    <Input
+                      placeholder="e.g., AOV-"
+                      value={bulkPrefix}
+                      onChange={(e) => setBulkPrefix(e.target.value)}
+                      data-testid="input-bulk-prefix"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Count</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={bulkCount}
+                      onChange={(e) => setBulkCount(parseInt(e.target.value) || 1)}
+                      data-testid="input-bulk-count"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Type</Label>
+                    <Select value={bulkDefaultType} onValueChange={setBulkDefaultType}>
+                      <SelectTrigger data-testid="select-bulk-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ASSET_TYPES.map(t => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Floor</Label>
+                    <Input
+                      placeholder="e.g., 1"
+                      value={bulkDefaultFloor}
+                      onChange={(e) => setBulkDefaultFloor(e.target.value)}
+                      data-testid="input-bulk-floor"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Location</Label>
+                    <Input
+                      placeholder="e.g., Lobby"
+                      value={bulkDefaultLocation}
+                      onChange={(e) => setBulkDefaultLocation(e.target.value)}
+                      data-testid="input-bulk-location"
+                    />
+                  </div>
+                </div>
+                <Button 
+                  variant="secondary" 
+                  className="mt-3 w-full"
+                  onClick={handleGenerateBulkAssets}
+                  disabled={!bulkPrefix || bulkCount < 1}
+                  data-testid="button-generate-bulk"
+                >
+                  Generate {bulkCount} Asset{bulkCount !== 1 ? "s" : ""}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Assets to Add ({bulkAssets.filter(a => a.assetNumber.trim()).length} valid)</Label>
+                <Button variant="outline" size="sm" onClick={handleAddBulkRow} data-testid="button-add-row">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Row
+                </Button>
+              </div>
+              
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[180px]">Asset Number *</TableHead>
+                      <TableHead className="w-[140px]">Type *</TableHead>
+                      <TableHead className="w-[100px]">Floor</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bulkAssets.map((asset, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="p-2">
+                          <Input
+                            value={asset.assetNumber}
+                            onChange={(e) => updateBulkAsset(index, 'assetNumber', e.target.value)}
+                            placeholder="Asset #"
+                            className="h-8"
+                            data-testid={`input-asset-number-${index}`}
+                          />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Select value={asset.assetType} onValueChange={(v) => updateBulkAsset(index, 'assetType', v)}>
+                            <SelectTrigger className="h-8" data-testid={`select-asset-type-${index}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ASSET_TYPES.map(t => (
+                                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Input
+                            value={asset.floor}
+                            onChange={(e) => updateBulkAsset(index, 'floor', e.target.value)}
+                            placeholder="Floor"
+                            className="h-8"
+                            data-testid={`input-asset-floor-${index}`}
+                          />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Input
+                            value={asset.location}
+                            onChange={(e) => updateBulkAsset(index, 'location', e.target.value)}
+                            placeholder="Location"
+                            className="h-8"
+                            data-testid={`input-asset-location-${index}`}
+                          />
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleRemoveBulkRow(index)}
+                            disabled={bulkAssets.length <= 1}
+                            data-testid={`button-remove-row-${index}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsBulkAddDialogOpen(false);
+              setBulkAddSite(null);
+              resetBulkForm();
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkAddAssets}
+              disabled={bulkCreateAssetsMutation.isPending || bulkAssets.filter(a => a.assetNumber.trim()).length === 0}
+              data-testid="button-confirm-bulk-add"
+            >
+              {bulkCreateAssetsMutation.isPending ? "Adding..." : `Add ${bulkAssets.filter(a => a.assetNumber.trim()).length} Asset(s)`}
             </Button>
           </DialogFooter>
         </DialogContent>
