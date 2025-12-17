@@ -894,6 +894,760 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
       console.log(`Created check sheet template: ${template.name}`);
     }
 
+    // ===== VEHICLES =====
+    const createdVehicles: any[] = [];
+    const vehicleData = [
+      { registration: "VN23 ABC", make: "Ford", model: "Transit Custom", type: "Van", mileage: 24500, status: "active" },
+      { registration: "VN22 XYZ", make: "Vauxhall", model: "Vivaro", type: "Van", mileage: 38200, status: "active" },
+      { registration: "VN21 DEF", make: "Mercedes", model: "Sprinter", type: "Large Van", mileage: 52100, status: "active" },
+      { registration: "VN20 GHI", make: "Ford", model: "Transit Connect", type: "Small Van", mileage: 67800, status: "maintenance" },
+      { registration: "VN19 JKL", make: "Volkswagen", model: "Caddy", type: "Small Van", mileage: 89400, status: "active" },
+    ];
+
+    for (const v of vehicleData) {
+      const motDate = new Date();
+      motDate.setMonth(motDate.getMonth() + Math.floor(Math.random() * 12));
+      const serviceDate = new Date();
+      serviceDate.setMonth(serviceDate.getMonth() - Math.floor(Math.random() * 6));
+      
+      const vehicle = await storage.createVehicle({
+        userId: TEST_USER_ID,
+        registration: v.registration,
+        make: v.make,
+        model: v.model,
+        vehicleType: v.type,
+        fuelType: "diesel",
+        currentMileage: v.mileage,
+        motExpiry: motDate.toISOString().split('T')[0],
+        insuranceExpiry: motDate.toISOString().split('T')[0],
+        lastServiceDate: serviceDate.toISOString().split('T')[0],
+        nextServiceDue: new Date(serviceDate.setMonth(serviceDate.getMonth() + 6)).toISOString().split('T')[0],
+        status: v.status,
+      });
+      createdVehicles.push(vehicle);
+    }
+    console.log(`Created ${createdVehicles.length} vehicles`);
+
+    // ===== EQUIPMENT =====
+    const createdEquipment: any[] = [];
+    const equipmentData = [
+      { name: "TSI VelociCalc 9565-P", type: "Anemometer", serial: "AN-2023-001", assetTag: "EQ-001", status: "available" },
+      { name: "Testo 440 dP", type: "Differential Pressure Meter", serial: "DPM-2022-015", assetTag: "EQ-002", status: "in_use" },
+      { name: "Fluke 179 Multimeter", type: "Electrical Test Equipment", serial: "FLK-2021-089", assetTag: "EQ-003", status: "available" },
+      { name: "Smoke Pellet Kit - Large", type: "Smoke Testing Equipment", serial: "SMK-2024-002", assetTag: "EQ-004", status: "available" },
+      { name: "AEMC CA 6116 Multifunction", type: "Electrical Test Equipment", serial: "MFT-2023-007", assetTag: "EQ-005", status: "calibration" },
+      { name: "Door Force Gauge DF-100", type: "Door Force Meter", serial: "DFG-2022-003", assetTag: "EQ-006", status: "available" },
+      { name: "Thermal Imaging Camera FLIR", type: "Thermal Camera", serial: "TIC-2023-001", assetTag: "EQ-007", status: "in_use" },
+      { name: "Ladder Set - Triple Extension", type: "Access Equipment", serial: "LAD-2020-012", assetTag: "EQ-008", status: "available" },
+    ];
+
+    for (const e of equipmentData) {
+      const calibDate = new Date();
+      calibDate.setMonth(calibDate.getMonth() + Math.floor(Math.random() * 12));
+      
+      const equipment = await storage.createEquipment({
+        userId: TEST_USER_ID,
+        assetTag: e.assetTag,
+        name: e.name,
+        category: e.type,
+        serialNumber: e.serial,
+        status: e.status,
+        purchaseDate: "2022-01-15",
+        purchasePrice: 500 + Math.floor(Math.random() * 2000),
+        currentValue: 300 + Math.floor(Math.random() * 1500),
+        calibrationDue: calibDate.toISOString().split('T')[0],
+        location: ["Van VN23 ABC", "Van VN22 XYZ", "Office Store", "Site - Meridian Tower"][Math.floor(Math.random() * 4)],
+      });
+      createdEquipment.push(equipment);
+    }
+    console.log(`Created ${createdEquipment.length} equipment items`);
+
+    // ===== SUPPLIERS =====
+    const createdSuppliers: any[] = [];
+    const supplierData = [
+      { name: "Colt International", contact: "Sales Team", email: "sales@colt-info.co.uk", phone: "01onal 234567", category: "Dampers" },
+      { name: "SE Controls Ltd", contact: "Trade Desk", email: "trade@secontrols.com", phone: "01onal 345678", category: "AOV Systems" },
+      { name: "Belimo Automation UK", contact: "Orders", email: "orders@belimo.co.uk", phone: "01onal 456789", category: "Actuators" },
+      { name: "RS Components", contact: "Trade Account", email: "trade@rs-online.com", phone: "01onal 567890", category: "Electrical" },
+      { name: "Screwfix Trade", contact: "Trade Counter", email: "trade@screwfix.com", phone: "01onal 678901", category: "General Supplies" },
+      { name: "Toolstation", contact: "Account Manager", email: "accounts@toolstation.com", phone: "01onal 789012", category: "Tools" },
+    ];
+
+    for (const s of supplierData) {
+      const supplier = await storage.createSupplier({
+        userId: TEST_USER_ID,
+        name: s.name,
+        contactName: s.contact,
+        email: s.email,
+        phone: s.phone,
+        category: s.category,
+        status: "active",
+        paymentTerms: [30, 30, 14, 0, 0, 0][createdSuppliers.length % 6],
+        rating: 4 + Math.floor(Math.random() * 2),
+      });
+      createdSuppliers.push(supplier);
+    }
+    console.log(`Created ${createdSuppliers.length} suppliers`);
+
+    // ===== SUBCONTRACTORS =====
+    const createdSubcontractors: any[] = [];
+    const subcontractorData = [
+      { company: "Apex Fire Safety", contact: "John Smith", email: "john@apexfire.co.uk", specialty: "Fire Alarm Systems" },
+      { company: "Electrical Solutions UK", contact: "Dave Brown", email: "dave@electricalsolutions.co.uk", specialty: "Electrical Works" },
+      { company: "North West Testing Ltd", contact: "Mike Wilson", email: "mike@nwtesting.co.uk", specialty: "Regional Coverage" },
+      { company: "Scottish Fire Systems", contact: "Angus MacDonald", email: "angus@scottishfire.co.uk", specialty: "Scotland Region" },
+    ];
+
+    for (const s of subcontractorData) {
+      const subcontractor = await storage.createSubcontractor({
+        userId: TEST_USER_ID,
+        companyName: s.company,
+        contactName: s.contact,
+        email: s.email,
+        phone: `07${String(700 + createdSubcontractors.length).padStart(3, '0')} ${String(100000 + Math.floor(Math.random() * 899999))}`,
+        specialty: s.specialty,
+        status: "approved",
+        dayRate: 250 + Math.floor(Math.random() * 150),
+        insuranceExpiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      });
+      createdSubcontractors.push(subcontractor);
+    }
+    console.log(`Created ${createdSubcontractors.length} subcontractors`);
+
+    // ===== PURCHASE ORDERS =====
+    const createdPurchaseOrders: any[] = [];
+    const poData = [
+      { title: "Replacement Actuators x 5", supplier: 0, amount: 1250, status: "received" },
+      { title: "Smoke Pellets - Quarterly Order", supplier: 4, amount: 450, status: "ordered" },
+      { title: "Cable and Connectors", supplier: 3, amount: 280, status: "received" },
+      { title: "PPE Equipment", supplier: 4, amount: 320, status: "pending" },
+      { title: "Damper Blades - Emergency", supplier: 0, amount: 890, status: "received" },
+    ];
+
+    for (let i = 0; i < poData.length; i++) {
+      const p = poData[i];
+      const poDate = new Date();
+      poDate.setDate(poDate.getDate() - (i * 7));
+      
+      const po = await storage.createPurchaseOrder({
+        userId: TEST_USER_ID,
+        poNumber: `PO-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}`,
+        supplierId: createdSuppliers[p.supplier]?.id || null,
+        title: p.title,
+        description: `Purchase order for ${p.title.toLowerCase()}`,
+        lineItems: [{ id: `po-line-${i}`, description: p.title, quantity: 1, unitPrice: p.amount, total: p.amount }],
+        subtotal: p.amount,
+        vatAmount: p.amount * 0.2,
+        total: p.amount * 1.2,
+        status: p.status,
+        orderDate: poDate.toISOString().split('T')[0],
+      });
+      createdPurchaseOrders.push(po);
+    }
+    console.log(`Created ${createdPurchaseOrders.length} purchase orders`);
+
+    // ===== INVENTORY =====
+    const createdInventory: any[] = [];
+    const inventoryData = [
+      { name: "Smoke Pellets (Box of 50)", partNumber: "SMK-001", quantity: 120, reorder: 50, category: "consumables" },
+      { name: "Belimo Actuator NM24A", partNumber: "ACT-BEL-001", quantity: 8, reorder: 5, category: "actuators" },
+      { name: "Cable Ties 200mm (Pack)", partNumber: "CAB-CT-200", quantity: 45, reorder: 20, category: "fixings" },
+      { name: "Gasket Seals Assorted", partNumber: "GAS-AST-001", quantity: 30, reorder: 15, category: "fixings" },
+      { name: "Fuses 3A (Pack of 10)", partNumber: "FUS-3A-10", quantity: 25, reorder: 10, category: "consumables" },
+      { name: "Safety Glasses", partNumber: "PPE-SG-001", quantity: 18, reorder: 10, category: "consumables" },
+      { name: "Hard Hat - White", partNumber: "PPE-HH-WHT", quantity: 12, reorder: 6, category: "consumables" },
+      { name: "Hi-Vis Vest XL", partNumber: "PPE-HV-XL", quantity: 15, reorder: 8, category: "consumables" },
+    ];
+
+    for (const inv of inventoryData) {
+      const item = await storage.createInventoryItem({
+        userId: TEST_USER_ID,
+        itemName: inv.name,
+        partNumber: inv.partNumber,
+        category: inv.category,
+        quantityInStock: inv.quantity,
+        minimumStock: inv.reorder,
+        unitCost: 5 + Math.floor(Math.random() * 50),
+        location: ["warehouse", "van", "warehouse"][Math.floor(Math.random() * 3)],
+      });
+      createdInventory.push(item);
+    }
+    console.log(`Created ${createdInventory.length} inventory items`);
+
+    // ===== PARTS CATALOG =====
+    const createdParts: any[] = [];
+    const partsData = [
+      { name: "Smoke Damper 300x300mm", partNumber: "SD-300-300", category: "Dampers", price: 185 },
+      { name: "Smoke Damper 400x400mm", partNumber: "SD-400-400", category: "Dampers", price: 225 },
+      { name: "Fire Damper 300x300mm", partNumber: "FD-300-300", category: "Dampers", price: 145 },
+      { name: "Belimo NM24A Actuator", partNumber: "ACT-NM24A", category: "Actuators", price: 89 },
+      { name: "Belimo NM230A Actuator", partNumber: "ACT-NM230A", category: "Actuators", price: 95 },
+      { name: "Control Panel - 4 Zone", partNumber: "CP-4Z", category: "Controls", price: 450 },
+      { name: "Pressure Sensor 0-100Pa", partNumber: "PS-100", category: "Sensors", price: 125 },
+      { name: "Smoke Detector Head", partNumber: "SD-HEAD", category: "Sensors", price: 45 },
+    ];
+
+    for (const p of partsData) {
+      const part = await storage.createPart({
+        userId: TEST_USER_ID,
+        name: p.name,
+        partNumber: p.partNumber,
+        category: p.category,
+        description: `${p.name} - standard specification`,
+        unitPrice: p.price,
+        costPrice: p.price * 0.6,
+        supplier: ["Colt", "SE Controls", "Belimo"][Math.floor(Math.random() * 3)],
+        leadTime: [3, 5, 7, 14][Math.floor(Math.random() * 4)],
+        status: "active",
+      });
+      createdParts.push(part);
+    }
+    console.log(`Created ${createdParts.length} parts`);
+
+    // ===== PRICE LISTS =====
+    const createdPriceLists: any[] = [];
+    const priceListData = [
+      { name: "Standard Labour Rate", category: "labour", unit: "hour", sellPrice: 65, costPrice: 45 },
+      { name: "Senior Engineer Rate", category: "labour", unit: "hour", sellPrice: 85, costPrice: 55 },
+      { name: "Emergency Call-Out", category: "call_out", unit: "each", sellPrice: 250, costPrice: 150 },
+      { name: "Out of Hours Premium", category: "service", unit: "hour", sellPrice: 45, costPrice: 25 },
+      { name: "Annual Damper Test", category: "service", unit: "each", sellPrice: 35, costPrice: 20 },
+      { name: "Stairwell Pressure Test", category: "service", unit: "each", sellPrice: 450, costPrice: 280 },
+      { name: "System Commissioning", category: "service", unit: "day", sellPrice: 650, costPrice: 400 },
+      { name: "Report Writing", category: "service", unit: "hour", sellPrice: 55, costPrice: 35 },
+    ];
+
+    for (const pl of priceListData) {
+      const priceList = await storage.createPriceList({
+        userId: TEST_USER_ID,
+        name: pl.name,
+        category: pl.category,
+        unit: pl.unit,
+        sellPrice: pl.sellPrice,
+        costPrice: pl.costPrice,
+        effectiveFrom: "2024-01-01",
+        isActive: true,
+      });
+      createdPriceLists.push(priceList);
+    }
+    console.log(`Created ${createdPriceLists.length} price list items`);
+
+    // ===== LEADS =====
+    const createdLeads: any[] = [];
+    const leadData = [
+      { company: "Tower Bridge Estates", contact: "Richard Hall", source: "Website", value: 15000, status: "qualified" },
+      { company: "Canary Developments Ltd", contact: "Sarah Chen", source: "Referral", value: 28000, status: "proposal" },
+      { company: "Manchester Central Properties", contact: "James Murphy", source: "Trade Show", value: 12000, status: "new" },
+      { company: "Edinburgh Castle Trust", contact: "Fiona Stewart", source: "Cold Call", value: 8500, status: "contacted" },
+      { company: "Bristol Waterfront Ltd", contact: "Andrew Thomas", source: "LinkedIn", value: 22000, status: "qualified" },
+    ];
+
+    for (const l of leadData) {
+      const lead = await storage.createLead({
+        userId: TEST_USER_ID,
+        companyName: l.company,
+        contactName: l.contact,
+        email: `${l.contact.split(' ')[0].toLowerCase()}@${l.company.toLowerCase().replace(/\s+/g, '')}.co.uk`,
+        phone: `07${String(700 + createdLeads.length).padStart(3, '0')} ${String(100000 + Math.floor(Math.random() * 899999))}`,
+        source: l.source,
+        estimatedValue: l.value,
+        status: l.status,
+        notes: `Initial enquiry about smoke control services. ${l.source} lead.`,
+      });
+      createdLeads.push(lead);
+    }
+    console.log(`Created ${createdLeads.length} leads`);
+
+    // ===== TENDERS =====
+    const createdTenders: any[] = [];
+    const tenderData = [
+      { title: "Olympic Park Residential Block A", issuer: "Olympic Delivery Authority", value: 85000, status: "submitted" },
+      { title: "NHS Hospital Trust - Annual Contract", issuer: "NHS Property Services", value: 42000, status: "submitted" },
+      { title: "University Campus Smoke Systems", issuer: "University of London", value: 65000, status: "preparing" },
+      { title: "Shopping Centre Refurbishment", issuer: "Westfield Properties", value: 120000, status: "won" },
+    ];
+
+    for (let i = 0; i < tenderData.length; i++) {
+      const t = tenderData[i];
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + (14 + i * 7));
+      
+      const tender = await storage.createTender({
+        userId: TEST_USER_ID,
+        tenderNumber: `TEN-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}`,
+        title: t.title,
+        issuer: t.issuer,
+        description: `Tender for ${t.title.toLowerCase()} - smoke control installation and maintenance`,
+        contractValue: t.value,
+        submissionDeadline: deadline.toISOString().split('T')[0],
+        status: t.status,
+      });
+      createdTenders.push(tender);
+    }
+    console.log(`Created ${createdTenders.length} tenders`);
+
+    // ===== COMPETITORS =====
+    const createdCompetitors: any[] = [];
+    const competitorData = [
+      { name: "Smoke Control Systems Ltd", website: "www.smokecontrolsystems.co.uk", strength: "Large workforce" },
+      { name: "Fire Safety Solutions", website: "www.firesafetysolutions.co.uk", strength: "National coverage" },
+      { name: "Colt Service Division", website: "www.coltinfo.co.uk", strength: "OEM backing" },
+      { name: "Regional Ventilation Services", website: "www.rvs.co.uk", strength: "Price competitive" },
+    ];
+
+    for (const c of competitorData) {
+      const competitor = await storage.createCompetitor({
+        userId: TEST_USER_ID,
+        companyName: c.name,
+        website: c.website,
+        keyStrengths: c.strength,
+        keyWeaknesses: "Limited technical depth",
+        marketPosition: ["direct", "indirect", "potential"][Math.floor(Math.random() * 3)],
+        notes: `Key competitor in smoke control market. ${c.strength}.`,
+      });
+      createdCompetitors.push(competitor);
+    }
+    console.log(`Created ${createdCompetitors.length} competitors`);
+
+    // ===== DEFECTS =====
+    const createdDefects: any[] = [];
+    const defectData = [
+      { title: "Damper blade stuck - Floor 12", severity: "high", status: "open", category: "damper" },
+      { title: "Actuator not responding", severity: "medium", status: "in_progress", category: "actuator" },
+      { title: "Smoke detector false alarms", severity: "high", status: "resolved", category: "controls" },
+      { title: "Control panel display fault", severity: "low", status: "open", category: "controls" },
+      { title: "Pressure readings inconsistent", severity: "medium", status: "closed", category: "other" },
+    ];
+
+    for (let i = 0; i < defectData.length; i++) {
+      const d = defectData[i];
+      const defect = await storage.createDefect({
+        userId: TEST_USER_ID,
+        defectNumber: `DEF-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}`,
+        jobId: createdJobs[i % createdJobs.length]?.id || null,
+        clientId: createdClients[i % createdClients.length]?.id || null,
+        description: `${d.title} - Defect identified during routine inspection`,
+        category: d.category,
+        severity: d.severity,
+        status: d.status,
+        discoveredBy: STAFF_MEMBERS[i % STAFF_MEMBERS.length].firstName + " " + STAFF_MEMBERS[i % STAFF_MEMBERS.length].lastName,
+        discoveredDate: new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      });
+      createdDefects.push(defect);
+    }
+    console.log(`Created ${createdDefects.length} defects`);
+
+    // ===== INCIDENTS =====
+    const createdIncidents: any[] = [];
+    const incidentData = [
+      { title: "Near miss - Ladder slip", type: "near_miss", severity: "low" },
+      { title: "Minor cut from cable", type: "accident", severity: "low" },
+      { title: "Vehicle minor damage", type: "damage", severity: "medium" },
+    ];
+
+    for (let i = 0; i < incidentData.length; i++) {
+      const inc = incidentData[i];
+      const site = createdSites[i % createdSites.length];
+      const incident = await storage.createIncident({
+        userId: TEST_USER_ID,
+        jobId: createdJobs[i % createdJobs.length]?.id || null,
+        location: site?.name || "Office",
+        type: inc.type,
+        description: `Incident report: ${inc.title}. No serious injuries.`,
+        severity: inc.severity,
+        status: "closed",
+        incidentDate: new Date(Date.now() - (i + 1) * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        correctiveActions: "Reviewed safety procedures. Additional training provided.",
+      });
+      createdIncidents.push(incident);
+    }
+    console.log(`Created ${createdIncidents.length} incidents`);
+
+    // ===== RISK ASSESSMENTS =====
+    const createdRiskAssessments: any[] = [];
+    for (let i = 0; i < Math.min(createdSites.length, 4); i++) {
+      const site = createdSites[i];
+      const ra = await storage.createRiskAssessment({
+        userId: TEST_USER_ID,
+        jobId: createdJobs[i % createdJobs.length]?.id || null,
+        title: `Risk Assessment - ${site.name}`,
+        siteAddress: site.address,
+        assessedBy: STAFF_MEMBERS[0].firstName + " " + STAFF_MEMBERS[0].lastName,
+        assessmentDate: new Date(Date.now() - i * 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        reviewDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        hazards: [
+          { id: "h1", hazard: "Working at height", whoAtRisk: "Engineers", initialRisk: "High", controls: "Use of access equipment", residualRisk: "Low" },
+          { id: "h2", hazard: "Electrical hazards", whoAtRisk: "Engineers", initialRisk: "Medium", controls: "Lock-out procedures", residualRisk: "Low" },
+          { id: "h3", hazard: "Manual handling", whoAtRisk: "All staff", initialRisk: "Medium", controls: "Lifting aids provided", residualRisk: "Low" },
+        ],
+        ppe: ["Hard hat", "Hi-vis vest", "Safety boots", "Safety glasses"],
+        methodStatement: "Standard smoke control testing methodology",
+      });
+      createdRiskAssessments.push(ra);
+    }
+    console.log(`Created ${createdRiskAssessments.length} risk assessments`);
+
+    // ===== TRAINING RECORDS =====
+    const createdTrainingRecords: any[] = [];
+    const trainingData = [
+      { course: "BSRIA Commissioning Certificate", provider: "BSRIA", courseType: "external" },
+      { course: "Working at Heights Refresher", provider: "SafetyFirst Training", courseType: "practical" },
+      { course: "18th Edition Wiring Regulations", provider: "ECA", courseType: "external" },
+      { course: "First Aid at Work Renewal", provider: "St John Ambulance", courseType: "practical" },
+      { course: "Fire Safety Awareness", provider: "In-house", courseType: "internal" },
+    ];
+
+    for (let i = 0; i < createdStaff.length && i < 5; i++) {
+      const staff = createdStaff[i];
+      const t = trainingData[i % trainingData.length];
+      const completedDate = new Date();
+      completedDate.setMonth(completedDate.getMonth() - Math.floor(Math.random() * 12));
+      const expiryDate = new Date(completedDate);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 3);
+      
+      const training = await storage.createTrainingRecord({
+        userId: TEST_USER_ID,
+        employeeName: staff.firstName + " " + staff.lastName,
+        employeeId: staff.id,
+        courseName: t.course,
+        courseType: t.courseType,
+        provider: t.provider,
+        completedDate: completedDate.toISOString().split('T')[0],
+        expiryDate: expiryDate.toISOString().split('T')[0],
+        status: "completed",
+        certificateNumber: `CERT-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}`,
+      });
+      createdTrainingRecords.push(training);
+    }
+    console.log(`Created ${createdTrainingRecords.length} training records`);
+
+    // ===== CERTIFICATIONS =====
+    const createdCertifications: any[] = [];
+    const certData = [
+      { name: "CSCS Gold Card", issuer: "CSCS", type: "cscs" },
+      { name: "ECS Card - Installation Electrician", issuer: "JIB", type: "electrical" },
+      { name: "IPAF Operator Licence", issuer: "IPAF", type: "ipaf" },
+      { name: "PASMA Certificate", issuer: "PASMA", type: "pasma" },
+    ];
+
+    for (let i = 0; i < createdStaff.length && i < 4; i++) {
+      const staff = createdStaff[i];
+      const c = certData[i % certData.length];
+      const issueDate = new Date();
+      issueDate.setFullYear(issueDate.getFullYear() - 1);
+      const expiryDate = new Date();
+      expiryDate.setFullYear(expiryDate.getFullYear() + 4);
+      
+      const cert = await storage.createCertification({
+        userId: TEST_USER_ID,
+        technicianId: staff.id,
+        technicianName: staff.firstName + " " + staff.lastName,
+        certificationName: c.name,
+        issuingBody: c.issuer,
+        certificationType: c.type,
+        issueDate: issueDate.toISOString().split('T')[0],
+        expiryDate: expiryDate.toISOString().split('T')[0],
+        status: "valid",
+        certificateNumber: `${c.issuer.substring(0, 3).toUpperCase()}-${String(100000 + i)}`,
+      });
+      createdCertifications.push(cert);
+    }
+    console.log(`Created ${createdCertifications.length} certifications`);
+
+    // ===== TIME OFF REQUESTS =====
+    const createdTimeOffRequests: any[] = [];
+    const timeOffData = [
+      { type: "annual_leave", days: 5, status: "approved" },
+      { type: "annual_leave", days: 3, status: "pending" },
+      { type: "sick_leave", days: 2, status: "approved" },
+      { type: "training", days: 1, status: "approved" },
+    ];
+
+    for (let i = 0; i < Math.min(createdStaff.length, 4); i++) {
+      const staff = createdStaff[i];
+      const t = timeOffData[i];
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + (i * 7) + 7);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + t.days - 1);
+      
+      const request = await storage.createTimeOffRequest({
+        userId: TEST_USER_ID,
+        employeeName: staff.firstName + " " + staff.lastName,
+        employeeId: staff.id,
+        requestType: t.type,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        totalDays: t.days,
+        reason: `${t.type.replace('_', ' ')} request`,
+        status: t.status,
+      });
+      createdTimeOffRequests.push(request);
+    }
+    console.log(`Created ${createdTimeOffRequests.length} time off requests`);
+
+    // ===== JOB TEMPLATES =====
+    const createdJobTemplates: any[] = [];
+    const jobTemplateData = [
+      { name: "Annual Damper Testing", type: "testing", duration: 4, description: "Standard annual velocity testing of smoke dampers" },
+      { name: "Stairwell Pressurisation Test", type: "testing", duration: 6, description: "Full stairwell differential pressure testing per BS EN 12101-6" },
+      { name: "Emergency Call-Out", type: "repair", duration: 2, description: "Reactive call-out for system faults" },
+      { name: "Damper Installation", type: "installation", duration: 8, description: "New damper installation including commissioning" },
+      { name: "Quarterly Maintenance", type: "maintenance", duration: 3, description: "Quarterly preventive maintenance visit" },
+    ];
+
+    for (const jt of jobTemplateData) {
+      const template = await storage.createJobTemplate({
+        userId: TEST_USER_ID,
+        name: jt.name,
+        description: jt.description,
+        jobType: jt.type,
+        estimatedDuration: jt.duration,
+        checklist: [
+          { id: "1", item: "Safety briefing", required: true },
+          { id: "2", item: "Equipment check", required: true },
+          { id: "3", item: "Testing", required: true },
+          { id: "4", item: "Documentation", required: true },
+          { id: "5", item: "Client sign-off", required: false },
+        ],
+      });
+      createdJobTemplates.push(template);
+    }
+    console.log(`Created ${createdJobTemplates.length} job templates`);
+
+    // ===== RECURRING JOBS =====
+    const createdRecurringJobs: any[] = [];
+    for (let i = 0; i < Math.min(createdClients.length, 3); i++) {
+      const client = createdClients[i];
+      const site = createdSites[i];
+      const contract = createdContracts[i % createdContracts.length];
+      
+      const recurring = await storage.createRecurringJob({
+        userId: TEST_USER_ID,
+        clientId: client.id,
+        contractId: contract?.id || null,
+        templateId: createdJobTemplates[0]?.id || null,
+        name: `Annual Maintenance - ${site.name}`,
+        description: "Scheduled annual maintenance and testing",
+        serviceType: "damper_testing",
+        frequency: "annually",
+        startDate: new Date().toISOString().split('T')[0],
+        nextDueDate: new Date(Date.now() + (i + 1) * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        siteAddress: site.address,
+        isActive: true,
+      });
+      createdRecurringJobs.push(recurring);
+    }
+    console.log(`Created ${createdRecurringJobs.length} recurring jobs`);
+
+    // ===== WORK NOTES =====
+    const createdWorkNotes: any[] = [];
+    for (let i = 0; i < Math.min(createdJobs.length, 5); i++) {
+      const job = createdJobs[i];
+      const note = await storage.createWorkNote({
+        userId: TEST_USER_ID,
+        jobId: job.id,
+        noteDate: new Date(Date.now() - i * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        content: `${["Arrived on site at 08:30.", "Completed initial inspection.", "All dampers tested successfully.", "Minor issue found with actuator on Floor 3.", "Client signed off completion."][i]}`,
+        authorName: STAFF_MEMBERS[i % STAFF_MEMBERS.length].firstName + " " + STAFF_MEMBERS[i % STAFF_MEMBERS.length].lastName,
+        noteType: ["site_visit", "general", "general", "issue", "general"][i],
+      });
+      createdWorkNotes.push(note);
+    }
+    console.log(`Created ${createdWorkNotes.length} work notes`);
+
+    // ===== CALLBACKS =====
+    const createdCallbacks: any[] = [];
+    const callbackData = [
+      { reason: "Damper not closing fully", priority: "high", status: "pending", category: "emergency" },
+      { reason: "Follow-up from annual test", priority: "normal", status: "pending", category: "general" },
+      { reason: "Client query about readings", priority: "low", status: "completed", category: "general" },
+    ];
+
+    for (let i = 0; i < callbackData.length; i++) {
+      const cb = callbackData[i];
+      const client = createdClients[i % createdClients.length];
+      const callback = await storage.createCallback({
+        userId: TEST_USER_ID,
+        clientId: client?.id,
+        jobId: createdJobs[i % createdJobs.length]?.id,
+        contactName: client?.contactPerson || "Site Manager",
+        contactPhone: client?.phone || "07700 900000",
+        reason: cb.reason,
+        category: cb.category,
+        priority: cb.priority,
+        status: cb.status,
+        requestedDate: new Date(Date.now() + (i + 1) * 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        notes: `Callback required: ${cb.reason}`,
+      });
+      createdCallbacks.push(callback);
+    }
+    console.log(`Created ${createdCallbacks.length} callbacks`);
+
+    // ===== SLAs =====
+    const createdSLAs: any[] = [];
+    const slaData = [
+      { name: "Standard Response", responseHours: 24, resolutionHours: 72, priority: "standard" },
+      { name: "Priority Response", responseHours: 8, resolutionHours: 24, priority: "high" },
+      { name: "Emergency Response", responseHours: 4, resolutionHours: 8, priority: "emergency" },
+    ];
+
+    for (const s of slaData) {
+      const sla = await storage.createSLA({
+        userId: TEST_USER_ID,
+        name: s.name,
+        description: `${s.name} SLA - ${s.responseHours}hr response, ${s.resolutionHours}hr resolution`,
+        responseTimeHours: s.responseHours,
+        resolutionTimeHours: s.resolutionHours,
+        priority: s.priority,
+        status: "active",
+      });
+      createdSLAs.push(sla);
+    }
+    console.log(`Created ${createdSLAs.length} SLAs`);
+
+    // ===== CUSTOMER FEEDBACK =====
+    const createdFeedback: any[] = [];
+    const feedbackData = [
+      { rating: 5, summary: "Excellent service, very professional team", type: "positive" },
+      { rating: 4, summary: "Good work, completed on time", type: "positive" },
+      { rating: 5, summary: "Very thorough testing and clear documentation", type: "positive" },
+      { rating: 3, summary: "Work was fine but communication could improve", type: "neutral" },
+    ];
+
+    for (let i = 0; i < feedbackData.length; i++) {
+      const f = feedbackData[i];
+      const feedback = await storage.createCustomerFeedback({
+        userId: TEST_USER_ID,
+        clientId: createdClients[i % createdClients.length]?.id,
+        jobId: createdJobs[i % createdJobs.length]?.id,
+        rating: f.rating,
+        summary: f.summary,
+        feedbackType: f.type,
+        feedbackDate: new Date(Date.now() - i * 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      });
+      createdFeedback.push(feedback);
+    }
+    console.log(`Created ${createdFeedback.length} customer feedback entries`);
+
+    // ===== DOCUMENT TEMPLATES =====
+    const createdDocTemplates: any[] = [];
+    const docTemplateData = [
+      { name: "Damper Test Certificate", templateType: "certificate", description: "Standard damper velocity test certificate" },
+      { name: "Pressurisation Test Report", templateType: "report", description: "Stairwell pressurisation test report template" },
+      { name: "Service Report", templateType: "report", description: "General service visit report" },
+      { name: "Defect Notice", templateType: "letter", description: "Defect notification to client" },
+      { name: "Quotation Letter", templateType: "quote", description: "Standard quotation cover letter" },
+    ];
+
+    for (const dt of docTemplateData) {
+      const template = await storage.createDocumentTemplate({
+        userId: TEST_USER_ID,
+        name: dt.name,
+        templateType: dt.templateType,
+        description: dt.description,
+        content: `Template content for ${dt.name}`,
+        isActive: true,
+      });
+      createdDocTemplates.push(template);
+    }
+    console.log(`Created ${createdDocTemplates.length} document templates`);
+
+    // ===== VISIT TYPES =====
+    const createdVisitTypes: any[] = [];
+    const visitTypeData = [
+      { name: "NSHEV Testing", code: "nshev", category: "smoke_control" },
+      { name: "MSHEV Testing", code: "mshev", category: "smoke_control" },
+      { name: "Pressurisation System", code: "pressurisation", category: "smoke_control" },
+      { name: "Residential AOV", code: "residential_aov", category: "smoke_control" },
+      { name: "Car Park Ventilation", code: "car_park", category: "ventilation" },
+    ];
+
+    for (const vt of visitTypeData) {
+      const visitType = await storage.createVisitType({
+        userId: TEST_USER_ID,
+        name: vt.name,
+        code: vt.code,
+        category: vt.category,
+        description: `${vt.name} inspection and testing`,
+        isActive: true,
+      });
+      createdVisitTypes.push(visitType);
+    }
+    console.log(`Created ${createdVisitTypes.length} visit types`);
+
+    // ===== WARRANTIES =====
+    const createdWarranties: any[] = [];
+    for (let i = 0; i < Math.min(createdClients.length, 5); i++) {
+      const client = createdClients[i];
+      const installDate = new Date();
+      installDate.setFullYear(installDate.getFullYear() - 1);
+      const startDate = new Date(installDate);
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      
+      const warranty = await storage.createWarranty({
+        userId: TEST_USER_ID,
+        clientId: client.id,
+        equipmentDescription: ["Smoke Damper SD-100", "Control Panel CP-500", "Actuator ACT-24V", "AOV Unit Type A", "Compressor Unit"][i],
+        manufacturer: ["Colt", "SE Controls", "Belimo", "Window Master", "Axair"][i],
+        installationDate: installDate.toISOString().split('T')[0],
+        warrantyStartDate: startDate.toISOString().split('T')[0],
+        warrantyEndDate: endDate.toISOString().split('T')[0],
+        warrantyType: "manufacturer",
+        warrantyProvider: ["Colt", "SE Controls", "Belimo", "Window Master", "Axair"][i],
+        coverageDetails: "Standard manufacturer warranty - parts and labour",
+        status: "active",
+      });
+      createdWarranties.push(warranty);
+    }
+    console.log(`Created ${createdWarranties.length} warranties`);
+
+    // ===== SERVICE HISTORY =====
+    const createdServiceHistory: any[] = [];
+    for (let i = 0; i < Math.min(createdClients.length, 4); i++) {
+      const client = createdClients[i];
+      for (let j = 0; j < 3; j++) {
+        const serviceDate = new Date();
+        serviceDate.setMonth(serviceDate.getMonth() - (j * 4));
+        
+        const history = await storage.createServiceHistory({
+          userId: TEST_USER_ID,
+          clientId: client.id,
+          jobId: createdJobs[(i + j) % createdJobs.length]?.id || null,
+          serviceDate: serviceDate.toISOString().split('T')[0],
+          serviceType: ["maintenance", "inspection", "repair"][j % 3],
+          description: `${["Annual maintenance", "Quarterly inspection", "Reactive repair"][j % 3]} completed for ${client.name}`,
+          technicianName: STAFF_MEMBERS[j % STAFF_MEMBERS.length].firstName + " " + STAFF_MEMBERS[j % STAFF_MEMBERS.length].lastName,
+          outcome: "completed",
+          nextServiceDue: new Date(serviceDate.setMonth(serviceDate.getMonth() + 12)).toISOString().split('T')[0],
+        });
+        createdServiceHistory.push(history);
+      }
+    }
+    console.log(`Created ${createdServiceHistory.length} service history entries`);
+
+    // ===== SITE ACCESS NOTES =====
+    const createdSiteAccessNotes: any[] = [];
+    for (let i = 0; i < Math.min(createdClients.length, createdSites.length); i++) {
+      const site = createdSites[i];
+      const client = createdClients[i % createdClients.length];
+      const note = await storage.createSiteAccessNote({
+        userId: TEST_USER_ID,
+        clientId: client.id,
+        siteName: site.name,
+        siteAddress: site.address,
+        parkingInstructions: ["Visitor parking on level -1", "Street parking only - pay & display", "Report to security for parking permit", "Free parking in rear car park"][i % 4],
+        accessCode: `#${1000 + i * 111}`,
+        buildingManagerName: ["John Smith", "Sarah Johnson", "Mike Williams", "Emma Brown"][i % 4],
+        buildingManagerPhone: `07700 90000${i}`,
+        accessHours: "Monday-Friday 08:00-18:00",
+        specialRequirements: `${["Report to main reception on arrival.", "Security will escort to plant room.", "Access card required - collect from facilities.", "Out of hours access via key safe."][i % 4]}`,
+      });
+      createdSiteAccessNotes.push(note);
+    }
+    console.log(`Created ${createdSiteAccessNotes.length} site access notes`);
+
     const counts = {
       staff: createdStaff.length,
       clients: createdClients.length,
@@ -910,12 +1664,40 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
       timesheets: createdTimesheets.length,
       mileageClaims: createdMileageClaims.length,
       checkSheetTemplates: createdTemplates.length,
+      vehicles: createdVehicles.length,
+      equipment: createdEquipment.length,
+      suppliers: createdSuppliers.length,
+      subcontractors: createdSubcontractors.length,
+      purchaseOrders: createdPurchaseOrders.length,
+      inventory: createdInventory.length,
+      parts: createdParts.length,
+      priceLists: createdPriceLists.length,
+      leads: createdLeads.length,
+      tenders: createdTenders.length,
+      competitors: createdCompetitors.length,
+      defects: createdDefects.length,
+      incidents: createdIncidents.length,
+      riskAssessments: createdRiskAssessments.length,
+      trainingRecords: createdTrainingRecords.length,
+      certifications: createdCertifications.length,
+      timeOffRequests: createdTimeOffRequests.length,
+      jobTemplates: createdJobTemplates.length,
+      recurringJobs: createdRecurringJobs.length,
+      workNotes: createdWorkNotes.length,
+      callbacks: createdCallbacks.length,
+      slas: createdSLAs.length,
+      customerFeedback: createdFeedback.length,
+      documentTemplates: createdDocTemplates.length,
+      visitTypes: createdVisitTypes.length,
+      warranties: createdWarranties.length,
+      serviceHistory: createdServiceHistory.length,
+      siteAccessNotes: createdSiteAccessNotes.length,
     };
 
     console.log("Seed complete:", counts);
     return { 
       success: true, 
-      message: "Database seeded successfully with comprehensive sample data including financial records",
+      message: "Database seeded successfully with comprehensive sample data for all areas",
       counts 
     };
   } catch (error) {
