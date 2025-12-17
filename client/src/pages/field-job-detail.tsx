@@ -50,6 +50,7 @@ import {
   MessageSquare,
   Camera,
   Send,
+  ClipboardCheck,
 } from "lucide-react";
 import { SiGooglemaps, SiApple, SiWaze } from "react-icons/si";
 import { format, parseISO } from "date-fns";
@@ -138,6 +139,11 @@ export default function FieldJobDetail() {
   const [visitNoteContent, setVisitNoteContent] = useState("");
   const [visitNoteType, setVisitNoteType] = useState<string>("site_visit");
   const [noteAttachments, setNoteAttachments] = useState<{name: string; url: string}[]>([]);
+  
+  // Requires work modal state
+  const [showRequiresWorkModal, setShowRequiresWorkModal] = useState(false);
+  const [requiresWorkAssetId, setRequiresWorkAssetId] = useState<string | null>(null);
+  const [requiresWorkReason, setRequiresWorkReason] = useState("");
 
   const { data: job, isLoading: jobLoading } = useQuery<JobWithSiteDetail>({
     queryKey: ["/api/jobs/detail-with-site", jobId],
@@ -326,6 +332,49 @@ export default function FieldJobDetail() {
 
   const handlePhotoCapture = () => {
     toast({ title: "Coming soon", description: "Photo capture will be available in the mobile app" });
+  };
+
+  // Requires work mutation
+  const updateRequiresWorkMutation = useMutation({
+    mutationFn: async (data: { assignmentId: string; requiresWork: boolean; requiresWorkReason?: string }) => {
+      return apiRequest("PATCH", `/api/job-site-assets/${data.assignmentId}`, {
+        requiresWork: data.requiresWork,
+        requiresWorkReason: data.requiresWorkReason || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/detail-with-site", jobId] });
+      setShowRequiresWorkModal(false);
+      setRequiresWorkAssetId(null);
+      setRequiresWorkReason("");
+      toast({ title: "Updated", description: "Asset work requirement has been updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update asset", variant: "destructive" });
+    },
+  });
+
+  const handleFlagRequiresWork = (assignmentId: string) => {
+    setRequiresWorkAssetId(assignmentId);
+    setRequiresWorkReason("");
+    setShowRequiresWorkModal(true);
+  };
+
+  const handleSubmitRequiresWork = () => {
+    if (!requiresWorkAssetId) return;
+    updateRequiresWorkMutation.mutate({
+      assignmentId: requiresWorkAssetId,
+      requiresWork: true,
+      requiresWorkReason: requiresWorkReason.trim(),
+    });
+  };
+
+  const handleClearRequiresWork = (assignmentId: string) => {
+    updateRequiresWorkMutation.mutate({
+      assignmentId,
+      requiresWork: false,
+      requiresWorkReason: "",
+    });
   };
 
   const addBulkAssetRow = () => {
@@ -816,6 +865,73 @@ export default function FieldJobDetail() {
             </CardContent>
           </Card>
 
+          {/* Test Forms Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4" />
+                Test Forms
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {/* Damper Velocity Test - show if job has AOV, smoke_damper, or smoke_shaft systems */}
+                {(!job.systems || job.systems.length === 0 || 
+                  job.systems.some(s => ["aov", "smoke_damper", "smoke_shaft", "mshev"].includes(s.systemType?.toLowerCase() || ""))) && (
+                  <Link href={`/field-testing?jobId=${jobId}&siteId=${job.siteId}`} data-testid="link-damper-test">
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md hover-elevate cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-orange-500/10 rounded">
+                          <Gauge className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Damper Velocity Test</p>
+                          <p className="text-xs text-muted-foreground">Smoke control damper airflow testing</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </Link>
+                )}
+
+                {/* Stairwell Pressure Test - show if job has stairwell or pressurisation systems */}
+                {(!job.systems || job.systems.length === 0 || 
+                  job.systems.some(s => ["stairwell_pressurisation", "pressurisation", "stairwell"].includes(s.systemType?.toLowerCase() || ""))) && (
+                  <Link href={`/field-testing?jobId=${jobId}&siteId=${job.siteId}&tab=stairwell`} data-testid="link-stairwell-test">
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md hover-elevate cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-500/10 rounded">
+                          <Gauge className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Stairwell Pressure Test</p>
+                          <p className="text-xs text-muted-foreground">Differential pressure & door force</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </Link>
+                )}
+
+                {/* Check Sheet Readings - always available */}
+                <Link href={`/check-sheet-readings?jobId=${jobId}&siteId=${job.siteId}`} data-testid="link-check-sheet">
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md hover-elevate cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-500/10 rounded">
+                        <ClipboardCheck className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Check Sheet</p>
+                        <p className="text-xs text-muted-foreground">System inspection & readings</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Systems to service */}
           {job.systems && job.systems.length > 0 && (
             <Card>
@@ -969,27 +1085,67 @@ export default function FieldJobDetail() {
                               >
                                 {assignment.status === "completed" ? "Tested" : "Pending"}
                               </Badge>
+                              {assignment.requiresWork && (
+                                <Badge variant="destructive" className="text-xs">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  Requires Work
+                                </Badge>
+                              )}
                             </div>
                             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                               {asset.floor && <span>Floor {asset.floor}</span>}
                               {asset.location && <span>{asset.location}</span>}
                             </div>
+                            {assignment.requiresWork && assignment.requiresWorkReason && (
+                              <p className="text-xs text-destructive mt-1 italic">{assignment.requiresWorkReason}</p>
+                            )}
                           </div>
-                          {!bulkTestMode && assignment.status !== "completed" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigateToTesting([asset.id]);
-                              }}
-                              data-testid={`button-test-asset-${asset.id}`}
-                            >
-                              <Gauge className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {!bulkTestMode && assignment.status === "completed" && (
-                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                          {!bulkTestMode && (
+                            <div className="flex items-center gap-1">
+                              {assignment.requiresWork ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleClearRequiresWork(assignment.id);
+                                  }}
+                                  title="Clear requires work flag"
+                                  data-testid={`button-clear-work-${asset.id}`}
+                                >
+                                  <X className="h-4 w-4 text-destructive" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFlagRequiresWork(assignment.id);
+                                  }}
+                                  title="Flag as requires work"
+                                  data-testid={`button-flag-work-${asset.id}`}
+                                >
+                                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              )}
+                              {assignment.status !== "completed" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigateToTesting([asset.id]);
+                                  }}
+                                  data-testid={`button-test-asset-${asset.id}`}
+                                >
+                                  <Gauge className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {assignment.status === "completed" && (
+                                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                              )}
+                            </div>
                           )}
                         </div>
                       );
@@ -1225,6 +1381,46 @@ export default function FieldJobDetail() {
             >
               <Send className="h-4 w-4 mr-2" />
               {createVisitNoteMutation.isPending ? "Saving..." : "Save Note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Requires Work Modal */}
+      <Dialog open={showRequiresWorkModal} onOpenChange={setShowRequiresWorkModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Flag Asset Requires Work
+            </DialogTitle>
+            <DialogDescription>
+              Describe the issue or work required for this asset. This will be included in the job report for quoting.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Issue / Work Required</Label>
+              <Textarea
+                placeholder="Describe the issue or work needed..."
+                value={requiresWorkReason}
+                onChange={(e) => setRequiresWorkReason(e.target.value)}
+                className="min-h-[100px]"
+                data-testid="input-requires-work-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowRequiresWorkModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleSubmitRequiresWork}
+              disabled={!requiresWorkReason.trim() || updateRequiresWorkMutation.isPending}
+              data-testid="button-submit-requires-work"
+            >
+              {updateRequiresWorkMutation.isPending ? "Saving..." : "Flag as Requires Work"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -2575,6 +2575,8 @@ export const jobSiteAssets = pgTable("job_site_assets", {
   completedBy: varchar("completed_by"),
   notes: text("notes"),
   testResults: jsonb("test_results").$type<Record<string, any>>(),
+  requiresWork: boolean("requires_work").default(false),
+  requiresWorkReason: text("requires_work_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
