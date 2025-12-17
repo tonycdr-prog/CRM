@@ -86,6 +86,14 @@ interface Timesheet {
   date: string;
 }
 
+interface PartUsed {
+  id: string;
+  jobId: string;
+  partName: string;
+  quantity: number;
+  totalCost: number | null;
+}
+
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 export default function Profitability() {
@@ -116,10 +124,21 @@ export default function Profitability() {
     enabled: !!user?.id,
   });
 
+  const { data: partsUsed = [] } = useQuery<PartUsed[]>({
+    queryKey: ["/api/job-parts-used", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/job-parts-used/${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch parts");
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  const totalPartsCost = partsUsed.reduce((sum, p) => sum + (p.totalCost || 0), 0);
   const totalRevenue = invoices.filter(i => i.status === "paid").reduce((sum, i) => sum + (i.total || 0), 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const totalLabourCost = timesheets.reduce((sum, t) => sum + ((t.totalHours || 0) * (t.hourlyRate || 25)), 0);
-  const totalCosts = totalExpenses + totalLabourCost;
+  const totalCosts = totalExpenses + totalLabourCost + totalPartsCost;
   const grossProfit = totalRevenue - totalCosts;
   const profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue * 100) : 0;
 
@@ -127,14 +146,18 @@ export default function Profitability() {
     const jobInvoices = invoices.filter(i => i.jobId === job.id && i.status === "paid");
     const jobExpenses = expenses.filter(e => e.jobId === job.id);
     const jobTimesheets = timesheets.filter(t => t.jobId === job.id);
+    const jobParts = partsUsed.filter(p => p.jobId === job.id);
     
     const revenue = jobInvoices.reduce((sum, i) => sum + (i.total || 0), 0);
     const expenseCost = jobExpenses.reduce((sum, e) => sum + e.amount, 0);
     const labourCost = jobTimesheets.reduce((sum, t) => sum + ((t.totalHours || 0) * (t.hourlyRate || 25)), 0);
-    const totalCost = expenseCost + labourCost;
+    const partsCost = jobParts.reduce((sum, p) => sum + (p.totalCost || 0), 0);
+    const totalCost = expenseCost + labourCost + partsCost;
     const profit = revenue - totalCost;
     const margin = revenue > 0 ? (profit / revenue * 100) : 0;
     const client = clients.find(c => c.id === job.clientId);
+    const quotedAmount = job.quotedAmount || 0;
+    const costVsQuote = quotedAmount > 0 ? ((totalCost / quotedAmount) * 100) : 0;
 
     return {
       ...job,
@@ -142,11 +165,14 @@ export default function Profitability() {
       revenue,
       expenseCost,
       labourCost,
+      partsCost,
       totalCost,
       profit,
       margin,
+      quotedAmount,
+      costVsQuote,
     };
-  }).filter(j => j.revenue > 0 || j.totalCost > 0);
+  }).filter(j => j.revenue > 0 || j.totalCost > 0 || j.quotedAmount > 0);
 
   const clientProfitability = clients.map(client => {
     const clientJobs = jobs.filter(j => j.clientId === client.id);
@@ -154,11 +180,13 @@ export default function Profitability() {
     const clientInvoices = invoices.filter(i => i.clientId === client.id && i.status === "paid");
     const clientExpenses = expenses.filter(e => e.jobId && clientJobIds.includes(e.jobId));
     const clientTimesheets = timesheets.filter(t => t.jobId && clientJobIds.includes(t.jobId));
+    const clientParts = partsUsed.filter(p => clientJobIds.includes(p.jobId));
 
     const revenue = clientInvoices.reduce((sum, i) => sum + (i.total || 0), 0);
     const expenseCost = clientExpenses.reduce((sum, e) => sum + e.amount, 0);
     const labourCost = clientTimesheets.reduce((sum, t) => sum + ((t.totalHours || 0) * (t.hourlyRate || 25)), 0);
-    const totalCost = expenseCost + labourCost;
+    const partsCost = clientParts.reduce((sum, p) => sum + (p.totalCost || 0), 0);
+    const totalCost = expenseCost + labourCost + partsCost;
     const profit = revenue - totalCost;
     const margin = revenue > 0 ? (profit / revenue * 100) : 0;
 
@@ -168,6 +196,7 @@ export default function Profitability() {
       revenue,
       expenseCost,
       labourCost,
+      partsCost,
       totalCost,
       profit,
       margin,
@@ -240,7 +269,11 @@ export default function Profitability() {
             <div className="text-2xl font-bold text-orange-600" data-testid="text-total-costs">
               £{totalCosts.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Expenses + Labour</p>
+            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+              <div>Labour: £{totalLabourCost.toLocaleString()}</div>
+              <div>Parts: £{totalPartsCost.toLocaleString()}</div>
+              <div>Expenses: £{totalExpenses.toLocaleString()}</div>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -329,10 +362,11 @@ export default function Profitability() {
       </div>
 
       <Tabs defaultValue="jobs">
-        <TabsList>
-          <TabsTrigger value="jobs">Job Profitability</TabsTrigger>
-          <TabsTrigger value="clients">Client Profitability</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts</TabsTrigger>
+        <TabsList className="flex flex-wrap gap-1">
+          <TabsTrigger value="jobs" data-testid="tab-jobs">Job Profitability</TabsTrigger>
+          <TabsTrigger value="costing" data-testid="tab-costing">Cost vs Quote</TabsTrigger>
+          <TabsTrigger value="clients" data-testid="tab-clients">Client Profitability</TabsTrigger>
+          <TabsTrigger value="alerts" data-testid="tab-alerts">Alerts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="jobs" className="mt-4">
@@ -381,6 +415,72 @@ export default function Profitability() {
                         </TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="costing" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost vs Quote Analysis</CardTitle>
+              <CardDescription>Compare actual costs against quoted amounts to identify estimation accuracy</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {jobProfitability.filter(j => j.quotedAmount > 0).length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <DollarSign className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p>No jobs with quoted amounts yet</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Job</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="text-right">Quoted</TableHead>
+                      <TableHead className="text-right">Labour</TableHead>
+                      <TableHead className="text-right">Parts</TableHead>
+                      <TableHead className="text-right">Expenses</TableHead>
+                      <TableHead className="text-right">Total Cost</TableHead>
+                      <TableHead className="text-right">Variance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {jobProfitability
+                      .filter(j => j.quotedAmount > 0)
+                      .sort((a, b) => (b.totalCost - b.quotedAmount) - (a.totalCost - a.quotedAmount))
+                      .slice(0, 15)
+                      .map((job) => {
+                        const variance = job.quotedAmount - job.totalCost;
+                        const variancePercent = job.quotedAmount > 0 ? ((variance / job.quotedAmount) * 100) : 0;
+                        return (
+                          <TableRow key={job.id} data-testid={`row-costing-${job.id}`}>
+                            <TableCell>
+                              <Link href={`/jobs/${job.id}`}>
+                                <span className="font-medium hover:underline cursor-pointer">{job.title}</span>
+                              </Link>
+                              <div className="text-xs text-muted-foreground">{job.jobNumber}</div>
+                            </TableCell>
+                            <TableCell>{job.clientName}</TableCell>
+                            <TableCell className="text-right font-medium">£{job.quotedAmount.toLocaleString()}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">£{job.labourCost.toLocaleString()}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">£{job.partsCost.toLocaleString()}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">£{job.expenseCost.toLocaleString()}</TableCell>
+                            <TableCell className="text-right text-orange-600 font-medium">£{job.totalCost.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">
+                              <div className={`font-medium ${variance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                {variance >= 0 ? "+" : ""}£{variance.toLocaleString()}
+                              </div>
+                              <Badge variant={variance >= 0 ? "default" : "destructive"}>
+                                {variancePercent >= 0 ? "+" : ""}{variancePercent.toFixed(0)}%
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                   </TableBody>
                 </Table>
               )}
