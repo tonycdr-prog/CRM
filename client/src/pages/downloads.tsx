@@ -1,10 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, BookOpen } from "lucide-react";
+import { Download, FileText, BookOpen, FolderArchive } from "lucide-react";
 
 export default function Downloads() {
-  const handleDownload = () => {
+  const handlePdfDownload = () => {
     window.location.href = "/api/downloads/capabilities-pdf";
+  };
+
+  const handleZipDownload = () => {
+    window.location.href = "/api/downloads/project-zip";
   };
 
   return (
@@ -46,12 +50,50 @@ export default function Downloads() {
               <li>• Reporting & analytics</li>
             </ul>
             <Button 
-              onClick={handleDownload}
+              onClick={handlePdfDownload}
               className="w-full"
               data-testid="button-download-capabilities-pdf"
             >
               <Download className="h-4 w-4 mr-2" />
               Download Operations Guide (PDF)
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-elevate">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <FolderArchive className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Project Source Code</CardTitle>
+                <CardDescription>Complete codebase export</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Download the complete Life Safety Ops source code for external code review or backup:
+            </p>
+            <ul className="text-sm text-muted-foreground mb-4 space-y-1">
+              <li>• Full React + TypeScript frontend</li>
+              <li>• Express.js backend with API routes</li>
+              <li>• Drizzle ORM database schema</li>
+              <li>• All components and pages</li>
+              <li>• Configuration files</li>
+              <li>• Documentation files</li>
+            </ul>
+            <p className="text-xs text-muted-foreground mb-4">
+              Note: Excludes node_modules, .git, and temporary files (~37MB)
+            </p>
+            <Button 
+              onClick={handleZipDownload}
+              className="w-full"
+              data-testid="button-download-project-zip"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Project (ZIP)
             </Button>
           </CardContent>
         </Card>
