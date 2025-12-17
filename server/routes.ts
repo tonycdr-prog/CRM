@@ -2983,6 +2983,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Job Parts Used routes
+  app.get("/api/job-parts-used/:userId", async (req, res) => {
+    try {
+      const items = await storage.getJobPartsUsed(req.params.userId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job parts used" });
+    }
+  });
+
+  app.get("/api/job-parts-used/by-job/:jobId", async (req, res) => {
+    try {
+      const items = await storage.getJobPartsUsedByJob(req.params.jobId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job parts used by job" });
+    }
+  });
+
+  app.post("/api/job-parts-used", async (req, res) => {
+    try {
+      const item = await storage.createJobPartsUsed(req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create job part used" });
+    }
+  });
+
+  app.patch("/api/job-parts-used/:id", async (req, res) => {
+    try {
+      const item = await storage.updateJobPartsUsed(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update job part used" });
+    }
+  });
+
+  app.delete("/api/job-parts-used/:id", async (req, res) => {
+    try {
+      await storage.deleteJobPartsUsed(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete job part used" });
+    }
+  });
+
   // Staff Availability routes
   app.get("/api/staff-availability/:userId", async (req, res) => {
     try {

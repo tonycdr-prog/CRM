@@ -60,8 +60,20 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { DbJob, DbSiteAsset, DbJobSiteAsset, DbWorkNote } from "@shared/schema";
+import type { DbJob, DbSiteAsset, DbJobSiteAsset, DbWorkNote, DbJobPartsUsed, DbDefect } from "@shared/schema";
 import { ASSET_TYPES, SMOKE_CONTROL_SYSTEM_TYPES } from "@shared/schema";
+
+interface PartUsed {
+  id: string;
+  partName: string;
+  partNumber: string | null;
+  quantity: number;
+  unitCost: number | null;
+  totalCost: number | null;
+  source: string | null;
+  notes: string | null;
+  addedAt: Date | null;
+}
 
 interface Client {
   id: string;
@@ -145,6 +157,22 @@ export default function FieldJobDetail() {
   const [requiresWorkAssetId, setRequiresWorkAssetId] = useState<string | null>(null);
   const [requiresWorkReason, setRequiresWorkReason] = useState("");
 
+  // Parts used state
+  const [showPartsModal, setShowPartsModal] = useState(false);
+  const [newPartName, setNewPartName] = useState("");
+  const [newPartNumber, setNewPartNumber] = useState("");
+  const [newPartQuantity, setNewPartQuantity] = useState("1");
+  const [newPartUnitCost, setNewPartUnitCost] = useState("");
+  const [newPartSource, setNewPartSource] = useState("stock");
+  const [newPartNotes, setNewPartNotes] = useState("");
+
+  // Defect logging state
+  const [showDefectModal, setShowDefectModal] = useState(false);
+  const [defectCategory, setDefectCategory] = useState("damper");
+  const [defectSeverity, setDefectSeverity] = useState("medium");
+  const [defectLocation, setDefectLocation] = useState("");
+  const [defectDescription, setDefectDescription] = useState("");
+
   const { data: job, isLoading: jobLoading } = useQuery<JobWithSiteDetail>({
     queryKey: ["/api/jobs/detail-with-site", jobId],
     enabled: !!jobId,
@@ -161,6 +189,17 @@ export default function FieldJobDetail() {
   const { data: visitNotes = [] } = useQuery<DbWorkNote[]>({
     queryKey: ["/api/work-notes/by-job", jobId],
     enabled: !!jobId,
+  });
+
+  const { data: partsUsed = [] } = useQuery<DbJobPartsUsed[]>({
+    queryKey: ["/api/job-parts-used/by-job", jobId],
+    enabled: !!jobId,
+  });
+
+  const { data: jobDefects = [] } = useQuery<DbDefect[]>({
+    queryKey: [`/api/defects/${job?.userId}`],
+    enabled: !!job?.userId,
+    select: (data) => data.filter(d => d.jobId === jobId),
   });
 
   const client = clients.find((c) => c.id === job?.clientId);
@@ -374,6 +413,108 @@ export default function FieldJobDetail() {
       assignmentId,
       requiresWork: false,
       requiresWorkReason: "",
+    });
+  };
+
+  // Parts used mutation
+  const createPartMutation = useMutation({
+    mutationFn: async (data: { partName: string; partNumber: string; quantity: number; unitCost: number | null; source: string; notes: string }) => {
+      const totalCost = data.unitCost ? data.unitCost * data.quantity : null;
+      return apiRequest("POST", "/api/job-parts-used", {
+        jobId,
+        userId: job?.userId || null,
+        partName: data.partName,
+        partNumber: data.partNumber || null,
+        quantity: data.quantity,
+        unitCost: data.unitCost,
+        totalCost,
+        source: data.source,
+        notes: data.notes || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-parts-used/by-job", jobId] });
+      setShowPartsModal(false);
+      setNewPartName("");
+      setNewPartNumber("");
+      setNewPartQuantity("1");
+      setNewPartUnitCost("");
+      setNewPartSource("stock");
+      setNewPartNotes("");
+      toast({ title: "Part added", description: "Part has been logged to this job" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to add part", variant: "destructive" });
+    },
+  });
+
+  const deletePartMutation = useMutation({
+    mutationFn: async (partId: string) => {
+      return apiRequest("DELETE", `/api/job-parts-used/${partId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-parts-used/by-job", jobId] });
+      toast({ title: "Part removed", description: "Part has been removed from this job" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to remove part", variant: "destructive" });
+    },
+  });
+
+  const handleAddPart = () => {
+    if (!newPartName.trim()) return;
+    const quantity = parseInt(newPartQuantity) || 1;
+    const unitCost = newPartUnitCost ? parseFloat(newPartUnitCost) : null;
+    createPartMutation.mutate({
+      partName: newPartName.trim(),
+      partNumber: newPartNumber.trim(),
+      quantity,
+      unitCost,
+      source: newPartSource,
+      notes: newPartNotes.trim(),
+    });
+  };
+
+  // Defect mutation
+  const createDefectMutation = useMutation({
+    mutationFn: async (data: { category: string; severity: string; location: string; description: string }) => {
+      const defectNumber = `DEF-${Date.now().toString().slice(-6)}`;
+      return apiRequest("POST", "/api/defects", {
+        userId: job?.userId || null,
+        defectNumber,
+        jobId,
+        clientId: job?.clientId || null,
+        siteAddress: job?.site?.address || "",
+        location: data.location,
+        category: data.category,
+        severity: data.severity,
+        description: data.description,
+        discoveredDate: new Date().toISOString().split('T')[0],
+        discoveredBy: "Field Engineer",
+        status: "open",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/defects/${job?.userId}`] });
+      setShowDefectModal(false);
+      setDefectCategory("damper");
+      setDefectSeverity("medium");
+      setDefectLocation("");
+      setDefectDescription("");
+      toast({ title: "Defect logged", description: "Defect has been recorded for remedial action" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to log defect", variant: "destructive" });
+    },
+  });
+
+  const handleAddDefect = () => {
+    if (!defectDescription.trim()) return;
+    createDefectMutation.mutate({
+      category: defectCategory,
+      severity: defectSeverity,
+      location: defectLocation.trim(),
+      description: defectDescription.trim(),
     });
   };
 
@@ -968,6 +1109,136 @@ export default function FieldJobDetail() {
             </CardContent>
           </Card>
 
+          {/* Parts Used Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Wrench className="h-4 w-4" />
+                  Parts Used ({partsUsed.length})
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPartsModal(true)}
+                  data-testid="button-add-part"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Part
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {partsUsed.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No parts logged. Add parts/materials used on this job.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {partsUsed.map((part) => (
+                    <div
+                      key={part.id}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-md"
+                      data-testid={`part-used-${part.id}`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{part.partName}</span>
+                          {part.partNumber && (
+                            <Badge variant="outline" className="text-xs">
+                              {part.partNumber}
+                            </Badge>
+                          )}
+                          <Badge variant="secondary" className="text-xs">
+                            x{part.quantity}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          {part.source && (
+                            <span className="capitalize">{part.source.replace("_", " ")}</span>
+                          )}
+                          {part.totalCost && (
+                            <span>£{part.totalCost.toFixed(2)}</span>
+                          )}
+                          {part.notes && <span>• {part.notes}</span>}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deletePartMutation.mutate(part.id)}
+                        disabled={deletePartMutation.isPending}
+                        data-testid={`button-delete-part-${part.id}`}
+                      >
+                        <X className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Defects Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Defects ({jobDefects.length})
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDefectModal(true)}
+                  data-testid="button-add-defect"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Log Defect
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {jobDefects.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No defects logged on this job.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {jobDefects.map((defect) => (
+                    <div
+                      key={defect.id}
+                      className="p-3 bg-muted/50 rounded-md"
+                      data-testid={`defect-${defect.id}`}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <Badge 
+                          variant={defect.severity === "critical" ? "destructive" : 
+                                   defect.severity === "high" ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {defect.severity}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {defect.category}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {defect.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm">{defect.description}</p>
+                      {defect.location && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Location: {defect.location}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Test Forms Section */}
           <Card>
             <CardHeader className="pb-2">
@@ -1524,6 +1795,196 @@ export default function FieldJobDetail() {
               data-testid="button-submit-requires-work"
             >
               {updateRequiresWorkMutation.isPending ? "Saving..." : "Flag as Requires Work"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Part Modal */}
+      <Dialog open={showPartsModal} onOpenChange={setShowPartsModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              Add Part / Material
+            </DialogTitle>
+            <DialogDescription>
+              Log parts or materials used on this job for stock tracking and costing.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="part-name">Part Name *</Label>
+              <Input
+                id="part-name"
+                placeholder="e.g., Smoke Damper Actuator"
+                value={newPartName}
+                onChange={(e) => setNewPartName(e.target.value)}
+                data-testid="input-part-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="part-number">Part Number</Label>
+              <Input
+                id="part-number"
+                placeholder="e.g., SDA-240V-02"
+                value={newPartNumber}
+                onChange={(e) => setNewPartNumber(e.target.value)}
+                data-testid="input-part-number"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="part-quantity">Quantity</Label>
+                <Input
+                  id="part-quantity"
+                  type="number"
+                  min="1"
+                  value={newPartQuantity}
+                  onChange={(e) => setNewPartQuantity(e.target.value)}
+                  data-testid="input-part-quantity"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="part-cost">Unit Cost (£)</Label>
+                <Input
+                  id="part-cost"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={newPartUnitCost}
+                  onChange={(e) => setNewPartUnitCost(e.target.value)}
+                  data-testid="input-part-cost"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="part-source">Source</Label>
+              <Select value={newPartSource} onValueChange={setNewPartSource}>
+                <SelectTrigger data-testid="select-part-source">
+                  <SelectValue placeholder="Select source..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stock">From Stock</SelectItem>
+                  <SelectItem value="purchased">Purchased (New)</SelectItem>
+                  <SelectItem value="supplied_by_client">Supplied by Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="part-notes">Notes</Label>
+              <Textarea
+                id="part-notes"
+                placeholder="Any additional notes..."
+                value={newPartNotes}
+                onChange={(e) => setNewPartNotes(e.target.value)}
+                data-testid="input-part-notes"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowPartsModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddPart}
+              disabled={!newPartName.trim() || createPartMutation.isPending}
+              data-testid="button-save-part"
+            >
+              {createPartMutation.isPending ? "Adding..." : "Add Part"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Defect Modal */}
+      <Dialog open={showDefectModal} onOpenChange={setShowDefectModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Log Defect
+            </DialogTitle>
+            <DialogDescription>
+              Record a defect found during the site visit for remedial action.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={defectCategory} onValueChange={setDefectCategory}>
+                  <SelectTrigger data-testid="select-defect-category">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="damper">Damper</SelectItem>
+                    <SelectItem value="actuator">Actuator</SelectItem>
+                    <SelectItem value="controls">Controls</SelectItem>
+                    <SelectItem value="ductwork">Ductwork</SelectItem>
+                    <SelectItem value="access">Access</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Severity</Label>
+                <Select value={defectSeverity} onValueChange={setDefectSeverity}>
+                  <SelectTrigger data-testid="select-defect-severity">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="defect-location">Location</Label>
+              <Input
+                id="defect-location"
+                placeholder="e.g., Floor 3, Corridor B"
+                value={defectLocation}
+                onChange={(e) => setDefectLocation(e.target.value)}
+                data-testid="input-defect-location"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="defect-description">Description *</Label>
+              <Textarea
+                id="defect-description"
+                placeholder="Describe the defect..."
+                value={defectDescription}
+                onChange={(e) => setDefectDescription(e.target.value)}
+                className="min-h-[100px]"
+                data-testid="input-defect-description"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowDefectModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleAddDefect}
+              disabled={!defectDescription.trim() || createDefectMutation.isPending}
+              data-testid="button-save-defect"
+            >
+              {createDefectMutation.isPending ? "Saving..." : "Log Defect"}
             </Button>
           </DialogFooter>
         </DialogContent>

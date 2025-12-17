@@ -2682,6 +2682,35 @@ export const insertJobEquipmentReservationSchema = createInsertSchema(jobEquipme
 export type InsertJobEquipmentReservation = z.infer<typeof insertJobEquipmentReservationSchema>;
 export type DbJobEquipmentReservation = typeof jobEquipmentReservations.$inferSelect;
 
+// Job Parts Used - Tracks parts/materials used on each job
+export const jobPartsUsed = pgTable("job_parts_used", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  partId: varchar("part_id").references(() => partsCatalog.id),
+  siteAssetId: varchar("site_asset_id").references(() => siteAssets.id),
+  partNumber: text("part_number"),
+  partName: text("part_name").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitCost: real("unit_cost"),
+  totalCost: real("total_cost"),
+  source: text("source").default("stock"), // stock, purchased, supplied_by_client
+  supplier: text("supplier"),
+  serialNumber: text("serial_number"),
+  batchNumber: text("batch_number"),
+  warrantyMonths: integer("warranty_months"),
+  installLocation: text("install_location"),
+  notes: text("notes"),
+  addedBy: varchar("added_by").references(() => staffDirectory.id),
+  addedAt: timestamp("added_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobPartsUsedSchema = createInsertSchema(jobPartsUsed).omit({ id: true, createdAt: true, updatedAt: true, addedAt: true });
+export type InsertJobPartsUsed = z.infer<typeof insertJobPartsUsedSchema>;
+export type DbJobPartsUsed = typeof jobPartsUsed.$inferSelect;
+
 // Staff Availability - Weekly availability patterns and time-off
 export const staffAvailability = pgTable("staff_availability", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

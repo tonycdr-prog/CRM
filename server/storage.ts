@@ -9,7 +9,7 @@ import {
   documentTemplates, warranties, competitors,
   serviceHistory, qualityChecklists, timeOffRequests,
   visitTypes, serviceTemplates, siteAssets, sites, jobSiteAssets, assetBatches,
-  jobAssignments, jobSkillRequirements, jobEquipmentReservations, staffAvailability,
+  jobAssignments, jobSkillRequirements, jobEquipmentReservations, staffAvailability, jobPartsUsed,
   jobTimeWindows, shiftHandovers, dailyBriefings, serviceReminders,
   locationCoordinates, schedulingConflicts, capacitySnapshots,
   checkSheetTemplates, checkSheetReadings
@@ -160,6 +160,8 @@ type DbJobSkillRequirement = typeof jobSkillRequirements.$inferSelect;
 type NewJobSkillRequirement = typeof jobSkillRequirements.$inferInsert;
 type DbJobEquipmentReservation = typeof jobEquipmentReservations.$inferSelect;
 type NewJobEquipmentReservation = typeof jobEquipmentReservations.$inferInsert;
+type DbJobPartsUsed = typeof jobPartsUsed.$inferSelect;
+type NewJobPartsUsed = typeof jobPartsUsed.$inferInsert;
 type DbStaffAvailability = typeof staffAvailability.$inferSelect;
 type NewStaffAvailability = typeof staffAvailability.$inferInsert;
 type DbJobTimeWindow = typeof jobTimeWindows.$inferSelect;
@@ -579,6 +581,13 @@ export interface IStorage {
   createJobTimeWindow(timeWindow: NewJobTimeWindow): Promise<DbJobTimeWindow>;
   updateJobTimeWindow(id: string, timeWindow: Partial<NewJobTimeWindow>): Promise<DbJobTimeWindow | undefined>;
   deleteJobTimeWindow(id: string): Promise<boolean>;
+
+  // Job Parts Used
+  getJobPartsUsed(userId: string): Promise<DbJobPartsUsed[]>;
+  getJobPartsUsedByJob(jobId: string): Promise<DbJobPartsUsed[]>;
+  createJobPartsUsed(part: NewJobPartsUsed): Promise<DbJobPartsUsed>;
+  updateJobPartsUsed(id: string, part: Partial<NewJobPartsUsed>): Promise<DbJobPartsUsed | undefined>;
+  deleteJobPartsUsed(id: string): Promise<boolean>;
 
   // Shift Handovers
   getShiftHandovers(userId: string): Promise<DbShiftHandover[]>;
@@ -2172,6 +2181,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteJobEquipmentReservation(id: string): Promise<boolean> {
     await db.delete(jobEquipmentReservations).where(eq(jobEquipmentReservations.id, id));
+    return true;
+  }
+
+  // Job Parts Used
+  async getJobPartsUsed(userId: string): Promise<DbJobPartsUsed[]> {
+    return db.select().from(jobPartsUsed).where(eq(jobPartsUsed.userId, userId)).orderBy(desc(jobPartsUsed.createdAt));
+  }
+
+  async getJobPartsUsedByJob(jobId: string): Promise<DbJobPartsUsed[]> {
+    return db.select().from(jobPartsUsed).where(eq(jobPartsUsed.jobId, jobId)).orderBy(desc(jobPartsUsed.createdAt));
+  }
+
+  async createJobPartsUsed(part: NewJobPartsUsed): Promise<DbJobPartsUsed> {
+    const [newItem] = await db.insert(jobPartsUsed).values(part).returning();
+    return newItem;
+  }
+
+  async updateJobPartsUsed(id: string, part: Partial<NewJobPartsUsed>): Promise<DbJobPartsUsed | undefined> {
+    const [updated] = await db.update(jobPartsUsed).set({ ...part, updatedAt: new Date() }).where(eq(jobPartsUsed.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteJobPartsUsed(id: string): Promise<boolean> {
+    await db.delete(jobPartsUsed).where(eq(jobPartsUsed.id, id));
     return true;
   }
 
