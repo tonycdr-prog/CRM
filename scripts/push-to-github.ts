@@ -2,20 +2,7 @@ import { getUncachableGitHubClient, getGitHubUsername } from '../server/github';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const REPO_NAME = 'life-safety-ops';
-
-const INCLUDE_DIRS = ['client', 'server', 'shared', 'scripts'];
-const INCLUDE_FILES = [
-  'package.json',
-  'tsconfig.json',
-  'tailwind.config.ts',
-  'postcss.config.js',
-  'drizzle.config.ts',
-  'vite.config.ts',
-  'APP_CAPABILITIES.md',
-  'design_guidelines.md',
-  'replit.md',
-];
+const REPO_NAME = 'CRM';
 
 const IGNORE_PATTERNS = [
   'node_modules',
@@ -39,6 +26,7 @@ const IGNORE_PATTERNS = [
   'replit.nix',
   '.breakpoints',
   'snippets',
+  'generated-icon.png',
   '*.d.ts',
 ];
 
@@ -68,6 +56,7 @@ function getAllFiles(dir: string, baseDir: string = dir): string[] {
     const relativePath = path.relative(baseDir, fullPath);
     
     if (shouldIgnore(relativePath)) continue;
+    if (entry.name.startsWith('.')) continue;
     
     if (entry.isDirectory()) {
       files.push(...getAllFiles(fullPath, baseDir));
@@ -91,36 +80,72 @@ async function pushToGitHub() {
 
     const octokit = await getUncachableGitHubClient();
 
+    // Check if repo exists, create if not
+    try {
+      await octokit.repos.get({ owner: username, repo: REPO_NAME });
+      console.log(`Repository ${REPO_NAME} exists`);
+    } catch (e: any) {
+      if (e.status === 404) {
+        console.log(`Creating repository ${REPO_NAME}...`);
+        await octokit.repos.createForAuthenticatedUser({
+          name: REPO_NAME,
+          description: 'Life Safety Ops - Professional UK regulation-compliant life safety operations and compliance management platform',
+          private: false,
+          auto_init: true,
+        });
+        console.log('Repository created, waiting for initialization...');
+        await sleep(3000);
+      } else {
+        throw e;
+      }
+    }
+
     let mainSha: string;
-    const { data: refData } = await octokit.git.getRef({
-      owner: username,
-      repo: REPO_NAME,
-      ref: 'heads/main',
-    });
-    mainSha = refData.object.sha;
-    console.log(`Main branch SHA: ${mainSha}`);
+    let attempts = 0;
+    while (attempts < 5) {
+      try {
+        const { data: refData } = await octokit.git.getRef({
+          owner: username,
+          repo: REPO_NAME,
+          ref: 'heads/main',
+        });
+        mainSha = refData.object.sha;
+        break;
+      } catch (e) {
+        attempts++;
+        console.log(`Waiting for repository initialization... (attempt ${attempts})`);
+        await sleep(2000);
+      }
+    }
+    
+    if (!mainSha!) {
+      // Initialize with README if empty
+      console.log('Initializing empty repository...');
+      await octokit.repos.createOrUpdateFileContents({
+        owner: username,
+        repo: REPO_NAME,
+        path: 'README.md',
+        message: 'Initial commit',
+        content: Buffer.from('# Life Safety Ops CRM\n\nProfessional UK regulation-compliant life safety operations and compliance management platform.\n').toString('base64'),
+      });
+      await sleep(2000);
+      
+      const { data: refData } = await octokit.git.getRef({
+        owner: username,
+        repo: REPO_NAME,
+        ref: 'heads/main',
+      });
+      mainSha = refData.object.sha;
+    }
+    
+    console.log(`Main branch SHA: ${mainSha!}`);
 
     const baseDir = process.cwd();
-    let allFiles: string[] = [];
-    
-    for (const dir of INCLUDE_DIRS) {
-      const dirPath = path.join(baseDir, dir);
-      if (fs.existsSync(dirPath)) {
-        const dirFiles = getAllFiles(dirPath, baseDir);
-        allFiles.push(...dirFiles);
-      }
-    }
-    
-    for (const file of INCLUDE_FILES) {
-      const filePath = path.join(baseDir, file);
-      if (fs.existsSync(filePath)) {
-        allFiles.push(file);
-      }
-    }
+    let allFiles = getAllFiles(baseDir);
     
     allFiles = [...new Set(allFiles)];
     
-    console.log(`Found ${allFiles.length} essential files to upload`);
+    console.log(`Found ${allFiles.length} files to upload`);
 
     const tree: Array<{path: string; mode: '100644'; type: 'blob'; sha: string}> = [];
     
@@ -199,16 +224,16 @@ async function pushToGitHub() {
       owner: username,
       repo: REPO_NAME,
       tree,
-      base_tree: mainSha,
+      base_tree: mainSha!,
     });
 
     console.log('Creating commit...');
     const { data: commitData } = await octokit.git.createCommit({
       owner: username,
       repo: REPO_NAME,
-      message: 'Life Safety Ops - Full codebase upload\n\nProfessional UK regulation-compliant life safety operations and compliance management platform.',
+      message: 'Life Safety Ops - Complete codebase\n\nProfessional UK regulation-compliant life safety operations and compliance management platform.',
       tree: treeData.sha,
-      parents: [mainSha],
+      parents: [mainSha!],
     });
 
     console.log('Updating main branch...');
@@ -222,7 +247,6 @@ async function pushToGitHub() {
 
     console.log('\n✅ Successfully pushed to GitHub!');
     console.log(`\n📂 Repository URL: https://github.com/${username}/${REPO_NAME}`);
-    console.log('\nYou can now share this link for code review.');
 
   } catch (error: any) {
     console.error('Error:', error.message || error);
