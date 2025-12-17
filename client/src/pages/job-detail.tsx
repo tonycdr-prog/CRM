@@ -312,6 +312,46 @@ export default function JobDetail() {
     enabled: !!id && !!user?.id,
   });
 
+  // Visit notes for job report
+  interface WorkNote {
+    id: string;
+    jobId: string | null;
+    noteDate: string | null;
+    noteType: string | null;
+    content: string | null;
+    authorName: string | null;
+    attachments?: { name: string; url: string }[];
+  }
+  const { data: jobVisitNotes = [] } = useQuery<WorkNote[]>({
+    queryKey: ["/api/work-notes/by-job", id],
+    enabled: !!id && !!user?.id,
+  });
+
+  // Job assets with requires work flag
+  interface JobSiteAssetWithDetails {
+    id: string;
+    jobId: string;
+    siteAssetId: string;
+    status: string;
+    requiresWork: boolean | null;
+    requiresWorkReason: string | null;
+    notes: string | null;
+    asset: {
+      id: string;
+      assetNumber: string;
+      assetType: string;
+      floor: string | null;
+      location: string | null;
+    };
+  }
+  const { data: jobSiteAssets = [] } = useQuery<JobSiteAssetWithDetails[]>({
+    queryKey: ["/api/job-site-assets/with-details", id],
+    enabled: !!id && !!user?.id,
+  });
+
+  // Filter assets that require work
+  const assetsRequiringWork = jobSiteAssets.filter(a => a.requiresWork);
+
   const updateJobMutation = useMutation({
     mutationFn: async (data: Partial<Job>) => {
       return apiRequest("PATCH", `/api/jobs/${id}`, data);
@@ -871,6 +911,10 @@ export default function JobDetail() {
                 <TabsTrigger value="expenses" data-testid="tab-expenses">Expenses ({jobExpenses.length})</TabsTrigger>
                 <TabsTrigger value="timesheets" data-testid="tab-timesheets">Time ({jobTimesheets.length})</TabsTrigger>
                 <TabsTrigger value="invoices" data-testid="tab-invoices">Invoices ({jobInvoices.length})</TabsTrigger>
+                <TabsTrigger value="report" data-testid="tab-report">
+                  <FileText className="h-4 w-4 mr-1" />
+                  Report
+                </TabsTrigger>
               </TabsList>
             </CardHeader>
             <CardContent className="pt-4">
@@ -1323,6 +1367,87 @@ export default function JobDetail() {
                       ))}
                     </TableBody>
                   </Table>
+                )}
+              </TabsContent>
+
+              {/* Report Tab */}
+              <TabsContent value="report" className="mt-0 space-y-6">
+                {/* Visit Notes Section */}
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Visit Notes ({jobVisitNotes.length})
+                  </h4>
+                  {jobVisitNotes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No visit notes recorded</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {jobVisitNotes.map(note => (
+                        <Card key={note.id} data-testid={`report-note-${note.id}`}>
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <Badge variant="outline" className="text-xs">
+                                {note.noteType === "site_visit" ? "Site Visit" :
+                                 note.noteType === "issue" ? "Issue" :
+                                 note.noteType === "general" ? "General" : note.noteType || "Note"}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {note.noteDate ? format(parseISO(note.noteDate), "d MMM yyyy") : ""}
+                              </span>
+                            </div>
+                            <p className="text-sm">{note.content}</p>
+                            {note.authorName && (
+                              <p className="text-xs text-muted-foreground mt-1">— {note.authorName}</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Assets Requiring Work Section */}
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    Assets Requiring Work ({assetsRequiringWork.length})
+                  </h4>
+                  {assetsRequiringWork.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No assets flagged for work</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {assetsRequiringWork.map(item => (
+                        <Card key={item.id} className="border-destructive/30" data-testid={`report-asset-work-${item.id}`}>
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-sm">{item.asset?.assetNumber || "Unknown"}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.asset?.assetType} • Floor {item.asset?.floor || "N/A"}
+                                </p>
+                              </div>
+                              <Badge variant="destructive" className="text-xs">Requires Work</Badge>
+                            </div>
+                            {item.requiresWorkReason && (
+                              <p className="text-sm text-destructive mt-2 italic">{item.requiresWorkReason}</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Create Quote Button */}
+                {assetsRequiringWork.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <Link href={`/finance?createQuote=true&jobId=${id}&prefillAssets=true`}>
+                      <Button className="w-full" data-testid="button-create-quote-from-report">
+                        <Receipt className="h-4 w-4 mr-2" />
+                        Create Quote for Work Required ({assetsRequiringWork.length} items)
+                      </Button>
+                    </Link>
+                  </div>
                 )}
               </TabsContent>
             </CardContent>
