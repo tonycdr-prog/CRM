@@ -65,6 +65,8 @@ import SiteAssets from "@/pages/site-assets";
 import CheckSheetReadings from "@/pages/check-sheet-readings";
 import GoldenThread from "@/pages/golden-thread";
 import ServiceAnalytics from "@/pages/service-analytics";
+import EngineerPerformance from "@/pages/engineer-performance";
+import SiteHealth from "@/pages/site-health";
 import Downloads from "@/pages/downloads";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
@@ -137,6 +139,8 @@ function LayoutRoutes() {
         <Route path="/site-assets" component={SiteAssets} />
         <Route path="/golden-thread" component={GoldenThread} />
         <Route path="/service-analytics" component={ServiceAnalytics} />
+        <Route path="/engineer-performance" component={EngineerPerformance} />
+        <Route path="/site-health" component={SiteHealth} />
         <Route path="/downloads" component={Downloads} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />

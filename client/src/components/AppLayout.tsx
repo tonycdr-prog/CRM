@@ -73,7 +73,9 @@ import {
   Link2,
   Download,
   HardDrive,
-  Smartphone
+  Smartphone,
+  Shield,
+  Activity
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -193,6 +195,8 @@ const menuSections: MenuSection[] = [
       { title: "Document Templates", url: "/document-templates", icon: Copy },
       { title: "Reports", url: "/reports", icon: BarChart3 },
       { title: "Service Analytics", url: "/service-analytics", icon: Gauge },
+      { title: "Engineer Performance", url: "/engineer-performance", icon: Activity },
+      { title: "Site Health", url: "/site-health", icon: Shield },
       { title: "Downloads", url: "/downloads", icon: Download },
       { title: "Notifications", url: "/notifications", icon: Bell },
     ],
