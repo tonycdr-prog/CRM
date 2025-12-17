@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { flushSync } from "react-dom";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +8,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera, AlertTriangle, FileSpreadsheet, ChevronDown, LayoutGrid, Package, Home } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Download, RotateCcw, Gauge, Save, ArrowRight, FileDown, Search, X, Camera, AlertTriangle, FileSpreadsheet, ChevronDown, LayoutGrid, Package, Home, Upload, Building2 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { toPng, toJpeg } from "html-to-image";
 import { Link } from "wouter";
 import OfflineIndicator from "@/components/OfflineIndicator";
@@ -155,6 +174,11 @@ export default function FieldTesting() {
   const [showFloorSequencing, setShowFloorSequencing] = useState(false);
   const [showBulkTestPacks, setShowBulkTestPacks] = useState(false);
   
+  // Sync to Site state
+  const [showSyncToSiteModal, setShowSyncToSiteModal] = useState(false);
+  const [selectedSiteIdForSync, setSelectedSiteIdForSync] = useState<string>("");
+  const [dampersToSync, setDampersToSync] = useState<Set<string>>(new Set());
+  
   // Auth and offline sync
   const { user } = useAuth();
   const syncState = useOfflineSync(user?.id);
@@ -177,6 +201,103 @@ export default function FieldTesting() {
   const captureRef = useRef<HTMLDivElement>(null);
   const pdfCaptureRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Sites query for Sync to Site feature
+  interface Site {
+    id: string;
+    name: string;
+    address: string | null;
+    city: string | null;
+    postcode: string | null;
+    clientId: string;
+  }
+  
+  const { data: sites = [] } = useQuery<Site[]>({
+    queryKey: ["/api/sites", user?.id],
+    enabled: !!user?.id,
+  });
+
+  // Mutation to create site assets from dampers
+  const syncToSiteMutation = useMutation({
+    mutationFn: async (data: { siteId: string; damperIds: string[]; clientId?: string }) => {
+      const results: { success: number; failed: number } = { success: 0, failed: 0 };
+      
+      for (const damperId of data.damperIds) {
+        const damper = dampers[damperId];
+        if (!damper) continue;
+        
+        try {
+          await apiRequest("POST", "/api/site-assets", {
+            userId: user?.id,
+            siteId: data.siteId,
+            clientId: data.clientId,
+            assetNumber: damper.damperKey || `D-${damper.floorNumber}-${damper.shaftId}`,
+            assetType: "smoke_damper",
+            floor: damper.floorNumber,
+            location: damper.location,
+            building: damper.building,
+            description: damper.description || `${damper.systemType} damper at ${damper.location}`,
+            status: "active",
+          });
+          results.success++;
+        } catch (error) {
+          results.failed++;
+          console.error("Failed to sync damper:", damperId, error);
+        }
+      }
+      
+      return results;
+    },
+    onSuccess: (results, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-assets/by-site", variables.siteId] });
+      toast({
+        title: "Sync Complete",
+        description: `Created ${results.success} asset(s)${results.failed > 0 ? `, ${results.failed} failed` : ""}`,
+      });
+      setShowSyncToSiteModal(false);
+      setSelectedSiteIdForSync("");
+      setDampersToSync(new Set());
+    },
+    onError: () => {
+      toast({
+        title: "Sync Failed",
+        description: "Could not sync dampers to site",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSyncToSite = () => {
+    if (!selectedSiteIdForSync || dampersToSync.size === 0) return;
+    const selectedSite = sites.find(s => s.id === selectedSiteIdForSync);
+    syncToSiteMutation.mutate({
+      siteId: selectedSiteIdForSync,
+      damperIds: Array.from(dampersToSync),
+      clientId: selectedSite?.clientId,
+    });
+  };
+
+  const toggleDamperForSync = (damperId: string) => {
+    setDampersToSync(prev => {
+      const next = new Set(prev);
+      if (next.has(damperId)) {
+        next.delete(damperId);
+      } else {
+        next.add(damperId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllDampersForSync = () => {
+    setDampersToSync(new Set(Object.keys(dampers)));
+  };
+
+  const deselectAllDampersForSync = () => {
+    setDampersToSync(new Set());
+  };
 
   // Update grid size and readings array when damper dimensions change
   useEffect(() => {
@@ -2313,6 +2434,29 @@ export default function FieldTesting() {
                 Clear All
               </Button>
             </div>
+            
+            {/* Sync to Site Button */}
+            {Object.keys(dampers).length > 0 && user && (
+              <Card>
+                <CardContent className="py-4">
+                  <Button
+                    onClick={() => {
+                      setShowSyncToSiteModal(true);
+                      selectAllDampersForSync();
+                    }}
+                    className="w-full"
+                    variant="outline"
+                    data-testid="button-sync-to-site"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Sync {Object.keys(dampers).length} Damper(s) to Site Database
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Save tested dampers as permanent site assets
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="lg:col-span-1 space-y-4">
@@ -2778,6 +2922,104 @@ export default function FieldTesting() {
           threshold={minVelocityThreshold}
         />
       </div>
+
+      {/* Sync to Site Dialog */}
+      <Dialog open={showSyncToSiteModal} onOpenChange={setShowSyncToSiteModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Sync Dampers to Site Database</DialogTitle>
+            <DialogDescription>
+              Select a site and choose which dampers to save as permanent site assets.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Select Site</Label>
+              <Select value={selectedSiteIdForSync} onValueChange={setSelectedSiteIdForSync}>
+                <SelectTrigger data-testid="select-sync-site">
+                  <SelectValue placeholder="Choose a site..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sites.map((site) => (
+                    <SelectItem key={site.id} value={site.id}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        <span>{site.name}</span>
+                        {site.address && <span className="text-muted-foreground text-xs">- {site.address}</span>}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {sites.length === 0 && (
+                <p className="text-sm text-muted-foreground">No sites found. Create a site first in the Sites section.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Dampers to Sync ({dampersToSync.size} selected)</Label>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={selectAllDampersForSync} data-testid="button-select-all-sync">
+                    Select All
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={deselectAllDampersForSync} data-testid="button-deselect-all-sync">
+                    Deselect All
+                  </Button>
+                </div>
+              </div>
+              
+              <ScrollArea className="h-[250px] border rounded-lg p-2">
+                <div className="space-y-1">
+                  {Object.entries(dampers).map(([id, damper]) => (
+                    <div key={id} className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded-md" data-testid={`row-sync-damper-${id}`}>
+                      <Checkbox
+                        checked={dampersToSync.has(id)}
+                        onCheckedChange={() => toggleDamperForSync(id)}
+                        data-testid={`checkbox-sync-damper-${id}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {damper.damperKey || `${damper.building || "Unknown"} - Floor ${damper.floorNumber}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {damper.location} • Shaft: {damper.shaftId} • {damper.systemType}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {damper.systemType}
+                      </Badge>
+                    </div>
+                  ))}
+                  {Object.keys(dampers).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No dampers to sync. Complete some tests first.
+                    </p>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowSyncToSiteModal(false);
+              setSelectedSiteIdForSync("");
+              setDampersToSync(new Set());
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSyncToSite}
+              disabled={!selectedSiteIdForSync || dampersToSync.size === 0 || syncToSiteMutation.isPending}
+              data-testid="button-confirm-sync"
+            >
+              {syncToSiteMutation.isPending ? "Syncing..." : `Sync ${dampersToSync.size} Damper(s)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
