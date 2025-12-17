@@ -1669,6 +1669,10 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(workNotes).where(eq(workNotes.userId, userId)).orderBy(desc(workNotes.createdAt));
   }
 
+  async getWorkNotesByJob(jobId: string): Promise<DbWorkNote[]> {
+    return db.select().from(workNotes).where(eq(workNotes.jobId, jobId)).orderBy(desc(workNotes.createdAt));
+  }
+
   async createWorkNote(note: NewWorkNote): Promise<DbWorkNote> {
     const [newNote] = await db.insert(workNotes).values(note).returning();
     return newNote;

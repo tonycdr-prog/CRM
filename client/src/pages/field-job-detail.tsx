@@ -47,6 +47,9 @@ import {
   CheckSquare,
   Square,
   X,
+  MessageSquare,
+  Camera,
+  Send,
 } from "lucide-react";
 import { SiGooglemaps, SiApple, SiWaze } from "react-icons/si";
 import { format, parseISO } from "date-fns";
@@ -56,7 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { DbJob, DbSiteAsset, DbJobSiteAsset } from "@shared/schema";
+import type { DbJob, DbSiteAsset, DbJobSiteAsset, DbWorkNote } from "@shared/schema";
 import { ASSET_TYPES, SMOKE_CONTROL_SYSTEM_TYPES } from "@shared/schema";
 
 interface Client {
@@ -129,6 +132,12 @@ export default function FieldJobDetail() {
     startNumber: 1,
     floor: "",
   });
+  
+  // Visit notes state
+  const [showVisitNoteModal, setShowVisitNoteModal] = useState(false);
+  const [visitNoteContent, setVisitNoteContent] = useState("");
+  const [visitNoteType, setVisitNoteType] = useState<string>("site_visit");
+  const [noteAttachments, setNoteAttachments] = useState<{name: string; url: string}[]>([]);
 
   const { data: job, isLoading: jobLoading } = useQuery<JobWithSiteDetail>({
     queryKey: ["/api/jobs/detail-with-site", jobId],
@@ -141,6 +150,11 @@ export default function FieldJobDetail() {
 
   const { data: contracts = [] } = useQuery<Contract[]>({
     queryKey: ["/api/contracts"],
+  });
+
+  const { data: visitNotes = [] } = useQuery<DbWorkNote[]>({
+    queryKey: ["/api/work-notes/by-job", jobId],
+    enabled: !!jobId,
   });
 
   const client = clients.find((c) => c.id === job?.clientId);
@@ -272,6 +286,47 @@ export default function FieldJobDetail() {
       toast({ title: "Error", description: "Failed to create assets", variant: "destructive" });
     },
   });
+
+  // Visit note mutation
+  const createVisitNoteMutation = useMutation({
+    mutationFn: async (data: { content: string; noteType: string; attachments: {name: string; url: string}[] }) => {
+      return apiRequest("POST", "/api/work-notes", {
+        jobId,
+        userId: job?.userId || null,
+        clientId: job?.clientId || null,
+        noteDate: new Date().toISOString().split('T')[0],
+        noteType: data.noteType,
+        content: data.content,
+        authorName: "Field Engineer",
+        isInternal: false,
+        attachments: data.attachments,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/work-notes/by-job", jobId] });
+      setShowVisitNoteModal(false);
+      setVisitNoteContent("");
+      setVisitNoteType("site_visit");
+      setNoteAttachments([]);
+      toast({ title: "Note added", description: "Visit note has been saved" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save note", variant: "destructive" });
+    },
+  });
+
+  const handleAddVisitNote = () => {
+    if (!visitNoteContent.trim()) return;
+    createVisitNoteMutation.mutate({
+      content: visitNoteContent.trim(),
+      noteType: visitNoteType,
+      attachments: noteAttachments,
+    });
+  };
+
+  const handlePhotoCapture = () => {
+    toast({ title: "Coming soon", description: "Photo capture will be available in the mobile app" });
+  };
 
   const addBulkAssetRow = () => {
     setBulkAssets(prev => [...prev, { 
@@ -704,6 +759,63 @@ export default function FieldJobDetail() {
             </Card>
           )}
 
+          {/* Visit Notes Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Visit Notes ({visitNotes.length})
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowVisitNoteModal(true)}
+                  data-testid="button-add-visit-note"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Note
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {visitNotes.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No visit notes yet. Add notes to document your site visit.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {visitNotes.map((note) => (
+                    <div key={note.id} className="p-3 bg-muted/50 rounded-md" data-testid={`visit-note-${note.id}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-xs">
+                          {note.noteType === "site_visit" ? "Site Visit" :
+                           note.noteType === "issue" ? "Issue" :
+                           note.noteType === "general" ? "General" : note.noteType}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {note.noteDate ? format(parseISO(note.noteDate), "d MMM yyyy") : ""}
+                        </span>
+                      </div>
+                      <p className="text-sm">{note.content}</p>
+                      {note.attachments && Array.isArray(note.attachments) && note.attachments.length > 0 && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Camera className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {note.attachments.length} photo{note.attachments.length !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      )}
+                      {note.authorName && (
+                        <p className="text-xs text-muted-foreground mt-1">— {note.authorName}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Systems to service */}
           {job.systems && job.systems.length > 0 && (
             <Card>
@@ -1038,6 +1150,81 @@ export default function FieldJobDetail() {
               disabled={updateJobMutation.isPending}
             >
               Submit No Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Visit Note Modal */}
+      <Dialog open={showVisitNoteModal} onOpenChange={setShowVisitNoteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Add Visit Note
+            </DialogTitle>
+            <DialogDescription>
+              Document observations, issues, or important information from your site visit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Note Type</Label>
+              <Select value={visitNoteType} onValueChange={setVisitNoteType}>
+                <SelectTrigger data-testid="select-note-type">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="site_visit">Site Visit</SelectItem>
+                  <SelectItem value="issue">Issue Found</SelectItem>
+                  <SelectItem value="general">General Note</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Note Content</Label>
+              <Textarea
+                placeholder="Enter your note..."
+                value={visitNoteContent}
+                onChange={(e) => setVisitNoteContent(e.target.value)}
+                className="min-h-[120px]"
+                data-testid="input-note-content"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Photos</Label>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handlePhotoCapture}
+                data-testid="button-add-photo"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Add Photo
+              </Button>
+              {noteAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {noteAttachments.map((att, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs">
+                      {att.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowVisitNoteModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddVisitNote}
+              disabled={!visitNoteContent.trim() || createVisitNoteMutation.isPending}
+              data-testid="button-save-note"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {createVisitNoteMutation.isPending ? "Saving..." : "Save Note"}
             </Button>
           </DialogFooter>
         </DialogContent>

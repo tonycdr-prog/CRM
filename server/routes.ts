@@ -2018,6 +2018,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/work-notes/by-job/:jobId", async (req, res) => {
+    try {
+      const notes = await storage.getWorkNotesByJob(req.params.jobId);
+      res.json(notes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch work notes for job" });
+    }
+  });
+
   app.post("/api/work-notes", async (req, res) => {
     try {
       const note = await storage.createWorkNote(req.body);
