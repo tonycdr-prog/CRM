@@ -62,6 +62,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PROJECT ZIP DOWNLOAD ENDPOINT
+  app.get("/api/downloads/project-zip", (req, res) => {
+    const zipPath = path.join(process.cwd(), "project-export.zip");
+    if (fs.existsSync(zipPath)) {
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", "attachment; filename=life-safety-ops-project.zip");
+      fs.createReadStream(zipPath).pipe(res);
+    } else {
+      res.status(404).json({ error: "Project ZIP not found" });
+    }
+  });
+
   // ============================================
   // AUTHENTICATED API ROUTER
   // ============================================
