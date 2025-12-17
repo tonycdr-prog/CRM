@@ -636,7 +636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...job,
         site: site || null,
         assignedAssets: jobAssets,
-        availableSiteAssets: allSiteAssets,
+        siteAssets: allSiteAssets,
       });
     } catch (error) {
       console.error("Error fetching job with site:", error);
