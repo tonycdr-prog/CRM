@@ -1627,6 +1627,40 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: tru
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type DbAuditLog = typeof auditLogs.$inferSelect;
 
+// Form submissions - Golden Thread compliance tracking
+export const formSubmissions = pgTable("form_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  siteId: varchar("site_id").references(() => sites.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  formType: text("form_type").notNull(), // damper_test, stairwell_test, commissioning_report, inspection_report, service_record, risk_assessment, method_statement
+  formTitle: text("form_title").notNull(),
+  referenceNumber: text("reference_number"),
+  formData: jsonb("form_data").$type<Record<string, any>>().notNull(), // Complete form snapshot
+  linkedEntityType: text("linked_entity_type"), // test, stairwell_test, job, defect, etc
+  linkedEntityId: varchar("linked_entity_id"),
+  status: text("status").default("submitted"), // draft, submitted, approved, rejected, superseded
+  submittedBy: text("submitted_by").notNull(),
+  submittedByRole: text("submitted_by_role"),
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  signature: text("signature"), // Base64 signature image
+  signatureName: text("signature_name"),
+  signatureDate: text("signature_date"),
+  pdfUrl: text("pdf_url"),
+  version: integer("version").default(1),
+  previousVersionId: varchar("previous_version_id"),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFormSubmissionSchema = createInsertSchema(formSubmissions).omit({ id: true, createdAt: true, updatedAt: true, submittedAt: true, reviewedAt: true });
+export type InsertFormSubmission = z.infer<typeof insertFormSubmissionSchema>;
+export type DbFormSubmission = typeof formSubmissions.$inferSelect;
+
 // Leads/sales pipeline
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

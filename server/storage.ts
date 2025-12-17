@@ -2,7 +2,7 @@ import {
   type User, type InsertUser, type UpsertUser,
   users, projects, damperTemplates, dampers, tests, stairwellTests, testPacks, complianceChecklists, testSessions, syncQueue,
   clients, customerContacts, customerAddresses, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
-  jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
+  jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, formSubmissions, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
   recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister,
   mileageClaims, workNotes, callbacks, staffDirectory, priceLists, teamInvitations,
   customerFeedback, serviceLevelAgreements, partsCatalog,
@@ -79,6 +79,7 @@ type DbEquipment = typeof equipment.$inferSelect;
 type DbCertification = typeof certifications.$inferSelect;
 type DbIncident = typeof incidents.$inferSelect;
 type DbAuditLog = typeof auditLogs.$inferSelect;
+type DbFormSubmission = typeof formSubmissions.$inferSelect;
 type DbLead = typeof leads.$inferSelect;
 type DbTender = typeof tenders.$inferSelect;
 type DbRecurringSchedule = typeof recurringSchedules.$inferSelect;
@@ -92,6 +93,7 @@ type NewEquipment = typeof equipment.$inferInsert;
 type NewCertification = typeof certifications.$inferInsert;
 type NewIncident = typeof incidents.$inferInsert;
 type NewAuditLog = typeof auditLogs.$inferInsert;
+type NewFormSubmission = typeof formSubmissions.$inferInsert;
 type NewLead = typeof leads.$inferInsert;
 type NewTender = typeof tenders.$inferInsert;
 type NewRecurringSchedule = typeof recurringSchedules.$inferInsert;
@@ -384,6 +386,14 @@ export interface IStorage {
   // Audit Logs
   getAuditLogs(userId: string): Promise<DbAuditLog[]>;
   createAuditLog(log: NewAuditLog): Promise<DbAuditLog>;
+  
+  // Form Submissions (Golden Thread)
+  getFormSubmissions(userId: string): Promise<DbFormSubmission[]>;
+  getFormSubmissionsBySite(siteId: string): Promise<DbFormSubmission[]>;
+  getFormSubmissionsByJob(jobId: string): Promise<DbFormSubmission[]>;
+  getFormSubmission(id: string): Promise<DbFormSubmission | undefined>;
+  createFormSubmission(submission: NewFormSubmission): Promise<DbFormSubmission>;
+  updateFormSubmission(id: string, submission: Partial<NewFormSubmission>): Promise<DbFormSubmission | undefined>;
   
   // Leads
   getLeads(userId: string): Promise<DbLead[]>;
@@ -1401,6 +1411,34 @@ export class DatabaseStorage implements IStorage {
   async createAuditLog(log: NewAuditLog): Promise<DbAuditLog> {
     const [newLog] = await db.insert(auditLogs).values(log).returning();
     return newLog;
+  }
+
+  // Form Submissions (Golden Thread)
+  async getFormSubmissions(userId: string): Promise<DbFormSubmission[]> {
+    return db.select().from(formSubmissions).where(eq(formSubmissions.userId, userId)).orderBy(desc(formSubmissions.submittedAt));
+  }
+
+  async getFormSubmissionsBySite(siteId: string): Promise<DbFormSubmission[]> {
+    return db.select().from(formSubmissions).where(eq(formSubmissions.siteId, siteId)).orderBy(desc(formSubmissions.submittedAt));
+  }
+
+  async getFormSubmissionsByJob(jobId: string): Promise<DbFormSubmission[]> {
+    return db.select().from(formSubmissions).where(eq(formSubmissions.jobId, jobId)).orderBy(desc(formSubmissions.submittedAt));
+  }
+
+  async getFormSubmission(id: string): Promise<DbFormSubmission | undefined> {
+    const [submission] = await db.select().from(formSubmissions).where(eq(formSubmissions.id, id));
+    return submission || undefined;
+  }
+
+  async createFormSubmission(submission: NewFormSubmission): Promise<DbFormSubmission> {
+    const [newSubmission] = await db.insert(formSubmissions).values(submission).returning();
+    return newSubmission;
+  }
+
+  async updateFormSubmission(id: string, submission: Partial<NewFormSubmission>): Promise<DbFormSubmission | undefined> {
+    const [updated] = await db.update(formSubmissions).set({ ...submission, updatedAt: new Date() }).where(eq(formSubmissions.id, id)).returning();
+    return updated || undefined;
   }
 
   // Leads

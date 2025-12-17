@@ -1524,6 +1524,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // FORM SUBMISSIONS ROUTES (Golden Thread)
+  // ============================================
+
+  app.get("/api/form-submissions/:userId", async (req, res) => {
+    try {
+      const submissions = await storage.getFormSubmissions(req.params.userId);
+      res.json(submissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch form submissions" });
+    }
+  });
+
+  app.get("/api/form-submissions/site/:siteId", async (req, res) => {
+    try {
+      const submissions = await storage.getFormSubmissionsBySite(req.params.siteId);
+      res.json(submissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch form submissions for site" });
+    }
+  });
+
+  app.get("/api/form-submissions/job/:jobId", async (req, res) => {
+    try {
+      const submissions = await storage.getFormSubmissionsByJob(req.params.jobId);
+      res.json(submissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch form submissions for job" });
+    }
+  });
+
+  app.get("/api/form-submission/:id", async (req, res) => {
+    try {
+      const submission = await storage.getFormSubmission(req.params.id);
+      if (!submission) {
+        return res.status(404).json({ error: "Form submission not found" });
+      }
+      res.json(submission);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch form submission" });
+    }
+  });
+
+  app.post("/api/form-submissions", async (req, res) => {
+    try {
+      const submission = await storage.createFormSubmission(req.body);
+      res.json(submission);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create form submission" });
+    }
+  });
+
+  app.patch("/api/form-submissions/:id", async (req, res) => {
+    try {
+      const submission = await storage.updateFormSubmission(req.params.id, req.body);
+      res.json(submission);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update form submission" });
+    }
+  });
+
+  // ============================================
   // LEADS ROUTES
   // ============================================
 

@@ -10,7 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { format, parseISO } from "date-fns";
+import type { DbFormSubmission } from "@shared/schema";
 import { 
   Building2, 
   FileText, 
@@ -28,7 +33,9 @@ import {
   Link2,
   Search,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  History,
+  Loader2
 } from "lucide-react";
 
 const HRB_HEIGHT_THRESHOLD = 18;
@@ -108,6 +115,7 @@ const SAMPLE_BUILDINGS: Building[] = [
 
 export default function GoldenThread() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [buildings, setBuildings] = useState<Building[]>(SAMPLE_BUILDINGS);
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [documentChecklist, setDocumentChecklist] = useState<DocumentChecklistItem[]>([]);
@@ -117,6 +125,12 @@ export default function GoldenThread() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("buildings");
+  const [submissionSearchQuery, setSubmissionSearchQuery] = useState("");
+
+  const { data: formSubmissions = [], isLoading: isLoadingSubmissions } = useQuery<DbFormSubmission[]>({
+    queryKey: [`/api/form-submissions/${user?.id}`],
+    enabled: !!user?.id,
+  });
   
   const [newBuilding, setNewBuilding] = useState({
     name: "",
@@ -401,7 +415,7 @@ export default function GoldenThread() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="buildings" className="gap-2" data-testid="tab-buildings">
             <Building2 className="h-4 w-4" />
             Buildings
@@ -413,6 +427,10 @@ export default function GoldenThread() {
           <TabsTrigger value="requests" className="gap-2" data-testid="tab-requests">
             <Mail className="h-4 w-4" />
             Information Requests
+          </TabsTrigger>
+          <TabsTrigger value="submissions" className="gap-2" data-testid="tab-submissions">
+            <History className="h-4 w-4" />
+            Form Submissions
           </TabsTrigger>
         </TabsList>
 
@@ -768,6 +786,153 @@ export default function GoldenThread() {
                   })}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="submissions" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <CardTitle>Form Submission History</CardTitle>
+                  <CardDescription>Complete audit trail of all test reports, inspections, and compliance documents</CardDescription>
+                </div>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search submissions..."
+                    value={submissionSearchQuery}
+                    onChange={(e) => setSubmissionSearchQuery(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-search-submissions"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingSubmissions ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : formSubmissions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="mb-2">No form submissions recorded yet</p>
+                  <p className="text-sm">Test reports and inspection forms will appear here when submitted</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Form Type</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Submitted By</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {formSubmissions
+                      .filter((sub) => 
+                        submissionSearchQuery === "" ||
+                        sub.formTitle?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+                        sub.referenceNumber?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+                        sub.formType?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+                        sub.submittedBy?.toLowerCase().includes(submissionSearchQuery.toLowerCase())
+                      )
+                      .map((submission) => (
+                        <TableRow key={submission.id} data-testid={`row-submission-${submission.id}`}>
+                          <TableCell className="font-mono text-sm">
+                            {submission.referenceNumber || submission.id.slice(0, 8)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">
+                              {submission.formType?.replace(/_/g, " ") || "Unknown"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium max-w-[200px] truncate">
+                            {submission.formTitle}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="text-sm">{submission.submittedBy}</div>
+                              {submission.submittedByRole && (
+                                <div className="text-xs text-muted-foreground capitalize">
+                                  {submission.submittedByRole.replace(/_/g, " ")}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {submission.submittedAt && format(new Date(submission.submittedAt), "dd MMM yyyy")}
+                            <div className="text-xs text-muted-foreground">
+                              {submission.submittedAt && format(new Date(submission.submittedAt), "HH:mm")}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {submission.status === "approved" ? (
+                              <Badge className="bg-green-600 gap-1"><CheckCircle2 className="h-3 w-3" />Approved</Badge>
+                            ) : submission.status === "rejected" ? (
+                              <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" />Rejected</Badge>
+                            ) : submission.status === "draft" ? (
+                              <Badge variant="secondary" className="gap-1"><FileText className="h-3 w-3" />Draft</Badge>
+                            ) : (
+                              <Badge variant="outline" className="gap-1"><CheckCircle2 className="h-3 w-3" />Submitted</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" data-testid={`button-view-submission-${submission.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {submission.pdfUrl && (
+                                <Button variant="ghost" size="icon" data-testid={`button-download-submission-${submission.id}`}>
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Submission Statistics</CardTitle>
+              <CardDescription>Overview of form submissions for compliance tracking</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="p-4 border rounded-md">
+                  <div className="text-2xl font-bold">{formSubmissions.length}</div>
+                  <div className="text-sm text-muted-foreground">Total Submissions</div>
+                </div>
+                <div className="p-4 border rounded-md">
+                  <div className="text-2xl font-bold text-green-600">
+                    {formSubmissions.filter(s => s.status === "approved").length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Approved</div>
+                </div>
+                <div className="p-4 border rounded-md">
+                  <div className="text-2xl font-bold text-amber-600">
+                    {formSubmissions.filter(s => s.status === "submitted").length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Pending Review</div>
+                </div>
+                <div className="p-4 border rounded-md">
+                  <div className="text-2xl font-bold">
+                    {Array.from(new Set(formSubmissions.map(s => s.formType))).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Form Types</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
