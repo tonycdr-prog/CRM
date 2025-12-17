@@ -2162,6 +2162,28 @@ export const insertStaffDirectorySchema = createInsertSchema(staffDirectory).omi
 export type InsertStaffDirectory = z.infer<typeof insertStaffDirectorySchema>;
 export type DbStaffDirectory = typeof staffDirectory.$inferSelect;
 
+// Team Invitations - Invite employees to join
+export const teamInvitations = pgTable("team_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  email: text("email").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  role: text("role").default("engineer"),
+  jobTitle: text("job_title"),
+  department: text("department"),
+  token: text("token").notNull(),
+  status: text("status").default("pending"),
+  expiresAt: timestamp("expires_at"),
+  acceptedAt: timestamp("accepted_at"),
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTeamInvitationSchema = createInsertSchema(teamInvitations).omit({ id: true, createdAt: true, token: true, status: true, expiresAt: true, acceptedAt: true });
+export type InsertTeamInvitation = z.infer<typeof insertTeamInvitationSchema>;
+export type DbTeamInvitation = typeof teamInvitations.$inferSelect;
+
 // Price Lists - Service pricing
 export const priceLists = pgTable("price_lists", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

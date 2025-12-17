@@ -2141,6 +2141,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // TEAM INVITATIONS ROUTES
+  // ============================================
+
+  app.get("/api/team-invitations/:userId", async (req, res) => {
+    try {
+      const invitations = await storage.getTeamInvitations(req.params.userId);
+      res.json(invitations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch team invitations" });
+    }
+  });
+
+  app.post("/api/team-invitations", async (req, res) => {
+    try {
+      const { nanoid } = await import("nanoid");
+      const token = nanoid(32);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const invitation = await storage.createTeamInvitation({
+        ...req.body,
+        token,
+        expiresAt,
+      });
+      res.json(invitation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create team invitation" });
+    }
+  });
+
+  app.post("/api/team-invitations/:id/resend", async (req, res) => {
+    try {
+      const { nanoid } = await import("nanoid");
+      const token = nanoid(32);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const invitation = await storage.updateTeamInvitation(req.params.id, {
+        token,
+        expiresAt,
+        status: "pending",
+      });
+      res.json(invitation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to resend invitation" });
+    }
+  });
+
+  app.delete("/api/team-invitations/:id", async (req, res) => {
+    try {
+      await storage.deleteTeamInvitation(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete team invitation" });
+    }
+  });
+
+  // ============================================
   // PRICE LISTS ROUTES
   // ============================================
 

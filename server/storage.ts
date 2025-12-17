@@ -4,7 +4,7 @@ import {
   clients, customerContacts, customerAddresses, contracts, jobs, quotes, invoices, expenses, timesheets, vehicles, vehicleBookings, subcontractors, documents, communicationLogs, surveys, absences, reminders,
   jobTemplates, siteAccessNotes, equipment, certifications, incidents, auditLogs, leads, tenders, recurringSchedules, riskAssessments, performanceMetrics, notifications,
   recurringJobs, jobChecklists, suppliers, purchaseOrders, trainingRecords, inventory, defects, documentRegister,
-  mileageClaims, workNotes, callbacks, staffDirectory, priceLists,
+  mileageClaims, workNotes, callbacks, staffDirectory, priceLists, teamInvitations,
   customerFeedback, serviceLevelAgreements, partsCatalog,
   documentTemplates, warranties, competitors,
   serviceHistory, qualityChecklists, timeOffRequests,
@@ -122,6 +122,8 @@ type DbCallback = typeof callbacks.$inferSelect;
 type NewCallback = typeof callbacks.$inferInsert;
 type DbStaffMember = typeof staffDirectory.$inferSelect;
 type NewStaffMember = typeof staffDirectory.$inferInsert;
+type DbTeamInvitation = typeof teamInvitations.$inferSelect;
+type InsertTeamInvitation = typeof teamInvitations.$inferInsert;
 type DbPriceList = typeof priceLists.$inferSelect;
 type NewPriceList = typeof priceLists.$inferInsert;
 type DbCustomerFeedback = typeof customerFeedback.$inferSelect;
@@ -1734,6 +1736,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteStaffMember(id: string): Promise<boolean> {
     await db.delete(staffDirectory).where(eq(staffDirectory.id, id));
+    return true;
+  }
+
+  // Team Invitations
+  async getTeamInvitations(userId: string): Promise<DbTeamInvitation[]> {
+    return db.select().from(teamInvitations).where(eq(teamInvitations.userId, userId)).orderBy(desc(teamInvitations.createdAt));
+  }
+
+  async getTeamInvitationByToken(token: string): Promise<DbTeamInvitation | undefined> {
+    const [invitation] = await db.select().from(teamInvitations).where(eq(teamInvitations.token, token));
+    return invitation || undefined;
+  }
+
+  async createTeamInvitation(invitation: InsertTeamInvitation & { token: string; expiresAt: Date }): Promise<DbTeamInvitation> {
+    const [newInvitation] = await db.insert(teamInvitations).values({
+      ...invitation,
+      status: "pending",
+    }).returning();
+    return newInvitation;
+  }
+
+  async updateTeamInvitation(id: string, data: Partial<DbTeamInvitation>): Promise<DbTeamInvitation | undefined> {
+    const [updated] = await db.update(teamInvitations).set(data).where(eq(teamInvitations.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteTeamInvitation(id: string): Promise<boolean> {
+    await db.delete(teamInvitations).where(eq(teamInvitations.id, id));
     return true;
   }
 
