@@ -1,144 +1,173 @@
-# Design Guidelines: Airflow Reading Visualisation Tool
+# Design Guidelines: Life Safety Ops
 
-## Design Approach
+## Design Philosophy
 
-**Selected System:** Material Design with technical/engineering focus
-**Justification:** This is a utility-focused professional tool requiring clear data entry, precise visualisation, and reliable export functionality. Material Design provides excellent patterns for data-dense interfaces while maintaining mobile responsiveness for field use.
+**Style:** Modern Minimal
+**Inspiration:** Linear, Vercel, Stripe Dashboard
+**Principle:** Clean, confident, professional - let the content speak
 
-**Key Design Principles:**
-- Precision and clarity over decorative elements
-- Single-page interface optimised for quick field testing workflow
-- Touch-friendly controls for on-site use
-- Professional appearance suitable for compliance documentation
+### Core Principles
+1. **Generous whitespace** - Elements breathe, information hierarchy is clear
+2. **Subtle boundaries** - Thin borders over shadows, barely-there dividers
+3. **Restrained colour** - Neutral palette with one purposeful accent
+4. **Typography-driven hierarchy** - Weight and size over colour
+5. **Functional elegance** - Every element earns its place
 
-## Core Design Elements
+## Colour System
 
-### A. Typography
+### Philosophy
+Near-monochromatic grey scale with a single sophisticated accent. The interface recedes; content advances.
 
-**Font Family:** Inter (primary), Roboto Mono (numeric values)
-- **Headings:** Inter, 600 weight
-  - H1 (App Title): 24px
-  - H2 (Section Labels): 18px
-  - H3 (Field Labels): 14px
-- **Body Text:** Inter, 400 weight, 14px
-- **Numeric Readings:** Roboto Mono, 500 weight, 16px (ensures clear digit distinction)
-- **Average Result:** Roboto Mono, 700 weight, 24px (prominent display)
+### Light Mode
+- **Background:** Cool off-white (subtle warmth to avoid clinical feel)
+- **Cards/Surfaces:** Pure white or barely elevated grey
+- **Borders:** Very subtle, 1px, low contrast
+- **Text:** Near-black for primary, graduated greys for secondary/tertiary
+- **Accent:** Teal-blue (sophisticated, professional, not generic)
 
-### B. Layout System
+### Dark Mode
+- **Background:** Deep charcoal (not pure black - easier on eyes)
+- **Cards/Surfaces:** Slightly elevated grey
+- **Borders:** Subtle, darker grey
+- **Text:** Off-white for primary, graduated greys for secondary
+- **Accent:** Same teal-blue, slightly brighter for dark backgrounds
 
-**Spacing Units:** Tailwind units of 2, 4, 6, and 8 for consistent rhythm
-- Container padding: p-4 on mobile, p-6 on tablet+
-- Section spacing: space-y-6 for vertical flow
-- Input field spacing: gap-4 in grid layouts
-- Component internal padding: p-4
+### Accent Colour Usage
+- Primary actions (main CTA buttons)
+- Active/selected states
+- Key status indicators
+- Links on hover
+- **Never:** Decorative backgrounds, excessive highlights
 
-**Grid Structure:**
-- Single column on mobile (< 768px)
-- Maximum width: max-w-4xl centered on larger screens
-- Input grid: 2×4 grid (grid-cols-2) for the 8 reading positions
+## Typography
 
-### C. Component Library
+### Font Stack
+- **Primary:** Inter (clean, highly legible, modern)
+- **Monospace:** JetBrains Mono or Roboto Mono (technical data)
 
-#### 1. Header Section
-- App title with icon (measurement/gauge icon from Material Icons)
-- Optional test metadata fields (Date, Location, Tester Name) - collapsible on mobile
-- Spacing: pb-6 border-b
+### Scale
+| Use | Size | Weight | Tracking |
+|-----|------|--------|----------|
+| Page title | 24px | 600 | -0.02em |
+| Section heading | 18px | 600 | -0.01em |
+| Card title | 16px | 500 | normal |
+| Body | 14px | 400 | normal |
+| Small/caption | 12px | 400 | 0.01em |
+| Numeric data | 14px mono | 500 | normal |
 
-#### 2. Data Entry Panel
-**Reading Input Cards:**
-- 8 numbered input fields arranged in 2×4 grid
-- Each card contains:
-  - Position label (bold, e.g., "Position 1 - Top Left")
-  - Input field with suffix "m/s"
-  - Type: number, step="0.01" for decimal precision
-  - Border treatment to distinguish empty vs filled states
-- Card styling: p-4, rounded-lg border
-- Focus state: prominent border highlight
+### Text Colour Hierarchy
+1. **Primary:** Default foreground - headings, important content
+2. **Secondary:** Muted foreground - supporting text, descriptions
+3. **Tertiary:** Even more muted - timestamps, metadata, hints
 
-#### 3. Damper Visualisation Canvas
-**Interactive Diagram:**
-- Central visualisation showing smoke control damper schematic
-- Rectangular representation (landscape orientation)
-- 8 position markers mapped to input grid:
-  - Top row: 4 positions (left to right)
-  - Bottom row: 4 positions (left to right)
-- Each marker displays:
-  - Position number in circle
-  - Reading value (when entered) in Roboto Mono
-  - Visual indicator (checkmark icon) when value entered
-- Responsive sizing: Minimum height of 300px, scales with viewport
-- Margin: my-8
+## Spacing System
 
-#### 4. Results Display
-**Average Calculation Panel:**
-- Prominent card with enhanced border
-- Large average value display (Roboto Mono, 700 weight, 32px)
-- Label "Average Airflow Velocity"
-- Unit display "m/s"
-- Auto-updates as readings are entered
-- Conditional display: Only show when at least 1 reading entered
-- Background treatment to distinguish from input area
-- Padding: p-6
+### Base Unit: 4px
+| Token | Value | Use |
+|-------|-------|-----|
+| xs | 4px | Tight gaps, inline spacing |
+| sm | 8px | Related elements |
+| md | 16px | Component padding, standard gaps |
+| lg | 24px | Section spacing |
+| xl | 32px | Major section breaks |
+| 2xl | 48px | Page-level spacing |
 
-#### 5. Action Buttons
-**Save to Image Button:**
-- Full-width on mobile, auto-width centered on desktop
-- Icon: download/save icon from Material Icons
-- Text: "Save to Images"
-- Position: Fixed to bottom on mobile for thumb accessibility, static below results on desktop
-- Disabled state when no readings entered
-- Size: Comfortable touch target (min-h-12)
+### Component Padding
+- Cards: 16px (p-4) or 20px (p-5) for larger cards
+- Sidebar items: 12px horizontal, 8px vertical
+- Buttons: Built-in sizing, don't override
+- Form fields: 12px horizontal padding
 
-**Clear All Button:**
-- Secondary style, positioned next to Save button on desktop
-- Text only, no icon needed
-- Confirmation dialog before clearing
+## Components
 
-#### 6. Supporting Components
-**Input Field Specifications:**
-- Border radius: rounded-md
-- Height: h-12 for comfortable mobile input
-- Padding: px-4
-- Border width: border-2 for visibility
-- Large touch targets for field access
-- Numeric keyboard trigger on mobile
+### Cards
+- Background: bg-card (very subtle elevation from background)
+- Border: 1px, barely visible (border-border)
+- Radius: 8px (rounded-lg)
+- Shadow: None or extremely subtle (shadow-2xs)
+- Padding: p-4 to p-6
 
-**Status Indicators:**
-- Progress display: "X of 8 readings entered"
-- Position: Below data entry grid, above visualisation
-- Small text, 12px, medium weight
+### Buttons
+- Use built-in shadcn variants
+- Primary: Accent colour, used sparingly
+- Secondary: Subtle grey, most common
+- Ghost: Transparent, for toolbars/actions
+- Icon buttons: size="icon", consistent sizing
 
-## D. Animations
+### Tables
+- Minimal borders - only horizontal dividers
+- Generous row height (48px minimum)
+- Subtle hover state
+- Header: Smaller, muted, uppercase or semi-bold
 
-**Minimal Animation Strategy:**
-- Input field focus: Smooth border transition (150ms)
-- Average value update: Subtle fade-in (200ms) when recalculated
-- Marker population: Brief scale animation (100ms) when reading entered
-- No scroll animations, parallax, or decorative motion
+### Sidebar
+- Background: Slightly different from main (creates separation)
+- Items: Ghost button style, no borders
+- Active item: Subtle background tint
+- Icons: 18-20px, consistent stroke weight
 
-## Images
+### Form Fields
+- Clean borders (1px)
+- Focus: Subtle ring, accent colour
+- Labels: Above field, semi-bold, 12-14px
+- Helper text: Below, muted, 12px
 
-**Damper Diagram Base:**
-While the visualisation will be code-generated, consider including a technical diagram reference:
-- Optional background image: Subtle outline of a standard smoke control damper
-- Placement: Within visualisation canvas, at 10% opacity
-- Purpose: Provides technical context for non-specialists
-- Format: Simple line drawing showing damper mechanism
+## Interaction States
 
-**No hero image required** - this is a focused utility tool.
+### Hover
+- Very subtle - use built-in hover-elevate
+- No dramatic colour changes
+- Cursor indicates interactivity
 
-## Mobile-First Considerations
+### Active/Pressed
+- Slightly darker than hover
+- Brief, responsive feel
 
-- All touch targets minimum 44×44px
-- Numeric keyboard auto-triggers for input fields
-- Save button positioned in thumb-reach zone on mobile
-- Canvas zooming disabled (user-scalable=no for this tool)
-- Horizontal scrolling prevented on visualisation
+### Focus
+- Subtle ring (ring-2 ring-ring)
+- No disruptive outlines
 
-## Export Functionality Requirements
+### Selected
+- Subtle background tint
+- Possible left border accent for lists
 
-When "Save to Image" is triggered:
-- Capture entire interface including all readings and average
-- Include timestamp and optional metadata in image
-- Generate high-resolution PNG suitable for documentation
-- Optimise for portrait orientation (typical report format)
+## Layout
+
+### Sidebar + Main
+- Sidebar: Fixed width, 256px default
+- Main content: Fluid, max-width for readability
+- No decorative borders between - let background do the work
+
+### Content Width
+- Form containers: max-w-2xl
+- Tables: Full width within container
+- Cards: Responsive grid, consistent gaps
+
+### Mobile
+- Sidebar collapses to drawer
+- Touch targets: Minimum 44px
+- Stack cards vertically
+- Generous touch spacing
+
+## Icons
+
+- Library: Lucide React
+- Size: 16px (small), 18-20px (default), 24px (large)
+- Stroke: 1.5-2px (consistent)
+- Colour: currentColor (inherits text)
+
+## Do's and Don'ts
+
+### Do
+- Use whitespace generously
+- Let typography create hierarchy
+- Keep interactions subtle
+- Maintain consistent spacing
+- Use accent colour purposefully
+
+### Don't
+- Add decorative elements
+- Use multiple accent colours
+- Create busy interfaces
+- Add shadows everywhere
+- Use bright/saturated colours for UI chrome

@@ -301,50 +301,52 @@ export default function Landing() {
   const roi = calculateROI();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="min-h-screen bg-background">
+      {/* Minimal progress indicator */}
       <div 
-        className="fixed top-0 left-0 h-1 bg-primary z-50 transition-all duration-150"
+        className="fixed top-0 left-0 h-0.5 bg-primary/60 z-50 transition-all duration-150"
         style={{ width: `${scrollProgress}%` }}
         data-testid="scroll-progress"
       />
 
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-6 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Shield className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold">Life Safety Ops</span>
+      {/* Clean header */}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border/50">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Shield className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-semibold tracking-tight">Life Safety Ops</span>
             </div>
             <nav className="hidden md:flex items-center gap-1">
-              <Button variant="ghost" size="sm" asChild data-testid="button-features">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-features">
                 <a href="#features">Features</a>
               </Button>
-              <Button variant="ghost" size="sm" asChild data-testid="button-standards">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-standards">
                 <a href="#standards">Standards</a>
               </Button>
-              <Button variant="ghost" size="sm" asChild data-testid="button-pricing">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-pricing">
                 <a href="#pricing">Pricing</a>
               </Button>
-              <Button variant="ghost" size="sm" asChild data-testid="button-crm">
-                <a href="#crm">Business Tools</a>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-crm">
+                <a href="#crm">Business</a>
               </Button>
-              <Button variant="ghost" size="sm" asChild data-testid="button-faq">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-faq">
                 <a href="#faq">FAQ</a>
               </Button>
-              <Button variant="ghost" size="sm" asChild data-testid="button-downloads-nav">
-                <a href="#downloads">Downloads</a>
-              </Button>
             </nav>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={toggleTheme}
+                className="text-muted-foreground"
                 data-testid="button-theme-toggle"
               >
-                {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Button asChild data-testid="button-login">
+              <Button size="sm" asChild data-testid="button-login">
                 <a href="/api/login">Sign In</a>
               </Button>
             </div>
@@ -353,157 +355,121 @@ export default function Landing() {
       </header>
 
       <main>
-        <section className="container mx-auto px-4 py-16 md:py-24">
-          <div className="text-center max-w-4xl mx-auto mb-16">
-            <Badge variant="secondary" className="mb-4 animate-pulse">
+        {/* Hero - clean and confident */}
+        <section className="container mx-auto px-6 py-20 md:py-32">
+          <div className="max-w-3xl mx-auto text-center mb-20">
+            <p className="text-sm font-medium text-primary mb-4 tracking-wide uppercase">
               UK Regulation Compliant
-            </Badge>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              Life Safety Operations &amp; Compliance Management Platform
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Professional UK life safety testing platform with full business management. 
-              From field testing to invoicing, Building Safety Act compliance to Golden Thread documentation - all in one platform.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-6 leading-tight">
+              Life Safety Operations & Compliance
+            </h1>
+            <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed">
+              Professional smoke control testing, Building Safety Act compliance, and complete business management. One platform for everything.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button size="lg" asChild data-testid="button-get-started">
                 <a href="/api/login">
-                  Get Started Free
+                  Get Started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </a>
               </Button>
               <Button size="lg" variant="outline" asChild data-testid="button-demo">
                 <a href="#demo">
-                  <Play className="mr-2 h-4 w-4" />
                   Watch Demo
-                </a>
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-3 mb-8">
-              <Button variant="outline" size="lg" className="h-auto py-2 px-4 bg-black text-white border-black hover:bg-black/90 hover:text-white" asChild data-testid="link-app-store">
-                <a href="#" className="inline-flex items-center gap-2">
-                  <SiApple className="h-6 w-6" />
-                  <div className="text-left">
-                    <div className="text-xs opacity-80">Download on the</div>
-                    <div className="text-sm font-semibold">App Store</div>
-                  </div>
-                </a>
-              </Button>
-              <Button variant="outline" size="lg" className="h-auto py-2 px-4 bg-black text-white border-black hover:bg-black/90 hover:text-white" asChild data-testid="link-play-store">
-                <a href="#" className="inline-flex items-center gap-2">
-                  <SiGoogleplay className="h-5 w-5" />
-                  <div className="text-left">
-                    <div className="text-xs opacity-80">Get it on</div>
-                    <div className="text-sm font-semibold">Google Play</div>
-                  </div>
                 </a>
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            <div ref={stat1.ref} className="text-center p-6 rounded-lg bg-card border">
-              <div className="text-4xl font-bold text-primary mb-1" data-testid="stat-companies">{stat1.count}+</div>
-              <div className="text-sm text-muted-foreground">Companies Trust Us</div>
+          {/* Stats - subtle presentation */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
+            <div ref={stat1.ref} className="text-center">
+              <div className="text-3xl font-semibold mb-1" data-testid="stat-companies">{stat1.count}+</div>
+              <div className="text-sm text-muted-foreground">Companies</div>
             </div>
-            <div ref={stat2.ref} className="text-center p-6 rounded-lg bg-card border">
-              <div className="text-4xl font-bold text-primary mb-1" data-testid="stat-compliance">{stat2.count}%</div>
-              <div className="text-sm text-muted-foreground">Compliance Rate</div>
+            <div ref={stat2.ref} className="text-center">
+              <div className="text-3xl font-semibold mb-1" data-testid="stat-compliance">{stat2.count}%</div>
+              <div className="text-sm text-muted-foreground">Compliance</div>
             </div>
-            <div ref={stat3.ref} className="text-center p-6 rounded-lg bg-card border">
-              <div className="text-4xl font-bold text-primary mb-1" data-testid="stat-standards">{stat3.count}+</div>
+            <div ref={stat3.ref} className="text-center">
+              <div className="text-3xl font-semibold mb-1" data-testid="stat-standards">{stat3.count}+</div>
               <div className="text-sm text-muted-foreground">UK Standards</div>
             </div>
-            <div ref={stat4.ref} className="text-center p-6 rounded-lg bg-card border">
-              <div className="text-4xl font-bold text-primary mb-1" data-testid="stat-time-saved">{stat4.count}%</div>
+            <div ref={stat4.ref} className="text-center">
+              <div className="text-3xl font-semibold mb-1" data-testid="stat-time-saved">{stat4.count}%</div>
               <div className="text-sm text-muted-foreground">Time Saved</div>
             </div>
           </div>
         </section>
 
-        <section id="standards" className="bg-muted/30 py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <Badge variant="outline" className="mb-4">Full UK Compliance</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Comprehensive Standards Coverage</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Built-in support for the complete suite of UK smoke control regulations and standards.
+        {/* Standards - clean grid */}
+        <section id="standards" className="border-t py-20 md:py-28">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-2xl md:text-3xl font-semibold mb-4">UK Standards Coverage</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                Complete support for UK smoke control regulations and building safety standards.
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
               {UK_STANDARDS.map((standard, index) => (
                 <div 
                   key={index}
-                  className="p-4 rounded-lg bg-background border hover-elevate"
+                  className="p-4 rounded-lg border border-border/50 hover:border-border transition-colors"
                   data-testid={`standard-${index}`}
                 >
-                  <div className="font-semibold text-primary text-sm">{standard.code}</div>
-                  <div className="text-sm text-muted-foreground">{standard.title}</div>
+                  <div className="font-medium text-sm">{standard.code}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{standard.title}</div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="features" className="py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Testing &amp; Compliance Tools</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Everything you need for professional smoke control testing, from automatic grid calculations to comprehensive PDF reports.
+        {/* Features - simplified */}
+        <section id="features" className="py-20 md:py-28 bg-muted/30">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-2xl md:text-3xl font-semibold mb-4">Testing & Compliance</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                Professional tools for smoke control testing and compliance documentation.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <Shield className="h-10 w-10 text-primary mb-2" />
-                  <CardTitle className="text-lg">UK Regulation Compliant</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Automatic 5x5, 6x6, or 7x7 grid calculation based on damper dimensions per BS EN 12101-8 standards
-                  </CardDescription>
-                </CardContent>
-              </Card>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 max-w-5xl mx-auto">
+              <div className="p-6 rounded-lg bg-card border">
+                <Shield className="h-8 w-8 text-primary mb-4" />
+                <h3 className="font-medium mb-2">Automatic Grid Calculation</h3>
+                <p className="text-sm text-muted-foreground">
+                  5x5, 6x6, or 7x7 grids based on damper dimensions per BS EN 12101-8
+                </p>
+              </div>
 
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <FileText className="h-10 w-10 text-primary mb-2" />
-                  <CardTitle className="text-lg">Professional Reports</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    PDF exports with cover pages, grid visualisations, trend charts, signatures, and QR code verification
-                  </CardDescription>
-                </CardContent>
-              </Card>
+              <div className="p-6 rounded-lg bg-card border">
+                <FileText className="h-8 w-8 text-primary mb-4" />
+                <h3 className="font-medium mb-2">Professional Reports</h3>
+                <p className="text-sm text-muted-foreground">
+                  PDF exports with visualisations, trend charts, and QR verification
+                </p>
+              </div>
 
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <Gauge className="h-10 w-10 text-primary mb-2" />
-                  <CardTitle className="text-lg">Pressure Testing</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    BS EN 12101-6 compliant stairwell differential pressure testing with multi-standard support
-                  </CardDescription>
-                </CardContent>
-              </Card>
+              <div className="p-6 rounded-lg bg-card border">
+                <Gauge className="h-8 w-8 text-primary mb-4" />
+                <h3 className="font-medium mb-2">Pressure Testing</h3>
+                <p className="text-sm text-muted-foreground">
+                  BS EN 12101-6 compliant differential pressure testing
+                </p>
+              </div>
 
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <TrendingUp className="h-10 w-10 text-primary mb-2" />
-                  <CardTitle className="text-lg">Trend Analysis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Year-over-year velocity trends with predictive maintenance alerts for declining performance
-                  </CardDescription>
-                </CardContent>
-              </Card>
+              <div className="p-6 rounded-lg bg-card border">
+                <TrendingUp className="h-8 w-8 text-primary mb-4" />
+                <h3 className="font-medium mb-2">Trend Analysis</h3>
+                <p className="text-sm text-muted-foreground">
+                  Year-over-year trends with predictive maintenance alerts
+                </p>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
