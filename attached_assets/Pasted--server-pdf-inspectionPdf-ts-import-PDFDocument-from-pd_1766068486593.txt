@@ -1,0 +1,122 @@
+// server/pdf/inspectionPdf.ts
+import PDFDocument from "pdfkit";
+
+export type PdfRow = {
+  component: string;
+  activity: string;
+  reference?: string | null;
+  fieldType: string;
+  units?: string | null;
+  evidenceRequired: boolean;
+  value: string;
+  comment?: string | null;
+  attachments: Array<{ originalName: string }>;
+};
+
+export type PdfEntity = {
+  title: string;
+  description?: string | null;
+  rows: PdfRow[];
+};
+
+export type PdfPayload = {
+  inspectionId: string;
+  templateName: string;
+  systemTypeName: string;
+  jobId: string;
+  completedAt: string;
+  entities: PdfEntity[];
+};
+
+function drawKeyValue(doc: PDFKit.PDFDocument, label: string, value: string) {
+  doc.font("Helvetica-Bold").text(label, { continued: true });
+  doc.font("Helvetica").text(` ${value}`);
+}
+
+export function buildInspectionPdf(payload: PdfPayload) {
+  const doc = new PDFDocument({
+    size: "A4",
+    margins: { top: 50, left: 50, right: 50, bottom: 50 },
+    info: {
+      Title: `Inspection ${payload.inspectionId}`,
+      Author: "Life Safety OPS",
+    },
+  });
+
+  doc.fontSize(18).font("Helvetica-Bold").text("Inspection Report");
+  doc.moveDown(0.8);
+
+  doc.fontSize(11).font("Helvetica");
+  drawKeyValue(doc, "Job ID:", payload.jobId);
+  drawKeyValue(doc, "System:", payload.systemTypeName);
+  drawKeyValue(doc, "Template:", payload.templateName);
+  drawKeyValue(doc, "Completed:", new Date(payload.completedAt).toISOString());
+  drawKeyValue(doc, "Inspection ID:", payload.inspectionId);
+
+  doc.moveDown(1.0);
+  doc.moveTo(doc.page.margins.left, doc.y)
+    .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+    .stroke();
+  doc.moveDown(0.8);
+
+  for (const entity of payload.entities) {
+    doc.fontSize(14).font("Helvetica-Bold").text(entity.title);
+    if (entity.description) {
+      doc.fontSize(10).font("Helvetica").fillColor("gray").text(entity.description);
+      doc.fillColor("black");
+    }
+    doc.moveDown(0.4);
+
+    for (const row of entity.rows) {
+      const startY = doc.y;
+
+      doc.fontSize(11).font("Helvetica-Bold").text(`${row.component} — ${row.activity}`);
+      doc.fontSize(10).font("Helvetica").fillColor("gray");
+      const metaParts: string[] = [];
+      if (row.reference) metaParts.push(`Ref: ${row.reference}`);
+      metaParts.push(`Type: ${row.fieldType}`);
+      if (row.units) metaParts.push(`Units: ${row.units}`);
+      if (row.evidenceRequired) metaParts.push(`Evidence required`);
+      doc.text(metaParts.join(" • "));
+      doc.fillColor("black");
+
+      doc.fontSize(11).font("Helvetica");
+      doc.text(`Result: ${row.value || "—"}`);
+
+      if (row.comment) {
+        doc.fontSize(10).fillColor("gray").text(`Comment: ${row.comment}`);
+        doc.fillColor("black");
+      }
+
+      if (row.attachments.length) {
+        doc.fontSize(10).fillColor("gray").text(
+          `Attachments: ${row.attachments.map((a) => a.originalName).join(", ")}`
+        );
+        doc.fillColor("black");
+      }
+
+      doc.moveDown(0.6);
+
+      // basic page break safety
+      if (doc.y > doc.page.height - doc.page.margins.bottom - 120) {
+        doc.addPage();
+      } else {
+        // subtle separator
+        doc
+          .moveTo(doc.page.margins.left, doc.y)
+          .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+          .strokeColor("#eeeeee")
+          .stroke()
+          .strokeColor("black");
+        doc.moveDown(0.6);
+      }
+
+      // prevent weird case where we draw separator at the same y repeatedly
+      if (doc.y === startY) doc.moveDown(1);
+    }
+
+    doc.moveDown(0.8);
+  }
+
+  return doc;
+}
