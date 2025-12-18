@@ -12,52 +12,23 @@ import fs from "fs";
 import path from "path";
 
 // ============================================
-// DEV STUB STORE (in-memory). Replace with DB-backed implementation later.
+// FORM INSPECTION API DTOs (DB-backed)
 // ============================================
-type StubSystemTypeDTO = { id: string; name: string; code: string };
-type StubTemplateListItemDTO = { id: string; name: string; systemTypeCode: string };
-
-type StubEntityRowDTO = {
+type SystemTypeDTO = { id: string; name: string; code: string };
+type TemplateListItemDTO = { id: string; name: string; systemTypeCodes: string[] };
+type EntityRowDTO = {
   id: string;
   component: string;
   activity: string;
-  reference?: string;
-  fieldType: "pass_fail" | "number" | "text" | "choice";
-  units?: string;
-  choices?: string[];
+  reference?: string | null;
+  fieldType: string;
+  units?: string | null;
+  choices?: string[] | null;
   evidenceRequired?: boolean;
 };
-
-type StubEntityDTO = {
-  id: string;
-  title: string;
-  description?: string;
-  rows: StubEntityRowDTO[];
-};
-
-type StubFormTemplateDTO = {
-  id: string;
-  name: string;
-  entities: StubEntityDTO[];
-};
-
-type StubResponseDraft = { rowId: string; value: any; comment?: string };
-
-type StubInspection = {
-  id: string;
-  jobId: string;
-  systemTypeCode: string;
-  templateId: string;
-  template: StubFormTemplateDTO;
-  completedAt: string | null;
-  history: Array<{ savedAt: string; responses: StubResponseDraft[] }>;
-};
-
-const stubInspections = new Map<string, StubInspection>();
-
-function newId(prefix: string) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
-}
+type EntityDTO = { id: string; title: string; description?: string | null; rows: EntityRowDTO[] };
+type FormTemplateDTO = { id: string; name: string; entities: EntityDTO[] };
+type ResponseDraft = { rowId: string; value: any; comment?: string };
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
@@ -3394,178 +3365,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // ─────────────────────────────────────────────
-  // FORMS STUB API (AUTH ONLY) — Replace with DB later
+  // FORM INSPECTION API (DB-backed)
   // ─────────────────────────────────────────────
 
-  // GET /api/jobs/:jobId/forms
-  apiRouter.get("/jobs/:jobId/forms", async (req, res) => {
-    const systemTypes: StubSystemTypeDTO[] = [
-      { id: "sys_mshev", name: "MSHEV", code: "MSHEV" },
-      { id: "sys_press", name: "Pressurisation", code: "PRESSURISATION" },
-      { id: "sys_nshev", name: "nSHEV", code: "NSHEV" },
-    ];
-
-    const templates: StubTemplateListItemDTO[] = [
-      { id: "tpl_damper", name: "Damper Testing", systemTypeCode: "MSHEV" },
-      { id: "tpl_pressure", name: "Pressure Differential Testing", systemTypeCode: "PRESSURISATION" },
-    ];
-
-    res.json({ systemTypes, templates });
-  });
-
-  // POST /api/inspections  { jobId, systemTypeCode, templateId }
-  apiRouter.post("/inspections", async (req, res) => {
-    const { jobId, systemTypeCode, templateId } = req.body ?? {};
-    if (!jobId || !systemTypeCode || !templateId) {
-      return res.status(400).json({ message: "jobId, systemTypeCode, templateId are required" });
+  // GET /api/jobs/:jobId/forms - Returns system types and templates for a job's organisation
+  apiRouter.get("/jobs/:jobId/forms", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    const organizationId = user?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: "User not in an organisation" });
     }
 
-    const inspectionId = newId("insp");
+    // Verify job exists and belongs to caller's organisation
+    const job = await storage.getJob(req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+    if (job.userId) {
+      const jobOwner = await storage.getUser(job.userId);
+      if (!jobOwner || jobOwner.organizationId !== organizationId) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+    } else {
+      return res.status(404).json({ message: "Job not found" });
+    }
 
-    const template: StubFormTemplateDTO =
-      templateId === "tpl_damper"
-        ? {
-            id: "tpl_damper",
-            name: "Damper Testing",
-            entities: [
-              {
-                id: "ent_mshev_maint",
-                title: "MSHEV Maintenance Activities",
-                rows: [
-                  {
-                    id: "row_fan_casing",
-                    component: "Fan casing",
-                    activity: "Inspection for corrosion and secure mounting",
-                    fieldType: "pass_fail",
-                    reference: "Manufacturer",
-                  },
-                  {
-                    id: "row_fan_speed",
-                    component: "Fan speed",
-                    activity: "Measurement during operation",
-                    fieldType: "number",
-                    units: "RPM",
-                    reference: "Manufacturer",
-                  },
-                  {
-                    id: "row_airflow",
-                    component: "Airflow performance",
-                    activity: "Verification of fan duty",
-                    fieldType: "number",
-                    units: "m³/s",
-                    reference: "Design / BS 7346-7",
-                  },
-                  {
-                    id: "row_control_response",
-                    component: "Control response",
-                    activity: "Verification of automatic and manual operation",
-                    fieldType: "pass_fail",
-                    reference: "Fire strategy",
-                  },
-                ],
-              },
-            ],
-          }
-        : {
-            id: "tpl_pressure",
-            name: "Pressure Differential Testing",
-            entities: [
-              {
-                id: "ent_press_tests",
-                title: "Pressure Differential System Tests",
-                rows: [
-                  {
-                    id: "row_pressure_pa",
-                    component: "Pressure differential",
-                    activity: "Measurement between protected and adjacent spaces",
-                    fieldType: "number",
-                    units: "Pa",
-                    reference: "Design / BS 5588-4",
-                  },
-                  {
-                    id: "row_door_force",
-                    component: "Door opening force",
-                    activity: "Measurement at door handle",
-                    fieldType: "number",
-                    units: "N",
-                    reference: "Design / BS 5588-4",
-                  },
-                  {
-                    id: "row_air_velocity",
-                    component: "Airflow velocity",
-                    activity: "Measurement through door opening",
-                    fieldType: "number",
-                    units: "m/s",
-                    reference: "Design intent",
-                  },
-                  {
-                    id: "row_control_logic",
-                    component: "Control logic",
-                    activity: "Verification of correct system response",
-                    fieldType: "pass_fail",
-                    reference: "Fire strategy",
-                  },
-                ],
-              },
-            ],
-          };
+    // Fetch system types for the org
+    const sysTypes = await storage.getSystemTypes(organizationId);
+    const systemTypesDTO: SystemTypeDTO[] = sysTypes.map(st => ({ id: st.id, name: st.name, code: st.code }));
 
-    const insp: StubInspection = {
-      id: inspectionId,
+    // Fetch templates and their linked system types
+    const templates = await storage.getFormTemplates(organizationId);
+    const templatesDTO: TemplateListItemDTO[] = [];
+    for (const t of templates) {
+      const linkedSystemTypes = await storage.getFormTemplateSystemTypes(t.id);
+      const codes = linkedSystemTypes.map(lnk => {
+        const st = sysTypes.find(s => s.id === lnk.systemTypeId);
+        return st?.code || "";
+      }).filter(Boolean);
+      templatesDTO.push({ id: t.id, name: t.name, systemTypeCodes: codes });
+    }
+
+    res.json({ systemTypes: systemTypesDTO, templates: templatesDTO });
+  }));
+
+  // POST /api/inspections  { jobId, systemTypeId, templateId }
+  apiRouter.post("/inspections", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    const organizationId = user?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: "User not in an organisation" });
+    }
+
+    const { jobId, systemTypeId, templateId } = req.body ?? {};
+    if (!jobId || !systemTypeId || !templateId) {
+      return res.status(400).json({ message: "jobId, systemTypeId, templateId are required" });
+    }
+
+    // Validate references exist AND belong to user's organisation (tenant isolation)
+    const job = await storage.getJob(jobId);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+    // Verify job belongs to same organisation via the job owner's organizationId
+    if (job.userId) {
+      const jobOwner = await storage.getUser(job.userId);
+      if (!jobOwner || jobOwner.organizationId !== organizationId) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+    } else {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    const template = await storage.getFormTemplate(templateId);
+    if (!template || template.organizationId !== organizationId) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+
+    const sysType = await storage.getSystemType(systemTypeId);
+    if (!sysType || sysType.organizationId !== organizationId) {
+      return res.status(404).json({ message: "System type not found" });
+    }
+
+    // Create inspection instance
+    const inspection = await storage.createInspectionInstance({
+      organizationId,
       jobId: String(jobId),
-      systemTypeCode: String(systemTypeCode),
+      systemTypeId: String(systemTypeId),
       templateId: String(templateId),
-      template,
-      completedAt: null,
-      history: [],
-    };
+      createdByUserId: userId,
+    });
 
-    stubInspections.set(inspectionId, insp);
-    res.json({ inspectionId });
-  });
+    res.json({ inspectionId: inspection.id });
+  }));
+
+  // Helper to build full template DTO with entities and rows
+  async function buildTemplateDTO(templateId: string): Promise<FormTemplateDTO | null> {
+    const template = await storage.getFormTemplate(templateId);
+    if (!template) return null;
+
+    const templateEntities = await storage.getFormTemplateEntities(templateId);
+    const entities: EntityDTO[] = [];
+
+    for (const te of templateEntities) {
+      const entity = await storage.getFormEntity(te.entityId);
+      if (!entity) continue;
+      const rows = await storage.getFormEntityRows(te.entityId);
+      entities.push({
+        id: entity.id,
+        title: entity.title,
+        description: entity.description,
+        rows: rows.map(r => ({
+          id: r.id,
+          component: r.component,
+          activity: r.activity,
+          reference: r.reference,
+          fieldType: r.fieldType,
+          units: r.units,
+          choices: r.choices,
+          evidenceRequired: r.evidenceRequired,
+        })),
+      });
+    }
+
+    return { id: template.id, name: template.name, entities };
+  }
 
   // GET /api/inspections/:id
-  apiRouter.get("/inspections/:id", async (req, res) => {
-    const insp = stubInspections.get(req.params.id);
-    if (!insp) return res.status(404).json({ message: "Not found" });
+  apiRouter.get("/inspections/:id", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    const organizationId = user?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: "User not in an organisation" });
+    }
 
-    const latest = insp.history.length ? insp.history[insp.history.length - 1].responses : [];
+    const inspection = await storage.getInspectionInstance(req.params.id);
+    if (!inspection || inspection.organizationId !== organizationId) {
+      return res.status(404).json({ message: "Not found" });
+    }
+
+    const templateDTO = await buildTemplateDTO(inspection.templateId);
+    if (!templateDTO) return res.status(500).json({ message: "Template not found" });
+
+    // Get latest responses per row
+    const latestResponses = await storage.getLatestInspectionResponses(inspection.id);
+    const responses = latestResponses.map(r => ({
+      rowId: r.rowId,
+      value: r.valueBool !== null ? r.valueBool : (r.valueNumber !== null ? r.valueNumber : r.valueText),
+      comment: r.comment,
+    }));
 
     res.json({
-      id: insp.id,
-      template: insp.template,
-      completedAt: insp.completedAt,
-      responses: latest,
+      id: inspection.id,
+      template: templateDTO,
+      completedAt: inspection.completedAt?.toISOString() || null,
+      responses,
     });
-  });
+  }));
 
   // POST /api/inspections/:id/responses  { responses: ResponseDraft[] }
-  apiRouter.post("/inspections/:id/responses", async (req, res) => {
-    const insp = stubInspections.get(req.params.id);
-    if (!insp) return res.status(404).json({ message: "Not found" });
-    if (insp.completedAt) return res.status(409).json({ message: "Inspection is completed" });
+  apiRouter.post("/inspections/:id/responses", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    const organizationId = user?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: "User not in an organisation" });
+    }
+
+    const inspection = await storage.getInspectionInstance(req.params.id);
+    if (!inspection || inspection.organizationId !== organizationId) {
+      return res.status(404).json({ message: "Not found" });
+    }
+    if (inspection.completedAt) return res.status(409).json({ message: "Inspection is completed" });
 
     const { responses } = req.body ?? {};
     if (!Array.isArray(responses)) {
       return res.status(400).json({ message: "responses[] required" });
     }
 
-    insp.history.push({
-      savedAt: new Date().toISOString(),
-      responses: responses as StubResponseDraft[],
+    // Append responses (audit trail pattern)
+    const toInsert = (responses as ResponseDraft[]).map(r => {
+      const val = r.value;
+      return {
+        organizationId,
+        inspectionId: inspection.id,
+        rowId: r.rowId,
+        valueText: typeof val === "string" ? val : null,
+        valueNumber: typeof val === "number" ? String(val) : null,
+        valueBool: typeof val === "boolean" ? val : null,
+        comment: r.comment || null,
+        createdByUserId: userId,
+      };
     });
 
+    await storage.createInspectionResponses(toInsert);
     res.json({ ok: true });
-  });
+  }));
 
   // POST /api/inspections/:id/complete
-  apiRouter.post("/inspections/:id/complete", async (req, res) => {
-    const insp = stubInspections.get(req.params.id);
-    if (!insp) return res.status(404).json({ message: "Not found" });
+  apiRouter.post("/inspections/:id/complete", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const user = await storage.getUser(userId);
+    const organizationId = user?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: "User not in an organisation" });
+    }
 
-    insp.completedAt = new Date().toISOString();
-    res.json({ completedAt: insp.completedAt });
-  });
+    const inspection = await storage.getInspectionInstance(req.params.id);
+    if (!inspection || inspection.organizationId !== organizationId) {
+      return res.status(404).json({ message: "Not found" });
+    }
+
+    const updated = await storage.completeInspectionInstance(req.params.id, userId);
+    res.json({ completedAt: updated?.completedAt?.toISOString() || null });
+  }));
 
   // ============================================
   // MOUNT AUTHENTICATED API ROUTER
