@@ -1,0 +1,60 @@
+// GET system types selected for template
+apiRouter.get("/admin/templates/:id/system-types", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const templateId = String(req.params.id || "");
+  if (!templateId) return res.status(400).json({ message: "Invalid id" });
+
+  const rows = await db
+    .select({ systemTypeId: formTemplateSystemTypes.systemTypeId })
+    .from(formTemplateSystemTypes)
+    .where(and(eq(formTemplateSystemTypes.templateId, templateId), eq(formTemplateSystemTypes.organizationId, auth.organizationId)));
+
+  res.json({ systemTypeIds: rows.map((r) => r.systemTypeId) });
+});
+
+// Replace system types selection for template
+apiRouter.post("/admin/templates/:id/system-types", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const templateId = String(req.params.id || "");
+  if (!templateId) return res.status(400).json({ message: "Invalid id" });
+
+  const systemTypeIds = Array.isArray(req.body?.systemTypeIds) ? req.body.systemTypeIds : [];
+  if (!systemTypeIds.length) {
+    // allow clearing all
+    await db
+      .delete(formTemplateSystemTypes)
+      .where(and(eq(formTemplateSystemTypes.templateId, templateId), eq(formTemplateSystemTypes.organizationId, auth.organizationId)));
+    return res.json({ ok: true });
+  }
+
+  // Validate systemTypeIds belong to org
+  const valid = await db
+    .select({ id: systemTypes.id })
+    .from(systemTypes)
+    .where(and(eq(systemTypes.organizationId, auth.organizationId), inArray(systemTypes.id, systemTypeIds)));
+
+  const validSet = new Set(valid.map((v) => v.id));
+  for (const id of systemTypeIds) {
+    if (!validSet.has(id)) return res.status(400).json({ message: `Invalid systemTypeId: ${id}` });
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(formTemplateSystemTypes)
+      .where(and(eq(formTemplateSystemTypes.templateId, templateId), eq(formTemplateSystemTypes.organizationId, auth.organizationId)));
+
+    await tx.insert(formTemplateSystemTypes).values(
+      systemTypeIds.map((id: string) => ({
+        organizationId: auth.organizationId,
+        templateId,
+        systemTypeId: id,
+      }))
+    );
+  });
+
+  res.json({ ok: true });
+});
