@@ -3453,6 +3453,301 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // ─────────────────────────────────────────────
+  // ADMIN: ENTITIES
+  // ─────────────────────────────────────────────
+
+  // GET /api/admin/entities
+  apiRouter.get("/admin/entities", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const list = await db
+      .select({
+        id: formEntities.id,
+        title: formEntities.title,
+        description: formEntities.description,
+        createdAt: formEntities.createdAt,
+        updatedAt: formEntities.updatedAt,
+      })
+      .from(formEntities)
+      .where(eq(formEntities.organizationId, auth.organizationId))
+      .orderBy(formEntities.title);
+
+    res.json({ entities: list });
+  });
+
+  // POST /api/admin/entities
+  apiRouter.post("/admin/entities", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    try {
+      const title = assertString(req.body?.title, "title");
+      const description = typeof req.body?.description === "string" ? req.body.description : null;
+
+      const created = await db
+        .insert(formEntities)
+        .values({
+          organizationId: auth.organizationId,
+          title,
+          description,
+        })
+        .returning({
+          id: formEntities.id,
+          title: formEntities.title,
+          description: formEntities.description,
+        });
+
+      res.json({ entity: created[0] });
+    } catch (e: any) {
+      res.status(400).json({ message: e?.message ?? "Bad request" });
+    }
+  });
+
+  // PATCH /api/admin/entities/:id
+  apiRouter.patch("/admin/entities/:id", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const entityId = String(req.params.id || "");
+    if (!entityId) return res.status(400).json({ message: "Invalid id" });
+
+    const patch: any = {};
+    if (typeof req.body?.title === "string") patch.title = req.body.title.trim();
+    if (typeof req.body?.description === "string") patch.description = req.body.description;
+    patch.updatedAt = new Date();
+
+    const updated = await db
+      .update(formEntities)
+      .set(patch)
+      .where(and(eq(formEntities.id, entityId), eq(formEntities.organizationId, auth.organizationId)))
+      .returning({
+        id: formEntities.id,
+        title: formEntities.title,
+        description: formEntities.description,
+      });
+
+    if (!updated.length) return res.status(404).json({ message: "Not found" });
+    res.json({ entity: updated[0] });
+  });
+
+  // DELETE /api/admin/entities/:id
+  apiRouter.delete("/admin/entities/:id", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const entityId = String(req.params.id || "");
+    if (!entityId) return res.status(400).json({ message: "Invalid id" });
+
+    // Delete rows first (FK safety)
+    await db
+      .delete(formEntityRows)
+      .where(and(eq(formEntityRows.entityId, entityId), eq(formEntityRows.organizationId, auth.organizationId)));
+
+    const deleted = await db
+      .delete(formEntities)
+      .where(and(eq(formEntities.id, entityId), eq(formEntities.organizationId, auth.organizationId)))
+      .returning({ id: formEntities.id });
+
+    if (!deleted.length) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // GET /api/admin/entities/:id/rows
+  apiRouter.get("/admin/entities/:id/rows", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const entityId = String(req.params.id || "");
+    if (!entityId) return res.status(400).json({ message: "Invalid id" });
+
+    const rows = await db
+      .select({
+        id: formEntityRows.id,
+        entityId: formEntityRows.entityId,
+        sortOrder: formEntityRows.sortOrder,
+        component: formEntityRows.component,
+        activity: formEntityRows.activity,
+        reference: formEntityRows.reference,
+        fieldType: formEntityRows.fieldType,
+        units: formEntityRows.units,
+        choices: formEntityRows.choices,
+        evidenceRequired: formEntityRows.evidenceRequired,
+      })
+      .from(formEntityRows)
+      .where(and(eq(formEntityRows.entityId, entityId), eq(formEntityRows.organizationId, auth.organizationId)))
+      .orderBy(formEntityRows.sortOrder);
+
+    res.json({ rows });
+  });
+
+  // POST /api/admin/entities/:id/rows
+  apiRouter.post("/admin/entities/:id/rows", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    try {
+      const entityId = String(req.params.id || "");
+      if (!entityId) return res.status(400).json({ message: "Invalid entity id" });
+
+      const component = assertString(req.body?.component, "component");
+      const activity = assertString(req.body?.activity, "activity");
+      const fieldType = assertFieldType(req.body?.fieldType);
+
+      const reference = typeof req.body?.reference === "string" ? req.body.reference : null;
+      const units = typeof req.body?.units === "string" ? req.body.units : null;
+      const evidenceRequired = !!req.body?.evidenceRequired;
+
+      const choices =
+        fieldType === "choice" && Array.isArray(req.body?.choices)
+          ? req.body.choices.filter((c: any) => typeof c === "string")
+          : null;
+
+      // Determine next sortOrder
+      const max = await db
+        .select({ max: sql<number>`coalesce(max(${formEntityRows.sortOrder}), 0)` })
+        .from(formEntityRows)
+        .where(and(eq(formEntityRows.entityId, entityId), eq(formEntityRows.organizationId, auth.organizationId)));
+
+      const nextSort = (max[0]?.max ?? 0) + 1;
+
+      const created = await db
+        .insert(formEntityRows)
+        .values({
+          organizationId: auth.organizationId,
+          entityId,
+          sortOrder: nextSort,
+          component,
+          activity,
+          reference,
+          fieldType,
+          units,
+          choices,
+          evidenceRequired,
+        })
+        .returning({
+          id: formEntityRows.id,
+          entityId: formEntityRows.entityId,
+          sortOrder: formEntityRows.sortOrder,
+          component: formEntityRows.component,
+          activity: formEntityRows.activity,
+          reference: formEntityRows.reference,
+          fieldType: formEntityRows.fieldType,
+          units: formEntityRows.units,
+          choices: formEntityRows.choices,
+          evidenceRequired: formEntityRows.evidenceRequired,
+        });
+
+      res.json({ row: created[0] });
+    } catch (e: any) {
+      res.status(400).json({ message: e?.message ?? "Bad request" });
+    }
+  });
+
+  // PATCH /api/admin/entity-rows/:rowId
+  apiRouter.patch("/admin/entity-rows/:rowId", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const rowId = String(req.params.rowId || "");
+    if (!rowId) return res.status(400).json({ message: "Invalid rowId" });
+
+    try {
+      const patch: any = { updatedAt: new Date() };
+
+      if (typeof req.body?.component === "string") patch.component = req.body.component.trim();
+      if (typeof req.body?.activity === "string") patch.activity = req.body.activity.trim();
+      if (typeof req.body?.reference === "string") patch.reference = req.body.reference;
+      if (typeof req.body?.units === "string") patch.units = req.body.units;
+      if (typeof req.body?.evidenceRequired === "boolean") patch.evidenceRequired = req.body.evidenceRequired;
+
+      if (typeof req.body?.fieldType === "string") {
+        patch.fieldType = assertFieldType(req.body.fieldType);
+        // If switching away from choice, clear choices
+        if (patch.fieldType !== "choice") patch.choices = null;
+      }
+
+      if (Array.isArray(req.body?.choices)) {
+        patch.choices = req.body.choices.filter((c: any) => typeof c === "string");
+      }
+
+      const updated = await db
+        .update(formEntityRows)
+        .set(patch)
+        .where(and(eq(formEntityRows.id, rowId), eq(formEntityRows.organizationId, auth.organizationId)))
+        .returning({
+          id: formEntityRows.id,
+          entityId: formEntityRows.entityId,
+          sortOrder: formEntityRows.sortOrder,
+          component: formEntityRows.component,
+          activity: formEntityRows.activity,
+          reference: formEntityRows.reference,
+          fieldType: formEntityRows.fieldType,
+          units: formEntityRows.units,
+          choices: formEntityRows.choices,
+          evidenceRequired: formEntityRows.evidenceRequired,
+        });
+
+      if (!updated.length) return res.status(404).json({ message: "Not found" });
+      res.json({ row: updated[0] });
+    } catch (e: any) {
+      res.status(400).json({ message: e?.message ?? "Bad request" });
+    }
+  });
+
+  // DELETE /api/admin/entity-rows/:rowId
+  apiRouter.delete("/admin/entity-rows/:rowId", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const rowId = String(req.params.rowId || "");
+    if (!rowId) return res.status(400).json({ message: "Invalid rowId" });
+
+    const deleted = await db
+      .delete(formEntityRows)
+      .where(and(eq(formEntityRows.id, rowId), eq(formEntityRows.organizationId, auth.organizationId)))
+      .returning({ id: formEntityRows.id });
+
+    if (!deleted.length) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // POST /api/admin/entities/:id/rows/reorder
+  apiRouter.post("/admin/entities/:id/rows/reorder", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const entityId = String(req.params.id || "");
+    if (!entityId) return res.status(400).json({ message: "Invalid entity id" });
+
+    const orderedRowIds = Array.isArray(req.body?.orderedRowIds) ? req.body.orderedRowIds : [];
+    if (!orderedRowIds.length) return res.status(400).json({ message: "orderedRowIds[] required" });
+
+    // Validate all rowIds belong to this entity + org
+    const rows = await db
+      .select({ id: formEntityRows.id })
+      .from(formEntityRows)
+      .where(and(eq(formEntityRows.entityId, entityId), eq(formEntityRows.organizationId, auth.organizationId)));
+
+    const existingSet = new Set(rows.map((r) => r.id));
+    for (const id of orderedRowIds) {
+      if (!existingSet.has(id)) return res.status(400).json({ message: `Invalid rowId: ${id}` });
+    }
+
+    // Update sortOrder
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < orderedRowIds.length; i++) {
+        await tx
+          .update(formEntityRows)
+          .set({ sortOrder: i + 1, updatedAt: new Date() })
+          .where(and(eq(formEntityRows.id, orderedRowIds[i]), eq(formEntityRows.organizationId, auth.organizationId)));
+      }
+    });
+
+    res.json({ ok: true });
+  });
+
+  // ─────────────────────────────────────────────
   // FORM INSPECTION API (DB-backed)
   // ─────────────────────────────────────────────
 
