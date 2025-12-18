@@ -1,0 +1,352 @@
+/*
+PHASE 9A + 9B + 9C — PRODUCT POLISH (ALL IN ONE COPYABLE BLOCK)
+You asked for: 9A (Admin Usage UI), 9B (Job Timeline UX polish), 9C (PDF visual polish)
+
+ASSUMES (adjust if names differ):
+- ROUTES constants exist in client/src/lib/routes.ts with:
+  ADMIN_USAGE (add), JOB_ACTIVITY already exists, FIELD_JOB_DETAIL exists
+- UI components: Card, Button, Badge, Separator, Tabs (or simple layout)
+- Your toast already exists (from 7A.1) but not required here
+
+──────────────────────────────────────────────────────────────
+9A) ADMIN USAGE UI
+FILES:
+- client/src/lib/routes.ts (MODIFY)
+- client/src/pages/admin/usage.tsx (NEW)
+- client/src/App.tsx (MODIFY)
+- client/src/components/AppLayout.tsx (MODIFY: add Admin > Usage link)
+──────────────────────────────────────────────────────────────
+*/
+
+// ===============================
+// client/src/lib/routes.ts (MODIFY)
+// ===============================
+export const ROUTES = {
+  // ...keep existing
+  ADMIN_USAGE: "/admin/usage",
+  // ...keep existing
+};
+
+// ===============================
+// client/src/pages/admin/usage.tsx (NEW)
+// ===============================
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+type UsageDTO = {
+  plan: "free" | "pro" | "enterprise";
+  limits: {
+    jobsPerMonth: number;
+    maxTemplates: number;
+    maxEntities: number;
+    maxStorageBytes: number;
+    pdfEnabled: boolean;
+  };
+  usage: {
+    jobsThisMonth: number;
+    jobsMonthKey: string;
+    totalTemplates: number;
+    totalEntities: number;
+    storageBytes: number;
+    updatedAt: string;
+  };
+};
+
+function fmtBytes(bytes: number) {
+  if (!bytes || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  let v = bytes;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function pct(used: number, limit: number) {
+  if (!limit || limit <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((used / limit) * 100)));
+}
+
+export default function AdminUsagePage() {
+  const [data, setData] = useState<UsageDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/usage", { credentials: "include" });
+      if (!res.ok) throw new Error(`Failed to load usage (${res.status})`);
+      const json = (await res.json()) as UsageDTO;
+      setData(json);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load usage");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  if (loading) return <div className="p-6 text-muted-foreground">Loading…</div>;
+  if (error) return <div className="p-6 text-destructive">{error}</div>;
+  if (!data) return <div className="p-6 text-muted-foreground">No data.</div>;
+
+  const jobsP = pct(data.usage.jobsThisMonth, data.limits.jobsPerMonth);
+  const tplP = pct(data.usage.totalTemplates, data.limits.maxTemplates);
+  const entP = pct(data.usage.totalEntities, data.limits.maxEntities);
+  const storP = pct(data.usage.storageBytes, data.limits.maxStorageBytes);
+
+  return (
+    <div className="container mx-auto p-4 md:p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Usage</h1>
+        <Button variant="outline" onClick={load}>
+          Refresh
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Plan <Badge variant="secondary">{data.plan.toUpperCase()}</Badge>
+            {data.limits.pdfEnabled ? <Badge>PDF Enabled</Badge> : <Badge variant="outline">PDF Disabled</Badge>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          Month key: {data.usage.jobsMonthKey} • Updated: {new Date(data.usage.updatedAt).toLocaleString()}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Jobs this month</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-sm">
+              {data.usage.jobsThisMonth} / {data.limits.jobsPerMonth} ({jobsP}%)
+            </div>
+            <div className="h-2 w-full rounded bg-muted overflow-hidden">
+              <div className="h-2 bg-primary" style={{ width: `${jobsP}%` }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Storage</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-sm">
+              {fmtBytes(data.usage.storageBytes)} / {fmtBytes(data.limits.maxStorageBytes)} ({storP}%)
+            </div>
+            <div className="h-2 w-full rounded bg-muted overflow-hidden">
+              <div className="h-2 bg-primary" style={{ width: `${storP}%` }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Templates</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-sm">
+              {data.usage.totalTemplates} / {data.limits.maxTemplates} ({tplP}%)
+            </div>
+            <div className="h-2 w-full rounded bg-muted overflow-hidden">
+              <div className="h-2 bg-primary" style={{ width: `${tplP}%` }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Entities</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-sm">
+              {data.usage.totalEntities} / {data.limits.maxEntities} ({entP}%)
+            </div>
+            <div className="h-2 w-full rounded bg-muted overflow-hidden">
+              <div className="h-2 bg-primary" style={{ width: `${entP}%` }} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle>Export</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <div className="text-sm text-muted-foreground">
+            Download a JSON export of this organisation’s data.
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => window.open("/api/admin/export", "_blank")}
+          >
+            Download export
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ===============================
+// client/src/App.tsx (MODIFY)
+// Register admin usage route (inside admin route block guarded by isOrgAdmin)
+// ===============================
+// import AdminUsagePage from "@/pages/admin/usage";
+// Add:
+<Route path={ROUTES.ADMIN_USAGE} component={AdminUsagePage} />
+
+// ===============================
+// client/src/components/AppLayout.tsx (MODIFY)
+// Add Admin menu item “Usage” (only for isOrgAdmin)
+// ===============================
+// In the Admin section items add:
+{ label: "Usage", href: ROUTES.ADMIN_USAGE, icon: undefined as any },
+
+/*
+──────────────────────────────────────────────────────────────
+9B) JOB TIMELINE UX POLISH
+FILES:
+- client/src/pages/job-activity.tsx (MODIFY)
+Adds:
+- grouping by date
+- icons (simple emoji) per action
+- hides noisy autosave events by default (toggle)
+──────────────────────────────────────────────────────────────
+*/
+
+// ===============================
+// client/src/pages/job-activity.tsx (MODIFY)
+// ===============================
+
+/*
+Patch your JobActivityPage file:
+
+1) Add state:
+const [showNoisy, setShowNoisy] = useState(false);
+
+2) Add helpers below prettyAction:
+*/
+
+const NOISY_PREFIXES = ["inspection.responses.saved"];
+
+function iconFor(action: string) {
+  if (action.includes("created")) return "➕";
+  if (action.includes("updated")) return "✏️";
+  if (action.includes("deleted") || action.includes("archived")) return "🗄️";
+  if (action.includes("completed")) return "✅";
+  if (action.includes("attachment")) return "📎";
+  if (action.includes("responses")) return "📝";
+  return "•";
+}
+
+function dayKey(iso: string) {
+  const d = new Date(iso);
+  return d.toISOString().slice(0, 10);
+}
+
+/*
+3) Before rendering, filter + group:
+Replace events.map(...) section with grouping:
+
+const filtered = showNoisy ? events : events.filter(e => !NOISY_PREFIXES.includes(e.action));
+const grouped: Record<string, AuditEvent[]> = {};
+for (const e of filtered) {
+  const k = dayKey(e.createdAt);
+  if (!grouped[k]) grouped[k] = [];
+  grouped[k].push(e);
+}
+
+Then render grouped by date descending.
+4) Add a toggle UI:
+*/
+
+<div className="flex items-center gap-2">
+  <input type="checkbox" checked={showNoisy} onChange={(e)=>setShowNoisy(e.target.checked)} />
+  <span className="text-sm">Show autosave events</span>
+</div>
+
+/*
+5) Render:
+Object.keys(grouped).sort().reverse().map(day => ...)
+Inside each event row:
+<div className="font-medium">{iconFor(e.action)} {prettyAction(e.action)}</div>
+
+That’s it — minimal UX lift, big readability.
+*/
+
+/*
+──────────────────────────────────────────────────────────────
+9C) PDF VISUAL POLISH (headers/footers, page numbers, cover block)
+FILE:
+- server/pdf/inspectionPdf.ts (MODIFY)
+Adds:
+- header with report title + job/template
+- footer with page number
+- light “cover” section styling
+──────────────────────────────────────────────────────────────
+*/
+
+// ===============================
+// server/pdf/inspectionPdf.ts (MODIFY) — ADD header/footer
+// ===============================
+
+/*
+In buildInspectionPdf(payload), after creating `doc`, add:
+
+let pageNum = 0;
+function addHeaderFooter() {
+  pageNum++;
+  const top = doc.page.margins.top;
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+
+  // Header
+  doc.font("Helvetica-Bold").fontSize(9).fillColor("gray");
+  doc.text("Inspection Report", left, 20, { width: right - left, align: "left" });
+  doc.font("Helvetica").text(
+    `Job ${payload.jobId} • ${payload.templateName}`,
+    left,
+    20,
+    { width: right - left, align: "right" }
+  );
+
+  // Footer
+  doc.font("Helvetica").fontSize(9).fillColor("gray");
+  doc.text(`Page ${pageNum}`, left, doc.page.height - 30, { width: right - left, align: "center" });
+  doc.fillColor("black");
+}
+
+doc.on("pageAdded", addHeaderFooter);
+addHeaderFooter();
+
+Then, replace your first title block with a nicer cover-style block:
+
+doc.fontSize(18).font("Helvetica-Bold").text("Inspection Report");
+doc.moveDown(0.3);
+doc.fontSize(12).font("Helvetica").fillColor("gray").text(payload.systemTypeName);
+doc.fillColor("black");
+doc.moveDown(0.8);
+
+And add a subtle box around key fields:
+(Use doc.rect(...).strokeColor("#eee").stroke();)
+
+This keeps PDFKit simple but improves perceived quality immediately.
+
+If you want, say “9C paste exact PDF file”, and I’ll output the fully replaced inspectionPdf.ts in one block.
+*/
+
+/*
+DONE.
+If you want me to output the fully patched job-activity.tsx and inspectionPdf.ts as complete files
+(without “patch instructions”), reply:
+- “Output full 9B file”
+- “Output full 9C file”
+and I’ll paste each as a complete copyable file.
+*/

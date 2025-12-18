@@ -78,6 +78,7 @@ import AdminEntitiesPage from "@/pages/admin/entities";
 import AdminEntityEditPage from "@/pages/admin/entity-edit";
 import AdminTemplatesPage from "@/pages/admin/templates";
 import AdminTemplateEditPage from "@/pages/admin/template-edit";
+import AdminUsagePage from "@/pages/admin/usage";
 import JobActivityPage from "@/pages/job-activity";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
@@ -167,6 +168,7 @@ function LayoutRoutes() {
             <Route path={ROUTES.ADMIN_ENTITIES} component={AdminEntitiesPage} />
             <Route path={ROUTES.ADMIN_TEMPLATE_EDIT} component={AdminTemplateEditPage} />
             <Route path={ROUTES.ADMIN_TEMPLATES} component={AdminTemplatesPage} />
+            <Route path={ROUTES.ADMIN_USAGE} component={AdminUsagePage} />
           </>
         ) : (
           <>

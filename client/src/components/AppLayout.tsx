@@ -217,6 +217,7 @@ const menuSections: MenuSection[] = [
     items: [
       { title: "Entities", url: ROUTES.ADMIN_ENTITIES, icon: FolderKanban },
       { title: "Templates", url: ROUTES.ADMIN_TEMPLATES, icon: FileStack },
+      { title: "Usage", url: ROUTES.ADMIN_USAGE, icon: Gauge },
     ],
   },
 ];

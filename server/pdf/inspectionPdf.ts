@@ -1,13 +1,11 @@
-// server/pdf/inspectionPdf.ts
 import PDFDocument from "pdfkit";
 import fs from "fs";
 
 export type PdfAttachment = {
   originalName: string;
   mimeType?: string | null;
-  // For local storage: absolute path to file on disk
   localPath?: string | null;
-  downloadUrl?: string | null; // absolute or relative URL
+  downloadUrl?: string | null;
 };
 
 export type PdfRow = {
@@ -62,30 +60,67 @@ function ensureSpace(doc: PDFKit.PDFDocument, neededHeight: number) {
 export function buildInspectionPdf(payload: PdfPayload) {
   const doc = new PDFDocument({
     size: "A4",
-    margins: { top: 50, left: 50, right: 50, bottom: 50 },
+    margins: { top: 60, left: 50, right: 50, bottom: 60 },
     info: {
       Title: `Inspection ${payload.inspectionId}`,
       Author: "Life Safety OPS",
     },
   });
 
-  doc.fontSize(18).font("Helvetica-Bold").text("Inspection Report");
+  let pageNum = 0;
+
+  function addHeaderFooter() {
+    pageNum++;
+    const left = doc.page.margins.left;
+    const right = doc.page.width - doc.page.margins.right;
+
+    doc.font("Helvetica-Bold").fontSize(9).fillColor("gray");
+    doc.text("Inspection Report", left, 20, { width: right - left, align: "left" });
+    doc.font("Helvetica").text(
+      `Job ${payload.jobId} \u2022 ${payload.templateName}`,
+      left,
+      20,
+      { width: right - left, align: "right" }
+    );
+
+    doc.font("Helvetica").fontSize(9).fillColor("gray");
+    doc.text(`Page ${pageNum}`, left, doc.page.height - 35, { width: right - left, align: "center" });
+    doc.fillColor("black");
+  }
+
+  doc.on("pageAdded", addHeaderFooter);
+  addHeaderFooter();
+
+  doc.fontSize(20).font("Helvetica-Bold").text("Inspection Report");
+  doc.moveDown(0.3);
+  doc.fontSize(12).font("Helvetica").fillColor("gray").text(payload.systemTypeName);
+  doc.fillColor("black");
   doc.moveDown(0.8);
+
+  const boxX = doc.page.margins.left;
+  const boxY = doc.y;
+  const boxWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
   doc.fontSize(11).font("Helvetica");
   drawKeyValue(doc, "Job ID:", payload.jobId);
   drawKeyValue(doc, "System:", payload.systemTypeName);
   drawKeyValue(doc, "Template:", payload.templateName);
-  drawKeyValue(doc, "Completed:", new Date(payload.completedAt).toISOString());
+  drawKeyValue(doc, "Completed:", new Date(payload.completedAt).toLocaleDateString("en-GB"));
   drawKeyValue(doc, "Inspection ID:", payload.inspectionId);
+
+  const boxHeight = doc.y - boxY + 8;
+  doc.rect(boxX - 6, boxY - 6, boxWidth + 12, boxHeight).strokeColor("#e0e0e0").stroke();
+  doc.strokeColor("black");
 
   doc.moveDown(1.0);
   doc.moveTo(doc.page.margins.left, doc.y)
     .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+    .strokeColor("#cccccc")
     .stroke();
+  doc.strokeColor("black");
   doc.moveDown(0.8);
 
-  const maxThumbsPerRow = 2; // keep PDFs reasonable
+  const maxThumbsPerRow = 2;
   const thumbMaxWidth = 220;
   const thumbMaxHeight = 140;
 
@@ -101,24 +136,23 @@ export function buildInspectionPdf(payload: PdfPayload) {
     for (const row of entity.rows) {
       ensureSpace(doc, 140);
 
-      doc.fontSize(11).font("Helvetica-Bold").text(`${row.component} — ${row.activity}`);
+      doc.fontSize(11).font("Helvetica-Bold").text(`${row.component} \u2014 ${row.activity}`);
       doc.fontSize(10).font("Helvetica").fillColor("gray");
       const metaParts: string[] = [];
       if (row.reference) metaParts.push(`Ref: ${row.reference}`);
       metaParts.push(`Type: ${row.fieldType}`);
       if (row.units) metaParts.push(`Units: ${row.units}`);
       if (row.evidenceRequired) metaParts.push(`Evidence required`);
-      doc.text(metaParts.join(" • "));
+      doc.text(metaParts.join(" \u2022 "));
       doc.fillColor("black");
 
-      doc.fontSize(11).font("Helvetica").text(`Result: ${row.value || "—"}`);
+      doc.fontSize(11).font("Helvetica").text(`Result: ${row.value || "\u2014"}`);
 
       if (row.comment) {
         doc.fontSize(10).fillColor("gray").text(`Comment: ${row.comment}`);
         doc.fillColor("black");
       }
 
-      // Attachments: list non-images, embed thumbnails for images
       const images = row.attachments.filter((a) => isImageMime(a.mimeType) && safeExists(a.localPath));
       const nonImages = row.attachments.filter((a) => !isImageMime(a.mimeType));
 
@@ -138,7 +172,6 @@ export function buildInspectionPdf(payload: PdfPayload) {
         for (const img of imgsToRender) {
           ensureSpace(doc, thumbMaxHeight + 50);
 
-          // caption
           doc.fontSize(9).fillColor("gray").text(img.originalName);
           doc.fillColor("black");
 
@@ -148,8 +181,6 @@ export function buildInspectionPdf(payload: PdfPayload) {
           try {
             doc.image(img.localPath as string, x, y, {
               fit: [thumbMaxWidth, thumbMaxHeight],
-              align: "left",
-              valign: "top",
             });
             doc.y = y + thumbMaxHeight + 6;
           } catch {
@@ -165,7 +196,6 @@ export function buildInspectionPdf(payload: PdfPayload) {
         }
       }
 
-      // Clickable links for all attachments
       const withLinks = row.attachments.filter((a) => a.downloadUrl);
       if (withLinks.length) {
         doc.moveDown(0.2);
@@ -184,7 +214,6 @@ export function buildInspectionPdf(payload: PdfPayload) {
       }
 
       doc.moveDown(0.6);
-      // separator
       ensureSpace(doc, 20);
       doc
         .moveTo(doc.page.margins.left, doc.y)

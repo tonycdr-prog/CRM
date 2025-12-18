@@ -54,6 +54,7 @@ export const ROUTES = {
   ADMIN_ENTITY_EDIT: "/admin/entities/:id",
   ADMIN_TEMPLATES: "/admin/templates",
   ADMIN_TEMPLATE_EDIT: "/admin/templates/:id",
+  ADMIN_USAGE: "/admin/usage",
 } as const;
 
 /** Build a wouter-compatible path from a pattern like "/field-companion/:id/forms". */
