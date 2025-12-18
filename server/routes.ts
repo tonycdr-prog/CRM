@@ -4678,16 +4678,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           rowId: inspectionRowAttachments.rowId,
           originalName: files.originalName,
+          mimeType: files.mimeType,
+          path: files.path,
         })
         .from(inspectionRowAttachments)
         .innerJoin(files, eq(files.id, inspectionRowAttachments.fileId))
         .where(and(eq(inspectionRowAttachments.organizationId, organizationId), eq(inspectionRowAttachments.inspectionId, inspectionId)))
         .orderBy(desc(inspectionRowAttachments.createdAt));
 
-      const attachmentsByRowId = new Map<string, Array<{ originalName: string }>>();
+      const attachmentsByRowId = new Map<string, Array<{ originalName: string; mimeType?: string | null; localPath?: string | null }>>();
       for (const a of atts) {
         const list = attachmentsByRowId.get(a.rowId) ?? [];
-        list.push({ originalName: a.originalName });
+        list.push({ originalName: a.originalName, mimeType: a.mimeType, localPath: a.path });
         attachmentsByRowId.set(a.rowId, list);
       }
 
