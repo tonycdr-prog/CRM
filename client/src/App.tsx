@@ -1,5 +1,7 @@
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { useMe } from "@/hooks/useMe";
+import { setFlash } from "@/lib/flash";
+import { FlashToaster } from "@/components/FlashToaster";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -166,7 +168,17 @@ function LayoutRoutes() {
           </>
         ) : (
           <>
-            <Route path="/admin/:rest*" component={() => <Redirect to={ROUTES.DASHBOARD} />} />
+            <Route
+              path="/admin/:rest*"
+              component={() => {
+                setFlash({
+                  title: "Forbidden",
+                  description: "Admin access only.",
+                  variant: "destructive",
+                });
+                return <Redirect to={ROUTES.DASHBOARD} />;
+              }}
+            />
           </>
         )}
 
@@ -268,6 +280,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ViewModeProvider>
         <TooltipProvider>
+          <FlashToaster />
           <Toaster />
           <Router />
         </TooltipProvider>
