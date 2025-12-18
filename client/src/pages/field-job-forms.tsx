@@ -364,10 +364,11 @@ export default function FieldJobForms() {
                   onChange={onChangeResponses}
                 />
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Button
                     onClick={completeForm}
                     disabled={saving || !!inspection.completedAt}
+                    data-testid="button-complete-form"
                   >
                     {inspection.completedAt ? "Completed" : "Complete Form"}
                   </Button>
@@ -375,6 +376,17 @@ export default function FieldJobForms() {
                     <span className="text-sm text-muted-foreground">
                       Locked (completed)
                     </span>
+                  )}
+                  {inspection.completedAt && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        window.open(`/api/inspections/${encodeURIComponent(inspection.id)}/pdf`, "_blank");
+                      }}
+                      data-testid="button-download-pdf"
+                    >
+                      Download PDF
+                    </Button>
                   )}
                 </div>
               </CardContent>
