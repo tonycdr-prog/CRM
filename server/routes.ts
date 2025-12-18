@@ -3748,6 +3748,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─────────────────────────────────────────────
+  // ADMIN: SYSTEM TYPES (for template mapping)
+  // ─────────────────────────────────────────────
+  apiRouter.get("/admin/system-types", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const list = await db
+      .select({
+        id: systemTypes.id,
+        code: systemTypes.code,
+        name: systemTypes.name,
+      })
+      .from(systemTypes)
+      .where(eq(systemTypes.organizationId, auth.organizationId))
+      .orderBy(systemTypes.name);
+
+    res.json({ systemTypes: list });
+  });
+
+  // ─────────────────────────────────────────────
   // FORM INSPECTION API (DB-backed)
   // ─────────────────────────────────────────────
 
