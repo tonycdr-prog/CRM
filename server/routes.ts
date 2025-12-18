@@ -4001,6 +4001,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .returning({ id: formTemplates.id });
 
     if (!deleted.length) return res.status(404).json({ message: "Not found" });
+
+    await logAudit(db, {
+      organizationId: auth.organizationId,
+      actorUserId: auth.userId,
+      action: "template.deleted",
+      entityType: "template",
+      entityId: templateId,
+      metadata: {},
+    });
+
     res.json({ ok: true });
   });
 
