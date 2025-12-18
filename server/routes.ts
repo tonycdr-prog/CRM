@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
-import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses, files, inspectionRowAttachments, auditEvents } from "@shared/schema";
+import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses, files, inspectionRowAttachments, auditEvents, serverErrors } from "@shared/schema";
 import { logAudit } from "./lib/audit";
 import multer from "multer";
 import { buildInspectionPdf } from "./pdf/inspectionPdf";
@@ -5262,6 +5262,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     res.json({ ok: true, plan });
+  });
+
+  // GET /api/admin/errors - view recent server errors (owner/admin)
+  apiRouter.get("/admin/errors", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const rows = await db
+      .select({
+        id: serverErrors.id,
+        organizationId: serverErrors.organizationId,
+        userId: serverErrors.userId,
+        requestId: serverErrors.requestId,
+        method: serverErrors.method,
+        path: serverErrors.path,
+        status: serverErrors.status,
+        message: serverErrors.message,
+        createdAt: serverErrors.createdAt,
+      })
+      .from(serverErrors)
+      .where(eq(serverErrors.organizationId, auth.organizationId))
+      .orderBy(desc(serverErrors.createdAt))
+      .limit(200);
+
+    res.json({ errors: rows });
+  });
+
+  // ============================================
+  // HEALTHCHECK (NO AUTH)
+  // ============================================
+  app.get("/api/health", async (req, res) => {
+    const started = Date.now();
+    let dbOk = false;
+
+    try {
+      await db.execute(sql`select 1`);
+      dbOk = true;
+    } catch {
+      dbOk = false;
+    }
+
+    res.status(dbOk ? 200 : 503).json({
+      ok: dbOk,
+      dbOk,
+      uptimeSeconds: Math.floor(process.uptime()),
+      time: new Date().toISOString(),
+      durationMs: Date.now() - started,
+    });
   });
 
   // ============================================

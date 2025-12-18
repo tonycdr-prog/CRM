@@ -1,0 +1,259 @@
+/*
+PHASE 8C — OBSERVABILITY (Healthcheck + Error Capture + Slow Request Logging)
+ALL IN ONE COPYABLE BLOCK
+
+WHAT YOU GET
+1) GET /api/health — returns { ok, dbOk, uptime, time }
+2) DB-backed server error capture (optional but recommended)
+3) Global error handler:
+   - consistent JSON response
+   - includes requestId
+   - logs safely
+4) Slow request logging (>1500ms default)
+5) Admin endpoint:
+   - GET /api/admin/errors (owner/admin) to view last 200 errors
+
+ASSUMES
+- Express server
+- You already have requestId middleware from Phase 8A (req.requestId, X-Request-ID)
+- You have requireUserOrgId(req) and requireOrgRole(req, ["owner","admin"])
+- Drizzle db instance is `db`
+- Your API router is `apiRouter`
+
+──────────────────────────────────────────────────────────────
+A) shared/schema.ts — ADD serverErrors table
+──────────────────────────────────────────────────────────────
+Add this table and run migration.
+*/
+
+export const serverErrors = pgTable(
+  "server_errors",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id"),
+    userId: uuid("user_id"),
+
+    requestId: text("request_id"),
+    method: text("method"),
+    path: text("path"),
+    status: integer("status"),
+    message: text("message"),
+    stack: text("stack"),
+
+    metadata: jsonb("metadata").$type<Record<string, any>>().default({}).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    createdIdx: index("server_errors_created_idx").on(t.createdAt),
+    orgIdx: index("server_errors_org_idx").on(t.organizationId, t.createdAt),
+  })
+);
+
+////////////////////////////////////////////////////////////////////////////////
+// B) server/observability.ts (NEW) — slow request + error middleware helpers
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+Create: server/observability.ts
+*/
+
+import type { Request, Response, NextFunction, RequestHandler, ErrorRequestHandler } from "express";
+import { serverErrors } from "../shared/schema";
+
+export function slowRequestLogger(thresholdMs = 1500): RequestHandler {
+  return (req, res, next) => {
+    const start = Date.now();
+    res.on("finish", () => {
+      const ms = Date.now() - start;
+      if (ms >= thresholdMs) {
+        const rid = (req as any).requestId || req.headers["x-request-id"] || "-";
+        console.warn(`[SLOW] [${rid}] ${res.statusCode} ${req.method} ${req.originalUrl} ${ms}ms`);
+      }
+    });
+    next();
+  };
+}
+
+function safeString(x: any, max = 2000) {
+  const s = typeof x === "string" ? x : JSON.stringify(x);
+  return s.length > max ? s.slice(0, max) + "…" : s;
+}
+
+export function createErrorHandler(db: any): ErrorRequestHandler {
+  return async (err: any, req: Request, res: Response, next: NextFunction) => {
+    // If headers already sent, delegate to default express handler
+    if (res.headersSent) return next(err);
+
+    const requestId = (req as any).requestId || (req.headers["x-request-id"] as string) || null;
+    const status = Number(err?.status || err?.statusCode || 500);
+    const message = err?.message || "Internal Server Error";
+
+    // Best-effort org/user extraction (non-throwing)
+    let organizationId: string | null = null;
+    let userId: string | null = null;
+    try {
+      userId = (req as any).user?.claims?.sub ?? null;
+    } catch {}
+    try {
+      // If you attach orgId anywhere on req, prefer it. Otherwise skip.
+      organizationId = (req as any).organizationId ?? null;
+    } catch {}
+
+    // Console log (safe)
+    const rid = requestId || "-";
+    console.error(`[ERR] [${rid}] ${status} ${req.method} ${req.originalUrl} :: ${message}`);
+
+    // Persist only server errors (>=500) and selected 4xx (optional)
+    try {
+      if (status >= 500) {
+        await db.insert(serverErrors).values({
+          organizationId: organizationId ?? null,
+          userId: userId ?? null,
+          requestId,
+          method: req.method,
+          path: req.originalUrl,
+          status,
+          message: safeString(message, 2000),
+          stack: safeString(err?.stack ?? "", 8000),
+          metadata: {
+            ip: req.headers["x-forwarded-for"] || (req as any).ip || null,
+            ua: req.headers["user-agent"] || null,
+          },
+        });
+      }
+    } catch {
+      // swallow — never block response
+    }
+
+    // Consistent JSON error response
+    res.status(status).json({
+      message,
+      requestId,
+    });
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// C) server/routes.ts — ADD /api/health + /api/admin/errors
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+Add imports near top of server/routes.ts:
+import { serverErrors } from "../shared/schema";
+(If already imported elsewhere, ignore.)
+*/
+
+// HEALTHCHECK (NO AUTH)
+apiRouter.get("/health", async (req, res) => {
+  const started = Date.now();
+  let dbOk = false;
+
+  try {
+    // lightweight DB ping
+    await db.execute(sql`select 1`);
+    dbOk = true;
+  } catch {
+    dbOk = false;
+  }
+
+  res.status(dbOk ? 200 : 503).json({
+    ok: dbOk,
+    dbOk,
+    uptimeSeconds: Math.floor(process.uptime()),
+    time: new Date().toISOString(),
+    durationMs: Date.now() - started,
+  });
+});
+
+// ADMIN: VIEW RECENT SERVER ERRORS (AUTH)
+apiRouter.get("/admin/errors", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const rows = await db
+    .select({
+      id: serverErrors.id,
+      organizationId: serverErrors.organizationId,
+      userId: serverErrors.userId,
+      requestId: serverErrors.requestId,
+      method: serverErrors.method,
+      path: serverErrors.path,
+      status: serverErrors.status,
+      message: serverErrors.message,
+      createdAt: serverErrors.createdAt,
+    })
+    .from(serverErrors)
+    .where(eq(serverErrors.organizationId, auth.organizationId))
+    .orderBy(desc(serverErrors.createdAt))
+    .limit(200);
+
+  res.json({ errors: rows });
+});
+
+////////////////////////////////////////////////////////////////////////////////
+// D) server entry file — WIRE MIDDLEWARES (AFTER security, BEFORE routes)
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+In your server entry file (e.g. server/index.ts):
+
+import { slowRequestLogger, createErrorHandler } from "./observability";
+
+Add:
+app.use(slowRequestLogger(1500));
+
+Mount routes as usual:
+app.use("/api", apiRouter);
+
+Then ADD error handler LAST:
+app.use(createErrorHandler(db));
+
+If you already have an error handler from 8A (multer), merge logic:
+- keep multer-specific 415/413 handling
+- then fall through to createErrorHandler(db)
+
+Example merge:
+
+app.use((err, req, res, next) => {
+  if (err?.message?.includes("Unsupported file type")) {
+    return res.status(415).json({ message: err.message, requestId: req.requestId });
+  }
+  if (err?.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ message: "File too large", requestId: req.requestId });
+  }
+  return next(err);
+});
+app.use(createErrorHandler(db));
+
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// E) OPTIONAL: expose orgId to error handler (nice to have)
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+If you want organizationId captured reliably, add a tiny middleware right after auth:
+app.use((req,res,next)=>{
+  try { req.organizationId = req.user?.organizationId ?? null; } catch {}
+  next();
+});
+But in your app, orgId is stored in DB not session; so skip unless you already attach it.
+Errors will still capture requestId and path.
+
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// F) TEST
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+1) GET /api/health — should return 200 with dbOk true
+2) Force an error in any endpoint (throw new Error("boom")):
+   - client receives JSON { message, requestId }
+   - console logs include [ERR] with same requestId
+   - /api/admin/errors shows the new error row (only for 500s)
+
+NEXT PHASE RECOMMENDATION:
+PHASE 8D — ORG EXPORT + BACKUP PATH (trust + retention)
+Say “8D”.
+*/

@@ -118,6 +118,30 @@ export const organizationUsage = pgTable("organization_usage", {
 
 export type OrganizationUsage = typeof organizationUsage.$inferSelect;
 
+// Server errors table for observability
+export const serverErrors = pgTable(
+  "server_errors",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organizationId: varchar("organization_id"),
+    userId: varchar("user_id"),
+    requestId: text("request_id"),
+    method: text("method"),
+    path: text("path"),
+    status: integer("status"),
+    message: text("message"),
+    stack: text("stack"),
+    metadata: jsonb("metadata").$type<Record<string, any>>().default({}).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("server_errors_created_idx").on(t.createdAt),
+    index("server_errors_org_idx").on(t.organizationId, t.createdAt),
+  ]
+);
+
+export type ServerError = typeof serverErrors.$inferSelect;
+
 // User storage table - supports both Replit Auth and custom auth
 // User roles for permission-based access
 export const USER_ROLES = ["admin", "office_manager", "field_engineer"] as const;

@@ -11,6 +11,8 @@ import {
   uploadLimiter,
   pdfLimiter,
 } from "./security";
+import { slowRequestLogger, createErrorHandler } from "./observability";
+import { db } from "./db";
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -20,6 +22,7 @@ app.use(requestId);
 app.use(requestLogger);
 app.use(securityHeaders);
 app.use(generalLimiter);
+app.use(slowRequestLogger(1500));
 
 app.use("/api/auth", authLimiter);
 app.use("/api/login", authLimiter);
@@ -74,28 +77,22 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     const errMsg = (err as Error)?.message || "";
     const errCode = (err as any)?.code || "";
+    const requestIdVal = (req as any).requestId;
 
     if (errMsg.includes("Unsupported file type")) {
-      return res.status(415).json({ message: errMsg });
+      return res.status(415).json({ message: errMsg, requestId: requestIdVal });
     }
     if (errCode === "LIMIT_FILE_SIZE") {
-      return res.status(413).json({ message: "File too large" });
+      return res.status(413).json({ message: "File too large", requestId: requestIdVal });
     }
 
-    console.error("Unhandled error:", err);
-    
-    const status = (err as { status?: number; statusCode?: number })?.status 
-      || (err as { status?: number; statusCode?: number })?.statusCode 
-      || 500;
-    const message = errMsg || "Internal Server Error";
-
-    if (!res.headersSent) {
-      res.status(status).json({ error: message });
-    }
+    return next(err);
   });
+
+  app.use(createErrorHandler(db));
 
   if (app.get("env") === "development") {
     await setupVite(app, server);
