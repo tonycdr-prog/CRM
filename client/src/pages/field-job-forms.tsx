@@ -15,6 +15,7 @@ import DynamicFormRenderer, {
   ResponseDraft,
   SystemTypeDTO,
   TemplateListItemDTO,
+  RowAttachmentDTO,
 } from "@/components/DynamicFormRenderer";
 
 type JobFormsDTO = {
@@ -51,6 +52,7 @@ export default function FieldJobForms() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
+  const [attachmentsByRowId, setAttachmentsByRowId] = useState<Record<string, RowAttachmentDTO[]>>({});
 
   const storageKey = useMemo(() => {
     if (!jobId) return "";
@@ -128,6 +130,35 @@ export default function FieldJobForms() {
     const data: InspectionDTO = await getRes.json();
     setInspection(data);
 
+    // load attachments for this inspection
+    try {
+      const aRes = await fetch(`/api/inspections/${encodeURIComponent(inspectionId)}/attachments`, {
+        credentials: "include",
+      });
+      if (aRes.ok) {
+        const aData = await aRes.json();
+        const by: Record<string, RowAttachmentDTO[]> = {};
+        for (const a of (aData.attachments ?? []) as any[]) {
+          const rowId = a.rowId;
+          if (!by[rowId]) by[rowId] = [];
+          by[rowId].push({
+            attachmentId: a.attachmentId,
+            rowId: a.rowId,
+            fileId: a.fileId,
+            originalName: a.originalName,
+            mimeType: a.mimeType,
+            sizeBytes: a.sizeBytes,
+            createdAt: a.createdAt,
+          });
+        }
+        setAttachmentsByRowId(by);
+      } else {
+        setAttachmentsByRowId({});
+      }
+    } catch {
+      setAttachmentsByRowId({});
+    }
+
     // localStorage fallback draft merge (only if not completed)
     try {
       const raw = localStorage.getItem(storageKey);
@@ -176,6 +207,44 @@ export default function FieldJobForms() {
     if (inspection.completedAt) return;
     setInspection({ ...inspection, responses: drafts });
     debouncedSave(inspection.id, drafts);
+  }
+
+  async function uploadEvidence(rowId: string, file: File) {
+    if (!inspection) return;
+    setError("");
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+
+      const res = await fetch(
+        `/api/inspections/${encodeURIComponent(inspection.id)}/rows/${encodeURIComponent(rowId)}/attachments`,
+        { method: "POST", credentials: "include", body: fd }
+      );
+
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      const data = await res.json();
+      const a = data.attachment as any;
+
+      setAttachmentsByRowId((prev) => {
+        const next = { ...prev };
+        const list = next[rowId] ? [...next[rowId]] : [];
+        list.unshift({
+          attachmentId: a.id,
+          rowId,
+          fileId: a.fileId,
+          originalName: a.originalName,
+          mimeType: a.mimeType,
+          sizeBytes: a.sizeBytes,
+        });
+        next[rowId] = list;
+        return next;
+      });
+    } catch (e: any) {
+      setError(e?.message ?? "Upload failed");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function completeForm() {
@@ -290,6 +359,8 @@ export default function FieldJobForms() {
                   template={inspection.template}
                   responses={inspection.responses}
                   readOnly={!!inspection.completedAt}
+                  attachmentsByRowId={attachmentsByRowId}
+                  onUpload={uploadEvidence}
                   onChange={onChangeResponses}
                 />
 
