@@ -46,6 +46,21 @@ function coerceValueToColumns(value: any) {
   };
 }
 
+async function requireJobInOrg(jobId: string, organizationId: string) {
+  const job = await db
+    .select({ id: jobs.id, userOrg: users.organizationId })
+    .from(jobs)
+    .innerJoin(users, eq(users.id, jobs.userId))
+    .where(eq(jobs.id, jobId))
+    .limit(1);
+
+  if (!job.length) return { ok: false as const, status: 404 as const, message: "Job not found" };
+  if (job[0].userOrg !== organizationId) {
+    return { ok: false as const, status: 403 as const, message: "Forbidden" };
+  }
+  return { ok: true as const };
+}
+
 // ============================================
 // FORM INSPECTION API DTOs (DB-backed)
 // ============================================
@@ -3408,20 +3423,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { organizationId } = await requireUserOrgId(req);
 
-      // Verify job exists and belongs to org via userId -> user.organizationId
-      const jobId = req.params.jobId;
-      const job = await storage.getJob(jobId);
-      if (!job) return res.status(404).json({ message: "Job not found" });
+      const jobId = String(req.params.jobId || "");
+      if (!jobId) return res.status(400).json({ message: "Invalid jobId" });
 
-      // Jobs don't have organizationId directly, check via userId
-      if (job.userId) {
-        const jobOwner = await storage.getUser(job.userId);
-        if (!jobOwner || jobOwner.organizationId !== organizationId) {
-          return res.status(404).json({ message: "Job not found" });
-        }
-      } else {
-        return res.status(404).json({ message: "Job not found" });
-      }
+      // Verify job exists and belongs to org via userId -> user.organizationId
+      const access = await requireJobInOrg(jobId, organizationId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
 
       // Templates mapped to system types for this org (only active templates)
       const mapped = await db
@@ -3459,8 +3466,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { organizationId, userId } = await requireUserOrgId(req);
 
       const { jobId, systemTypeCode, templateId } = req.body ?? {};
-      if (!jobId) return res.status(400).json({ message: "Invalid jobId" });
+      const parsedJobId = String(jobId || "");
+      if (!parsedJobId) return res.status(400).json({ message: "Invalid jobId" });
       if (!systemTypeCode || !templateId) return res.status(400).json({ message: "systemTypeCode and templateId are required" });
+
+      // Verify job exists and belongs to org
+      const access = await requireJobInOrg(parsedJobId, organizationId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
 
       // Ensure template belongs to org
       const tpl = await db
@@ -3487,7 +3499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(inspectionInstances.organizationId, organizationId),
-            eq(inspectionInstances.jobId, String(jobId)),
+            eq(inspectionInstances.jobId, parsedJobId),
             eq(inspectionInstances.templateId, templateId),
             eq(inspectionInstances.systemTypeId, sys[0].id),
             isNull(inspectionInstances.completedAt)
@@ -3501,7 +3513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .insert(inspectionInstances)
         .values({
           organizationId,
-          jobId: String(jobId),
+          jobId: parsedJobId,
           systemTypeId: sys[0].id,
           templateId,
           createdByUserId: userId,

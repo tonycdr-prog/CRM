@@ -1,0 +1,75 @@
+Excellent — that’s Phase 2 done properly.
+
+NEXT: PHASE 2.1 “JOB OWNERSHIP + TENANT SAFETY” PATCH
+Right now jobs don’t have organizationId, so we must validate access via:
+jobs.userId -> users.organizationId
+
+Please implement this small hardening patch so /api/jobs/:jobId/forms and POST /api/inspections cannot be called cross-tenant.
+
+──────────────────────────────────────────────────────────────
+1) server/routes.ts
+ACTION: ADD helper + update 2 endpoints
+──────────────────────────────────────────────────────────────
+
+A) Add this helper near requireUserOrgId:
+
+async function requireJobInOrg(jobId: string, organizationId: string) {
+  const job = await db
+    .select({ id: jobs.id, userOrg: users.organizationId })
+    .from(jobs)
+    .innerJoin(users, eq(users.id, (jobs as any).userId))
+    .where(eq(jobs.id, jobId as any))
+    .limit(1);
+
+  if (!job.length) return { ok: false, status: 404 as const, message: "Job not found" };
+  if (job[0].userOrg !== organizationId) {
+    return { ok: false, status: 403 as const, message: "Forbidden" };
+  }
+  return { ok: true as const };
+}
+
+NOTE:
+- If your jobs.userId column is named differently, replace (jobs as any).userId with jobs.userId.
+
+B) Update GET /api/jobs/:jobId/forms
+At the top of the handler after jobId parsing, add:
+
+const access = await requireJobInOrg(jobId, organizationId);
+if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+C) Update POST /api/inspections
+After parsedJobId is created, add:
+
+const access = await requireJobInOrg(parsedJobId, organizationId);
+if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+──────────────────────────────────────────────────────────────
+PHASE 2.2 “UI VERIFICATION” TEST SCRIPT
+──────────────────────────────────────────────────────────────
+Please run these manual tests now:
+
+1) Engineer mode → open any Job → Forms
+   - System dropdown shows MSHEV / Pressurisation / nSHEV (from DB)
+   - Templates list changes with system selection:
+     - MSHEV → Damper Testing
+     - Pressurisation → Pressure Differential Testing
+     - nSHEV → none (for now)
+
+2) Open Damper Testing → enter values → wait “Saving…” → refresh page
+   - Values persist (loaded from DB via latest per row)
+
+3) Complete form → refresh → form is locked read-only
+   - Try editing → UI should not send saves
+   - If it does send, server must reply 409 and UI should show error
+
+4) Security sanity:
+   - Attempt to open /api/jobs/<some other org’s jobId>/forms
+   - Expect 403 (Forbidden) or 404 (Not found)
+
+Once those pass, PHASE 3 is:
+- Back Office “Entities” CRUD UI
+- Back Office “Forms” builder (drag/drop entity library)
+- Evidence/photo upload + attachment storage
+- PDF export of completed inspection
+
+Reply with the result of tests (pass/fail and any error messages).
