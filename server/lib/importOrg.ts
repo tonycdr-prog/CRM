@@ -58,7 +58,12 @@ export async function dryRunImport(db: any, source: any) {
 
   if (summary.counts.jobs > 0) {
     summary.warnings.push(
-      "Jobs are present in export; server import currently skips jobs unless includeJobs=true and jobs are org-scoped."
+      "Jobs are present in export but not imported via this endpoint. Imported inspections will have jobId set to null."
+    );
+  }
+  if (summary.counts.inspections > 0) {
+    summary.warnings.push(
+      "Inspections will be imported with jobId=null; link them to jobs manually after import if needed."
     );
   }
   if (summary.counts.files > 0) {
@@ -84,7 +89,7 @@ export async function applyImport(
   const manifest = m?.manifest ?? m;
 
   const sourceOrgId = manifest?.organizationId ?? null;
-  const targetOrgId = parsed.targetOrgId ?? newUuid();
+  const targetOrgId = parsed.targetOrgId ?? args.auth.organizationId;
 
   const existingPlan = await db
     .select()
@@ -219,7 +224,7 @@ export async function applyImport(
     await db.insert(inspectionInstances).values({
       id: newId,
       organizationId: targetOrgId,
-      jobId: insp.jobId,
+      jobId: null,
       templateId: mapTemplate.get(insp.templateId) ?? null,
       systemTypeId: insp.systemTypeId,
       createdByUserId: args.auth.userId,
