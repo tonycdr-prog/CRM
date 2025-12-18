@@ -1,0 +1,66 @@
+// ─────────────────────────────────────────────
+// AUDIT: Timeline endpoints (AUTH)
+// ─────────────────────────────────────────────
+
+// GET /api/jobs/:jobId/audit
+apiRouter.get("/jobs/:jobId/audit", async (req, res) => {
+  const { organizationId } = await requireUserOrgId(req);
+  const jobId = String(req.params.jobId || "");
+  if (!jobId) return res.status(400).json({ message: "Invalid jobId" });
+
+  const access = await requireJobInOrg(jobId, organizationId);
+  if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+  const rows = await db
+    .select({
+      id: auditEvents.id,
+      action: auditEvents.action,
+      entityType: auditEvents.entityType,
+      entityId: auditEvents.entityId,
+      metadata: auditEvents.metadata,
+      createdAt: auditEvents.createdAt,
+      actorUserId: auditEvents.actorUserId,
+      inspectionId: auditEvents.inspectionId,
+    })
+    .from(auditEvents)
+    .where(and(eq(auditEvents.organizationId, organizationId), eq(auditEvents.jobId, jobId)))
+    .orderBy(desc(auditEvents.createdAt))
+    .limit(200);
+
+  res.json({ events: rows });
+});
+
+// GET /api/inspections/:id/audit
+apiRouter.get("/inspections/:id/audit", async (req, res) => {
+  const { organizationId } = await requireUserOrgId(req);
+  const inspectionId = String(req.params.id || "");
+  if (!inspectionId) return res.status(400).json({ message: "Invalid inspection id" });
+
+  const insp = await db
+    .select({ id: inspectionInstances.id, jobId: inspectionInstances.jobId })
+    .from(inspectionInstances)
+    .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+    .limit(1);
+
+  if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+
+  const access = await requireJobInOrg(String(insp[0].jobId), organizationId);
+  if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+  const rows = await db
+    .select({
+      id: auditEvents.id,
+      action: auditEvents.action,
+      entityType: auditEvents.entityType,
+      entityId: auditEvents.entityId,
+      metadata: auditEvents.metadata,
+      createdAt: auditEvents.createdAt,
+      actorUserId: auditEvents.actorUserId,
+    })
+    .from(auditEvents)
+    .where(and(eq(auditEvents.organizationId, organizationId), eq(auditEvents.inspectionId, inspectionId)))
+    .orderBy(desc(auditEvents.createdAt))
+    .limit(200);
+
+  res.json({ events: rows });
+});
