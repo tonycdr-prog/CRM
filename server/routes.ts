@@ -19,6 +19,7 @@ import { uploadLimiter, pdfLimiter } from "./security";
 import { getOrgPlanAndUsage, enforce } from "./lib/usage";
 import { organizationPlans, organizationUsage, backgroundJobs } from "@shared/schema";
 import { streamOrgExportZip } from "./lib/zipExport";
+import { JOB_OUTPUT_ROOT } from "./lib/jobsQueue";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -5610,9 +5611,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (rows[0].status !== "succeeded") return res.status(409).json({ message: "Job not ready" });
 
     const out = rows[0].output as any;
-    const filePath = String(out?.filePath || "");
-    const fileName = String(out?.fileName || `export_${jobId}.zip`);
-    if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ message: "File missing" });
+    const fileName = String(out?.fileName || "");
+    if (!fileName || !/^export_[a-f0-9-]+_[a-f0-9-]+\.zip$/.test(fileName)) {
+      return res.status(404).json({ message: "File missing" });
+    }
+    const filePath = path.join(JOB_OUTPUT_ROOT, fileName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ message: "File missing" });
 
     res.setHeader("Content-Type", "application/zip");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);

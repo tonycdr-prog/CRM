@@ -57,9 +57,24 @@ async function writeZipToFile(db: any, orgId: string, outPath: string) {
 
 export async function startJobsWorker(db: any, opts?: { pollMs?: number }) {
   const pollMs = opts?.pollMs ?? 2500;
+  let running = false;
 
   async function tick() {
-    const job = await db
+    if (running) return;
+    running = true;
+    try {
+      await processTick(db);
+    } finally {
+      running = false;
+    }
+  }
+
+  setInterval(tick, pollMs);
+  console.log(`[jobs-worker] Started with ${pollMs}ms poll interval`);
+}
+
+async function processTick(db: any) {
+  const job = await db
       .select()
       .from(backgroundJobs)
       .where(eq(backgroundJobs.status, "queued"))
@@ -97,7 +112,7 @@ export async function startJobsWorker(db: any, opts?: { pollMs?: number }) {
             finishedAt: new Date(),
             updatedAt: new Date(),
             progress: 100,
-            output: { filePath: outPath, fileName: outName, sizeBytes: stat.size },
+            output: { fileName: outName, sizeBytes: stat.size },
           })
           .where(eq(backgroundJobs.id, jobId));
       } else {
@@ -124,11 +139,4 @@ export async function startJobsWorker(db: any, opts?: { pollMs?: number }) {
         })
         .where(eq(backgroundJobs.id, jobId));
     }
-  }
-
-  setInterval(() => {
-    tick().catch((e) => console.error("[worker tick error]", e));
-  }, pollMs);
-
-  console.log(`[jobs worker] Started, polling every ${pollMs}ms`);
 }
