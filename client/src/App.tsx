@@ -170,8 +170,8 @@ function EngineerShell() {
       </header>
       <div className="flex-1 overflow-hidden">
         <Switch>
-          <Route path={`${ROUTES.FIELD_COMPANION}/:id`} component={FieldJobDetail} />
-          <Route path={ROUTES.FIELD_COMPANION} component={FieldCompanion} />
+          <Route path={ROUTES.FIELD_COMPANION_JOB} component={FieldJobDetail} />
+          <Route path={ROUTES.FIELD_COMPANION_HOME} component={FieldCompanion} />
           <Route path={ROUTES.FIELD_TESTING} component={FieldTesting} />
           <Route component={FieldCompanion} />
         </Switch>

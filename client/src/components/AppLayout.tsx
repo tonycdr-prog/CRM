@@ -106,7 +106,7 @@ const menuSections: MenuSection[] = [
     items: [
       { title: "Dashboard", url: ROUTES.DASHBOARD, icon: LayoutDashboard },
       { title: "Schedule", url: ROUTES.SCHEDULE, icon: Calendar },
-      { title: "Field Companion", url: ROUTES.FIELD_COMPANION, icon: Smartphone, isCompanion: true },
+      { title: "Field Companion", url: ROUTES.FIELD_COMPANION_HOME, icon: Smartphone, isCompanion: true },
       { title: "Field Testing", url: ROUTES.FIELD_TESTING, icon: Wind, isCompanion: true },
       { title: "Visit Types", url: ROUTES.VISIT_TYPES, icon: ClipboardList },
       { title: "Quality Checklists", url: ROUTES.QUALITY_CHECKLISTS, icon: FileCheck },
@@ -310,7 +310,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const handleToggleChange = () => {
     if (!isEngineerMode) {
-      enterCompanionMode(ROUTES.FIELD_COMPANION);
+      enterCompanionMode(ROUTES.FIELD_COMPANION_HOME);
     } else {
       enterOfficeMode(ROUTES.DASHBOARD);
     }

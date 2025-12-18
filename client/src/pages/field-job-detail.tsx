@@ -109,7 +109,7 @@ interface JobWithSiteDetail extends DbJob {
 }
 
 export default function FieldJobDetail() {
-  const [, params] = useRoute(`${ROUTES.FIELD_COMPANION}/:id`);
+  const [, params] = useRoute(ROUTES.FIELD_COMPANION_JOB);
   const [, setLocation] = useLocation();
   const jobId = params?.id;
   const { toast } = useToast();
@@ -675,7 +675,7 @@ export default function FieldJobDetail() {
           }
           setShowCompleteDialog(false);
           toast({ title: "Job completed!" });
-          setLocation(ROUTES.FIELD_COMPANION);
+          setLocation(ROUTES.FIELD_COMPANION_HOME);
         },
       }
     );
@@ -693,7 +693,7 @@ export default function FieldJobDetail() {
         onSuccess: () => {
           setShowNoAccessDialog(false);
           toast({ title: "No access recorded" });
-          setLocation(ROUTES.FIELD_COMPANION);
+          setLocation(ROUTES.FIELD_COMPANION_HOME);
         },
       }
     );
@@ -782,7 +782,7 @@ export default function FieldJobDetail() {
       <div className="flex flex-col items-center justify-center h-full gap-4 p-4">
         <AlertTriangle className="h-12 w-12 text-muted-foreground" />
         <p className="text-muted-foreground">Job not found</p>
-        <Link href={ROUTES.FIELD_COMPANION}>
+        <Link href={ROUTES.FIELD_COMPANION_HOME}>
           <Button variant="outline">Back to Jobs</Button>
         </Link>
       </div>
@@ -794,7 +794,7 @@ export default function FieldJobDetail() {
       {/* Header */}
       <div className="bg-background border-b p-4">
         <div className="flex items-start gap-3">
-          <Link href={ROUTES.FIELD_COMPANION}>
+          <Link href={ROUTES.FIELD_COMPANION_HOME}>
             <Button variant="ghost" size="icon" className="shrink-0" data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
             </Button>

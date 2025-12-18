@@ -1,7 +1,8 @@
 export const ROUTES = {
   DASHBOARD: "/dashboard",
-  FIELD_COMPANION: "/field-companion",
-  FIELD_JOB_DETAIL: "/field-companion/:id",
+  FIELD_COMPANION_HOME: "/field-companion",
+  FIELD_COMPANION_JOB: "/field-companion/:id",
+  FIELD_COMPANION_JOB_FORMS: "/field-companion/:id/forms",
   FIELD_TESTING: "/test",
   SCHEDULE: "/schedule",
   CLIENTS: "/clients",
@@ -50,11 +51,20 @@ export const ROUTES = {
   DOWNLOADS: "/downloads",
 } as const;
 
-export function isCompanionPath(pathname: string): boolean {
-  const companionRoutes = [ROUTES.FIELD_COMPANION, ROUTES.FIELD_TESTING];
-  
-  return companionRoutes.some(route => 
-    pathname === route || pathname.startsWith(route + "/")
+/** Build a wouter-compatible path from a pattern like "/field-companion/:id/forms". */
+export function buildPath(
+  pattern: string,
+  params: Record<string, string | number>
+) {
+  return pattern.replace(/:([A-Za-z0-9_]+)/g, (_, key) =>
+    encodeURIComponent(String(params[key]))
+  );
+}
+
+export function isCompanionPath(pathname: string) {
+  return (
+    pathname === ROUTES.FIELD_COMPANION_HOME ||
+    pathname.startsWith("/field-companion")
   );
 }
 
