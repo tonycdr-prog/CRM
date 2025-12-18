@@ -69,6 +69,7 @@ import {
   Wallet,
   HardHat,
   FolderKanban,
+  FileStack,
   ScrollText,
   Settings,
   Link2,
@@ -214,6 +215,7 @@ const menuSections: MenuSection[] = [
     icon: Settings,
     items: [
       { title: "Entities", url: ROUTES.ADMIN_ENTITIES, icon: FolderKanban },
+      { title: "Templates", url: ROUTES.ADMIN_TEMPLATES, icon: FileStack },
     ],
   },
 ];

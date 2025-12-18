@@ -73,6 +73,8 @@ import ClientPortal from "@/pages/client-portal";
 import Settings from "@/pages/settings";
 import AdminEntitiesPage from "@/pages/admin/entities";
 import AdminEntityEditPage from "@/pages/admin/entity-edit";
+import AdminTemplatesPage from "@/pages/admin/templates";
+import AdminTemplateEditPage from "@/pages/admin/template-edit";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -150,6 +152,8 @@ function LayoutRoutes() {
         <Route path="/settings" component={Settings} />
         <Route path={ROUTES.ADMIN_ENTITY_EDIT} component={AdminEntityEditPage} />
         <Route path={ROUTES.ADMIN_ENTITIES} component={AdminEntitiesPage} />
+        <Route path={ROUTES.ADMIN_TEMPLATE_EDIT} component={AdminTemplateEditPage} />
+        <Route path={ROUTES.ADMIN_TEMPLATES} component={AdminTemplatesPage} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>
