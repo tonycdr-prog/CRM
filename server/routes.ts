@@ -3871,6 +3871,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ ok: true });
   });
 
+  // GET /api/admin/templates/:id/system-types
+  apiRouter.get("/admin/templates/:id/system-types", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const templateId = String(req.params.id || "");
+    if (!templateId) return res.status(400).json({ message: "Invalid id" });
+
+    const mappings = await db
+      .select({ systemTypeId: formTemplateSystemTypes.systemTypeId })
+      .from(formTemplateSystemTypes)
+      .where(and(eq(formTemplateSystemTypes.templateId, templateId), eq(formTemplateSystemTypes.organizationId, auth.organizationId)));
+
+    res.json({ systemTypeIds: mappings.map((m) => m.systemTypeId) });
+  });
+
+  // POST /api/admin/templates/:id/system-types
+  apiRouter.post("/admin/templates/:id/system-types", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const templateId = String(req.params.id || "");
+    if (!templateId) return res.status(400).json({ message: "Invalid id" });
+
+    const systemTypeIds = Array.isArray(req.body?.systemTypeIds) ? req.body.systemTypeIds : [];
+
+    // Delete existing mappings
+    await db
+      .delete(formTemplateSystemTypes)
+      .where(and(eq(formTemplateSystemTypes.templateId, templateId), eq(formTemplateSystemTypes.organizationId, auth.organizationId)));
+
+    // Insert new mappings
+    if (systemTypeIds.length > 0) {
+      const values = systemTypeIds.map((stId: string) => ({
+        organizationId: auth.organizationId,
+        templateId,
+        systemTypeId: stId,
+      }));
+      await db.insert(formTemplateSystemTypes).values(values);
+    }
+
+    res.json({ ok: true, systemTypeIds });
+  });
+
   // ─────────────────────────────────────────────
   // FORM INSPECTION API (DB-backed)
   // ─────────────────────────────────────────────
