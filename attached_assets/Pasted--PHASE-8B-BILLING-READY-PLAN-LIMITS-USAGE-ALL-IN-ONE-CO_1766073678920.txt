@@ -1,0 +1,287 @@
+/*
+PHASE 8B — BILLING-READY PLAN LIMITS + USAGE (ALL IN ONE COPYABLE BLOCK)
+
+GOALS
+- Introduce organisation plans (free / pro / enterprise-ready)
+- Enforce limits SERVER-SIDE (cannot be bypassed)
+- Track usage (jobs/month, storage, templates, entities)
+- Gate premium features (PDF export)
+- Admin Usage endpoint (UI can follow later)
+
+This is intentionally SIMPLE + SAFE. You can swap Stripe later without rewrites.
+
+──────────────────────────────────────────────────────────────
+A) shared/schema.ts — ADD PLAN + USAGE TABLES
+──────────────────────────────────────────────────────────────
+*/
+
+export const organizationPlans = pgTable("organization_plans", {
+  organizationId: uuid("organization_id").primaryKey(),
+  plan: text("plan").notNull().default("free"), // free | pro | enterprise
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const organizationUsage = pgTable("organization_usage", {
+  organizationId: uuid("organization_id").primaryKey(),
+
+  // Monthly counters (reset monthly)
+  jobsThisMonth: integer("jobs_this_month").default(0).notNull(),
+  jobsMonthKey: text("jobs_month_key").notNull(), // e.g. "2025-01"
+
+  // Absolute counters
+  totalTemplates: integer("total_templates").default(0).notNull(),
+  totalEntities: integer("total_entities").default(0).notNull(),
+
+  // Storage (bytes)
+  storageBytes: bigint("storage_bytes", { mode: "number" }).default(0).notNull(),
+
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/*
+RUN MIGRATION AFTER ADDING THESE TABLES
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// B) server/lib/plans.ts — PLAN DEFINITIONS + HELPERS
+////////////////////////////////////////////////////////////////////////////////
+
+export type PlanKey = "free" | "pro" | "enterprise";
+
+export const PLAN_LIMITS: Record<PlanKey, {
+  jobsPerMonth: number;
+  maxTemplates: number;
+  maxEntities: number;
+  maxStorageBytes: number;
+  pdfEnabled: boolean;
+}> = {
+  free: {
+    jobsPerMonth: 20,
+    maxTemplates: 3,
+    maxEntities: 10,
+    maxStorageBytes: 500 * 1024 * 1024, // 500MB
+    pdfEnabled: false,
+  },
+  pro: {
+    jobsPerMonth: 500,
+    maxTemplates: 50,
+    maxEntities: 500,
+    maxStorageBytes: 20 * 1024 * 1024 * 1024, // 20GB
+    pdfEnabled: true,
+  },
+  enterprise: {
+    jobsPerMonth: 999999,
+    maxTemplates: 999999,
+    maxEntities: 999999,
+    maxStorageBytes: 999999999999,
+    pdfEnabled: true,
+  },
+};
+
+export function currentMonthKey() {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// C) server/lib/usage.ts — LOAD + ENFORCE USAGE
+////////////////////////////////////////////////////////////////////////////////
+
+import { organizationPlans, organizationUsage } from "../shared/schema";
+import { PLAN_LIMITS, currentMonthKey } from "./plans";
+import { and, eq } from "drizzle-orm";
+
+export async function getOrgPlanAndUsage(db: any, organizationId: string) {
+  const planRow = await db
+    .select()
+    .from(organizationPlans)
+    .where(eq(organizationPlans.organizationId, organizationId))
+    .limit(1);
+
+  const plan = (planRow[0]?.plan ?? "free") as keyof typeof PLAN_LIMITS;
+
+  let usage = await db
+    .select()
+    .from(organizationUsage)
+    .where(eq(organizationUsage.organizationId, organizationId))
+    .limit(1);
+
+  if (!usage.length) {
+    await db.insert(organizationUsage).values({
+      organizationId,
+      jobsThisMonth: 0,
+      jobsMonthKey: currentMonthKey(),
+      totalTemplates: 0,
+      totalEntities: 0,
+      storageBytes: 0,
+    });
+    usage = await db
+      .select()
+      .from(organizationUsage)
+      .where(eq(organizationUsage.organizationId, organizationId))
+      .limit(1);
+  }
+
+  // Reset monthly jobs counter if month changed
+  if (usage[0].jobsMonthKey !== currentMonthKey()) {
+    await db
+      .update(organizationUsage)
+      .set({
+        jobsThisMonth: 0,
+        jobsMonthKey: currentMonthKey(),
+        updatedAt: new Date(),
+      })
+      .where(eq(organizationUsage.organizationId, organizationId));
+
+    usage[0].jobsThisMonth = 0;
+    usage[0].jobsMonthKey = currentMonthKey();
+  }
+
+  return { plan, limits: PLAN_LIMITS[plan], usage: usage[0] };
+}
+
+export function enforce(condition: boolean, message: string) {
+  if (!condition) {
+    const err: any = new Error(message);
+    err.status = 402; // Payment Required semantics
+    throw err;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// D) server/routes.ts — ENFORCEMENT HOOKS
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+IMPORT at top:
+import { getOrgPlanAndUsage, enforce } from "./lib/usage";
+*/
+
+// 1) JOB CREATION — enforce jobs/month
+// In POST /api/jobs (right before insert):
+
+const { plan, limits, usage } = await getOrgPlanAndUsage(db, organizationId);
+enforce(usage.jobsThisMonth < limits.jobsPerMonth, "Monthly job limit reached");
+
+// after successful job insert:
+await db
+  .update(organizationUsage)
+  .set({
+    jobsThisMonth: usage.jobsThisMonth + 1,
+    updatedAt: new Date(),
+  })
+  .where(eq(organizationUsage.organizationId, organizationId));
+
+// 2) TEMPLATE CREATION — enforce maxTemplates
+// In POST /api/admin/templates BEFORE insert:
+
+const t = await getOrgPlanAndUsage(db, auth.organizationId);
+enforce(t.usage.totalTemplates < t.limits.maxTemplates, "Template limit reached");
+
+// after insert:
+await db
+  .update(organizationUsage)
+  .set({
+    totalTemplates: t.usage.totalTemplates + 1,
+    updatedAt: new Date(),
+  })
+  .where(eq(organizationUsage.organizationId, auth.organizationId));
+
+// 3) ENTITY CREATION — enforce maxEntities
+// In POST /api/admin/entities BEFORE insert:
+
+const e = await getOrgPlanAndUsage(db, auth.organizationId);
+enforce(e.usage.totalEntities < e.limits.maxEntities, "Entity limit reached");
+
+// after insert:
+await db
+  .update(organizationUsage)
+  .set({
+    totalEntities: e.usage.totalEntities + 1,
+    updatedAt: new Date(),
+  })
+  .where(eq(organizationUsage.organizationId, auth.organizationId));
+
+// 4) FILE UPLOAD — enforce storage quota
+// In POST /api/inspections/:id/rows/:rowId/attachments AFTER file saved:
+
+const u = await getOrgPlanAndUsage(db, organizationId);
+enforce(
+  u.usage.storageBytes + file.sizeBytes <= u.limits.maxStorageBytes,
+  "Storage limit exceeded"
+);
+
+// after insert:
+await db
+  .update(organizationUsage)
+  .set({
+    storageBytes: u.usage.storageBytes + file.sizeBytes,
+    updatedAt: new Date(),
+  })
+  .where(eq(organizationUsage.organizationId, organizationId));
+
+// 5) PDF EXPORT — feature gate
+// In GET /api/inspections/:id/pdf BEFORE generating:
+
+const p = await getOrgPlanAndUsage(db, organizationId);
+enforce(p.limits.pdfEnabled, "PDF export is not enabled for your plan");
+
+////////////////////////////////////////////////////////////////////////////////
+// E) ADMIN USAGE ENDPOINT
+////////////////////////////////////////////////////////////////////////////////
+
+apiRouter.get("/admin/usage", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const { plan, limits, usage } = await getOrgPlanAndUsage(db, auth.organizationId);
+
+  res.json({
+    plan,
+    limits,
+    usage,
+  });
+});
+
+////////////////////////////////////////////////////////////////////////////////
+// F) OPTIONAL — SET PLAN (MANUAL, ADMIN ONLY, FOR NOW)
+////////////////////////////////////////////////////////////////////////////////
+
+apiRouter.post("/admin/plan", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const plan = String(req.body?.plan || "");
+  if (!["free", "pro", "enterprise"].includes(plan)) {
+    return res.status(400).json({ message: "Invalid plan" });
+  }
+
+  await db
+    .insert(organizationPlans)
+    .values({ organizationId: auth.organizationId, plan })
+    .onConflictDoUpdate({
+      target: organizationPlans.organizationId,
+      set: { plan, updatedAt: new Date() },
+    });
+
+  res.json({ ok: true, plan });
+});
+
+////////////////////////////////////////////////////////////////////////////////
+// G) WHAT YOU NOW HAVE
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+- Server-side enforced limits (jobs, templates, entities, storage)
+- Feature-gated PDF export
+- Usage tracking per organisation
+- Admin endpoint ready for UI (/admin/usage)
+- Clean path to Stripe later (replace manual /admin/plan)
+
+NEXT PHASE OPTIONS:
+- 8C Observability (healthcheck + error capture)
+x
+- 8D Backups + Org Export
+- 8E Performance tuning
+*/

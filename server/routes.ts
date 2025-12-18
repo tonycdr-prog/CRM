@@ -16,6 +16,8 @@ import path from "path";
 import { db } from "./db";
 import { eq, and, sql, isNull, desc, inArray } from "drizzle-orm";
 import { uploadLimiter, pdfLimiter } from "./security";
+import { getOrgPlanAndUsage, enforce } from "./lib/usage";
+import { organizationPlans, organizationUsage } from "@shared/schema";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -1045,7 +1047,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   apiRouter.post("/jobs", asyncHandler(async (req, res) => {
     const userId = getUserId(req as AuthenticatedRequest);
+    const { organizationId } = await requireUserOrgId(req);
+
+    // Enforce job limit
+    const { limits, usage } = await getOrgPlanAndUsage(db, organizationId);
+    enforce(usage.jobsThisMonth < limits.jobsPerMonth, "Monthly job limit reached");
+
     const job = await storage.createJob({ ...req.body, userId });
+
+    // Increment usage counter
+    await db
+      .update(organizationUsage)
+      .set({
+        jobsThisMonth: usage.jobsThisMonth + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(organizationUsage.organizationId, organizationId));
+
     res.json(job);
   }));
 
@@ -3563,6 +3581,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
 
     try {
+      // Enforce entity limit
+      const { limits, usage } = await getOrgPlanAndUsage(db, auth.organizationId);
+      enforce(usage.totalEntities < limits.maxEntities, "Entity limit reached");
+
       const title = assertString(req.body?.title, "title");
       const description = typeof req.body?.description === "string" ? req.body.description : null;
 
@@ -3579,6 +3601,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: formEntities.description,
         });
 
+      // Increment usage counter
+      await db
+        .update(organizationUsage)
+        .set({
+          totalEntities: usage.totalEntities + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizationUsage.organizationId, auth.organizationId));
+
       await logAudit(db, {
         organizationId: auth.organizationId,
         actorUserId: auth.userId,
@@ -3590,7 +3621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ entity: created[0] });
     } catch (e: any) {
-      res.status(400).json({ message: e?.message ?? "Bad request" });
+      res.status(e?.status || 400).json({ message: e?.message ?? "Bad request" });
     }
   });
 
@@ -3963,6 +3994,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
 
     try {
+      // Enforce template limit
+      const { limits, usage } = await getOrgPlanAndUsage(db, auth.organizationId);
+      enforce(usage.totalTemplates < limits.maxTemplates, "Template limit reached");
+
       const name = assertString(req.body?.name, "name");
       const description = typeof req.body?.description === "string" ? req.body.description : null;
 
@@ -3981,6 +4016,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: formTemplates.isActive,
         });
 
+      // Increment usage counter
+      await db
+        .update(organizationUsage)
+        .set({
+          totalTemplates: usage.totalTemplates + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizationUsage.organizationId, auth.organizationId));
+
       await logAudit(db, {
         organizationId: auth.organizationId,
         actorUserId: auth.userId,
@@ -3992,7 +4036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ template: created[0] });
     } catch (e: any) {
-      res.status(400).json({ message: e?.message ?? "Bad request" });
+      res.status(e?.status || 400).json({ message: e?.message ?? "Bad request" });
     }
   });
 
@@ -4813,6 +4857,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const f = (req as any).file;
         if (!f) return res.status(400).json({ message: "No file uploaded (field name must be 'file')" });
 
+        // Enforce storage quota
+        const { limits, usage } = await getOrgPlanAndUsage(db, organizationId);
+        enforce(
+          usage.storageBytes + f.size <= limits.maxStorageBytes,
+          "Storage limit exceeded"
+        );
+
         // Store metadata
         const insertedFile = await db
           .insert(files)
@@ -4838,6 +4889,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .returning({ id: inspectionRowAttachments.id });
 
+        // Increment storage usage
+        await db
+          .update(organizationUsage)
+          .set({
+            storageBytes: usage.storageBytes + f.size,
+            updatedAt: new Date(),
+          })
+          .where(eq(organizationUsage.organizationId, organizationId));
+
         await logAudit(db, {
           organizationId,
           actorUserId: userId,
@@ -4860,7 +4920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
       } catch (err: any) {
-        res.status(400).json({ message: err.message || "Upload failed" });
+        res.status(err?.status || 400).json({ message: err.message || "Upload failed" });
       }
     }
   );
@@ -4923,6 +4983,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { organizationId } = await requireUserOrgId(req);
       const inspectionId = String(req.params.id || "");
       if (!inspectionId) return res.status(400).json({ message: "Invalid inspection id" });
+
+      // Feature gate: PDF export
+      const { limits } = await getOrgPlanAndUsage(db, organizationId);
+      enforce(limits.pdfEnabled, "PDF export is not enabled for your plan");
 
       const insp = await db
         .select({
@@ -5159,6 +5223,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err: any) {
       res.status(400).json({ message: err.message || "Download failed" });
     }
+  });
+
+  // ============================================
+  // ADMIN USAGE + PLAN ENDPOINTS
+  // ============================================
+
+  // GET /api/admin/usage - view organisation usage
+  apiRouter.get("/admin/usage", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const { plan, limits, usage } = await getOrgPlanAndUsage(db, auth.organizationId);
+
+    res.json({
+      plan,
+      limits,
+      usage,
+    });
+  });
+
+  // POST /api/admin/plan - set organisation plan (owner only)
+  apiRouter.post("/admin/plan", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const plan = String(req.body?.plan || "");
+    if (!["free", "pro", "enterprise"].includes(plan)) {
+      return res.status(400).json({ message: "Invalid plan" });
+    }
+
+    await db
+      .insert(organizationPlans)
+      .values({ organizationId: auth.organizationId, plan })
+      .onConflictDoUpdate({
+        target: organizationPlans.organizationId,
+        set: { plan, updatedAt: new Date() },
+      });
+
+    res.json({ ok: true, plan });
   });
 
   // ============================================

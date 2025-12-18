@@ -95,6 +95,29 @@ export const insertAuditEventSchema = createInsertSchema(auditEvents).omit({
 export type InsertAuditEvent = z.infer<typeof insertAuditEventSchema>;
 export type AuditEvent = typeof auditEvents.$inferSelect;
 
+// Organization plans table
+export const organizationPlans = pgTable("organization_plans", {
+  organizationId: varchar("organization_id").primaryKey(),
+  plan: text("plan").notNull().default("free"), // free | pro | enterprise
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type OrganizationPlan = typeof organizationPlans.$inferSelect;
+
+// Organization usage table
+export const organizationUsage = pgTable("organization_usage", {
+  organizationId: varchar("organization_id").primaryKey(),
+  jobsThisMonth: integer("jobs_this_month").default(0).notNull(),
+  jobsMonthKey: text("jobs_month_key").notNull(),
+  totalTemplates: integer("total_templates").default(0).notNull(),
+  totalEntities: integer("total_entities").default(0).notNull(),
+  storageBytes: integer("storage_bytes").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type OrganizationUsage = typeof organizationUsage.$inferSelect;
+
 // User storage table - supports both Replit Auth and custom auth
 // User roles for permission-based access
 export const USER_ROLES = ["admin", "office_manager", "field_engineer"] as const;
