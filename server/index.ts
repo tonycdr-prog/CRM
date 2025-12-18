@@ -13,6 +13,7 @@ import {
 } from "./security";
 import { slowRequestLogger, createErrorHandler } from "./observability";
 import { db } from "./db";
+import { startJobsWorker } from "./lib/jobsQueue";
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -76,6 +77,8 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+
+  startJobsWorker(db);
 
   app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     const errMsg = (err as Error)?.message || "";
