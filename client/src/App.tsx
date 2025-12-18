@@ -1,4 +1,5 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
+import { useMe } from "@/hooks/useMe";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -88,8 +89,10 @@ function PlaceholderPage({ title }: { title: string }) {
 }
 
 function LayoutRoutes() {
+  const { isOrgAdmin, loading: meLoading } = useMe();
+
   return (
-    <AppLayout>
+    <AppLayout isOrgAdmin={isOrgAdmin}>
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path={ROUTES.DASHBOARD} component={Dashboard} />
@@ -150,10 +153,23 @@ function LayoutRoutes() {
         <Route path="/site-health" component={SiteHealth} />
         <Route path="/downloads" component={Downloads} />
         <Route path="/settings" component={Settings} />
-        <Route path={ROUTES.ADMIN_ENTITY_EDIT} component={AdminEntityEditPage} />
-        <Route path={ROUTES.ADMIN_ENTITIES} component={AdminEntitiesPage} />
-        <Route path={ROUTES.ADMIN_TEMPLATE_EDIT} component={AdminTemplateEditPage} />
-        <Route path={ROUTES.ADMIN_TEMPLATES} component={AdminTemplatesPage} />
+
+        {/* Admin routes - guarded by role */}
+        {meLoading ? (
+          <Route path="/admin/:rest*" component={() => <div className="p-6 text-muted-foreground">Loading…</div>} />
+        ) : isOrgAdmin ? (
+          <>
+            <Route path={ROUTES.ADMIN_ENTITY_EDIT} component={AdminEntityEditPage} />
+            <Route path={ROUTES.ADMIN_ENTITIES} component={AdminEntitiesPage} />
+            <Route path={ROUTES.ADMIN_TEMPLATE_EDIT} component={AdminTemplateEditPage} />
+            <Route path={ROUTES.ADMIN_TEMPLATES} component={AdminTemplatesPage} />
+          </>
+        ) : (
+          <>
+            <Route path="/admin/:rest*" component={() => <Redirect to={ROUTES.DASHBOARD} />} />
+          </>
+        )}
+
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>
