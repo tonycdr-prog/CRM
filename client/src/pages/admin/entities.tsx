@@ -4,11 +4,13 @@ import { ROUTES, buildPath } from "@/lib/routes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 type Entity = {
   id: string;
   title: string;
   description?: string | null;
+  archivedAt?: string | null;
 };
 
 export default function AdminEntitiesPage() {
@@ -19,6 +21,7 @@ export default function AdminEntitiesPage() {
   const [entities, setEntities] = useState<Entity[]>([]);
 
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
@@ -32,7 +35,8 @@ export default function AdminEntitiesPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/entities", { credentials: "include" });
+      const url = `/api/admin/entities${showArchived ? "?includeArchived=true" : ""}`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
       setEntities(Array.isArray(data.entities) ? data.entities : []);
@@ -45,7 +49,7 @@ export default function AdminEntitiesPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [showArchived]);
 
   async function createEntity() {
     setError("");
@@ -124,12 +128,24 @@ export default function AdminEntitiesPage() {
           <CardTitle>Entity library</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search entities…"
-            data-testid="input-search-entities"
-          />
+          <div className="flex items-center gap-4">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search entities…"
+              className="flex-1"
+              data-testid="input-search-entities"
+            />
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                data-testid="checkbox-show-archived"
+              />
+              <span>Show archived</span>
+            </label>
+          </div>
           {loading ? (
             <div className="text-muted-foreground">Loading…</div>
           ) : filtered.length === 0 ? (
@@ -143,7 +159,10 @@ export default function AdminEntitiesPage() {
                   data-testid={`card-entity-${e.id}`}
                 >
                   <div>
-                    <div className="font-medium">{e.title}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {e.title}
+                      {e.archivedAt && <Badge variant="outline">Archived</Badge>}
+                    </div>
                     {e.description && (
                       <div className="text-sm text-muted-foreground">{e.description}</div>
                     )}

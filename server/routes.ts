@@ -3517,16 +3517,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const auth = await requireOrgRole(req, ["owner", "admin"]);
     if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
 
+    const includeArchived = String(req.query?.includeArchived || "") === "true";
+
+    const whereClause = includeArchived
+      ? eq(formEntities.organizationId, auth.organizationId)
+      : and(eq(formEntities.organizationId, auth.organizationId), isNull(formEntities.archivedAt));
+
     const list = await db
       .select({
         id: formEntities.id,
         title: formEntities.title,
         description: formEntities.description,
+        archivedAt: formEntities.archivedAt,
         createdAt: formEntities.createdAt,
         updatedAt: formEntities.updatedAt,
       })
       .from(formEntities)
-      .where(eq(formEntities.organizationId, auth.organizationId))
+      .where(whereClause)
       .orderBy(formEntities.title);
 
     res.json({ entities: list });
@@ -3606,7 +3613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ entity: updated[0] });
   });
 
-  // DELETE /api/admin/entities/:id
+  // DELETE /api/admin/entities/:id (ARCHIVE - soft delete)
   apiRouter.delete("/admin/entities/:id", async (req, res) => {
     const auth = await requireOrgRole(req, ["owner", "admin"]);
     if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
@@ -3614,28 +3621,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const entityId = String(req.params.id || "");
     if (!entityId) return res.status(400).json({ message: "Invalid id" });
 
-    // Delete rows first (FK safety)
+    const now = new Date();
+
+    // Archive all rows too
     await db
-      .delete(formEntityRows)
+      .update(formEntityRows)
+      .set({ archivedAt: now, updatedAt: now })
       .where(and(eq(formEntityRows.entityId, entityId), eq(formEntityRows.organizationId, auth.organizationId)));
 
-    const deleted = await db
-      .delete(formEntities)
+    const updated = await db
+      .update(formEntities)
+      .set({ archivedAt: now, updatedAt: now })
       .where(and(eq(formEntities.id, entityId), eq(formEntities.organizationId, auth.organizationId)))
       .returning({ id: formEntities.id });
 
-    if (!deleted.length) return res.status(404).json({ message: "Not found" });
+    if (!updated.length) return res.status(404).json({ message: "Not found" });
+
+    // Remove from templates so archived entity can't be used going forward
+    await db
+      .delete(formTemplateEntities)
+      .where(and(eq(formTemplateEntities.entityId, entityId), eq(formTemplateEntities.organizationId, auth.organizationId)));
 
     await logAudit(db, {
       organizationId: auth.organizationId,
       actorUserId: auth.userId,
-      action: "entity.deleted",
+      action: "entity.archived",
       entityType: "entity",
       entityId,
       metadata: {},
     });
 
-    res.json({ ok: true });
+    res.json({ ok: true, archivedAt: now.toISOString() });
   });
 
   // GET /api/admin/entities/:id/rows
@@ -3645,6 +3661,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const entityId = String(req.params.id || "");
     if (!entityId) return res.status(400).json({ message: "Invalid id" });
+
+    const includeArchived = String(req.query?.includeArchived || "") === "true";
+
+    const whereClause = includeArchived
+      ? and(eq(formEntityRows.entityId, entityId), eq(formEntityRows.organizationId, auth.organizationId))
+      : and(
+          eq(formEntityRows.entityId, entityId),
+          eq(formEntityRows.organizationId, auth.organizationId),
+          isNull(formEntityRows.archivedAt)
+        );
 
     const rows = await db
       .select({
@@ -3658,9 +3684,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         units: formEntityRows.units,
         choices: formEntityRows.choices,
         evidenceRequired: formEntityRows.evidenceRequired,
+        archivedAt: formEntityRows.archivedAt,
       })
       .from(formEntityRows)
-      .where(and(eq(formEntityRows.entityId, entityId), eq(formEntityRows.organizationId, auth.organizationId)))
+      .where(whereClause)
       .orderBy(formEntityRows.sortOrder);
 
     res.json({ rows });
@@ -3799,7 +3826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DELETE /api/admin/entity-rows/:rowId
+  // DELETE /api/admin/entity-rows/:rowId (ARCHIVE - soft delete)
   apiRouter.delete("/admin/entity-rows/:rowId", async (req, res) => {
     const auth = await requireOrgRole(req, ["owner", "admin"]);
     if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
@@ -3807,23 +3834,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const rowId = String(req.params.rowId || "");
     if (!rowId) return res.status(400).json({ message: "Invalid rowId" });
 
-    const deleted = await db
-      .delete(formEntityRows)
+    const now = new Date();
+    const updated = await db
+      .update(formEntityRows)
+      .set({ archivedAt: now, updatedAt: now })
       .where(and(eq(formEntityRows.id, rowId), eq(formEntityRows.organizationId, auth.organizationId)))
       .returning({ id: formEntityRows.id });
 
-    if (!deleted.length) return res.status(404).json({ message: "Not found" });
+    if (!updated.length) return res.status(404).json({ message: "Not found" });
 
     await logAudit(db, {
       organizationId: auth.organizationId,
       actorUserId: auth.userId,
-      action: "entity_row.deleted",
+      action: "entity_row.archived",
       entityType: "entity_row",
       entityId: rowId,
       metadata: {},
     });
 
-    res.json({ ok: true });
+    res.json({ ok: true, archivedAt: now.toISOString() });
   });
 
   // POST /api/admin/entities/:id/rows/reorder
@@ -3888,17 +3917,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const auth = await requireOrgRole(req, ["owner", "admin"]);
     if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
 
+    const includeArchived = String(req.query?.includeArchived || "") === "true";
+
+    const whereClause = includeArchived
+      ? eq(formTemplates.organizationId, auth.organizationId)
+      : and(eq(formTemplates.organizationId, auth.organizationId), isNull(formTemplates.archivedAt));
+
     const list = await db
       .select({
         id: formTemplates.id,
         name: formTemplates.name,
         description: formTemplates.description,
         isActive: formTemplates.isActive,
+        archivedAt: formTemplates.archivedAt,
         createdAt: formTemplates.createdAt,
         updatedAt: formTemplates.updatedAt,
       })
       .from(formTemplates)
-      .where(eq(formTemplates.organizationId, auth.organizationId))
+      .where(whereClause)
       .orderBy(formTemplates.name);
 
     res.json({ templates: list });
@@ -3979,6 +4015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ template: updated[0] });
   });
 
+  // DELETE /api/admin/templates/:id (ARCHIVE - soft delete)
   apiRouter.delete("/admin/templates/:id", async (req, res) => {
     const auth = await requireOrgRole(req, ["owner", "admin"]);
     if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
@@ -3986,32 +4023,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const templateId = String(req.params.id || "");
     if (!templateId) return res.status(400).json({ message: "Invalid id" });
 
-    // Delete mappings first (FK safety)
-    await db
-      .delete(formTemplateEntities)
-      .where(and(eq(formTemplateEntities.templateId, templateId), eq(formTemplateEntities.organizationId, auth.organizationId)));
+    const now = new Date();
 
-    await db
-      .delete(formTemplateSystemTypes)
-      .where(and(eq(formTemplateSystemTypes.templateId, templateId), eq(formTemplateSystemTypes.organizationId, auth.organizationId)));
-
-    const deleted = await db
-      .delete(formTemplates)
+    // Archive template (keep mappings for history; future forms will exclude archived templates)
+    const updated = await db
+      .update(formTemplates)
+      .set({ archivedAt: now, isActive: false, updatedAt: now })
       .where(and(eq(formTemplates.id, templateId), eq(formTemplates.organizationId, auth.organizationId)))
       .returning({ id: formTemplates.id });
 
-    if (!deleted.length) return res.status(404).json({ message: "Not found" });
+    if (!updated.length) return res.status(404).json({ message: "Not found" });
 
     await logAudit(db, {
       organizationId: auth.organizationId,
       actorUserId: auth.userId,
-      action: "template.deleted",
+      action: "template.archived",
       entityType: "template",
       entityId: templateId,
       metadata: {},
     });
 
-    res.json({ ok: true });
+    res.json({ ok: true, archivedAt: now.toISOString() });
   });
 
   // GET /api/admin/templates/:id/system-types
@@ -4103,6 +4135,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const entityId = assertString(req.body?.entityId, "entityId");
+
+      // Check entity exists and is not archived
+      const ent = await db
+        .select({ id: formEntities.id, archivedAt: formEntities.archivedAt })
+        .from(formEntities)
+        .where(and(eq(formEntities.id, entityId), eq(formEntities.organizationId, auth.organizationId)))
+        .limit(1);
+      if (!ent.length) return res.status(404).json({ message: "Entity not found" });
+      if (ent[0].archivedAt) return res.status(409).json({ message: "Entity is archived" });
 
       // Determine next sortOrder
       const max = await db

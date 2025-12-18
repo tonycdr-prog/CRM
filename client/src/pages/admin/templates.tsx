@@ -4,12 +4,14 @@ import { ROUTES, buildPath } from "@/lib/routes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 type Template = {
   id: string;
   name: string;
   description?: string | null;
   isActive: boolean;
+  archivedAt?: string | null;
 };
 
 export default function AdminTemplatesPage() {
@@ -20,6 +22,7 @@ export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
 
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
@@ -33,7 +36,8 @@ export default function AdminTemplatesPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/templates", { credentials: "include" });
+      const url = `/api/admin/templates${showArchived ? "?includeArchived=true" : ""}`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
       setTemplates(Array.isArray(data.templates) ? data.templates : []);
@@ -44,7 +48,7 @@ export default function AdminTemplatesPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [showArchived]);
 
   async function createTemplate() {
     setError("");
@@ -108,12 +112,24 @@ export default function AdminTemplatesPage() {
       <Card>
         <CardHeader><CardTitle>Templates</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search templates…"
-            data-testid="input-search-templates"
-          />
+          <div className="flex items-center gap-4">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search templates…"
+              className="flex-1"
+              data-testid="input-search-templates"
+            />
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                data-testid="checkbox-show-archived"
+              />
+              <span>Show archived</span>
+            </label>
+          </div>
           {loading ? (
             <div className="text-muted-foreground">Loading…</div>
           ) : filtered.length === 0 ? (
@@ -127,8 +143,10 @@ export default function AdminTemplatesPage() {
                   data-testid={`card-template-${t.id}`}
                 >
                   <div>
-                    <div className="font-medium">
-                      {t.name} {!t.isActive && <span className="text-xs text-muted-foreground">(inactive)</span>}
+                    <div className="font-medium flex items-center gap-2">
+                      {t.name}
+                      {!t.isActive && <Badge variant="outline">Inactive</Badge>}
+                      {t.archivedAt && <Badge variant="outline">Archived</Badge>}
                     </div>
                     {t.description && <div className="text-sm text-muted-foreground">{t.description}</div>}
                   </div>

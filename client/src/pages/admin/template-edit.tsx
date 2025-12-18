@@ -233,9 +233,9 @@ export default function AdminTemplateEditPage() {
     }
   }
 
-  async function deleteTemplate() {
+  async function archiveTemplate() {
     if (!templateId) return;
-    if (!confirm("Delete this template?")) return;
+    if (!confirm("Archive this template? Historical inspections will still reference this data.")) return;
 
     setSaving(true);
     setError("");
@@ -244,10 +244,10 @@ export default function AdminTemplateEditPage() {
         method: "DELETE",
         credentials: "include",
       });
-      if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+      if (!res.ok) throw new Error(`Archive failed (${res.status})`);
       setLocation(ROUTES.ADMIN_TEMPLATES);
     } catch (e: any) {
-      setError(e?.message ?? "Delete failed");
+      setError(e?.message ?? "Archive failed");
     } finally {
       setSaving(false);
     }
@@ -275,8 +275,8 @@ export default function AdminTemplateEditPage() {
           <Button variant="outline" onClick={loadAll} disabled={loading || saving} data-testid="button-refresh">
             Refresh
           </Button>
-          <Button variant="destructive" onClick={deleteTemplate} disabled={saving} data-testid="button-delete-template">
-            Delete
+          <Button variant="destructive" onClick={archiveTemplate} disabled={saving} data-testid="button-archive-template">
+            Archive
           </Button>
         </div>
       </div>

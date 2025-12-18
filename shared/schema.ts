@@ -3353,6 +3353,7 @@ export const formEntities = pgTable("form_entities", {
   organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
   title: text("title").notNull(),
   description: text("description"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => [
@@ -3379,6 +3380,7 @@ export const formEntityRows = pgTable("form_entity_rows", {
   units: text("units"),
   choices: jsonb("choices").$type<string[]>(),
   evidenceRequired: boolean("evidence_required").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => [
@@ -3400,6 +3402,7 @@ export const formTemplates = pgTable("form_templates", {
   name: text("name").notNull(),
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => [

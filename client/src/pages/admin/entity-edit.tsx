@@ -148,7 +148,7 @@ export default function AdminEntityEditPage() {
     }
   }
 
-  async function deleteRow(rowId: string) {
+  async function archiveRow(rowId: string) {
     setSaving(true);
     setError("");
     try {
@@ -156,10 +156,10 @@ export default function AdminEntityEditPage() {
         method: "DELETE",
         credentials: "include",
       });
-      if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+      if (!res.ok) throw new Error(`Archive failed (${res.status})`);
       await load();
     } catch (e: any) {
-      setError(e?.message ?? "Delete failed");
+      setError(e?.message ?? "Archive failed");
     } finally {
       setSaving(false);
     }
@@ -195,9 +195,9 @@ export default function AdminEntityEditPage() {
     }
   }
 
-  async function deleteEntity() {
+  async function archiveEntity() {
     if (!entityId) return;
-    if (!confirm("Delete this entity and all its rows?")) return;
+    if (!confirm("Archive this entity and all its rows? Historical inspections will still reference this data.")) return;
 
     setSaving(true);
     setError("");
@@ -206,10 +206,10 @@ export default function AdminEntityEditPage() {
         method: "DELETE",
         credentials: "include",
       });
-      if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+      if (!res.ok) throw new Error(`Archive failed (${res.status})`);
       setLocation(ROUTES.ADMIN_ENTITIES);
     } catch (e: any) {
-      setError(e?.message ?? "Delete failed");
+      setError(e?.message ?? "Archive failed");
     } finally {
       setSaving(false);
     }
@@ -237,8 +237,8 @@ export default function AdminEntityEditPage() {
           <Button variant="outline" onClick={load} disabled={loading || saving} data-testid="button-refresh">
             Refresh
           </Button>
-          <Button variant="destructive" onClick={deleteEntity} disabled={saving} data-testid="button-delete-entity">
-            Delete
+          <Button variant="destructive" onClick={archiveEntity} disabled={saving} data-testid="button-archive-entity">
+            Archive
           </Button>
         </div>
       </div>
@@ -311,11 +311,11 @@ export default function AdminEntityEditPage() {
                           </Button>
                           <Button
                             variant="destructive"
-                            onClick={() => deleteRow(r.id)}
+                            onClick={() => archiveRow(r.id)}
                             disabled={saving}
-                            data-testid={`button-delete-row-${r.id}`}
+                            data-testid={`button-archive-row-${r.id}`}
                           >
-                            Delete
+                            Archive
                           </Button>
                         </div>
                       </div>
