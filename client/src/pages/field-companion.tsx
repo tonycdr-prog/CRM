@@ -4,6 +4,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { ROUTES, buildPath } from "@/lib/routes";
 import OfflineBanner from "@/components/OfflineBanner";
+import SyncStatusBar from "@/components/SyncStatusBar";
+import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,6 +83,8 @@ export default function FieldCompanion() {
     queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
+
+  const { pending, syncing: queueSyncing, progress, syncNow } = useSyncQueue();
 
   const handleManualSync = useCallback(async () => {
     setIsSyncing(true);
@@ -482,6 +486,12 @@ export default function FieldCompanion() {
       </div>
 
       <OfflineBanner onSync={handleManualSync} syncing={isSyncing} />
+      <SyncStatusBar
+        pending={pending}
+        syncing={queueSyncing}
+        progress={progress}
+        onSyncNow={syncNow}
+      />
     </div>
   );
 }

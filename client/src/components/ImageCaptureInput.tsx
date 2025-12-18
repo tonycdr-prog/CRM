@@ -1,33 +1,66 @@
 import { compressImage } from "@/lib/image";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRef } from "react";
+import { useRef, useState, useMemo } from "react";
+import CapturePreviewModal from "@/components/CapturePreviewModal";
 
 interface ImageCaptureInputProps {
   onFileReady: (file: File) => void;
   disabled?: boolean;
   className?: string;
+  label?: string;
 }
 
 export default function ImageCaptureInput({
   onFileReady,
   disabled,
   className,
+  label,
 }: ImageCaptureInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingType, setPendingType] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
-  async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const previewUrl = useMemo(
+    () => (pendingFile ? URL.createObjectURL(pendingFile) : null),
+    [pendingFile]
+  );
+
+  async function handlePicked(file: File) {
+    let processed: File = file;
 
     if (file.type.startsWith("image/")) {
-      const compressed = await compressImage(file);
-      onFileReady(compressed);
-    } else {
-      onFileReady(file);
+      processed = await compressImage(file);
     }
 
-    e.target.value = "";
+    setPendingFile(processed);
+    setPendingType(file.type || processed.type || null);
+    setOpen(true);
+  }
+
+  function cleanup() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPendingFile(null);
+    setPendingType(null);
+  }
+
+  function onConfirm() {
+    if (!pendingFile) return;
+    cleanup();
+    setOpen(false);
+    onFileReady(pendingFile);
+  }
+
+  function onRetake() {
+    cleanup();
+    setOpen(false);
+    setTimeout(() => inputRef.current?.click(), 100);
+  }
+
+  function onClose() {
+    cleanup();
+    setOpen(false);
   }
 
   return (
@@ -38,7 +71,12 @@ export default function ImageCaptureInput({
         accept="image/*,application/pdf"
         capture="environment"
         disabled={disabled}
-        onChange={onChange}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          await handlePicked(file);
+        }}
         className="hidden"
         data-testid="input-camera-capture"
       />
@@ -51,8 +89,17 @@ export default function ImageCaptureInput({
         data-testid="button-camera-capture"
       >
         <Camera className="h-4 w-4 mr-2" />
-        Take Photo
+        {label ?? "Take Photo"}
       </Button>
+
+      <CapturePreviewModal
+        open={open}
+        previewUrl={previewUrl}
+        fileType={pendingType}
+        onRetake={onRetake}
+        onConfirm={onConfirm}
+        onClose={onClose}
+      />
     </div>
   );
 }

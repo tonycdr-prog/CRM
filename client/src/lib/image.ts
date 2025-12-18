@@ -1,3 +1,10 @@
+export function blobToFile(blob: Blob, fileName: string): File {
+  return new File([blob], fileName, {
+    type: blob.type || "application/octet-stream",
+    lastModified: Date.now(),
+  });
+}
+
 export async function compressImage(
   file: File,
   opts?: { maxWidth?: number; maxHeight?: number; quality?: number }

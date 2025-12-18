@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.airflow.tester',
-  appName: 'Airflow Velocity Tester',
+  appId: 'com.lifesafety.ops',
+  appName: 'Life Safety Ops',
   webDir: 'dist/public',
   server: {
     androidScheme: 'https'
