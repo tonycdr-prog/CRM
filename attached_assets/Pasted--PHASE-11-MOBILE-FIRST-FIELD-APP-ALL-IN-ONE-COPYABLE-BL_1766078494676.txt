@@ -1,0 +1,262 @@
+/*
+PHASE 11 — MOBILE-FIRST FIELD APP (ALL IN ONE COPYABLE BLOCK)
+This delivers 11A + 11B + 11C in a pragmatic, production-safe way.
+
+WHAT YOU GET
+11A) Camera capture + image compression before upload
+11B) Offline-first UX improvements (clear state + manual sync)
+11C) PWA installability (home-screen install, offline shell)
+
+ASSUMES
+- React (Vite)
+- Existing attachment upload endpoint
+- Existing offline autosave/localStorage from Phase 6
+- You already use fetch with credentials
+
+──────────────────────────────────────────────────────────────
+11A) CAMERA CAPTURE + IMAGE COMPRESSION
+FILES:
+- client/src/lib/image.ts (NEW)
+- client/src/components/ImageCaptureInput.tsx (NEW)
+- client/src/components/AttachmentUploader.tsx (MODIFY to use compression)
+──────────────────────────────────────────────────────────────
+*/
+
+// ===============================
+// client/src/lib/image.ts (NEW)
+// ===============================
+export async function compressImage(
+  file: File,
+  opts?: { maxWidth?: number; maxHeight?: number; quality?: number }
+): Promise<Blob> {
+  const maxWidth = opts?.maxWidth ?? 1600;
+  const maxHeight = opts?.maxHeight ?? 1600;
+  const quality = opts?.quality ?? 0.75;
+
+  if (!file.type.startsWith("image/")) return file;
+
+  const img = document.createElement("img");
+  const url = URL.createObjectURL(file);
+
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = url;
+  });
+
+  let { width, height } = img;
+  const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+  width = Math.round(width * scale);
+  height = Math.round(height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0, width, height);
+
+  URL.revokeObjectURL(url);
+
+  return await new Promise<Blob>((resolve) => {
+    canvas.toBlob(
+      (b) => resolve(b!),
+      "image/jpeg",
+      quality
+    );
+  });
+}
+
+// ===============================
+// client/src/components/ImageCaptureInput.tsx (NEW)
+// ===============================
+import { compressImage } from "@/lib/image";
+
+export default function ImageCaptureInput(props: {
+  onFileReady: (file: File | Blob) => void;
+  disabled?: boolean;
+}) {
+  const { onFileReady, disabled } = props;
+
+  async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type.startsWith("image/")) {
+      const compressed = await compressImage(file);
+      onFileReady(compressed);
+    } else {
+      onFileReady(file);
+    }
+
+    e.target.value = "";
+  }
+
+  return (
+    <input
+      type="file"
+      accept="image/*,application/pdf"
+      capture="environment"
+      disabled={disabled}
+      onChange={onChange}
+    />
+  );
+}
+
+/*
+INTEGRATE:
+- Replace your existing <input type="file" /> in attachment uploader
+- Call onFileReady() then upload Blob as before
+*/
+
+///////////////////////////////////////////////////////////////
+// 11B) OFFLINE-FIRST UX IMPROVEMENTS
+///////////////////////////////////////////////////////////////
+
+/*
+GOALS
+- Clear offline indicator
+- Manual “Sync now”
+- Prevent user panic when offline
+
+FILES:
+- client/src/hooks/useNetwork.ts (NEW)
+- client/src/components/OfflineBanner.tsx (NEW)
+*/
+
+// ===============================
+// client/src/hooks/useNetwork.ts (NEW)
+// ===============================
+import { useEffect, useState } from "react";
+
+export function useNetwork() {
+  const [online, setOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  return { online };
+}
+
+// ===============================
+// client/src/components/OfflineBanner.tsx (NEW)
+// ===============================
+import { useNetwork } from "@/hooks/useNetwork";
+
+export default function OfflineBanner(props: { onSync?: () => void }) {
+  const { online } = useNetwork();
+  if (online) return null;
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-yellow-500 text-black text-sm p-2 flex items-center justify-between z-50">
+      <span>Offline — changes are saved locally</span>
+      {props.onSync && (
+        <button className="underline" onClick={props.onSync}>
+          Sync now
+        </button>
+      )}
+    </div>
+  );
+}
+
+/*
+INTEGRATE:
+- Render <OfflineBanner /> once in Field Companion layout
+- Hook “Sync now” to your existing autosave flush logic
+*/
+
+///////////////////////////////////////////////////////////////
+// 11C) PWA — HOME SCREEN INSTALL + OFFLINE SHELL
+///////////////////////////////////////////////////////////////
+
+/*
+FILES:
+- public/manifest.webmanifest (NEW)
+- client/src/pwa.ts (NEW)
+- client/src/main.tsx (MODIFY)
+*/
+
+// ===============================
+// public/manifest.webmanifest (NEW)
+// ===============================
+{
+  "name": "Life Safety Ops",
+  "short_name": "LS Ops",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+
+// ===============================
+// client/src/pwa.ts (NEW)
+// ===============================
+export function registerSW() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
+// ===============================
+// client/src/main.tsx (MODIFY)
+// ===============================
+import { registerSW } from "@/pwa";
+registerSW();
+
+/*
+SERVICE WORKER (MINIMAL)
+Create public/sw.js:
+
+self.addEventListener("install", (e) => self.skipWaiting());
+self.addEventListener("activate", (e) => self.clients.claim());
+self.addEventListener("fetch", (e) => {
+  // Network-first for API, cache-first for shell can be added later
+});
+
+This gives:
+- Install prompt on mobile
+- Home-screen icon
+- Standalone app feel
+*/
+
+///////////////////////////////////////////////////////////////
+// TEST CHECKLIST (MOBILE)
+///////////////////////////////////////////////////////////////
+
+/*
+1) Open app on phone → Add to Home Screen appears
+2) Take photo → image is compressed before upload
+3) Go offline:
+   - Banner appears
+   - Forms still editable
+   - No crashes
+4) Come online → autosave resumes
+*/
+
+///////////////////////////////////////////////////////////////
+// WHAT THIS UNLOCKS
+///////////////////////////////////////////////////////////////
+
+/*
+- Engineers can use the app like a native tool
+- Upload costs reduced significantly (compressed images)
+- Offline confidence (no data loss fear)
+- App is installable without app stores
+
+NEXT (OPTIONAL):
+- 11D: Camera UI preview + retake
+- 11E: Background sync queue with progress
+- 11F: Native wrapper (Capacitor) if you want App Store later
+*/

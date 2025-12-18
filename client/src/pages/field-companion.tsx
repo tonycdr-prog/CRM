@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { ROUTES, buildPath } from "@/lib/routes";
+import OfflineBanner from "@/components/OfflineBanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,8 @@ export default function FieldCompanion() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<JobWithSite[]>({
     queryKey: ["/api/jobs-with-sites"],
@@ -78,6 +81,18 @@ export default function FieldCompanion() {
     queryKey: ["/api/clients"],
     enabled: !!user?.id,
   });
+
+  const handleManualSync = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/jobs-with-sites"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/clients"] }),
+      ]);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [queryClient]);
 
   const getClient = (clientId: string | null) => {
     if (!clientId) return null;
@@ -449,7 +464,7 @@ export default function FieldCompanion() {
       </ScrollArea>
 
       {/* Bottom quick stats bar */}
-      <div className="bg-background border-t p-3">
+      <div className="bg-background border-t p-3 pb-16">
         <div className="grid grid-cols-3 gap-2">
           <div className="text-center p-2 bg-muted/50 rounded-lg">
             <p className="text-2xl font-bold text-primary dark:text-primary">{todaysJobs.length}</p>
@@ -465,6 +480,8 @@ export default function FieldCompanion() {
           </div>
         </div>
       </div>
+
+      <OfflineBanner onSync={handleManualSync} syncing={isSyncing} />
     </div>
   );
 }

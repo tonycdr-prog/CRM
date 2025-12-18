@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { registerSW } from "@/pwa";
 
 async function initMobileApp() {
   if (Capacitor.isNativePlatform()) {
@@ -33,5 +34,6 @@ async function initMobileApp() {
 }
 
 initMobileApp();
+registerSW();
 
 createRoot(document.getElementById("root")!).render(<App />);
