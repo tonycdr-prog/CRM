@@ -1,0 +1,312 @@
+/*
+PHASE 8D — BACKUPS + ORG EXPORT (ALL IN ONE COPYABLE BLOCK)
+
+DELIVERABLES
+1) GET /api/admin/export (owner/admin)
+   - Streams a JSON export of the organisation’s data
+   - Includes: org plan/usage, users (safe fields), jobs, inspections, responses,
+     templates/entities/rows/mappings, audit events, files metadata, attachments links table, server errors (optional)
+2) POST /api/admin/export (owner/admin) to create a server-side export file (optional) — SKIPPED in MVP
+3) (Optional skeleton) CLI script to export to a file locally: scripts/export-org.ts
+
+SECURITY
+- Owner/admin only
+- Exports ONLY the authenticated org
+- No attachment binaries included in MVP (only metadata + file IDs). We can add ZIP later.
+
+ASSUMES
+- requireOrgRole(req, ["owner","admin"]) exists
+- db is Drizzle instance
+- Tables exist and are imported:
+  users, jobs, inspectionInstances, inspectionResponses,
+  entities, entityRows, formTemplates, formTemplateEntities, formTemplateSystemTypes,
+  files, inspectionRowAttachments,
+  auditEvents, serverErrors,
+  organizationPlans, organizationUsage
+
+──────────────────────────────────────────────────────────────
+A) server/routes.ts — ADD STREAMING EXPORT ENDPOINT
+──────────────────────────────────────────────────────────────
+Paste inside apiRouter:
+*/
+
+apiRouter.get("/admin/export", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const orgId = auth.organizationId;
+  const now = new Date();
+  const filename = `org_export_${orgId}_${now.toISOString().replace(/[:.]/g, "-")}.json`;
+
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  // Helper: stream JSON chunks safely
+  const write = (chunk: string) => res.write(chunk);
+
+  // Collect data (MVP: query then stream; fine for small/medium orgs)
+  // If you expect very large orgs, we’ll upgrade to cursor/pagination streaming.
+  const [
+    planRow,
+    usageRow,
+    userRows,
+    jobRows,
+    inspectionRows,
+    responseRows,
+    templateRows,
+    templateEntityRows,
+    templateSystemRows,
+    entityRowsList,
+    entityRowRows,
+    fileRows,
+    inspectionAttachmentRows,
+    auditRows,
+    errorRows,
+  ] = await Promise.all([
+    db.select().from(organizationPlans).where(eq(organizationPlans.organizationId, orgId)).limit(1),
+    db.select().from(organizationUsage).where(eq(organizationUsage.organizationId, orgId)).limit(1),
+
+    // Users: export only safe fields (no tokens/secrets)
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: (users as any).firstName,
+        lastName: (users as any).lastName,
+        role: (users as any).role,
+        organizationRole: (users as any).organizationRole,
+        organizationId: users.organizationId,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.organizationId, orgId)),
+
+    // Jobs (org inferred via job.userId -> user.organizationId in your model)
+    // If jobs doesn't carry organizationId, export jobs where owner user is in org.
+    db
+      .select({
+        id: jobs.id,
+        title: (jobs as any).title,
+        status: (jobs as any).status,
+        siteId: (jobs as any).siteId,
+        userId: jobs.userId,
+        createdAt: jobs.createdAt,
+        updatedAt: jobs.updatedAt,
+      })
+      .from(jobs)
+      .innerJoin(users, eq(users.id, jobs.userId))
+      .where(eq(users.organizationId, orgId)),
+
+    // Inspections (org-scoped)
+    db
+      .select({
+        id: inspectionInstances.id,
+        organizationId: inspectionInstances.organizationId,
+        jobId: inspectionInstances.jobId,
+        templateId: inspectionInstances.templateId,
+        systemTypeId: inspectionInstances.systemTypeId,
+        createdByUserId: inspectionInstances.createdByUserId,
+        completedAt: inspectionInstances.completedAt,
+        createdAt: inspectionInstances.createdAt,
+      })
+      .from(inspectionInstances)
+      .where(eq(inspectionInstances.organizationId, orgId)),
+
+    // Responses (org-scoped)
+    db
+      .select({
+        id: inspectionResponses.id,
+        organizationId: inspectionResponses.organizationId,
+        inspectionId: inspectionResponses.inspectionId,
+        rowId: inspectionResponses.rowId,
+        valueText: inspectionResponses.valueText,
+        valueNumber: inspectionResponses.valueNumber,
+        valueBool: inspectionResponses.valueBool,
+        comment: inspectionResponses.comment,
+        createdByUserId: inspectionResponses.createdByUserId,
+        createdAt: inspectionResponses.createdAt,
+      })
+      .from(inspectionResponses)
+      .where(eq(inspectionResponses.organizationId, orgId)),
+
+    // Templates/entities (org-scoped)
+    db
+      .select({
+        id: formTemplates.id,
+        organizationId: formTemplates.organizationId,
+        name: formTemplates.name,
+        description: formTemplates.description,
+        isActive: formTemplates.isActive,
+        archivedAt: (formTemplates as any).archivedAt,
+        createdAt: formTemplates.createdAt,
+        updatedAt: formTemplates.updatedAt,
+      })
+      .from(formTemplates)
+      .where(eq(formTemplates.organizationId, orgId)),
+
+    db
+      .select({
+        templateId: formTemplateEntities.templateId,
+        entityId: formTemplateEntities.entityId,
+        sortOrder: formTemplateEntities.sortOrder,
+        organizationId: formTemplateEntities.organizationId,
+      })
+      .from(formTemplateEntities)
+      .where(eq(formTemplateEntities.organizationId, orgId)),
+
+    db
+      .select({
+        templateId: formTemplateSystemTypes.templateId,
+        systemTypeId: formTemplateSystemTypes.systemTypeId,
+        organizationId: formTemplateSystemTypes.organizationId,
+      })
+      .from(formTemplateSystemTypes)
+      .where(eq(formTemplateSystemTypes.organizationId, orgId)),
+
+    db
+      .select({
+        id: entities.id,
+        organizationId: entities.organizationId,
+        title: entities.title,
+        description: entities.description,
+        archivedAt: (entities as any).archivedAt,
+        createdAt: entities.createdAt,
+        updatedAt: entities.updatedAt,
+      })
+      .from(entities)
+      .where(eq(entities.organizationId, orgId)),
+
+    db
+      .select({
+        id: entityRows.id,
+        organizationId: entityRows.organizationId,
+        entityId: entityRows.entityId,
+        sortOrder: entityRows.sortOrder,
+        component: entityRows.component,
+        activity: entityRows.activity,
+        reference: entityRows.reference,
+        fieldType: entityRows.fieldType,
+        units: entityRows.units,
+        choices: entityRows.choices,
+        evidenceRequired: entityRows.evidenceRequired,
+        archivedAt: (entityRows as any).archivedAt,
+        createdAt: entityRows.createdAt,
+        updatedAt: entityRows.updatedAt,
+      })
+      .from(entityRows)
+      .where(eq(entityRows.organizationId, orgId)),
+
+    // Files metadata + inspection attachments mapping
+    db
+      .select({
+        id: files.id,
+        organizationId: files.organizationId,
+        storage: files.storage,
+        path: files.path,
+        originalName: files.originalName,
+        mimeType: files.mimeType,
+        sizeBytes: files.sizeBytes,
+        createdByUserId: files.createdByUserId,
+        createdAt: files.createdAt,
+      })
+      .from(files)
+      .where(eq(files.organizationId, orgId)),
+
+    db
+      .select({
+        id: inspectionRowAttachments.id,
+        organizationId: inspectionRowAttachments.organizationId,
+        inspectionId: inspectionRowAttachments.inspectionId,
+        rowId: inspectionRowAttachments.rowId,
+        fileId: inspectionRowAttachments.fileId,
+        createdByUserId: inspectionRowAttachments.createdByUserId,
+        createdAt: inspectionRowAttachments.createdAt,
+      })
+      .from(inspectionRowAttachments)
+      .where(eq(inspectionRowAttachments.organizationId, orgId)),
+
+    // Audit events (org-scoped)
+    db
+      .select({
+        id: auditEvents.id,
+        organizationId: auditEvents.organizationId,
+        actorUserId: auditEvents.actorUserId,
+        action: auditEvents.action,
+        entityType: auditEvents.entityType,
+        entityId: auditEvents.entityId,
+        jobId: auditEvents.jobId,
+        inspectionId: auditEvents.inspectionId,
+        metadata: auditEvents.metadata,
+        createdAt: auditEvents.createdAt,
+      })
+      .from(auditEvents)
+      .where(eq(auditEvents.organizationId, orgId))
+      .orderBy(desc(auditEvents.createdAt))
+      .limit(5000),
+
+    // Server errors (org-scoped) — optional but helpful
+    db
+      .select({
+        id: serverErrors.id,
+        organizationId: serverErrors.organizationId,
+        userId: serverErrors.userId,
+        requestId: serverErrors.requestId,
+        method: serverErrors.method,
+        path: serverErrors.path,
+        status: serverErrors.status,
+        message: serverErrors.message,
+        createdAt: serverErrors.createdAt,
+      })
+      .from(serverErrors)
+      .where(eq(serverErrors.organizationId, orgId))
+      .orderBy(desc(serverErrors.createdAt))
+      .limit(2000),
+  ]);
+
+  // Stream the JSON object
+  write("{\n");
+  write(`"exportedAt": ${JSON.stringify(now.toISOString())},\n`);
+  write(`"organizationId": ${JSON.stringify(orgId)},\n`);
+  write(`"plan": ${JSON.stringify(planRow[0] ?? null)},\n`);
+  write(`"usage": ${JSON.stringify(usageRow[0] ?? null)},\n`);
+
+  write(`"users": ${JSON.stringify(userRows)},\n`);
+  write(`"jobs": ${JSON.stringify(jobRows)},\n`);
+  write(`"inspections": ${JSON.stringify(inspectionRows)},\n`);
+  write(`"inspectionResponses": ${JSON.stringify(responseRows)},\n`);
+
+  write(`"templates": ${JSON.stringify(templateRows)},\n`);
+  write(`"templateEntities": ${JSON.stringify(templateEntityRows)},\n`);
+  write(`"templateSystemTypes": ${JSON.stringify(templateSystemRows)},\n`);
+
+  write(`"entities": ${JSON.stringify(entityRowsList)},\n`);
+  write(`"entityRows": ${JSON.stringify(entityRowRows)},\n`);
+
+  write(`"files": ${JSON.stringify(fileRows)},\n`);
+  write(`"inspectionRowAttachments": ${JSON.stringify(inspectionAttachmentRows)},\n`);
+
+  write(`"auditEvents": ${JSON.stringify(auditRows)},\n`);
+  write(`"serverErrors": ${JSON.stringify(errorRows)}\n`);
+
+  write("}\n");
+  res.end();
+});
+
+/*
+──────────────────────────────────────────────────────────────
+B) (OPTIONAL) client admin button (minimal)
+──────────────────────────────────────────────────────────────
+If you want a quick UI:
+- Add an “Export” button in Admin Settings that opens /api/admin/export in new tab.
+No code required here unless you want it.
+
+──────────────────────────────────────────────────────────────
+C) (OPTIONAL) scripts/export-org.ts (CLI) — local export helper
+──────────────────────────────────────────────────────────────
+This runs the export route using your logged-in cookie is awkward, so better to do DB export.
+If you want, I’ll provide a DB-direct CLI script next.
+
+NEXT (8D.1):
+- ZIP export including attachment binaries (files on disk) + JSON manifest.
+Say: “8D.1 zip”.
+*/
