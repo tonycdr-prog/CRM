@@ -37,6 +37,16 @@ export type ResponseDraft = {
   comment?: string;
 };
 
+export type RowAttachmentDTO = {
+  attachmentId: string;
+  rowId: string;
+  fileId: string;
+  originalName: string;
+  mimeType?: string | null;
+  sizeBytes: number;
+  createdAt?: string;
+};
+
 function findDraft(drafts: ResponseDraft[], rowId: string) {
   return drafts.find((d) => d.rowId === rowId);
 }
