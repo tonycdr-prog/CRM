@@ -1,0 +1,144 @@
+// ─────────────────────────────────────────────
+// EVIDENCE: Upload + list + download (AUTH)
+// ─────────────────────────────────────────────
+
+// POST /api/inspections/:id/rows/:rowId/attachments  (multipart form-data: file)
+apiRouter.post(
+  "/inspections/:id/rows/:rowId/attachments",
+  upload.single("file"),
+  async (req, res) => {
+    const { organizationId, userId } = await requireUserOrgId(req);
+
+    const inspectionId = String(req.params.id || "");
+    const rowId = String(req.params.rowId || "");
+    if (!inspectionId || !rowId) return res.status(400).json({ message: "Invalid ids" });
+
+    // Verify inspection belongs to org + not completed
+    const insp = await db
+      .select({
+        id: inspectionInstances.id,
+        jobId: inspectionInstances.jobId,
+        completedAt: inspectionInstances.completedAt,
+      })
+      .from(inspectionInstances)
+      .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+      .limit(1);
+
+    if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+    if (insp[0].completedAt) return res.status(409).json({ message: "Inspection is completed" });
+
+    // Verify job belongs to org (via job.userId -> user.organizationId)
+    const access = await requireJobInOrg(String(insp[0].jobId), organizationId);
+    if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+    // Verify row belongs to org
+    const row = await db
+      .select({ id: entityRows.id })
+      .from(entityRows)
+      .where(and(eq(entityRows.id, rowId), eq(entityRows.organizationId, organizationId)))
+      .limit(1);
+    if (!row.length) return res.status(400).json({ message: "Invalid rowId" });
+
+    const f = (req as any).file;
+    if (!f) return res.status(400).json({ message: "No file uploaded (field name must be 'file')" });
+
+    // Store metadata
+    const insertedFile = await db
+      .insert(files)
+      .values({
+        organizationId,
+        storage: "local",
+        path: f.filename, // stored in UPLOAD_ROOT
+        originalName: f.originalname,
+        mimeType: f.mimetype,
+        sizeBytes: f.size,
+        createdByUserId: userId,
+      })
+      .returning({ id: files.id, originalName: files.originalName, mimeType: files.mimeType, sizeBytes: files.sizeBytes });
+
+    const insertedLink = await db
+      .insert(inspectionRowAttachments)
+      .values({
+        organizationId,
+        inspectionId,
+        rowId,
+        fileId: insertedFile[0].id,
+        createdByUserId: userId,
+      })
+      .returning({ id: inspectionRowAttachments.id });
+
+    res.json({
+      attachment: {
+        id: insertedLink[0].id,
+        fileId: insertedFile[0].id,
+        rowId,
+        originalName: insertedFile[0].originalName,
+        mimeType: insertedFile[0].mimeType,
+        sizeBytes: insertedFile[0].sizeBytes,
+      },
+    });
+  }
+);
+
+// GET /api/inspections/:id/attachments  -> grouped by rowId
+apiRouter.get("/inspections/:id/attachments", async (req, res) => {
+  const { organizationId } = await requireUserOrgId(req);
+  const inspectionId = String(req.params.id || "");
+  if (!inspectionId) return res.status(400).json({ message: "Invalid inspection id" });
+
+  const insp = await db
+    .select({ id: inspectionInstances.id, jobId: inspectionInstances.jobId })
+    .from(inspectionInstances)
+    .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+    .limit(1);
+
+  if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+
+  const access = await requireJobInOrg(String(insp[0].jobId), organizationId);
+  if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+  const rows = await db
+    .select({
+      attachmentId: inspectionRowAttachments.id,
+      rowId: inspectionRowAttachments.rowId,
+      fileId: files.id,
+      originalName: files.originalName,
+      mimeType: files.mimeType,
+      sizeBytes: files.sizeBytes,
+      createdAt: inspectionRowAttachments.createdAt,
+    })
+    .from(inspectionRowAttachments)
+    .innerJoin(files, eq(files.id, inspectionRowAttachments.fileId))
+    .where(and(eq(inspectionRowAttachments.organizationId, organizationId), eq(inspectionRowAttachments.inspectionId, inspectionId)))
+    .orderBy(desc(inspectionRowAttachments.createdAt));
+
+  res.json({ attachments: rows });
+});
+
+// GET /api/files/:fileId/download  (auth + tenant check)
+apiRouter.get("/files/:fileId/download", async (req, res) => {
+  const { organizationId } = await requireUserOrgId(req);
+  const fileId = String(req.params.fileId || "");
+  if (!fileId) return res.status(400).json({ message: "Invalid file id" });
+
+  const f = await db
+    .select({
+      id: files.id,
+      org: files.organizationId,
+      path: files.path,
+      originalName: files.originalName,
+      mimeType: files.mimeType,
+    })
+    .from(files)
+    .where(and(eq(files.id, fileId), eq(files.organizationId, organizationId)))
+    .limit(1);
+
+  if (!f.length) return res.status(404).json({ message: "Not found" });
+
+  const abs = path.join(UPLOAD_ROOT, f[0].path);
+  if (!fs.existsSync(abs)) return res.status(404).json({ message: "File missing on disk" });
+
+  if (f[0].mimeType) res.setHeader("Content-Type", f[0].mimeType);
+  res.setHeader("Content-Disposition", `inline; filename="${f[0].originalName.replace(/"/g, "")}"`);
+  fs.createReadStream(abs).pipe(res);
+});
