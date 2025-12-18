@@ -55,9 +55,11 @@ export default function DynamicFormRenderer(props: {
   template: FormTemplateDTO;
   responses: ResponseDraft[];
   readOnly: boolean;
+  attachmentsByRowId?: Record<string, RowAttachmentDTO[]>;
+  onUpload?: (rowId: string, file: File) => Promise<void>;
   onChange: (drafts: ResponseDraft[]) => void;
 }) {
-  const { template, responses, readOnly, onChange } = props;
+  const { template, responses, readOnly, attachmentsByRowId, onUpload, onChange } = props;
 
   function upsert(rowId: string, patch: Partial<ResponseDraft>) {
     const existing = findDraft(responses, rowId);
