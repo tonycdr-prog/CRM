@@ -17,7 +17,8 @@ import { db } from "./db";
 import { eq, and, sql, isNull, desc, inArray } from "drizzle-orm";
 import { uploadLimiter, pdfLimiter } from "./security";
 import { getOrgPlanAndUsage, enforce } from "./lib/usage";
-import { organizationPlans, organizationUsage } from "@shared/schema";
+import { organizationPlans, organizationUsage, backgroundJobs } from "@shared/schema";
+import { streamOrgExportZip } from "./lib/zipExport";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -5531,6 +5532,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     write(`"serverErrors": ${JSON.stringify(errorRows)}\n`);
     write("}\n");
     res.end();
+  });
+
+  // GET /api/admin/export.zip - ZIP export with manifest + attachments
+  apiRouter.get("/admin/export.zip", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    await streamOrgExportZip({ db, orgId: auth.organizationId, res });
+  });
+
+  // POST /api/admin/export-jobs/zip - Create async ZIP export job
+  apiRouter.post("/admin/export-jobs/zip", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const created = await db
+      .insert(backgroundJobs)
+      .values({
+        organizationId: auth.organizationId,
+        type: "org_export_zip",
+        status: "queued",
+        progress: 0,
+        input: {},
+        output: {},
+        createdByUserId: auth.userId,
+      })
+      .returning({ id: backgroundJobs.id });
+
+    res.json({ jobId: created[0].id });
+  });
+
+  // GET /api/admin/export-jobs/:id - Get job status
+  apiRouter.get("/admin/export-jobs/:id", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const jobId = String(req.params.id || "");
+    const rows = await db
+      .select({
+        id: backgroundJobs.id,
+        type: backgroundJobs.type,
+        status: backgroundJobs.status,
+        progress: backgroundJobs.progress,
+        input: backgroundJobs.input,
+        output: backgroundJobs.output,
+        error: backgroundJobs.error,
+        createdAt: backgroundJobs.createdAt,
+        startedAt: backgroundJobs.startedAt,
+        finishedAt: backgroundJobs.finishedAt,
+      })
+      .from(backgroundJobs)
+      .where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.organizationId, auth.organizationId)))
+      .limit(1);
+
+    if (!rows.length) return res.status(404).json({ message: "Not found" });
+    res.json({ job: rows[0] });
+  });
+
+  // GET /api/admin/export-jobs/:id/download - Download completed job result
+  apiRouter.get("/admin/export-jobs/:id/download", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const jobId = String(req.params.id || "");
+    const rows = await db
+      .select({
+        id: backgroundJobs.id,
+        status: backgroundJobs.status,
+        output: backgroundJobs.output,
+      })
+      .from(backgroundJobs)
+      .where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.organizationId, auth.organizationId)))
+      .limit(1);
+
+    if (!rows.length) return res.status(404).json({ message: "Not found" });
+    if (rows[0].status !== "succeeded") return res.status(409).json({ message: "Job not ready" });
+
+    const out = rows[0].output as any;
+    const filePath = String(out?.filePath || "");
+    const fileName = String(out?.fileName || `export_${jobId}.zip`);
+    if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ message: "File missing" });
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    fs.createReadStream(filePath).pipe(res);
   });
 
   // ============================================
