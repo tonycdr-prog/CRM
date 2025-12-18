@@ -106,7 +106,7 @@ function LayoutRoutes() {
         <Route path="/sites/:id" component={SiteDetail} />
         <Route path="/contracts" component={Contracts} />
         <Route path="/jobs" component={Jobs} />
-        <Route path="/jobs/:jobId/activity" component={JobActivityPage} />
+        <Route path={ROUTES.JOB_ACTIVITY} component={JobActivityPage} />
         <Route path="/jobs/:id" component={JobDetail} />
         <Route path="/finance" component={Finance} />
         <Route path="/expenses" component={Expenses} />

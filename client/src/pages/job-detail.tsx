@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
+import { ROUTES, buildPath } from "@/lib/routes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -620,7 +621,7 @@ export default function JobDetail() {
           <p className="text-muted-foreground">{job.jobNumber}</p>
         </div>
         <div className="flex gap-2">
-          <Link href={`/jobs/${job.id}/activity`}>
+          <Link href={buildPath(ROUTES.JOB_ACTIVITY, { jobId: job.id })}>
             <Button variant="outline" data-testid="button-activity">
               <Activity className="h-4 w-4 mr-2" />
               Activity
