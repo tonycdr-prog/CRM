@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ROUTES, buildPath } from "@/lib/routes";
+import { enqueueResponses, flushQueue, getPendingCount } from "@/lib/offlineQueue";
 import DynamicFormRenderer, {
   FormTemplateDTO,
   ResponseDraft,
@@ -53,6 +54,8 @@ export default function FieldJobForms() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
   const [attachmentsByRowId, setAttachmentsByRowId] = useState<Record<string, RowAttachmentDTO[]>>({});
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const storageKey = useMemo(() => {
     if (!jobId) return "";
@@ -93,6 +96,32 @@ export default function FieldJobForms() {
     setTemplateId("");
     setInspection(null);
   }, [systemCode]);
+
+  // Offline queue: track online/offline + flush when back online
+  useEffect(() => {
+    async function refreshPending() {
+      const c = await getPendingCount(inspection?.id);
+      setPendingCount(c);
+    }
+
+    function onOnline() {
+      setIsOffline(false);
+      flushQueue({ onProgress: () => {} }).finally(refreshPending);
+    }
+    function onOffline() {
+      setIsOffline(true);
+    }
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+
+    refreshPending();
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, [inspection?.id]);
 
   async function openTemplate(nextTemplateId: string) {
     if (!jobId) return;
@@ -175,22 +204,44 @@ export default function FieldJobForms() {
     }
   }
 
+  // Save responses to server (or queue if offline/fails)
+  const saveResponsesToServer = useCallback(async (inspectionId: string, responsesPayload: { responses: ResponseDraft[] }) => {
+    // Try online first if possible
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`/api/inspections/${encodeURIComponent(inspectionId)}/responses`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(responsesPayload),
+        });
+
+        if (res.ok) {
+          if (storageKey) localStorage.removeItem(storageKey);
+          return;
+        }
+
+        // Completed -> stop saving
+        if (res.status === 409) throw new Error("Inspection is completed");
+        // other errors fall through to queue
+      } catch (e: any) {
+        if (e?.message === "Inspection is completed") throw e;
+        // Network error - fall through to queue
+      }
+    }
+
+    // Queue offline
+    await enqueueResponses(inspectionId, responsesPayload);
+    const c = await getPendingCount(inspectionId);
+    setPendingCount(c);
+  }, [storageKey]);
+
   const debouncedSave = useRef(
     debounce(async (inspectionId: string, drafts: ResponseDraft[]) => {
       setSaving(true);
       setError("");
       try {
-        const res = await fetch(
-          `/api/inspections/${encodeURIComponent(inspectionId)}/responses`,
-          {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ responses: drafts }),
-          }
-        );
-        if (!res.ok) throw new Error(`Save failed (${res.status})`);
-        if (storageKey) localStorage.removeItem(storageKey);
+        await saveResponsesToServer(inspectionId, { responses: drafts });
       } catch (e: any) {
         try {
           if (storageKey) localStorage.setItem(storageKey, JSON.stringify(drafts));
@@ -299,6 +350,39 @@ export default function FieldJobForms() {
       {/* Scrollable content */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="container mx-auto p-4 md:p-6 space-y-4 pb-24">
+          {/* Offline / Sync banner */}
+          {(isOffline || pendingCount > 0) && (
+            <div className="border rounded-md p-3 text-sm" data-testid="banner-offline-sync">
+              {isOffline ? (
+                <div>
+                  <span className="font-medium">Offline.</span>{" "}
+                  Changes will sync automatically when you're back online.
+                </div>
+              ) : (
+                <div>
+                  <span className="font-medium">Syncing.</span>{" "}
+                  {pendingCount} pending change(s) waiting to upload.
+                </div>
+              )}
+              {!isOffline && pendingCount > 0 && (
+                <div className="mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-sync-now"
+                    onClick={async () => {
+                      await flushQueue();
+                      const c = await getPendingCount(inspection?.id);
+                      setPendingCount(c);
+                    }}
+                  >
+                    Sync now
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Select system</CardTitle>
