@@ -4131,6 +4131,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           evidenceRequired: formTemplateEntities.evidenceRequired,
         });
 
+      await logAudit(db, {
+        organizationId: auth.organizationId,
+        actorUserId: auth.userId,
+        action: "template.entity.added",
+        entityType: "template",
+        entityId: templateId,
+        metadata: { entityId },
+      });
+
       res.json({ entity: created[0] });
     } catch (e: any) {
       res.status(400).json({ message: e?.message ?? "Bad request" });
