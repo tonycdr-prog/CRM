@@ -65,6 +65,36 @@ export const insertOrganizationInvitationSchema = createInsertSchema(organizatio
 export type InsertOrganizationInvitation = z.infer<typeof insertOrganizationInvitationSchema>;
 export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
 
+// Audit events table for activity timeline
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organizationId: varchar("organization_id").notNull(),
+    actorUserId: varchar("actor_user_id").notNull(),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    jobId: text("job_id"),
+    inspectionId: varchar("inspection_id"),
+    metadata: jsonb("metadata").$type<Record<string, any>>().default({}).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("audit_org_idx").on(t.organizationId),
+    index("audit_job_idx").on(t.organizationId, t.jobId),
+    index("audit_insp_idx").on(t.organizationId, t.inspectionId),
+    index("audit_created_idx").on(t.organizationId, t.createdAt),
+  ]
+);
+
+export const insertAuditEventSchema = createInsertSchema(auditEvents).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAuditEvent = z.infer<typeof insertAuditEventSchema>;
+export type AuditEvent = typeof auditEvents.$inferSelect;
+
 // User storage table - supports both Replit Auth and custom auth
 // User roles for permission-based access
 export const USER_ROLES = ["admin", "office_manager", "field_engineer"] as const;
