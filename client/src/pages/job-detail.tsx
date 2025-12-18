@@ -56,7 +56,8 @@ import {
   Shield,
   AlertCircle,
   ClipboardList,
-  ExternalLink
+  ExternalLink,
+  Activity
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useState } from "react";
@@ -619,6 +620,12 @@ export default function JobDetail() {
           <p className="text-muted-foreground">{job.jobNumber}</p>
         </div>
         <div className="flex gap-2">
+          <Link href={`/jobs/${job.id}/activity`}>
+            <Button variant="outline" data-testid="button-activity">
+              <Activity className="h-4 w-4 mr-2" />
+              Activity
+            </Button>
+          </Link>
           {job.status === "pending" && (
             <Button onClick={() => updateJobMutation.mutate({ status: "scheduled" })}>
               <Calendar className="h-4 w-4 mr-2" />

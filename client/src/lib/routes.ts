@@ -12,6 +12,7 @@ export const ROUTES = {
   CONTRACTS: "/contracts",
   JOBS: "/jobs",
   JOB_DETAIL: "/jobs/:id",
+  JOB_ACTIVITY: "/jobs/:jobId/activity",
   FINANCE: "/finance",
   EXPENSES: "/expenses",
   TIMESHEETS: "/timesheets",

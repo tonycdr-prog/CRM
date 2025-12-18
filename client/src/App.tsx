@@ -78,6 +78,7 @@ import AdminEntitiesPage from "@/pages/admin/entities";
 import AdminEntityEditPage from "@/pages/admin/entity-edit";
 import AdminTemplatesPage from "@/pages/admin/templates";
 import AdminTemplateEditPage from "@/pages/admin/template-edit";
+import JobActivityPage from "@/pages/job-activity";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -105,6 +106,7 @@ function LayoutRoutes() {
         <Route path="/sites/:id" component={SiteDetail} />
         <Route path="/contracts" component={Contracts} />
         <Route path="/jobs" component={Jobs} />
+        <Route path="/jobs/:jobId/activity" component={JobActivityPage} />
         <Route path="/jobs/:id" component={JobDetail} />
         <Route path="/finance" component={Finance} />
         <Route path="/expenses" component={Expenses} />
