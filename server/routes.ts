@@ -8,6 +8,7 @@ import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelp
 import { hashPassword, verifyPassword } from "./auth";
 import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses, files, inspectionRowAttachments } from "@shared/schema";
 import multer from "multer";
+import { buildInspectionPdf } from "./pdf/inspectionPdf";
 import { seedDatabase } from "./seed";
 import fs from "fs";
 import path from "path";
@@ -4579,6 +4580,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ attachments: rows });
     } catch (err: any) {
       res.status(400).json({ message: err.message || "Failed to load attachments" });
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // PDF EXPORT (AUTH)
+  // ─────────────────────────────────────────────
+  apiRouter.get("/inspections/:id/pdf", async (req, res) => {
+    try {
+      const { organizationId } = await requireUserOrgId(req);
+      const inspectionId = String(req.params.id || "");
+      if (!inspectionId) return res.status(400).json({ message: "Invalid inspection id" });
+
+      const insp = await db
+        .select({
+          id: inspectionInstances.id,
+          jobId: inspectionInstances.jobId,
+          templateId: inspectionInstances.templateId,
+          systemTypeId: inspectionInstances.systemTypeId,
+          completedAt: inspectionInstances.completedAt,
+        })
+        .from(inspectionInstances)
+        .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+        .limit(1);
+
+      if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+      if (!insp[0].completedAt) return res.status(409).json({ message: "Inspection not completed" });
+
+      const access = await requireJobInOrg(String(insp[0].jobId), organizationId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+      const tpl = await db
+        .select({ id: formTemplates.id, name: formTemplates.name })
+        .from(formTemplates)
+        .where(and(eq(formTemplates.id, insp[0].templateId), eq(formTemplates.organizationId, organizationId)))
+        .limit(1);
+      if (!tpl.length) return res.status(404).json({ message: "Template not found" });
+
+      const sys = await db
+        .select({ id: systemTypes.id, name: systemTypes.name })
+        .from(systemTypes)
+        .where(and(eq(systemTypes.id, insp[0].systemTypeId), eq(systemTypes.organizationId, organizationId)))
+        .limit(1);
+      if (!sys.length) return res.status(404).json({ message: "System type not found" });
+
+      const te = await db
+        .select({
+          entityId: formTemplateEntities.entityId,
+          sortOrder: formTemplateEntities.sortOrder,
+          title: formEntities.title,
+          description: formEntities.description,
+        })
+        .from(formTemplateEntities)
+        .innerJoin(formEntities, eq(formEntities.id, formTemplateEntities.entityId))
+        .where(and(eq(formTemplateEntities.templateId, insp[0].templateId), eq(formTemplateEntities.organizationId, organizationId)))
+        .orderBy(formTemplateEntities.sortOrder);
+
+      const entityIds = te.map((x) => x.entityId);
+
+      const rows = entityIds.length
+        ? await db
+            .select({
+              id: formEntityRows.id,
+              entityId: formEntityRows.entityId,
+              sortOrder: formEntityRows.sortOrder,
+              component: formEntityRows.component,
+              activity: formEntityRows.activity,
+              reference: formEntityRows.reference,
+              fieldType: formEntityRows.fieldType,
+              units: formEntityRows.units,
+              evidenceRequired: formEntityRows.evidenceRequired,
+            })
+            .from(formEntityRows)
+            .where(and(eq(formEntityRows.organizationId, organizationId), inArray(formEntityRows.entityId, entityIds)))
+            .orderBy(formEntityRows.entityId, formEntityRows.sortOrder)
+        : [];
+
+      const resp = await db
+        .select({
+          rowId: inspectionResponses.rowId,
+          valueText: inspectionResponses.valueText,
+          valueNumber: inspectionResponses.valueNumber,
+          valueBool: inspectionResponses.valueBool,
+          comment: inspectionResponses.comment,
+          createdAt: inspectionResponses.createdAt,
+        })
+        .from(inspectionResponses)
+        .where(and(eq(inspectionResponses.organizationId, organizationId), eq(inspectionResponses.inspectionId, inspectionId)))
+        .orderBy(desc(inspectionResponses.createdAt));
+
+      const latestByRow = new Map<string, any>();
+      for (const r of resp) {
+        if (!latestByRow.has(r.rowId)) latestByRow.set(r.rowId, r);
+      }
+
+      const atts = await db
+        .select({
+          rowId: inspectionRowAttachments.rowId,
+          originalName: files.originalName,
+        })
+        .from(inspectionRowAttachments)
+        .innerJoin(files, eq(files.id, inspectionRowAttachments.fileId))
+        .where(and(eq(inspectionRowAttachments.organizationId, organizationId), eq(inspectionRowAttachments.inspectionId, inspectionId)))
+        .orderBy(desc(inspectionRowAttachments.createdAt));
+
+      const attachmentsByRowId = new Map<string, Array<{ originalName: string }>>();
+      for (const a of atts) {
+        const list = attachmentsByRowId.get(a.rowId) ?? [];
+        list.push({ originalName: a.originalName });
+        attachmentsByRowId.set(a.rowId, list);
+      }
+
+      const payload = {
+        inspectionId,
+        templateName: tpl[0].name,
+        systemTypeName: sys[0].name,
+        jobId: String(insp[0].jobId),
+        completedAt: new Date(insp[0].completedAt as any).toISOString(),
+        entities: te.map((e) => ({
+          title: e.title,
+          description: e.description ?? null,
+          rows: rows
+            .filter((r) => r.entityId === e.entityId)
+            .map((r) => {
+              const lr = latestByRow.get(r.id);
+              let value = "—";
+              if (lr) {
+                if (lr.valueBool === true) value = "Pass";
+                else if (lr.valueBool === false) value = "Fail";
+                else if (lr.valueNumber) value = String(lr.valueNumber);
+                else if (lr.valueText) value = String(lr.valueText);
+              }
+              return {
+                component: r.component,
+                activity: r.activity,
+                reference: r.reference ?? null,
+                fieldType: String(r.fieldType),
+                units: r.units ?? null,
+                evidenceRequired: !!r.evidenceRequired,
+                value,
+                comment: lr?.comment ?? null,
+                attachments: attachmentsByRowId.get(r.id) ?? [],
+              };
+            }),
+        })),
+      };
+
+      const doc = buildInspectionPdf(payload);
+
+      const filenameSafe = `${payload.jobId}_${payload.templateName}`.replace(/[^a-zA-Z0-9._-]/g, "_");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filenameSafe}.pdf"`);
+
+      doc.pipe(res);
+      doc.end();
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "PDF generation failed" });
     }
   });
 
