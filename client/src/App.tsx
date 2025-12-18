@@ -71,6 +71,8 @@ import SiteHealth from "@/pages/site-health";
 import Downloads from "@/pages/downloads";
 import ClientPortal from "@/pages/client-portal";
 import Settings from "@/pages/settings";
+import AdminEntitiesPage from "@/pages/admin/entities";
+import AdminEntityEditPage from "@/pages/admin/entity-edit";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -146,6 +148,8 @@ function LayoutRoutes() {
         <Route path="/site-health" component={SiteHealth} />
         <Route path="/downloads" component={Downloads} />
         <Route path="/settings" component={Settings} />
+        <Route path={ROUTES.ADMIN_ENTITY_EDIT} component={AdminEntityEditPage} />
+        <Route path={ROUTES.ADMIN_ENTITIES} component={AdminEntitiesPage} />
         <Route path="/reminders">{() => <PlaceholderPage title="Reminders" />}</Route>
         <Route component={NotFound} />
       </Switch>
