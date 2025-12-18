@@ -5,6 +5,7 @@ This application provides a professional, UK regulation-compliant life safety op
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+Always provide bullet point summaries after every change.
 
 ## System Architecture
 The application features a **React 18+** and **TypeScript** frontend, built with **Vite**, using **shadcn/ui**, **Radix UI**, and **Tailwind CSS** for a touch-optimized, responsive UI. State management utilizes **React hooks** and **TanStack Query**, with **LocalStorage** for client-side persistence. The backend is an **Express.js** application with **TypeScript**, following a **RESTful API** design. It uses **Drizzle ORM** for PostgreSQL database access. The mobile application is wrapped for native iOS and Android deployment using **Capacitor**.
