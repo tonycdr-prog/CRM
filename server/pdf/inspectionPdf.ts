@@ -7,6 +7,7 @@ export type PdfAttachment = {
   mimeType?: string | null;
   // For local storage: absolute path to file on disk
   localPath?: string | null;
+  downloadUrl?: string | null; // absolute or relative URL
 };
 
 export type PdfRow = {
@@ -162,6 +163,24 @@ export function buildInspectionPdf(payload: PdfPayload) {
           doc.fontSize(9).fillColor("gray").text(`(+${images.length - maxThumbsPerRow} more image(s) not shown)`);
           doc.fillColor("black");
         }
+      }
+
+      // Clickable links for all attachments
+      const withLinks = row.attachments.filter((a) => a.downloadUrl);
+      if (withLinks.length) {
+        doc.moveDown(0.2);
+        doc.fontSize(10).fillColor("gray").text("Download links:");
+        doc.fillColor("blue");
+
+        for (const a of withLinks) {
+          ensureSpace(doc, 18);
+          doc.text(a.originalName, {
+            link: a.downloadUrl as string,
+            underline: true,
+          });
+        }
+
+        doc.fillColor("black");
       }
 
       doc.moveDown(0.6);

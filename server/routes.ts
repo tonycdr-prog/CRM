@@ -4678,6 +4678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const atts = await db
         .select({
           rowId: inspectionRowAttachments.rowId,
+          fileId: inspectionRowAttachments.fileId,
           originalName: files.originalName,
           mimeType: files.mimeType,
           path: files.path,
@@ -4688,7 +4689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(eq(inspectionRowAttachments.organizationId, organizationId), eq(inspectionRowAttachments.inspectionId, inspectionId)))
         .orderBy(desc(inspectionRowAttachments.createdAt));
 
-      const attachmentsByRowId = new Map<string, Array<{ originalName: string; mimeType?: string | null; localPath?: string | null }>>();
+      const attachmentsByRowId = new Map<string, Array<{ originalName: string; mimeType?: string | null; localPath?: string | null; downloadUrl?: string | null }>>();
       for (const a of atts) {
         const list = attachmentsByRowId.get(a.rowId) ?? [];
 
@@ -4698,10 +4699,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           localPath = path.join(UPLOAD_ROOT, a.path);
         }
 
+        // authenticated download URL
+        const downloadUrl = `/api/files/${encodeURIComponent(a.fileId)}/download`;
+
         list.push({
           originalName: a.originalName,
           mimeType: a.mimeType,
           localPath,
+          downloadUrl,
         });
 
         attachmentsByRowId.set(a.rowId, list);
