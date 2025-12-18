@@ -87,7 +87,7 @@ function LayoutRoutes() {
     <AppLayout>
       <Switch>
         <Route path="/" component={Dashboard} />
-        <Route path="/dashboard" component={Dashboard} />
+        <Route path={ROUTES.DASHBOARD} component={Dashboard} />
         <Route path="/test" component={FieldTesting} />
         <Route path="/clients" component={Clients} />
         <Route path="/clients/:id" component={ClientDetail} />

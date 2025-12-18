@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
+import { ROUTES } from "@/lib/routes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,7 +109,7 @@ interface JobWithSiteDetail extends DbJob {
 }
 
 export default function FieldJobDetail() {
-  const [, params] = useRoute("/field-companion/:id");
+  const [, params] = useRoute(`${ROUTES.FIELD_COMPANION}/:id`);
   const [, setLocation] = useLocation();
   const jobId = params?.id;
   const { toast } = useToast();
@@ -674,7 +675,7 @@ export default function FieldJobDetail() {
           }
           setShowCompleteDialog(false);
           toast({ title: "Job completed!" });
-          setLocation("/field-companion");
+          setLocation(ROUTES.FIELD_COMPANION);
         },
       }
     );
@@ -692,7 +693,7 @@ export default function FieldJobDetail() {
         onSuccess: () => {
           setShowNoAccessDialog(false);
           toast({ title: "No access recorded" });
-          setLocation("/field-companion");
+          setLocation(ROUTES.FIELD_COMPANION);
         },
       }
     );
@@ -781,7 +782,7 @@ export default function FieldJobDetail() {
       <div className="flex flex-col items-center justify-center h-full gap-4 p-4">
         <AlertTriangle className="h-12 w-12 text-muted-foreground" />
         <p className="text-muted-foreground">Job not found</p>
-        <Link href="/field-companion">
+        <Link href={ROUTES.FIELD_COMPANION}>
           <Button variant="outline">Back to Jobs</Button>
         </Link>
       </div>
@@ -793,7 +794,7 @@ export default function FieldJobDetail() {
       {/* Header */}
       <div className="bg-background border-b p-4">
         <div className="flex items-start gap-3">
-          <Link href="/field-companion">
+          <Link href={ROUTES.FIELD_COMPANION}>
             <Button variant="ghost" size="icon" className="shrink-0" data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
             </Button>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { ROUTES } from "@/lib/routes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -148,7 +149,7 @@ export default function FieldCompanion() {
     return (
       <Card
         className="hover-elevate cursor-pointer transition-all"
-        onClick={() => setLocation(`/field-companion/${job.id}`)}
+        onClick={() => setLocation(`${ROUTES.FIELD_COMPANION}/${job.id}`)}
         data-testid={`card-job-${job.id}`}
       >
         <CardContent className="p-4">
