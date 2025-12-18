@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
-import { ROUTES } from "@/lib/routes";
+import { ROUTES, buildPath } from "@/lib/routes";
+import { useViewMode } from "@/hooks/useViewMode";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,7 @@ interface JobWithSiteDetail extends DbJob {
 export default function FieldJobDetail() {
   const [, params] = useRoute(ROUTES.FIELD_COMPANION_JOB);
   const [, setLocation] = useLocation();
+  const { isEngineerMode } = useViewMode();
   const jobId = params?.id;
   const { toast } = useToast();
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
@@ -811,6 +813,17 @@ export default function FieldJobDetail() {
               {job.title}
             </p>
           </div>
+          {isEngineerMode && jobId && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB_FORMS, { id: jobId }));
+              }}
+              data-testid="button-forms"
+            >
+              Forms
+            </Button>
+          )}
         </div>
       </div>
 
