@@ -4778,6 +4778,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .returning({ id: inspectionRowAttachments.id });
 
+        await logAudit(db, {
+          organizationId,
+          actorUserId: userId,
+          action: "inspection.attachment.uploaded",
+          entityType: "file",
+          entityId: insertedFile[0].id,
+          jobId: String(insp[0].jobId),
+          inspectionId,
+          metadata: { rowId, originalName: insertedFile[0].originalName, sizeBytes: insertedFile[0].sizeBytes },
+        });
+
         res.json({
           attachment: {
             id: insertedLink[0].id,
