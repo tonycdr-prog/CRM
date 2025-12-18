@@ -181,6 +181,47 @@ export default function DynamicFormRenderer(props: {
                         disabled={readOnly}
                       />
                     </div>
+
+                    {(() => {
+                      const attachments = attachmentsByRowId?.[row.id] ?? [];
+                      return (
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">Evidence</div>
+
+                          {attachments.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">No files attached.</div>
+                          ) : (
+                            <div className="space-y-1">
+                              {attachments.map((a) => (
+                                <a
+                                  key={a.attachmentId}
+                                  className="text-sm underline"
+                                  href={`/api/files/${encodeURIComponent(a.fileId)}/download`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  data-testid={`link-attachment-${a.attachmentId}`}
+                                >
+                                  {a.originalName}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+
+                          {!readOnly && onUpload && (
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              onChange={(e) => {
+                                const f = e.currentTarget.files?.[0];
+                                if (f) onUpload(row.id, f);
+                                e.currentTarget.value = "";
+                              }}
+                              data-testid={`input-file-upload-${row.id}`}
+                            />
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
