@@ -10,7 +10,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ROUTES, buildPath } from "@/lib/routes";
-import { enqueueResponses, flushQueue, getPendingCount } from "@/lib/offlineQueue";
+import {
+  enqueueResponses,
+  enqueueAttachment,
+  flushQueue,
+  getPendingCount,
+  getPendingAttachmentCountForRow,
+} from "@/lib/offlineQueue";
 import DynamicFormRenderer, {
   FormTemplateDTO,
   ResponseDraft,
@@ -56,6 +62,7 @@ export default function FieldJobForms() {
   const [attachmentsByRowId, setAttachmentsByRowId] = useState<Record<string, RowAttachmentDTO[]>>({});
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingUploadsByRowId, setPendingUploadsByRowId] = useState<Record<string, number>>({});
 
   const storageKey = useMemo(() => {
     if (!jobId) return "";
@@ -97,11 +104,24 @@ export default function FieldJobForms() {
     setInspection(null);
   }, [systemCode]);
 
+  // Helper to refresh pending upload counts per row
+  const refreshPendingUploads = useCallback(async () => {
+    if (!inspection) return;
+    const next: Record<string, number> = {};
+    for (const entity of inspection.template.entities) {
+      for (const row of entity.rows) {
+        next[row.id] = await getPendingAttachmentCountForRow(inspection.id, row.id);
+      }
+    }
+    setPendingUploadsByRowId(next);
+  }, [inspection]);
+
   // Offline queue: track online/offline + flush when back online
   useEffect(() => {
     async function refreshPending() {
       const c = await getPendingCount(inspection?.id);
       setPendingCount(c);
+      await refreshPendingUploads();
     }
 
     function onOnline() {
@@ -121,7 +141,7 @@ export default function FieldJobForms() {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, [inspection?.id]);
+  }, [inspection?.id, refreshPendingUploads]);
 
   async function openTemplate(nextTemplateId: string) {
     if (!jobId) return;
@@ -264,6 +284,17 @@ export default function FieldJobForms() {
     if (!inspection) return;
     setError("");
     setSaving(true);
+
+    // If offline, queue immediately
+    if (!navigator.onLine) {
+      await enqueueAttachment({ inspectionId: inspection.id, rowId, file });
+      await refreshPendingUploads();
+      const c = await getPendingCount(inspection.id);
+      setPendingCount(c);
+      setSaving(false);
+      return;
+    }
+
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -273,7 +304,16 @@ export default function FieldJobForms() {
         { method: "POST", credentials: "include", body: fd }
       );
 
-      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      // If it failed (network/server), queue as fallback
+      if (!res.ok) {
+        if (res.status === 409) throw new Error("Inspection is completed");
+        await enqueueAttachment({ inspectionId: inspection.id, rowId, file });
+        await refreshPendingUploads();
+        const c = await getPendingCount(inspection.id);
+        setPendingCount(c);
+        return;
+      }
+
       const data = await res.json();
       const a = data.attachment as any;
 
@@ -291,8 +331,14 @@ export default function FieldJobForms() {
         next[rowId] = list;
         return next;
       });
+
+      await refreshPendingUploads();
     } catch (e: any) {
-      setError(e?.message ?? "Upload failed");
+      // final fallback: queue
+      await enqueueAttachment({ inspectionId: inspection.id, rowId, file });
+      await refreshPendingUploads();
+      const c = await getPendingCount(inspection.id);
+      setPendingCount(c);
     } finally {
       setSaving(false);
     }
@@ -444,6 +490,7 @@ export default function FieldJobForms() {
                   responses={inspection.responses}
                   readOnly={!!inspection.completedAt}
                   attachmentsByRowId={attachmentsByRowId}
+                  pendingUploadsByRowId={pendingUploadsByRowId}
                   onUpload={uploadEvidence}
                   onChange={onChangeResponses}
                 />

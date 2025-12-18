@@ -56,10 +56,11 @@ export default function DynamicFormRenderer(props: {
   responses: ResponseDraft[];
   readOnly: boolean;
   attachmentsByRowId?: Record<string, RowAttachmentDTO[]>;
+  pendingUploadsByRowId?: Record<string, number>;
   onUpload?: (rowId: string, file: File) => Promise<void>;
   onChange: (drafts: ResponseDraft[]) => void;
 }) {
-  const { template, responses, readOnly, attachmentsByRowId, onUpload, onChange } = props;
+  const { template, responses, readOnly, attachmentsByRowId, pendingUploadsByRowId, onUpload, onChange } = props;
 
   function upsert(rowId: string, patch: Partial<ResponseDraft>) {
     const existing = findDraft(responses, rowId);
@@ -184,11 +185,12 @@ export default function DynamicFormRenderer(props: {
 
                     {(() => {
                       const attachments = attachmentsByRowId?.[row.id] ?? [];
+                      const pending = pendingUploadsByRowId?.[row.id] ?? 0;
                       return (
                         <div className="space-y-2">
                           <div className="text-sm font-medium">Evidence</div>
 
-                          {attachments.length === 0 ? (
+                          {attachments.length === 0 && pending === 0 ? (
                             <div className="text-sm text-muted-foreground">No files attached.</div>
                           ) : (
                             <div className="space-y-1">
@@ -204,6 +206,12 @@ export default function DynamicFormRenderer(props: {
                                   {a.originalName}
                                 </a>
                               ))}
+                            </div>
+                          )}
+
+                          {pending > 0 && (
+                            <div className="text-sm text-muted-foreground" data-testid={`text-pending-uploads-${row.id}`}>
+                              Queued uploads (offline): {pending}
                             </div>
                           )}
 
