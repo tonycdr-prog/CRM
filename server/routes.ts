@@ -6,10 +6,45 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
-import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS } from "@shared/schema";
+import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users } from "@shared/schema";
 import { seedDatabase } from "./seed";
 import fs from "fs";
 import path from "path";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+
+// ============================================
+// HELPER FUNCTIONS (DB-backed)
+// ============================================
+async function requireUserOrgId(req: any) {
+  const userId = req.user?.claims?.sub;
+  if (!userId) throw new Error("Missing user id");
+  const u = await db
+    .select({ organizationId: users.organizationId, id: users.id })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!u.length || !u[0].organizationId) throw new Error("Missing organization");
+  return { userId, organizationId: u[0].organizationId };
+}
+
+function coerceValueToColumns(value: any) {
+  const asBool = typeof value === "boolean" ? value : null;
+
+  // numbers come from UI as number; store as string for safety (float issues)
+  const asNumber =
+    typeof value === "number" && Number.isFinite(value) ? String(value) : null;
+
+  const asText =
+    typeof value === "string" ? value : null;
+
+  // if value is null/undefined, store nothing
+  return {
+    valueBool: asBool,
+    valueNumber: asNumber,
+    valueText: asText,
+  };
+}
 
 // ============================================
 // FORM INSPECTION API DTOs (DB-backed)
