@@ -4586,6 +4586,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─────────────────────────────────────────────
   // PDF EXPORT (AUTH)
   // ─────────────────────────────────────────────
+  function getBaseUrl(req: any) {
+    // Prefer explicit public URL if set (recommended for Replit)
+    const publicUrl = process.env.PUBLIC_BASE_URL;
+    if (publicUrl) return publicUrl.replace(/\/$/, "");
+
+    // Fall back to request host
+    const proto = (req.headers["x-forwarded-proto"] as string) || "https";
+    const host = req.headers["x-forwarded-host"] || req.headers.host;
+    return `${proto}://${host}`.replace(/\/$/, "");
+  }
+
   apiRouter.get("/inspections/:id/pdf", async (req, res) => {
     try {
       const { organizationId } = await requireUserOrgId(req);
@@ -4678,7 +4689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const atts = await db
         .select({
           rowId: inspectionRowAttachments.rowId,
-          fileId: inspectionRowAttachments.fileId,
+          fileId: files.id,
           originalName: files.originalName,
           mimeType: files.mimeType,
           path: files.path,
@@ -4689,6 +4700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(eq(inspectionRowAttachments.organizationId, organizationId), eq(inspectionRowAttachments.inspectionId, inspectionId)))
         .orderBy(desc(inspectionRowAttachments.createdAt));
 
+      const baseUrl = getBaseUrl(req);
       const attachmentsByRowId = new Map<string, Array<{ originalName: string; mimeType?: string | null; localPath?: string | null; downloadUrl?: string | null }>>();
       for (const a of atts) {
         const list = attachmentsByRowId.get(a.rowId) ?? [];
@@ -4699,14 +4711,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           localPath = path.join(UPLOAD_ROOT, a.path);
         }
 
-        // authenticated download URL
-        const downloadUrl = `/api/files/${encodeURIComponent(a.fileId)}/download`;
-
         list.push({
           originalName: a.originalName,
           mimeType: a.mimeType,
           localPath,
-          downloadUrl,
+          downloadUrl: `${baseUrl}/api/files/${encodeURIComponent(a.fileId)}/download`,
         });
 
         attachmentsByRowId.set(a.rowId, list);
