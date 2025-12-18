@@ -3915,6 +3915,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ ok: true, systemTypeIds });
   });
 
+  // GET /api/admin/templates/:id/entities
+  apiRouter.get("/admin/templates/:id/entities", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const templateId = String(req.params.id || "");
+    if (!templateId) return res.status(400).json({ message: "Invalid id" });
+
+    const mappings = await db
+      .select({
+        entityId: formTemplateEntities.entityId,
+        sortOrder: formTemplateEntities.sortOrder,
+        required: formTemplateEntities.required,
+        repeatPerAsset: formTemplateEntities.repeatPerAsset,
+        evidenceRequired: formTemplateEntities.evidenceRequired,
+        entityTitle: formEntities.title,
+        entityDescription: formEntities.description,
+      })
+      .from(formTemplateEntities)
+      .innerJoin(formEntities, eq(formEntities.id, formTemplateEntities.entityId))
+      .where(and(eq(formTemplateEntities.templateId, templateId), eq(formTemplateEntities.organizationId, auth.organizationId)))
+      .orderBy(formTemplateEntities.sortOrder);
+
+    res.json({ entities: mappings });
+  });
+
+  // POST /api/admin/templates/:id/entities
+  apiRouter.post("/admin/templates/:id/entities", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const templateId = String(req.params.id || "");
+    if (!templateId) return res.status(400).json({ message: "Invalid template id" });
+
+    try {
+      const entityId = assertString(req.body?.entityId, "entityId");
+
+      // Determine next sortOrder
+      const max = await db
+        .select({ max: sql<number>`coalesce(max(${formTemplateEntities.sortOrder}), 0)` })
+        .from(formTemplateEntities)
+        .where(and(eq(formTemplateEntities.templateId, templateId), eq(formTemplateEntities.organizationId, auth.organizationId)));
+
+      const nextSort = (max[0]?.max ?? 0) + 1;
+
+      const created = await db
+        .insert(formTemplateEntities)
+        .values({
+          organizationId: auth.organizationId,
+          templateId,
+          entityId,
+          sortOrder: nextSort,
+          required: true,
+          repeatPerAsset: false,
+          evidenceRequired: false,
+        })
+        .returning({
+          entityId: formTemplateEntities.entityId,
+          sortOrder: formTemplateEntities.sortOrder,
+          required: formTemplateEntities.required,
+          repeatPerAsset: formTemplateEntities.repeatPerAsset,
+          evidenceRequired: formTemplateEntities.evidenceRequired,
+        });
+
+      res.json({ entity: created[0] });
+    } catch (e: any) {
+      res.status(400).json({ message: e?.message ?? "Bad request" });
+    }
+  });
+
+  // POST /api/admin/templates/:id/entities/reorder
+  apiRouter.post("/admin/templates/:id/entities/reorder", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const templateId = String(req.params.id || "");
+    if (!templateId) return res.status(400).json({ message: "Invalid template id" });
+
+    const orderedEntityIds = Array.isArray(req.body?.orderedEntityIds) ? req.body.orderedEntityIds : [];
+    if (!orderedEntityIds.length) return res.status(400).json({ message: "orderedEntityIds[] required" });
+
+    // Validate all entityIds belong to this template + org
+    const existing = await db
+      .select({ entityId: formTemplateEntities.entityId })
+      .from(formTemplateEntities)
+      .where(and(eq(formTemplateEntities.templateId, templateId), eq(formTemplateEntities.organizationId, auth.organizationId)));
+
+    const existingSet = new Set(existing.map((e) => e.entityId));
+    for (const id of orderedEntityIds) {
+      if (!existingSet.has(id)) return res.status(400).json({ message: `Invalid entityId: ${id}` });
+    }
+
+    // Update sortOrder
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < orderedEntityIds.length; i++) {
+        await tx
+          .update(formTemplateEntities)
+          .set({ sortOrder: i + 1 })
+          .where(
+            and(
+              eq(formTemplateEntities.templateId, templateId),
+              eq(formTemplateEntities.entityId, orderedEntityIds[i]),
+              eq(formTemplateEntities.organizationId, auth.organizationId)
+            )
+          );
+      }
+    });
+
+    res.json({ ok: true });
+  });
+
+  // PATCH /api/admin/templates/:id/entities/:entityId
+  apiRouter.patch("/admin/templates/:id/entities/:entityId", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const templateId = String(req.params.id || "");
+    const entityId = String(req.params.entityId || "");
+    if (!templateId || !entityId) return res.status(400).json({ message: "Invalid ids" });
+
+    const patch: any = {};
+    if (typeof req.body?.required === "boolean") patch.required = req.body.required;
+    if (typeof req.body?.repeatPerAsset === "boolean") patch.repeatPerAsset = req.body.repeatPerAsset;
+    if (typeof req.body?.evidenceRequired === "boolean") patch.evidenceRequired = req.body.evidenceRequired;
+
+    const updated = await db
+      .update(formTemplateEntities)
+      .set(patch)
+      .where(
+        and(
+          eq(formTemplateEntities.templateId, templateId),
+          eq(formTemplateEntities.entityId, entityId),
+          eq(formTemplateEntities.organizationId, auth.organizationId)
+        )
+      )
+      .returning({
+        entityId: formTemplateEntities.entityId,
+        required: formTemplateEntities.required,
+        repeatPerAsset: formTemplateEntities.repeatPerAsset,
+        evidenceRequired: formTemplateEntities.evidenceRequired,
+      });
+
+    if (!updated.length) return res.status(404).json({ message: "Not found" });
+    res.json({ entity: updated[0] });
+  });
+
+  // DELETE /api/admin/templates/:id/entities/:entityId
+  apiRouter.delete("/admin/templates/:id/entities/:entityId", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner", "admin"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const templateId = String(req.params.id || "");
+    const entityId = String(req.params.entityId || "");
+    if (!templateId || !entityId) return res.status(400).json({ message: "Invalid ids" });
+
+    const deleted = await db
+      .delete(formTemplateEntities)
+      .where(
+        and(
+          eq(formTemplateEntities.templateId, templateId),
+          eq(formTemplateEntities.entityId, entityId),
+          eq(formTemplateEntities.organizationId, auth.organizationId)
+        )
+      )
+      .returning({ entityId: formTemplateEntities.entityId });
+
+    if (!deleted.length) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
   // ─────────────────────────────────────────────
   // FORM INSPECTION API (DB-backed)
   // ─────────────────────────────────────────────
