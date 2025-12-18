@@ -4055,6 +4055,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.insert(formTemplateSystemTypes).values(values);
     }
 
+    await logAudit(db, {
+      organizationId: auth.organizationId,
+      actorUserId: auth.userId,
+      action: "template.system_types.set",
+      entityType: "template",
+      entityId: templateId,
+      metadata: { systemTypeIds },
+    });
+
     res.json({ ok: true, systemTypeIds });
   });
 
