@@ -142,6 +142,27 @@ export const serverErrors = pgTable(
 
 export type ServerError = typeof serverErrors.$inferSelect;
 
+// Import runs table for tracking import operations
+export const importRuns = pgTable(
+  "import_runs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organizationId: varchar("organization_id").notNull(),
+    sourceOrganizationId: varchar("source_organization_id"),
+    mode: text("mode").notNull(), // "dry_run" | "apply"
+    status: text("status").notNull().default("succeeded"), // succeeded | failed
+    summary: jsonb("summary").$type<Record<string, any>>().default({}).notNull(),
+    error: text("error"),
+    createdByUserId: varchar("created_by_user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("import_runs_org_idx").on(t.organizationId, t.createdAt),
+  ]
+);
+
+export type ImportRun = typeof importRuns.$inferSelect;
+
 // Background jobs table for async processing (e.g., large exports)
 export const backgroundJobs = pgTable(
   "background_jobs",

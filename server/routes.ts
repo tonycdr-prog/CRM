@@ -20,6 +20,8 @@ import { getOrgPlanAndUsage, enforce } from "./lib/usage";
 import { organizationPlans, organizationUsage, backgroundJobs } from "@shared/schema";
 import { streamOrgExportZip } from "./lib/zipExport";
 import { JOB_OUTPUT_ROOT } from "./lib/jobsQueue";
+import { dryRunImport, applyImport, ImportPayloadSchema } from "./lib/importOrg";
+import { importRuns } from "@shared/schema";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -5541,6 +5543,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
 
     await streamOrgExportZip({ db, orgId: auth.organizationId, res });
+  });
+
+  // POST /api/admin/import - Import organisation data with dry-run or apply mode
+  apiRouter.post("/admin/import", async (req, res) => {
+    const auth = await requireOrgRole(req, ["owner"]);
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+    const parsed = ImportPayloadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+    }
+
+    const mode = parsed.data.mode;
+
+    try {
+      if (mode === "dry_run") {
+        const summary = await dryRunImport(db, parsed.data);
+        try {
+          await db.insert(importRuns).values({
+            organizationId: auth.organizationId,
+            sourceOrganizationId: summary.sourceOrganizationId,
+            mode: "dry_run",
+            status: "succeeded",
+            summary,
+            createdByUserId: auth.userId,
+          });
+        } catch {}
+        return res.json({ ok: true, summary });
+      }
+
+      const result = await applyImport(db, {
+        auth: { organizationId: auth.organizationId, userId: auth.userId },
+        payload: parsed.data,
+      });
+      return res.json(result);
+    } catch (e: any) {
+      const status = Number(e?.status || 500);
+      try {
+        await db.insert(importRuns).values({
+          organizationId: auth.organizationId,
+          sourceOrganizationId: req.body?.manifest?.organizationId ?? null,
+          mode,
+          status: "failed",
+          error: String(e?.message || e),
+          summary: {},
+          createdByUserId: auth.userId,
+        });
+      } catch {}
+      return res.status(status).json({ message: String(e?.message || "Import failed") });
+    }
   });
 
   // POST /api/admin/export-jobs/zip - Create async ZIP export job
