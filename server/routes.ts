@@ -15,6 +15,7 @@ import fs from "fs";
 import path from "path";
 import { db } from "./db";
 import { eq, and, sql, isNull, desc, inArray } from "drizzle-orm";
+import { uploadLimiter, pdfLimiter } from "./security";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -111,6 +112,17 @@ function ensureDir(p: string) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 }
 
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
+
+function sanitizeName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
@@ -118,11 +130,17 @@ const upload = multer({
       cb(null, UPLOAD_ROOT);
     },
     filename: (req, file, cb) => {
-      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const safe = sanitizeName(file.originalname);
       cb(null, `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safe}`);
     },
   }),
   limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_MIME.has(file.mimetype)) {
+      return cb(new Error("Unsupported file type. Only JPG/PNG/WebP/PDF allowed."));
+    }
+    cb(null, true);
+  },
 });
 
 // ============================================
@@ -4756,6 +4774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/inspections/:id/rows/:rowId/attachments  (multipart form-data: file)
   apiRouter.post(
     "/inspections/:id/rows/:rowId/attachments",
+    uploadLimiter,
     upload.single("file"),
     async (req, res) => {
       try {
@@ -4899,7 +4918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `${proto}://${host}`.replace(/\/$/, "");
   }
 
-  apiRouter.get("/inspections/:id/pdf", async (req, res) => {
+  apiRouter.get("/inspections/:id/pdf", pdfLimiter, async (req, res) => {
     try {
       const { organizationId } = await requireUserOrgId(req);
       const inspectionId = String(req.params.id || "");
@@ -5071,7 +5090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/files/:fileId/download  (auth + tenant check)
+  // GET /api/files/:fileId/download  (auth + tenant + inspection link check)
   apiRouter.get("/files/:fileId/download", async (req, res) => {
     try {
       const { organizationId } = await requireUserOrgId(req);
@@ -5081,10 +5100,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const f = await db
         .select({
           id: files.id,
-          org: files.organizationId,
           path: files.path,
           originalName: files.originalName,
           mimeType: files.mimeType,
+          storage: files.storage,
         })
         .from(files)
         .where(and(eq(files.id, fileId), eq(files.organizationId, organizationId)))
@@ -5092,11 +5111,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!f.length) return res.status(404).json({ message: "Not found" });
 
+      // Must be linked to an inspection (prevents orphan fileId guessing)
+      const link = await db
+        .select({ inspectionId: inspectionRowAttachments.inspectionId })
+        .from(inspectionRowAttachments)
+        .where(
+          and(
+            eq(inspectionRowAttachments.organizationId, organizationId),
+            eq(inspectionRowAttachments.fileId, fileId)
+          )
+        )
+        .limit(1);
+
+      if (!link.length) return res.status(404).json({ message: "Not found" });
+
+      // Verify inspection exists and belongs to org
+      const insp = await db
+        .select({
+          id: inspectionInstances.id,
+          jobId: inspectionInstances.jobId,
+        })
+        .from(inspectionInstances)
+        .where(
+          and(
+            eq(inspectionInstances.organizationId, organizationId),
+            eq(inspectionInstances.id, link[0].inspectionId)
+          )
+        )
+        .limit(1);
+
+      if (!insp.length) return res.status(404).json({ message: "Not found" });
+
+      // Verify job access
+      const access = await requireJobInOrg(String(insp[0].jobId), organizationId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+      if ((f[0].storage ?? "local") !== "local") {
+        return res.status(501).json({ message: "Storage backend not supported for download" });
+      }
+
       const abs = path.join(UPLOAD_ROOT, f[0].path);
       if (!fs.existsSync(abs)) return res.status(404).json({ message: "File missing on disk" });
 
       if (f[0].mimeType) res.setHeader("Content-Type", f[0].mimeType);
-      res.setHeader("Content-Disposition", `inline; filename="${f[0].originalName.replace(/"/g, "")}"`);
+      res.setHeader("Content-Disposition", `inline; filename="${sanitizeName(f[0].originalName).replace(/"/g, "")}"`);
       fs.createReadStream(abs).pipe(res);
     } catch (err: any) {
       res.status(400).json({ message: err.message || "Download failed" });

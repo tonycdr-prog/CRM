@@ -2,9 +2,27 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { redactSensitiveData } from "./utils/routeHelpers";
+import {
+  requestId,
+  requestLogger,
+  securityHeaders,
+  generalLimiter,
+  authLimiter,
+  uploadLimiter,
+  pdfLimiter,
+} from "./security";
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
+
+app.set("trust proxy", 1);
+app.use(requestId);
+app.use(requestLogger);
+app.use(securityHeaders);
+app.use(generalLimiter);
+
+app.use("/api/auth", authLimiter);
+app.use("/api/login", authLimiter);
 
 declare module 'http' {
   interface IncomingMessage {
@@ -57,12 +75,22 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    const errMsg = (err as Error)?.message || "";
+    const errCode = (err as any)?.code || "";
+
+    if (errMsg.includes("Unsupported file type")) {
+      return res.status(415).json({ message: errMsg });
+    }
+    if (errCode === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ message: "File too large" });
+    }
+
     console.error("Unhandled error:", err);
     
     const status = (err as { status?: number; statusCode?: number })?.status 
       || (err as { status?: number; statusCode?: number })?.statusCode 
       || 500;
-    const message = (err as Error)?.message || "Internal Server Error";
+    const message = errMsg || "Internal Server Error";
 
     if (!res.headersSent) {
       res.status(status).json({ error: message });

@@ -1,0 +1,343 @@
+/*
+PHASE 8A — SECURITY HARDENING (ALL IN ONE COPYABLE BLOCK)
+
+WHAT THIS PATCH ADDS
+1) Security headers via helmet (CSP, frameguard, etc.)
+2) Rate limiting (general + stricter for uploads/PDF/login-ish routes)
+3) Upload hardening:
+   - mime-type allowlist
+   - file size cap (keep your 15MB or lower)
+   - filename sanitization
+4) Download hardening:
+   - ensure file download checks tenant ownership (already done) + OPTIONAL job-access check (more secure)
+5) Consistent request ID + basic request logging
+
+ASSUMPTIONS
+- Express server
+- Your API router is `apiRouter`
+- You already have requireUserOrgId(req) and requireJobInOrg(jobId, orgId)
+- Your upload code uses multer and stores metadata in `files` table
+- For optional extra security on downloads, we’ll verify the file is referenced by an inspection attached to a job the user can access (stronger than org-only).
+  (If you don’t want this stricter check, you can skip section “D2”.)
+
+──────────────────────────────────────────────────────────────
+A) Install deps
+Shell:
+  npm i helmet express-rate-limit
+──────────────────────────────────────────────────────────────
+*/
+
+///////////////////////////////
+// B) server/security.ts (NEW)
+///////////////////////////////
+
+/*
+Create: server/security.ts
+*/
+
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import type { RequestHandler } from "express";
+import crypto from "crypto";
+
+export const requestId: RequestHandler = (req, res, next) => {
+  const incoming = (req.headers["x-request-id"] as string) || "";
+  const id = incoming || crypto.randomUUID();
+  (req as any).requestId = id;
+  res.setHeader("x-request-id", id);
+  next();
+};
+
+export const securityHeaders = helmet({
+  // If you embed the app in iframes intentionally, change this.
+  frameguard: { action: "deny" },
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      // Adjust if you load assets from CDNs.
+      "img-src": ["'self'", "data:", "blob:"],
+      "connect-src": ["'self'"],
+      "script-src": ["'self'", "'unsafe-inline'"], // shadcn/react dev often needs inline; tighten later
+      "style-src": ["'self'", "'unsafe-inline'"],
+      "object-src": ["'none'"],
+      "base-uri": ["'self'"],
+      "form-action": ["'self'"],
+      "frame-ancestors": ["'none'"],
+    },
+  },
+  referrerPolicy: { policy: "no-referrer" },
+  crossOriginResourcePolicy: { policy: "same-site" },
+});
+
+export const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 180,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please slow down." },
+});
+
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many auth requests. Try again later." },
+});
+
+export const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many uploads. Please slow down." },
+});
+
+export const pdfLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many PDF requests. Please slow down." },
+});
+
+export const requestLogger: RequestHandler = (req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    const rid = (req as any).requestId || "-";
+    const status = res.statusCode;
+    const method = req.method;
+    const url = req.originalUrl || req.url;
+    // Keep logs small; you can swap for structured logging later.
+    console.log(`[${rid}] ${status} ${method} ${url} ${ms}ms`);
+  });
+  next();
+};
+
+/////////////////////////////////////////////
+// C) server/index.ts (or your server entry)
+// APPLY middleware globally
+/////////////////////////////////////////////
+
+/*
+In your server entry file (often server/index.ts or server/server.ts),
+add these imports and middlewares BEFORE routes:
+
+import { requestId, requestLogger, securityHeaders, generalLimiter, authLimiter, uploadLimiter, pdfLimiter } from "./security";
+
+Then:
+
+app.set("trust proxy", 1);
+app.use(requestId);
+app.use(requestLogger);
+app.use(securityHeaders);
+app.use(generalLimiter);
+
+Rate limit specific route prefixes (adjust to match your auth routes):
+app.use("/api/login", authLimiter);            // if you have it
+app.use("/api/auth", authLimiter);             // if you have it
+app.use("/api/inspections", generalLimiter);   // optional
+app.use("/api/inspections", (req,res,next)=>next()); // keep existing
+app.use("/api/inspections", (req,res,next)=>next()); // ignore, just ensure order
+
+For uploads + pdf:
+app.use("/api/inspections", (req, res, next) => {
+  // apply upload limiter only to attachments endpoint
+  if (req.path.includes("/attachments") && req.method === "POST") return uploadLimiter(req, res, next);
+  return next();
+});
+
+app.use("/api/inspections", (req, res, next) => {
+  // apply pdf limiter only to pdf endpoint
+  if (req.path.endsWith("/pdf") && req.method === "GET") return pdfLimiter(req, res, next);
+  return next();
+});
+
+(If you mount apiRouter at /api, you can instead apply on /api directly.)
+*/
+
+//////////////////////////////////////////////////////
+// D) server/routes.ts — HARDEN UPLOAD + DOWNLOAD/PDF
+//////////////////////////////////////////////////////
+
+/*
+Add/patch inside server/routes.ts where multer is configured:
+- enforce mimetype allowlist
+- keep size limit
+*/
+
+import multer from "multer";
+
+// Allow images + PDFs only (expand if needed)
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
+
+function sanitizeName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+// Replace your multer config with this safer version (keep your UPLOAD_ROOT logic)
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOAD_ROOT),
+    filename: (req, file, cb) => {
+      const safe = sanitizeName(file.originalname);
+      cb(null, `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safe}`);
+    },
+  }),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_MIME.has(file.mimetype)) {
+      return cb(new Error("Unsupported file type. Only JPG/PNG/WebP/PDF allowed."));
+    }
+    cb(null, true);
+  },
+});
+
+//////////////////////////////
+// D1) PDF endpoint limiter
+//////////////////////////////
+
+/*
+If you prefer per-endpoint limiter (instead of in server entry), you can do:
+
+import { pdfLimiter } from "./security";
+apiRouter.get("/inspections/:id/pdf", pdfLimiter, async (req, res) => { ... });
+
+Same for upload endpoint with uploadLimiter.
+*/
+
+//////////////////////////////
+// D2) Download hardening (STRONGER CHECK)
+// Optional but recommended: ensure the file is referenced by an inspection that belongs to a job the user can access.
+//////////////////////////////
+
+/*
+Patch your existing download handler:
+
+GET /api/files/:fileId/download
+
+Replace it with this stricter version.
+It verifies:
+- file belongs to org
+- AND file is linked to at least one inspection row attachment in this org
+- AND that inspection belongs to a job the user can access
+
+Requires imports:
+inspectionRowAttachments, inspectionInstances, files, and requireJobInOrg, requireUserOrgId, and drizzle helpers.
+
+*/
+
+apiRouter.get("/files/:fileId/download", async (req, res) => {
+  const { organizationId } = await requireUserOrgId(req);
+  const fileId = String(req.params.fileId || "");
+  if (!fileId) return res.status(400).json({ message: "Invalid file id" });
+
+  const f = await db
+    .select({
+      id: files.id,
+      path: files.path,
+      originalName: files.originalName,
+      mimeType: files.mimeType,
+      storage: files.storage,
+    })
+    .from(files)
+    .where(and(eq(files.id, fileId), eq(files.organizationId, organizationId)))
+    .limit(1);
+
+  if (!f.length) return res.status(404).json({ message: "Not found" });
+
+  // Must be linked to an inspection (prevents “orphan fileId guessing”)
+  const link = await db
+    .select({
+      inspectionId: inspectionRowAttachments.inspectionId,
+    })
+    .from(inspectionRowAttachments)
+    .where(
+      and(
+        eq(inspectionRowAttachments.organizationId, organizationId),
+        eq(inspectionRowAttachments.fileId, fileId)
+      )
+    )
+    .limit(1);
+
+  if (!link.length) return res.status(404).json({ message: "Not found" });
+
+  const insp = await db
+    .select({
+      id: inspectionInstances.id,
+      jobId: inspectionInstances.jobId,
+    })
+    .from(inspectionInstances)
+    .where(
+      and(
+        eq(inspectionInstances.organizationId, organizationId),
+        eq(inspectionInstances.id, link[0].inspectionId)
+      )
+    )
+    .limit(1);
+
+  if (!insp.length) return res.status(404).json({ message: "Not found" });
+
+  const access = await requireJobInOrg(String(insp[0].jobId), organizationId);
+  if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+  if ((f[0].storage ?? "local") !== "local") {
+    return res.status(501).json({ message: "Storage backend not supported for download" });
+  }
+
+  const abs = path.join(UPLOAD_ROOT, f[0].path);
+  if (!fs.existsSync(abs)) return res.status(404).json({ message: "File missing on disk" });
+
+  if (f[0].mimeType) res.setHeader("Content-Type", f[0].mimeType);
+  res.setHeader("Content-Disposition", `inline; filename="${sanitizeName(f[0].originalName).replace(/"/g, "")}"`);
+  fs.createReadStream(abs).pipe(res);
+});
+
+//////////////////////////////////////////////////////
+// E) Consistent error response for upload fileFilter
+//////////////////////////////////////////////////////
+
+/*
+Multer fileFilter errors can bubble as 500 if not handled.
+Add a small error handler middleware AFTER apiRouter mounting in server entry:
+
+app.use((err, req, res, next) => {
+  if (err?.message?.includes("Unsupported file type")) {
+    return res.status(415).json({ message: err.message });
+  }
+  if (err?.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ message: "File too large" });
+  }
+  return next(err);
+});
+
+If you already have an error handler, merge these conditions into it.
+*/
+
+//////////////////////////////////////////////////////
+// F) Quick verification checklist
+//////////////////////////////////////////////////////
+
+/*
+1) Open devtools → check response headers include:
+   - x-request-id
+   - CSP headers from helmet
+2) Upload:
+   - .exe should return 415
+   - >15MB should return 413
+3) Download:
+   - fileId from another org should 404/403
+   - random fileId should 404 (not leak existence)
+4) PDF:
+   - hammer refresh → eventually 429 from limiter
+
+NEXT (Phase 8B):
+- Plan limits + usage page + server enforcement (storage quota, jobs/month, template limits).
+Say “8B”.
+*/
