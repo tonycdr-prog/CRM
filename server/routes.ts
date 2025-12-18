@@ -4433,6 +4433,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .returning({ id: inspectionInstances.id });
 
+      await logAudit(db, {
+        organizationId,
+        actorUserId: userId,
+        action: "inspection.created",
+        entityType: "inspection",
+        entityId: created[0].id,
+        jobId: parsedJobId,
+        inspectionId: created[0].id,
+        metadata: { templateId, systemTypeCode },
+      });
+
       res.json({ inspectionId: created[0].id });
     } catch (err: any) {
       res.status(400).json({ message: err.message || "Error creating inspection" });
@@ -4601,7 +4612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inspectionId = String(req.params.id);
 
       const insp = await db
-        .select({ id: inspectionInstances.id, completedAt: inspectionInstances.completedAt })
+        .select({ id: inspectionInstances.id, jobId: inspectionInstances.jobId, completedAt: inspectionInstances.completedAt })
         .from(inspectionInstances)
         .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
         .limit(1);
@@ -4639,6 +4650,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await db.insert(inspectionResponses).values(inserts);
 
+      await logAudit(db, {
+        organizationId,
+        actorUserId: userId,
+        action: "inspection.responses.saved",
+        entityType: "inspection",
+        entityId: inspectionId,
+        jobId: String(insp[0].jobId),
+        inspectionId,
+        metadata: { rowsTouched: Array.isArray(req.body?.responses) ? req.body.responses.length : 0 },
+      });
+
       res.json({ ok: true });
     } catch (err: any) {
       res.status(400).json({ message: err.message || "Error saving responses" });
@@ -4652,7 +4674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inspectionId = String(req.params.id);
 
       const insp = await db
-        .select({ id: inspectionInstances.id, completedAt: inspectionInstances.completedAt })
+        .select({ id: inspectionInstances.id, jobId: inspectionInstances.jobId, completedAt: inspectionInstances.completedAt })
         .from(inspectionInstances)
         .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
         .limit(1);
@@ -4668,6 +4690,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
         .returning({ completedAt: inspectionInstances.completedAt });
+
+      await logAudit(db, {
+        organizationId,
+        actorUserId: userId,
+        action: "inspection.completed",
+        entityType: "inspection",
+        entityId: inspectionId,
+        jobId: String(insp[0].jobId),
+        inspectionId,
+        metadata: {},
+      });
 
       res.json({ completedAt: updated[0].completedAt });
     } catch (err: any) {

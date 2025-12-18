@@ -1,0 +1,92 @@
+// client/src/pages/job-activity.tsx
+import { useEffect, useState } from "react";
+import { useLocation, useRoute } from "wouter";
+import { ROUTES, buildPath } from "@/lib/routes";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+type AuditEvent = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata: any;
+  createdAt: string;
+  actorUserId: string;
+  inspectionId?: string | null;
+};
+
+function prettyAction(a: string) {
+  return a.replace(/\./g, " ");
+}
+
+export default function JobActivityPage() {
+  const [, setLocation] = useLocation();
+  const [, params] = useRoute("/jobs/:jobId/activity");
+  const jobId = params?.jobId;
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+
+  async function load() {
+    if (!jobId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/audit`, { credentials: "include" });
+      if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+      const data = await res.json();
+      setEvents(Array.isArray(data.events) ? data.events : []);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, [jobId]);
+
+  if (!jobId) return <div className="p-6 text-muted-foreground">Missing job id.</div>;
+
+  return (
+    <div className="container mx-auto p-4 md:p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setLocation(buildPath(ROUTES.FIELD_JOB_DETAIL, { jobId }))}>
+            Back
+          </Button>
+          <h1 className="text-xl font-semibold">Activity</h1>
+        </div>
+        <Button variant="outline" onClick={load} disabled={loading}>Refresh</Button>
+      </div>
+
+      {error && <div className="text-sm text-destructive">{error}</div>}
+
+      <Card>
+        <CardHeader><CardTitle>Timeline</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {loading ? (
+            <div className="text-muted-foreground">Loading…</div>
+          ) : events.length === 0 ? (
+            <div className="text-muted-foreground">No events yet.</div>
+          ) : (
+            events.map((e) => (
+              <div key={e.id} className="border rounded-md p-3">
+                <div className="font-medium">{prettyAction(e.action)}</div>
+                <div className="text-sm text-muted-foreground">
+                  {new Date(e.createdAt).toLocaleString()} • {e.entityType}
+                </div>
+                {e.metadata && Object.keys(e.metadata).length > 0 && (
+                  <div className="text-sm mt-2">
+                    <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(e.metadata, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
