@@ -4674,12 +4674,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!latestByRow.has(r.rowId)) latestByRow.set(r.rowId, r);
       }
 
+      // Attachments (names + local path + mime type for thumbnails)
       const atts = await db
         .select({
           rowId: inspectionRowAttachments.rowId,
           originalName: files.originalName,
           mimeType: files.mimeType,
           path: files.path,
+          storage: files.storage,
         })
         .from(inspectionRowAttachments)
         .innerJoin(files, eq(files.id, inspectionRowAttachments.fileId))
@@ -4689,7 +4691,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const attachmentsByRowId = new Map<string, Array<{ originalName: string; mimeType?: string | null; localPath?: string | null }>>();
       for (const a of atts) {
         const list = attachmentsByRowId.get(a.rowId) ?? [];
-        list.push({ originalName: a.originalName, mimeType: a.mimeType, localPath: a.path });
+
+        // local storage: absolute file path for PDF embedding
+        let localPath: string | null = null;
+        if ((a.storage ?? "local") === "local") {
+          localPath = path.join(UPLOAD_ROOT, a.path);
+        }
+
+        list.push({
+          originalName: a.originalName,
+          mimeType: a.mimeType,
+          localPath,
+        });
+
         attachmentsByRowId.set(a.rowId, list);
       }
 
