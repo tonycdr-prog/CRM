@@ -3966,6 +3966,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     if (!updated.length) return res.status(404).json({ message: "Not found" });
+
+    await logAudit(db, {
+      organizationId: auth.organizationId,
+      actorUserId: auth.userId,
+      action: "template.updated",
+      entityType: "template",
+      entityId: updated[0].id,
+      metadata: { name: updated[0].name, isActive: updated[0].isActive },
+    });
+
     res.json({ template: updated[0] });
   });
 
