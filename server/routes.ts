@@ -3720,23 +3720,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/inspections/:id/complete
-  apiRouter.post("/inspections/:id/complete", asyncHandler(async (req, res) => {
-    const userId = getUserId(req as AuthenticatedRequest);
-    const user = await storage.getUser(userId);
-    const organizationId = user?.organizationId;
-    if (!organizationId) {
-      return res.status(400).json({ message: "User not in an organisation" });
-    }
+  // POST /api/inspections/:id/complete - Lock inspection by setting completedAt
+  apiRouter.post("/inspections/:id/complete", async (req, res) => {
+    try {
+      const { organizationId, userId } = await requireUserOrgId(req);
+      const inspectionId = String(req.params.id);
 
-    const inspection = await storage.getInspectionInstance(req.params.id);
-    if (!inspection || inspection.organizationId !== organizationId) {
-      return res.status(404).json({ message: "Not found" });
-    }
+      const insp = await db
+        .select({ id: inspectionInstances.id, completedAt: inspectionInstances.completedAt })
+        .from(inspectionInstances)
+        .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+        .limit(1);
 
-    const updated = await storage.completeInspectionInstance(req.params.id, userId);
-    res.json({ completedAt: updated?.completedAt?.toISOString() || null });
-  }));
+      if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+      if (insp[0].completedAt) return res.json({ completedAt: insp[0].completedAt });
+
+      const updated = await db
+        .update(inspectionInstances)
+        .set({
+          completedAt: new Date(),
+          completedByUserId: userId,
+        })
+        .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+        .returning({ completedAt: inspectionInstances.completedAt });
+
+      res.json({ completedAt: updated[0].completedAt });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Error completing inspection" });
+    }
+  });
 
   // ============================================
   // MOUNT AUTHENTICATED API ROUTER
