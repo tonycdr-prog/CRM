@@ -1,0 +1,173 @@
+// ─────────────────────────────────────────────
+// FORMS STUB API (AUTH ONLY) — Replace with DB later
+// ─────────────────────────────────────────────
+
+// GET /api/jobs/:jobId/forms
+apiRouter.get("/jobs/:jobId/forms", async (req, res) => {
+  const systemTypes: StubSystemTypeDTO[] = [
+    { id: "sys_mshev", name: "MSHEV", code: "MSHEV" },
+    { id: "sys_press", name: "Pressurisation", code: "PRESSURISATION" },
+    { id: "sys_nshev", name: "nSHEV", code: "NSHEV" },
+  ];
+
+  const templates: StubTemplateListItemDTO[] = [
+    { id: "tpl_damper", name: "Damper Testing", systemTypeCode: "MSHEV" },
+    { id: "tpl_pressure", name: "Pressure Differential Testing", systemTypeCode: "PRESSURISATION" },
+  ];
+
+  res.json({ systemTypes, templates });
+});
+
+// POST /api/inspections  { jobId, systemTypeCode, templateId }
+apiRouter.post("/inspections", async (req, res) => {
+  const { jobId, systemTypeCode, templateId } = req.body ?? {};
+  if (!jobId || !systemTypeCode || !templateId) {
+    return res.status(400).json({ message: "jobId, systemTypeCode, templateId are required" });
+  }
+
+  const inspectionId = newId("insp");
+
+  const template: StubFormTemplateDTO =
+    templateId === "tpl_damper"
+      ? {
+          id: "tpl_damper",
+          name: "Damper Testing",
+          entities: [
+            {
+              id: "ent_mshev_maint",
+              title: "MSHEV Maintenance Activities",
+              rows: [
+                {
+                  id: "row_fan_casing",
+                  component: "Fan casing",
+                  activity: "Inspection for corrosion and secure mounting",
+                  fieldType: "pass_fail",
+                  reference: "Manufacturer",
+                },
+                {
+                  id: "row_fan_speed",
+                  component: "Fan speed",
+                  activity: "Measurement during operation",
+                  fieldType: "number",
+                  units: "RPM",
+                  reference: "Manufacturer",
+                },
+                {
+                  id: "row_airflow",
+                  component: "Airflow performance",
+                  activity: "Verification of fan duty",
+                  fieldType: "number",
+                  units: "m³/s",
+                  reference: "Design / BS 7346-7",
+                },
+                {
+                  id: "row_control_response",
+                  component: "Control response",
+                  activity: "Verification of automatic and manual operation",
+                  fieldType: "pass_fail",
+                  reference: "Fire strategy",
+                },
+              ],
+            },
+          ],
+        }
+      : {
+          id: "tpl_pressure",
+          name: "Pressure Differential Testing",
+          entities: [
+            {
+              id: "ent_press_tests",
+              title: "Pressure Differential System Tests",
+              rows: [
+                {
+                  id: "row_pressure_pa",
+                  component: "Pressure differential",
+                  activity: "Measurement between protected and adjacent spaces",
+                  fieldType: "number",
+                  units: "Pa",
+                  reference: "Design / BS 5588-4",
+                },
+                {
+                  id: "row_door_force",
+                  component: "Door opening force",
+                  activity: "Measurement at door handle",
+                  fieldType: "number",
+                  units: "N",
+                  reference: "Design / BS 5588-4",
+                },
+                {
+                  id: "row_air_velocity",
+                  component: "Airflow velocity",
+                  activity: "Measurement through door opening",
+                  fieldType: "number",
+                  units: "m/s",
+                  reference: "Design intent",
+                },
+                {
+                  id: "row_control_logic",
+                  component: "Control logic",
+                  activity: "Verification of correct system response",
+                  fieldType: "pass_fail",
+                  reference: "Fire strategy",
+                },
+              ],
+            },
+          ],
+        };
+
+  const insp: StubInspection = {
+    id: inspectionId,
+    jobId: String(jobId),
+    systemTypeCode: String(systemTypeCode),
+    templateId: String(templateId),
+    template,
+    completedAt: null,
+    history: [],
+  };
+
+  stubInspections.set(inspectionId, insp);
+  res.json({ inspectionId });
+});
+
+// GET /api/inspections/:id
+apiRouter.get("/inspections/:id", async (req, res) => {
+  const insp = stubInspections.get(req.params.id);
+  if (!insp) return res.status(404).json({ message: "Not found" });
+
+  const latest = insp.history.length ? insp.history[insp.history.length - 1].responses : [];
+
+  res.json({
+    id: insp.id,
+    template: insp.template,
+    completedAt: insp.completedAt,
+    responses: latest,
+  });
+});
+
+// POST /api/inspections/:id/responses  { responses: ResponseDraft[] }
+apiRouter.post("/inspections/:id/responses", async (req, res) => {
+  const insp = stubInspections.get(req.params.id);
+  if (!insp) return res.status(404).json({ message: "Not found" });
+  if (insp.completedAt) return res.status(409).json({ message: "Inspection is completed" });
+
+  const { responses } = req.body ?? {};
+  if (!Array.isArray(responses)) {
+    return res.status(400).json({ message: "responses[] required" });
+  }
+
+  insp.history.push({
+    savedAt: new Date().toISOString(),
+    responses: responses as StubResponseDraft[],
+  });
+
+  res.json({ ok: true });
+});
+
+// POST /api/inspections/:id/complete
+apiRouter.post("/inspections/:id/complete", async (req, res) => {
+  const insp = stubInspections.get(req.params.id);
+  if (!insp) return res.status(404).json({ message: "Not found" });
+
+  insp.completedAt = new Date().toISOString();
+  res.json({ completedAt: insp.completedAt });
+});
