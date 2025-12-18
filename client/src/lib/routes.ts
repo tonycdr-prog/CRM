@@ -2,7 +2,6 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   FIELD_COMPANION: "/field-companion",
   FIELD_JOB_DETAIL: "/field-companion/:id",
-  FIELD_JOB_FORMS: "/field-companion/:id/forms",
   FIELD_TESTING: "/test",
   SCHEDULE: "/schedule",
   CLIENTS: "/clients",
