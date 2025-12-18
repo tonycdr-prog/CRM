@@ -1,0 +1,80 @@
+I need help implementing the following security, architecture, and production-readiness changes in my Node/TypeScript app. Please apply them carefully and explain any breaking changes.
+
+CRITICAL SECURITY FIXES
+	1.	Remove any public endpoint that allows downloading the full project or ZIP of the codebase (e.g. /downloads/project-zip). This must not exist in production under any circumstances.
+	2.	Lock down or remove /api/seed:
+	•	It must NOT be publicly accessible
+	•	If kept, protect it with:
+	•	authentication
+	•	admin/owner role check
+	•	an environment secret header (e.g. X-SEED-SECRET)
+	•	Prefer removing it entirely in production builds.
+
+SESSION & COOKIE FIXES
+3. Fix session TTL handling with connect-pg-simple:
+	•	cookie.maxAge should remain in milliseconds
+	•	store.ttl must be in seconds
+
+	4.	Add sameSite: "lax" to session cookies and keep secure: true for production.
+
+TENANCY & AUTHORIZATION
+5. Enforce organization/tenant scoping:
+	•	Every table containing customer/business data must include organizationId
+	•	Every query must be scoped by the authenticated user’s organizationId
+
+	6.	Create centralized authorization helpers:
+	•	requireRole(req, ["owner","admin"])
+	•	requireOrg(req)
+	•	requireOrgAccess(req, resourceOrgId)
+
+AUDIT & COMPLIANCE
+7. Ensure all critical actions (create, update, close, approve, export) write to audit_logs with:
+	•	userId
+	•	organizationId
+	•	action
+	•	timestamp
+	•	IP address and user agent
+
+	8.	Avoid destructive edits to compliance data:
+	•	prefer versioned records
+	•	soft-delete instead of hard delete
+
+ARCHITECTURE CLEANUP
+9. Split the large storage.ts file into domain-based modules:
+	•	users
+	•	organizations
+	•	assets
+	•	jobs
+	•	inspections / checksheets
+	•	audit
+
+	10.	Create a clean storage/index.ts that exports all storage modules.
+
+REPO / BUILD HYGIENE
+11. Ensure the following are never committed or shipped:
+	•	.local/
+	•	.config/
+	•	.git/
+	•	build artifacts (dist/)
+	•	exported ZIP files
+
+	12.	Update .gitignore and build scripts accordingly.
+
+PRODUCTION HARDENING
+13. Add:
+	•	helmet
+	•	request size limits
+	•	rate limiting for auth routes
+	•	centralized error handling
+
+	14.	Ensure database migrations are run explicitly and safely (not implicitly at runtime).
+
+OPTIONAL (BUT RECOMMENDED)
+15. Add GitHub Actions for:
+	•	build checks
+	•	linting
+	•	type checking
+
+	16.	Enable dependency and secret scanning.
+
+Please prioritize correctness and security over speed. Explain assumptions where needed.

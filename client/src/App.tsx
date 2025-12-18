@@ -1,12 +1,12 @@
 import { Switch, Route, useLocation } from "wouter";
-import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { ViewModeProvider, useViewMode } from "@/hooks/useViewMode";
+import { ViewModeProvider, useViewMode, useRouteSync } from "@/hooks/useViewMode";
+import { ROUTES, isCompanionPath } from "@/lib/routes";
 import { AppLayout } from "@/components/AppLayout";
 import FieldCompanion from "@/pages/field-companion";
 import FieldJobDetail from "@/pages/field-job-detail";
@@ -153,7 +153,7 @@ function LayoutRoutes() {
 }
 
 function EngineerShell() {
-  const { toggleViewMode } = useViewMode();
+  const { enterOfficeMode } = useViewMode();
   
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -162,7 +162,7 @@ function EngineerShell() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={toggleViewMode}
+          onClick={() => enterOfficeMode(ROUTES.DASHBOARD)}
           data-testid="button-switch-to-office"
         >
           Switch to Office
@@ -170,9 +170,9 @@ function EngineerShell() {
       </header>
       <div className="flex-1 overflow-hidden">
         <Switch>
-          <Route path="/field-companion/:id" component={FieldJobDetail} />
-          <Route path="/field-companion" component={FieldCompanion} />
-          <Route path="/test" component={FieldTesting} />
+          <Route path={`${ROUTES.FIELD_COMPANION}/:id`} component={FieldJobDetail} />
+          <Route path={ROUTES.FIELD_COMPANION} component={FieldCompanion} />
+          <Route path={ROUTES.FIELD_TESTING} component={FieldTesting} />
           <Route component={FieldCompanion} />
         </Switch>
       </div>
@@ -191,26 +191,13 @@ function AuthenticatedRoutes() {
 
 function ViewModeRouter() {
   const { isEngineerMode } = useViewMode();
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   
-  // Engineer mode routes - add any new engineer routes here
-  const engineerRoutes = ["/field-companion", "/test"];
-  const isEngineerRoute = engineerRoutes.some(route => 
-    location === route || location.startsWith(`${route}/`)
-  );
+  useRouteSync();
   
-  // Redirect to appropriate default route when mode changes
-  useEffect(() => {
-    if (isEngineerMode && !isEngineerRoute) {
-      // In engineer mode but on office route - redirect to field companion
-      setLocation("/field-companion");
-    } else if (!isEngineerMode && isEngineerRoute) {
-      // In office mode but on engineer route - redirect to dashboard
-      setLocation("/");
-    }
-  }, [isEngineerMode, isEngineerRoute, location, setLocation]);
+  const isEngineerRoute = isCompanionPath(location);
   
-  if (isEngineerMode) {
+  if (isEngineerMode && isEngineerRoute) {
     return <EngineerShell />;
   }
   

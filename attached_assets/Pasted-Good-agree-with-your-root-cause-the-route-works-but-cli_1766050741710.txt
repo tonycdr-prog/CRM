@@ -1,0 +1,48 @@
+Good—agree with your root cause: the route works, but clicking the sidebar item doesn’t switch view mode, so UI stays in office mode.
+
+Implement the fix now with these requirements (no partial):
+
+A) Sidebar click must switch mode + navigate
+	1.	When user clicks the Field Companion sidebar item, it must:
+	•	set view mode to "engineer" (or your companion mode string)
+	•	then navigate to /field-companion (or the central route constant)
+	2.	This should work from any back-office page without needing the top-right toggle.
+	3.	The sidebar active/highlight state must update immediately after click.
+
+B) Deep-link handling (auto-switch)
+	4.	If user loads a companion URL directly (e.g. /field-companion or any companion child routes), the app must auto-switch to "engineer" mode on initial route load.
+	5.	Define how this works:
+	•	If current mode is office and path matches companion routes, switch mode automatically.
+	•	Avoid infinite loops (e.g. switching mode triggers a redirect that re-triggers switching).
+
+C) Centralise route definitions (no magic strings)
+	6.	Create a single source of truth for route paths:
+	•	e.g. shared/routes.ts or client/routes.ts
+	•	export constants like ROUTES.FIELD_COMPANION = "/field-companion"
+	7.	Replace hardcoded occurrences of /field-companion with the constant across:
+	•	menuSections/sidebar
+	•	toggle navigation
+	•	deep-link detector
+	•	any route guards / redirects
+
+D) Keep view mode state clean
+	8.	Keep using useViewMode + localStorage persistence, but ensure:
+	•	mode updates are synchronous enough that UI re-renders correctly
+	•	if mode stored in localStorage is invalid, fallback gracefully
+
+E) Acceptance tests (must manually verify and document)
+
+After implementation, provide:
+	•	Exact files changed
+	•	Manual test steps and results for:
+	1.	Click Field Companion in sidebar while in office mode → mode becomes engineer + page loads
+	2.	Toggle switch still works and matches mode state
+	3.	Refresh on /field-companion keeps engineer mode
+	4.	Paste /field-companion into address bar while in office mode → auto-switch to engineer mode
+	5.	Deep link does not bounce/loop
+
+Important constraints
+	•	Don’t duplicate logic: mode switching should be encapsulated (e.g. enterEngineerModeAndNavigate(path) helper).
+	•	Don’t break existing back office navigation.
+
+Implement this now.

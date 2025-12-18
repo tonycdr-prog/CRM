@@ -22,6 +22,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
 import { usePermissions } from "@/hooks/use-permissions";
+import { ROUTES, isCompanionPath } from "@/lib/routes";
 import { 
   LayoutDashboard, 
   Wind, 
@@ -83,10 +84,17 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  isCompanion?: boolean;
+}
+
 interface MenuSection {
   title: string;
   icon: any;
-  items: { title: string; url: string; icon: any }[];
+  items: MenuItem[];
   defaultOpen?: boolean;
 }
 
@@ -96,12 +104,12 @@ const menuSections: MenuSection[] = [
     icon: Wind,
     defaultOpen: true,
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-      { title: "Schedule", url: "/schedule", icon: Calendar },
-      { title: "Field Companion", url: "/field-companion", icon: Smartphone },
-      { title: "Field Testing", url: "/test", icon: Wind },
-      { title: "Visit Types", url: "/visit-types", icon: ClipboardList },
-      { title: "Quality Checklists", url: "/quality-checklists", icon: FileCheck },
+      { title: "Dashboard", url: ROUTES.DASHBOARD, icon: LayoutDashboard },
+      { title: "Schedule", url: ROUTES.SCHEDULE, icon: Calendar },
+      { title: "Field Companion", url: ROUTES.FIELD_COMPANION, icon: Smartphone, isCompanion: true },
+      { title: "Field Testing", url: ROUTES.FIELD_TESTING, icon: Wind, isCompanion: true },
+      { title: "Visit Types", url: ROUTES.VISIT_TYPES, icon: ClipboardList },
+      { title: "Quality Checklists", url: ROUTES.QUALITY_CHECKLISTS, icon: FileCheck },
       { title: "Check Sheets", url: "/check-sheet-readings", icon: ClipboardList },
     ],
   },
@@ -109,24 +117,24 @@ const menuSections: MenuSection[] = [
     title: "Clients & Sites",
     icon: Users,
     items: [
-      { title: "Clients", url: "/clients", icon: Users },
-      { title: "Sites", url: "/sites", icon: Building2 },
-      { title: "Contracts", url: "/contracts", icon: FileText },
-      { title: "Site Access", url: "/site-access", icon: MapPin },
-      { title: "Site Access Notes", url: "/site-access-notes", icon: MapPinned },
-      { title: "Customer Feedback", url: "/customer-feedback", icon: MessageSquareText },
-      { title: "SLAs", url: "/slas", icon: ShieldCheck },
+      { title: "Clients", url: ROUTES.CLIENTS, icon: Users },
+      { title: "Sites", url: ROUTES.SITES, icon: Building2 },
+      { title: "Contracts", url: ROUTES.CONTRACTS, icon: FileText },
+      { title: "Site Access", url: ROUTES.SITE_ACCESS, icon: MapPin },
+      { title: "Site Access Notes", url: ROUTES.SITE_ACCESS_NOTES, icon: MapPinned },
+      { title: "Customer Feedback", url: ROUTES.CUSTOMER_FEEDBACK, icon: MessageSquareText },
+      { title: "SLAs", url: ROUTES.SLAS, icon: ShieldCheck },
     ],
   },
   {
     title: "Jobs & Scheduling",
     icon: Briefcase,
     items: [
-      { title: "Jobs", url: "/jobs", icon: Briefcase },
-      { title: "Callbacks", url: "/callbacks", icon: PhoneCall },
-      { title: "Job Templates", url: "/job-templates", icon: Copy },
-      { title: "Recurring Jobs", url: "/recurring-jobs", icon: RefreshCw },
-      { title: "Work Notes", url: "/work-notes", icon: StickyNote },
+      { title: "Jobs", url: ROUTES.JOBS, icon: Briefcase },
+      { title: "Callbacks", url: ROUTES.CALLBACKS, icon: PhoneCall },
+      { title: "Job Templates", url: ROUTES.JOB_TEMPLATES, icon: Copy },
+      { title: "Recurring Jobs", url: ROUTES.RECURRING_JOBS, icon: RefreshCw },
+      { title: "Work Notes", url: ROUTES.WORK_NOTES, icon: StickyNote },
       { title: "Service History", url: "/service-history", icon: Clock },
     ],
   },
@@ -134,25 +142,25 @@ const menuSections: MenuSection[] = [
     title: "Finance",
     icon: Wallet,
     items: [
-      { title: "Quotes & Invoices", url: "/finance", icon: Receipt },
-      { title: "Expenses", url: "/expenses", icon: DollarSign },
-      { title: "Mileage Claims", url: "/mileage-claims", icon: Car },
-      { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
-      { title: "Profitability", url: "/profitability", icon: TrendingUp },
-      { title: "Price Lists", url: "/price-lists", icon: Tags },
+      { title: "Quotes & Invoices", url: ROUTES.FINANCE, icon: Receipt },
+      { title: "Expenses", url: ROUTES.EXPENSES, icon: DollarSign },
+      { title: "Mileage Claims", url: ROUTES.MILEAGE_CLAIMS, icon: Car },
+      { title: "Purchase Orders", url: ROUTES.PURCHASE_ORDERS, icon: ShoppingCart },
+      { title: "Profitability", url: ROUTES.PROFITABILITY, icon: TrendingUp },
+      { title: "Price Lists", url: ROUTES.PRICE_LISTS, icon: Tags },
     ],
   },
   {
     title: "Team & HR",
     icon: UsersRound,
     items: [
-      { title: "Staff Directory", url: "/staff-directory", icon: UsersRound },
-      { title: "Timesheets", url: "/timesheets", icon: Clock },
-      { title: "Holidays", url: "/holidays", icon: Calendar },
+      { title: "Staff Directory", url: ROUTES.STAFF_DIRECTORY, icon: UsersRound },
+      { title: "Timesheets", url: ROUTES.TIMESHEETS, icon: Clock },
+      { title: "Holidays", url: ROUTES.HOLIDAYS, icon: Calendar },
       { title: "Time Off Requests", url: "/time-off-requests", icon: Calendar },
-      { title: "Certifications", url: "/certifications", icon: Award },
-      { title: "Training Records", url: "/training-records", icon: GraduationCap },
-      { title: "Subcontractors", url: "/subcontractors", icon: UserCheck },
+      { title: "Certifications", url: ROUTES.CERTIFICATIONS, icon: Award },
+      { title: "Training Records", url: ROUTES.TRAINING_RECORDS, icon: GraduationCap },
+      { title: "Subcontractors", url: ROUTES.SUBCONTRACTORS, icon: UserCheck },
     ],
   },
   {
@@ -160,20 +168,20 @@ const menuSections: MenuSection[] = [
     icon: Package,
     items: [
       { title: "Site Assets", url: "/site-assets", icon: Package },
-      { title: "Equipment", url: "/equipment", icon: Wrench },
-      { title: "Vehicles", url: "/vehicles", icon: Truck },
-      { title: "Inventory", url: "/inventory", icon: Boxes },
-      { title: "Parts Catalog", url: "/parts-catalog", icon: Cog },
+      { title: "Equipment", url: ROUTES.EQUIPMENT, icon: Wrench },
+      { title: "Vehicles", url: ROUTES.VEHICLES, icon: Truck },
+      { title: "Inventory", url: ROUTES.INVENTORY, icon: Boxes },
+      { title: "Parts Catalog", url: ROUTES.PARTS_CATALOG, icon: Cog },
       { title: "Warranties", url: "/warranties", icon: ShieldCheck },
-      { title: "Suppliers", url: "/suppliers", icon: Building2 },
+      { title: "Suppliers", url: ROUTES.SUPPLIERS, icon: Building2 },
     ],
   },
   {
     title: "Sales & Pipeline",
     icon: Target,
     items: [
-      { title: "Leads", url: "/leads", icon: Target },
-      { title: "Tenders", url: "/tenders", icon: FileCheck },
+      { title: "Leads", url: ROUTES.LEADS, icon: Target },
+      { title: "Tenders", url: ROUTES.TENDERS, icon: FileCheck },
       { title: "Competitors", url: "/competitors", icon: Target },
     ],
   },
@@ -182,30 +190,36 @@ const menuSections: MenuSection[] = [
     icon: ShieldCheck,
     items: [
       { title: "Golden Thread", url: "/golden-thread", icon: Link2 },
-      { title: "Incidents", url: "/incidents", icon: AlertTriangle },
-      { title: "Risk Assessments", url: "/risk-assessments", icon: ShieldCheck },
-      { title: "Defect Register", url: "/defects", icon: AlertOctagon },
+      { title: "Incidents", url: ROUTES.INCIDENTS, icon: AlertTriangle },
+      { title: "Risk Assessments", url: ROUTES.RISK_ASSESSMENTS, icon: ShieldCheck },
+      { title: "Defect Register", url: ROUTES.DEFECTS, icon: AlertOctagon },
     ],
   },
   {
     title: "Documents & Reports",
     icon: ScrollText,
     items: [
-      { title: "Document Register", url: "/document-register", icon: FileText },
+      { title: "Document Register", url: ROUTES.DOCUMENT_REGISTER, icon: FileText },
       { title: "Document Templates", url: "/document-templates", icon: Copy },
-      { title: "Reports", url: "/reports", icon: BarChart3 },
+      { title: "Reports", url: ROUTES.REPORTS, icon: BarChart3 },
       { title: "Service Analytics", url: "/service-analytics", icon: Gauge },
       { title: "Engineer Performance", url: "/engineer-performance", icon: Activity },
       { title: "Site Health", url: "/site-health", icon: Shield },
-      { title: "Downloads", url: "/downloads", icon: Download },
-      { title: "Notifications", url: "/notifications", icon: Bell },
+      { title: "Downloads", url: ROUTES.DOWNLOADS, icon: Download },
+      { title: "Notifications", url: ROUTES.NOTIFICATIONS, icon: Bell },
     ],
   },
 ];
 
-function CollapsibleMenuSection({ section, location }: { section: MenuSection; location: string }) {
+interface CollapsibleMenuSectionProps {
+  section: MenuSection;
+  location: string;
+  onCompanionClick: (path: string) => void;
+}
+
+function CollapsibleMenuSection({ section, location, onCompanionClick }: CollapsibleMenuSectionProps) {
   const [isOpen, setIsOpen] = useState(section.defaultOpen || false);
-  const hasActiveItem = section.items.some(item => location === item.url);
+  const hasActiveItem = section.items.some(item => location === item.url || location.startsWith(item.url + "/"));
   
   return (
     <Collapsible open={isOpen || hasActiveItem} onOpenChange={setIsOpen}>
@@ -224,27 +238,46 @@ function CollapsibleMenuSection({ section, location }: { section: MenuSection; l
       </CollapsibleTrigger>
       <CollapsibleContent>
         <SidebarMenu className="ml-4 mt-1 space-y-0.5">
-          {section.items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton 
-                asChild 
-                isActive={location === item.url || (item.url === "/dashboard" && location === "/")}
-                className="h-8"
-              >
-                <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                  <item.icon className="h-3.5 w-3.5" />
-                  <span className="text-sm">{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {section.items.map((item) => {
+            const isActive = location === item.url || location.startsWith(item.url + "/") || (item.url === ROUTES.DASHBOARD && location === "/");
+            
+            if (item.isCompanion) {
+              return (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    isActive={isActive}
+                    className="h-8 cursor-pointer"
+                    onClick={() => onCompanionClick(item.url)}
+                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <item.icon className="h-3.5 w-3.5" />
+                    <span className="text-sm">{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            }
+            
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton 
+                  asChild 
+                  isActive={isActive}
+                  className="h-8"
+                >
+                  <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <item.icon className="h-3.5 w-3.5" />
+                    <span className="text-sm">{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </CollapsibleContent>
     </Collapsible>
   );
 }
 
-// Define which sections are restricted to certain roles
 const SECTION_PERMISSIONS: Record<string, string[]> = {
   "Testing & Field Work": ["admin", "office_manager", "field_engineer"],
   "Clients & Sites": ["admin", "office_manager"],
@@ -258,19 +291,30 @@ const SECTION_PERMISSIONS: Record<string, string[]> = {
 };
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   const { user, logout } = useAuth();
-  const { isEngineerMode, toggleViewMode } = useViewMode();
+  const { isEngineerMode, enterCompanionMode, enterOfficeMode } = useViewMode();
   const { role, roleLabel, canAccessOffice } = usePermissions();
 
-  // Filter menu sections based on user role
   const filteredMenuSections = useMemo(() => {
     return menuSections.filter(section => {
       const allowedRoles = SECTION_PERMISSIONS[section.title];
-      if (!allowedRoles) return true; // Default: show section
+      if (!allowedRoles) return true;
       return allowedRoles.includes(role);
     });
   }, [role]);
+
+  const handleCompanionClick = (path: string) => {
+    enterCompanionMode(path);
+  };
+
+  const handleToggleChange = () => {
+    if (!isEngineerMode) {
+      enterCompanionMode(ROUTES.FIELD_COMPANION);
+    } else {
+      enterOfficeMode(ROUTES.DASHBOARD);
+    }
+  };
 
   const style = {
     "--sidebar-width": "16rem",
@@ -299,7 +343,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <SidebarMenu className="space-y-1">
                   {filteredMenuSections.map((section) => (
                     <SidebarMenuItem key={section.title}>
-                      <CollapsibleMenuSection section={section} location={location} />
+                      <CollapsibleMenuSection 
+                        section={section} 
+                        location={location} 
+                        onCompanionClick={handleCompanionClick}
+                      />
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -329,7 +377,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     {user.email}
                   </p>
                 </div>
-                <Link href="/settings">
+                <Link href={ROUTES.SETTINGS}>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -366,14 +414,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               </div>
               <Switch
                 checked={isEngineerMode}
-                onCheckedChange={() => {
-                  toggleViewMode();
-                  if (!isEngineerMode) {
-                    setLocation("/field-companion");
-                  } else {
-                    setLocation("/dashboard");
-                  }
-                }}
+                onCheckedChange={handleToggleChange}
                 data-testid="switch-view-mode"
               />
               <div className="flex items-center gap-2 text-sm text-muted-foreground">

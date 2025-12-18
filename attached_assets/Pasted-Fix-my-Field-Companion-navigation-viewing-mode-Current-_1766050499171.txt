@@ -1,0 +1,33 @@
+Fix my Field Companion navigation + viewing mode. Current behaviour:
+	•	“Companion” means Field Companion
+	•	Clicking Field Companion in the left sidebar currently does nothing / doesn’t route correctly
+	•	There is a top-right toggle that lets Back Office users “view companion”
+
+Goal
+Make Field Companion accessible reliably in two ways:
+	1.	Clicking “Field Companion” in the sidebar always navigates to the Companion area
+	2.	The top-right toggle switches the app between Back Office UI and Companion UI, and navigation stays consistent
+
+Requirements
+	1.	Identify why sidebar click doesn’t work (wrong route, missing router link, blocked by auth/role guard, route not registered, stale state, etc.) and fix it.
+	2.	Define a single “mode” state, e.g. appMode = "backOffice" | "companion", stored in a global place (context/store) AND persisted (localStorage) so refresh keeps the chosen mode.
+	3.	When appMode is "companion":
+	•	Sidebar should highlight Field Companion
+	•	Default route should go to the Companion landing screen
+	•	Back Office-only pages should either hide or show a friendly “Switch to Back Office” message
+	4.	When appMode is "backOffice":
+	•	Default route goes to the back office dashboard
+	•	Companion routes remain reachable only when toggled on (or still reachable but not shown—choose a consistent policy and implement it)
+	5.	Do not break deep links: if user goes directly to a Companion URL and appMode is backOffice, either auto-switch mode or show a prompt to switch (pick one behaviour and implement it consistently).
+	6.	Update any route guards so field companion pages are accessible to the correct users (authenticated users; optionally role-based if you already have roles).
+	7.	Provide a clear list of files changed and manual test steps:
+	•	sidebar click works
+	•	toggle switches UI and routes correctly
+	•	refresh preserves mode
+	•	deep link behaviour works
+
+Important
+	•	Do not hardcode magic URLs in multiple places—centralize routes in one router config.
+	•	Keep the toggle logic and router behaviour deterministic (no flaky state).
+
+Start by listing: (a) current routes, (b) where the sidebar items are defined, (c) where the toggle is implemented, (d) the proposed solution. Then implement.
