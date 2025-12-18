@@ -209,100 +209,108 @@ export default function FieldJobForms() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
-          onClick={() =>
-            setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: jobId }))
-          }
-        >
-          Back
-        </Button>
-        <h1 className="text-xl font-semibold">Forms</h1>
-        {saving && <span className="text-sm text-muted-foreground">Saving…</span>}
-        {error && <span className="text-sm text-destructive">{error}</span>}
+    <div className="h-[100dvh] flex flex-col">
+      {/* Header stays fixed */}
+      <div className="container mx-auto p-4 md:p-6">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() =>
+              setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: jobId }))
+            }
+          >
+            Back
+          </Button>
+          <h1 className="text-xl font-semibold">Forms</h1>
+          {saving && <span className="text-sm text-muted-foreground">Saving…</span>}
+          {error && <span className="text-sm text-destructive">{error}</span>}
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Select system</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading && <div className="text-muted-foreground">Loading…</div>}
+      {/* Scrollable content */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="container mx-auto p-4 md:p-6 space-y-4 pb-24">
+          <Card>
+            <CardHeader>
+              <CardTitle>Select system</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading && <div className="text-muted-foreground">Loading…</div>}
+
+              {!loading && jobForms && (
+                <Select value={systemCode} onValueChange={setSystemCode}>
+                  <SelectTrigger className="w-full md:w-[420px]">
+                    <SelectValue placeholder="Choose a system" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobForms.systemTypes.map((s) => (
+                      <SelectItem key={s.id} value={s.code}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </CardContent>
+          </Card>
 
           {!loading && jobForms && (
-            <Select value={systemCode} onValueChange={setSystemCode}>
-              <SelectTrigger className="w-full md:w-[420px]">
-                <SelectValue placeholder="Choose a system" />
-              </SelectTrigger>
-              <SelectContent>
-                {jobForms.systemTypes.map((s) => (
-                  <SelectItem key={s.id} value={s.code}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Card>
+              <CardHeader>
+                <CardTitle>Templates</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {templatesForSystem.length === 0 ? (
+                  <div className="text-muted-foreground">
+                    No templates for this system.
+                  </div>
+                ) : (
+                  templatesForSystem.map((t) => (
+                    <Button
+                      key={t.id}
+                      variant={templateId === t.id ? "default" : "outline"}
+                      onClick={() => openTemplate(t.id)}
+                      className="mr-2 mb-2"
+                    >
+                      {t.name}
+                    </Button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
 
-      {!loading && jobForms && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Templates</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {templatesForSystem.length === 0 ? (
-              <div className="text-muted-foreground">
-                No templates for this system.
-              </div>
-            ) : (
-              templatesForSystem.map((t) => (
-                <Button
-                  key={t.id}
-                  variant={templateId === t.id ? "default" : "outline"}
-                  onClick={() => openTemplate(t.id)}
-                  className="mr-2 mb-2"
-                >
-                  {t.name}
-                </Button>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      )}
+          {inspection && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{inspection.template.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <DynamicFormRenderer
+                  template={inspection.template}
+                  responses={inspection.responses}
+                  readOnly={!!inspection.completedAt}
+                  onChange={onChangeResponses}
+                />
 
-      {inspection && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{inspection.template.name}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <DynamicFormRenderer
-              template={inspection.template}
-              responses={inspection.responses}
-              readOnly={!!inspection.completedAt}
-              onChange={onChangeResponses}
-            />
-
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={completeForm}
-                disabled={saving || !!inspection.completedAt}
-              >
-                {inspection.completedAt ? "Completed" : "Complete Form"}
-              </Button>
-              {inspection.completedAt && (
-                <span className="text-sm text-muted-foreground">
-                  Locked (completed)
-                </span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={completeForm}
+                    disabled={saving || !!inspection.completedAt}
+                  >
+                    {inspection.completedAt ? "Completed" : "Complete Form"}
+                  </Button>
+                  {inspection.completedAt && (
+                    <span className="text-sm text-muted-foreground">
+                      Locked (completed)
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

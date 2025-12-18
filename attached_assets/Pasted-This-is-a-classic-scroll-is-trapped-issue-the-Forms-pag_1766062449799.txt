@@ -1,0 +1,72 @@
+This is a classic “scroll is trapped” issue: the Forms page (or a parent layout) is likely using `overflow-hidden` or a fixed-height container without `overflow-y-auto`, so when the template renders, the page can’t scroll.
+
+Fix it in the MOST reliable way: make the Forms page’s main content area explicitly scrollable.
+
+✅ Change: client/src/pages/field-job-forms.tsx
+
+1) Wrap the whole page content in a fixed viewport-height container with a scrollable inner area.
+2) Ensure the scrollable div has `min-h-0` (important in flex layouts) and `overflow-y-auto`.
+3) Add some bottom padding so the last fields aren’t hidden behind any fixed UI.
+
+REPLACE the outermost return wrapper with this structure:
+
+--- BEFORE (you likely have)
+<div className="container mx-auto p-4 md:p-6 space-y-4"> ... </div>
+
+--- AFTER (paste this and put your existing page content inside the inner div)
+
+return (
+  <div className="h-[100dvh] flex flex-col">
+    {/* Header stays fixed */}
+    <div className="container mx-auto p-4 md:p-6">
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          onClick={() =>
+            setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: jobId }))
+          }
+        >
+          Back
+        </Button>
+        <h1 className="text-xl font-semibold">Forms</h1>
+        {saving && <span className="text-sm text-muted-foreground">Saving…</span>}
+        {error && <span className="text-sm text-destructive">{error}</span>}
+      </div>
+    </div>
+
+    {/* Scrollable content */}
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="container mx-auto p-4 md:p-6 space-y-4 pb-24">
+        {/* KEEP EVERYTHING YOU ALREADY RENDER HERE:
+            - Select system Card
+            - Templates Card
+            - Inspection Card with DynamicFormRenderer
+        */}
+      </div>
+    </div>
+  </div>
+);
+
+That will force scrolling to work even if the parent layout has odd overflow settings.
+
+IF IT STILL WON’T SCROLL:
+Then the scroll is being blocked higher up in the layout.
+
+Check: client/src/components/AppLayout.tsx
+Look for any of these on the main content container:
+- overflow-hidden
+- h-screen with missing overflow-y-auto
+- fixed positioning
+
+Fix pattern in AppLayout:
+- The main page area should be something like:
+  <main className="flex-1 min-h-0 overflow-y-auto"> ... </main>
+NOT overflow-hidden.
+
+Quick patch example:
+Change the main content wrapper to include:
+  className="flex-1 min-h-0 overflow-y-auto"
+
+Tell me which one fixed it:
+A) The field-job-forms page wrapper change
+B) You had to change AppLayout overflow settings
