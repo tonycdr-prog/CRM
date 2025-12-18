@@ -1,0 +1,75 @@
+Implement Forms inside Field Companion (engineer mode) on the Job Detail page.
+
+Context
+- Companion routes now work and mode auto-syncs.
+- Companion job detail page is: client/src/pages/field-job-detail.tsx
+- We want a new Forms section/button that launches a Forms screen/panel for the job.
+
+REQUIREMENTS
+
+1) UI placement + visibility
+- In client/src/pages/field-job-detail.tsx, add a clear button or tab: “Forms”.
+- It must only be visible/active when view mode is engineer/companion (use the existing view mode hook).
+- Clicking it navigates to a new route like:
+  /field-companion/jobs/:jobId/forms
+  using centralized ROUTES constants from client/src/lib/routes.ts.
+
+2) Forms screen behaviour
+Create a new page (or component) for the job forms screen:
+- Title: “Forms”
+- First control: System selector dropdown (site systems)
+- When system selected, show available forms/templates:
+  - If system is MSHEV → show “Damper Testing” template (from DB/API)
+  - If system is Pressurisation → show “Pressure Differential Testing” template (from DB/API)
+  - Also show any other templates mapped to that system
+- Nothing should be hardcoded in UI other than labels; templates come from API/DB.
+
+3) API calls (stub if backend not ready yet)
+If backend endpoints aren’t implemented yet, create temporary mocked responses behind a clearly marked dev flag, but structure the UI to call these endpoints:
+- GET  /api/jobs/:jobId/forms
+  returns { systemTypes: [...], templates: [...] }
+- POST /api/inspections
+  creates/returns inspectionInstanceId
+- GET  /api/inspections/:id
+  returns template structure + prior responses
+- POST /api/inspections/:id/responses
+  append-only save
+- POST /api/inspections/:id/complete
+  mark complete
+
+If backend exists, integrate for real.
+
+4) Rendering rules (dynamic form renderer)
+Build a small renderer that can display:
+- Entity blocks (heading + description)
+- Rows as inputs:
+  - pass/fail
+  - numeric with units
+  - text
+  - choice
+- Each row supports optional:
+  - comment
+  - “evidence required” flag (UI indicator only for now if uploads not built)
+
+5) Save + resume
+- Responses should autosave (debounced) OR have a Save button minimum.
+- User can leave and come back; it should reload previously saved responses.
+
+6) Completion + locking
+- “Complete Form” button marks inspection complete.
+- Once complete, inputs become read-only.
+
+ENGINEERING CONSTRAINTS
+- Use centralized routes from client/src/lib/routes.ts (no hardcoded strings).
+- Keep state stable: don’t tie mode switching to forms state.
+- Keep UI simple and correct; no drag/drop builder yet.
+
+OUTPUT REQUIRED
+After implementation provide:
+1) Exact files created/changed
+2) What route(s) were added
+3) Manual test steps:
+   - open job → Forms → select system → open template → enter values → save → refresh → values persist → complete locks
+
+PROCESS
+Start by listing your plan + file changes, then implement.
