@@ -6,12 +6,12 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
-import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users } from "@shared/schema";
+import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes } from "@shared/schema";
 import { seedDatabase } from "./seed";
 import fs from "fs";
 import path from "path";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -3403,47 +3403,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // FORM INSPECTION API (DB-backed)
   // ─────────────────────────────────────────────
 
-  // GET /api/jobs/:jobId/forms - Returns system types and templates for a job's organisation
-  apiRouter.get("/jobs/:jobId/forms", asyncHandler(async (req, res) => {
-    const userId = getUserId(req as AuthenticatedRequest);
-    const user = await storage.getUser(userId);
-    const organizationId = user?.organizationId;
-    if (!organizationId) {
-      return res.status(400).json({ message: "User not in an organisation" });
-    }
+  // GET /api/jobs/:jobId/forms - Returns system types and templates available for this job
+  apiRouter.get("/jobs/:jobId/forms", async (req, res) => {
+    try {
+      const { organizationId } = await requireUserOrgId(req);
 
-    // Verify job exists and belongs to caller's organisation
-    const job = await storage.getJob(req.params.jobId);
-    if (!job) {
-      return res.status(404).json({ message: "Job not found" });
-    }
-    if (job.userId) {
-      const jobOwner = await storage.getUser(job.userId);
-      if (!jobOwner || jobOwner.organizationId !== organizationId) {
+      // Verify job exists and belongs to org via userId -> user.organizationId
+      const jobId = req.params.jobId;
+      const job = await storage.getJob(jobId);
+      if (!job) return res.status(404).json({ message: "Job not found" });
+
+      // Jobs don't have organizationId directly, check via userId
+      if (job.userId) {
+        const jobOwner = await storage.getUser(job.userId);
+        if (!jobOwner || jobOwner.organizationId !== organizationId) {
+          return res.status(404).json({ message: "Job not found" });
+        }
+      } else {
         return res.status(404).json({ message: "Job not found" });
       }
-    } else {
-      return res.status(404).json({ message: "Job not found" });
+
+      // Templates mapped to system types for this org (only active templates)
+      const mapped = await db
+        .select({
+          templateId: formTemplates.id,
+          templateName: formTemplates.name,
+          systemTypeId: systemTypes.id,
+          systemCode: systemTypes.code,
+          systemName: systemTypes.name,
+        })
+        .from(formTemplateSystemTypes)
+        .innerJoin(formTemplates, eq(formTemplates.id, formTemplateSystemTypes.templateId))
+        .innerJoin(systemTypes, eq(systemTypes.id, formTemplateSystemTypes.systemTypeId))
+        .where(and(eq(formTemplateSystemTypes.organizationId, organizationId), eq(formTemplates.isActive, true)));
+
+      const systemTypesOut = Array.from(
+        new Map(mapped.map((m) => [m.systemTypeId, { id: m.systemTypeId, code: m.systemCode, name: m.systemName }])).values()
+      );
+
+      const templatesOut = mapped.map((m) => ({
+        id: m.templateId,
+        name: m.templateName,
+        systemTypeCode: m.systemCode,
+      }));
+
+      res.json({ systemTypes: systemTypesOut, templates: templatesOut });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Error fetching forms" });
     }
-
-    // Fetch system types for the org
-    const sysTypes = await storage.getSystemTypes(organizationId);
-    const systemTypesDTO: SystemTypeDTO[] = sysTypes.map(st => ({ id: st.id, name: st.name, code: st.code }));
-
-    // Fetch templates and their linked system types
-    const templates = await storage.getFormTemplates(organizationId);
-    const templatesDTO: TemplateListItemDTO[] = [];
-    for (const t of templates) {
-      const linkedSystemTypes = await storage.getFormTemplateSystemTypes(t.id);
-      const codes = linkedSystemTypes.map(lnk => {
-        const st = sysTypes.find(s => s.id === lnk.systemTypeId);
-        return st?.code || "";
-      }).filter(Boolean);
-      templatesDTO.push({ id: t.id, name: t.name, systemTypeCodes: codes });
-    }
-
-    res.json({ systemTypes: systemTypesDTO, templates: templatesDTO });
-  }));
+  });
 
   // POST /api/inspections  { jobId, systemTypeId, templateId }
   apiRouter.post("/inspections", asyncHandler(async (req, res) => {
