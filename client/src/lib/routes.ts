@@ -49,6 +49,8 @@ export const ROUTES = {
   VISIT_TYPES: "/visit-types",
   QUALITY_CHECKLISTS: "/quality-checklists",
   DOWNLOADS: "/downloads",
+  ADMIN_ENTITIES: "/admin/entities",
+  ADMIN_ENTITY_EDIT: "/admin/entities/:id",
 } as const;
 
 /** Build a wouter-compatible path from a pattern like "/field-companion/:id/forms". */
