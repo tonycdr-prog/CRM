@@ -3,7 +3,6 @@ import fsPromises from "fs/promises";
 import path from "path";
 import archiver from "archiver";
 import { and, eq, asc } from "drizzle-orm";
-import { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { backgroundJobs } from "../../shared/schema";
 import { buildOrgExportManifest } from "./exportManifest";
 import { UPLOAD_ROOT } from "./zipExport";
@@ -23,7 +22,7 @@ function safeExists(p: string): boolean {
   }
 }
 
-async function writeZipToFile(db: PostgresJsDatabase, orgId: string, outPath: string) {
+async function writeZipToFile(db: any, orgId: string, outPath: string) {
   const manifest = await buildOrgExportManifest(db, orgId);
 
   await new Promise<void>((resolve, reject) => {
@@ -56,7 +55,7 @@ async function writeZipToFile(db: PostgresJsDatabase, orgId: string, outPath: st
   });
 }
 
-export async function startJobsWorker(db: PostgresJsDatabase, opts?: { pollMs?: number }) {
+export async function startJobsWorker(db: any, opts?: { pollMs?: number }) {
   const pollMs = opts?.pollMs ?? 2500;
 
   async function tick() {

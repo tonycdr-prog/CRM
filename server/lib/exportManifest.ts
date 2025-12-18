@@ -1,5 +1,4 @@
 import { eq, desc } from "drizzle-orm";
-import { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import {
   organizationPlans,
   organizationUsage,
@@ -18,7 +17,7 @@ import {
   serverErrors,
 } from "../../shared/schema";
 
-export async function buildOrgExportManifest(db: PostgresJsDatabase, orgId: string) {
+export async function buildOrgExportManifest(db: any, orgId: string) {
   const now = new Date();
 
   const [

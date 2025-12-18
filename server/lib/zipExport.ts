@@ -2,7 +2,6 @@ import archiver from "archiver";
 import path from "path";
 import fs from "fs";
 import { Response } from "express";
-import { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { buildOrgExportManifest } from "./exportManifest";
 
 export const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
@@ -16,7 +15,7 @@ function safeExists(p: string): boolean {
 }
 
 export async function streamOrgExportZip(args: {
-  db: PostgresJsDatabase;
+  db: any;
   orgId: string;
   res: Response;
 }) {
