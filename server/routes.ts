@@ -61,6 +61,44 @@ async function requireJobInOrg(jobId: string, organizationId: string) {
   return { ok: true as const };
 }
 
+async function requireOrgRole(req: any, allowed: Array<"owner" | "admin" | "office_staff" | "engineer" | "viewer">) {
+  const userId = req.user?.claims?.sub;
+  if (!userId) return { ok: false as const, status: 401 as const, message: "Unauthorized" };
+
+  const u = await db
+    .select({
+      id: users.id,
+      organizationId: users.organizationId,
+      organizationRole: (users as any).organizationRole,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!u.length) return { ok: false as const, status: 401 as const, message: "Unauthorized" };
+  const orgId = u[0].organizationId;
+  const role = u[0].organizationRole as any;
+
+  if (!orgId) return { ok: false as const, status: 403 as const, message: "No organization" };
+  if (!allowed.includes(role)) {
+    return { ok: false as const, status: 403 as const, message: "Forbidden" };
+  }
+
+  return { ok: true as const, userId, organizationId: orgId, role };
+}
+
+function assertString(x: any, name: string) {
+  const v = typeof x === "string" ? x.trim() : "";
+  if (!v) throw new Error(`Missing ${name}`);
+  return v;
+}
+
+function assertFieldType(x: any) {
+  const ok = x === "pass_fail" || x === "number" || x === "text" || x === "choice";
+  if (!ok) throw new Error("Invalid fieldType");
+  return x as "pass_fail" | "number" | "text" | "choice";
+}
+
 // ============================================
 // FORM INSPECTION API DTOs (DB-backed)
 // ============================================
