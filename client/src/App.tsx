@@ -10,6 +10,7 @@ import { ROUTES, isCompanionPath } from "@/lib/routes";
 import { AppLayout } from "@/components/AppLayout";
 import FieldCompanion from "@/pages/field-companion";
 import FieldJobDetail from "@/pages/field-job-detail";
+import FieldJobForms from "@/pages/field-job-forms";
 import FieldTesting from "@/pages/field-testing";
 import Dashboard from "@/pages/dashboard";
 import Landing from "@/pages/landing";
@@ -170,6 +171,7 @@ function EngineerShell() {
       </header>
       <div className="flex-1 overflow-hidden">
         <Switch>
+          <Route path={ROUTES.FIELD_COMPANION_JOB_FORMS} component={FieldJobForms} />
           <Route path={ROUTES.FIELD_COMPANION_JOB} component={FieldJobDetail} />
           <Route path={ROUTES.FIELD_COMPANION_HOME} component={FieldCompanion} />
           <Route path={ROUTES.FIELD_TESTING} component={FieldTesting} />
