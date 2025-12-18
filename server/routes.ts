@@ -218,6 +218,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(user);
   }));
 
+  // Get current user info for role-based UI gating
+  apiRouter.get("/me", asyncHandler(async (req, res) => {
+    const userId = getUserId(req as AuthenticatedRequest);
+    const u = await db
+      .select({
+        id: users.id,
+        organizationId: users.organizationId,
+        organizationRole: users.organizationRole,
+        role: users.role,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!u.length) return res.status(401).json({ message: "Unauthorized" });
+
+    res.json({
+      userId: u[0].id,
+      organizationId: u[0].organizationId,
+      organizationRole: u[0].organizationRole,
+      role: u[0].role,
+      email: u[0].email,
+      firstName: u[0].firstName,
+      lastName: u[0].lastName,
+    });
+  }));
+
   // ============================================
   // ORGANIZATION ROUTES
   // ============================================
