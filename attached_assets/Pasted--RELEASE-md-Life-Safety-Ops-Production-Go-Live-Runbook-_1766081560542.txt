@@ -1,0 +1,204 @@
+# RELEASE.md — Life Safety Ops (Production Go-Live Runbook)
+
+This document is the **single source of truth** for deploying, operating, backing up, and recovering the Life Safety Ops platform in production.
+
+────────────────────────────────────────
+## 1. ENVIRONMENT CONFIGURATION
+────────────────────────────────────────
+
+### Required Environment Variables
+
+**Core**
+- NODE_ENV=production
+- PORT=xxxx
+- BASE_URL=https://your-domain.com
+
+**Database**
+- DATABASE_URL=postgres://…
+- DATABASE_SSL=true (if applicable)
+
+**Auth / Sessions (OIDC)**
+- OIDC_ISSUER_URL=…
+- OIDC_CLIENT_ID=…
+- OIDC_CLIENT_SECRET=…
+- SESSION_SECRET=long-random-string
+
+**Uploads / Storage**
+- UPLOAD_ROOT=/absolute/path/to/uploads
+- MAX_UPLOAD_MB=15
+
+**Security**
+- TRUST_PROXY=true (behind load balancer)
+- RATE_LIMIT_ENABLED=true
+
+⚠️ Never deploy with dev secrets or localhost URLs.
+
+────────────────────────────────────────
+## 2. DEPLOYMENT CHECKLIST
+────────────────────────────────────────
+
+### Before Deploy
+- [ ] Pull latest main branch
+- [ ] Run database migrations
+- [ ] Confirm schema matches expected (plans, usage, audit, imports)
+- [ ] Verify env vars present
+- [ ] Build frontend (`npm run build`)
+- [ ] Confirm uploads directory exists + writable
+
+### Deploy
+- [ ] Start server
+- [ ] Confirm `/api/health` returns `{ ok: true }`
+- [ ] Load admin dashboard
+- [ ] Confirm CSP + security headers present (browser devtools)
+
+### After Deploy (Smoke Test – 10 mins)
+- [ ] Create job
+- [ ] Create inspection
+- [ ] Fill form + save
+- [ ] Upload photo (mobile)
+- [ ] Generate PDF
+- [ ] Export ZIP
+- [ ] Offline test (airplane mode → reconnect)
+
+────────────────────────────────────────
+## 3. ROLE & PERMISSION MODEL
+────────────────────────────────────────
+
+**organizationRole (used for permissions)**
+- owner — full control (billing, import/export, delete)
+- admin — manage users, templates, exports
+- office_staff — jobs, templates, reports
+- engineer — field companion only
+- viewer — read-only
+
+**Critical Rules**
+- Only owner can:
+  - import data
+  - overwrite organisations
+  - change plans
+- Engineers cannot access admin routes
+- Tenant boundaries enforced on every route
+
+────────────────────────────────────────
+## 4. BACKUPS & RECOVERY
+────────────────────────────────────────
+
+### Backup Strategy
+- Daily ZIP export via:
+  GET /api/admin/export.zip
+- Store ZIP off-server (cloud / secure storage)
+- Retain:
+  - Daily backups: 7 days
+  - Weekly backups: 4 weeks
+
+### RPO / RTO
+- RPO: last successful ZIP export
+- RTO: restore time (~5–15 mins depending on size)
+
+### Restore Drill (Monthly)
+1. Pick a backup ZIP
+2. Run:
+   npx tsx scripts/restore-org.ts --zip ./export.zip --dry-run
+3. Apply into NEW org:
+   npx tsx scripts/restore-org.ts --zip ./export.zip --apply --new-org <uuid> --operator-user <uuid>
+4. Validate data in UI
+
+────────────────────────────────────────
+## 5. IMPORT SAFETY RULES
+────────────────────────────────────────
+
+- Default: imports create a NEW organisation
+- Overwrite existing org requires:
+  - explicitOverwrite=true
+  - confirm="IMPORT_OVERWRITE"
+- Inspections skipped unless:
+  - allowOrphanInspections=true
+
+Every import is logged in `import_runs`.
+
+────────────────────────────────────────
+## 6. MONITORING & ALERTS
+────────────────────────────────────────
+
+### Key Signals
+- Error rate (`server_errors`)
+- Slow requests (>1500ms)
+- 402 errors (plan limits hit)
+- Storage usage growth
+- Failed background jobs
+
+### Endpoints
+- Healthcheck: GET /api/health
+- Errors: GET /api/admin/errors
+- Usage: GET /api/admin/usage
+
+### Minimum Alerts
+- Error spike
+- Disk usage >80%
+- Export job failures
+
+────────────────────────────────────────
+## 7. PERFORMANCE & COST CONTROLS
+────────────────────────────────────────
+
+- Image compression enabled (mobile)
+- PDF gated by plan
+- Export ZIP async jobs supported
+- Rate limits active on:
+  - auth
+  - uploads
+  - pdf
+  - exports
+
+────────────────────────────────────────
+## 8. SECURITY FINAL CHECK
+────────────────────────────────────────
+
+- Helmet/CSP enabled
+- Upload MIME allowlist enforced
+- File size limits enforced
+- Tenant ownership checks on every download
+- Request IDs returned on errors
+
+────────────────────────────────────────
+## 9. OFFLINE & MOBILE RELIABILITY
+────────────────────────────────────────
+
+- Offline banner visible
+- Local autosave active
+- Sync progress bar present
+- Auto-sync on reconnect
+- PWA installable
+- Capacitor-ready for native stores
+
+────────────────────────────────────────
+## 10. ROLLBACK PLAN
+────────────────────────────────────────
+
+If deployment fails:
+1. Stop current server
+2. Redeploy previous build
+3. Restore database from last backup if migrations applied
+4. Validate health endpoint
+5. Notify users if downtime exceeded SLA
+
+────────────────────────────────────────
+## 11. LEGAL / COMMERCIAL BASICS
+────────────────────────────────────────
+
+- Data export available to owner/admin
+- Data deletion via controlled process only
+- Retention: backups retained per policy
+- Terms & Privacy placeholders required before public launch
+
+────────────────────────────────────────
+## 12. SIGN-OFF
+────────────────────────────────────────
+
+☑ Security hardened  
+☑ Multi-tenant safe  
+☑ Disaster recovery tested  
+☑ Mobile field-ready  
+☑ Commercially enforceable  
+
+STATUS: **PRODUCTION READY**
