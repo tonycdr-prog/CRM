@@ -5555,10 +5555,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
     }
 
-    const mode = parsed.data.mode;
-
     try {
-      if (mode === "dry_run") {
+      if (parsed.data.mode === "dry_run") {
         const summary = await dryRunImport(db, parsed.data);
         try {
           await db.insert(importRuns).values({
@@ -5574,7 +5572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await applyImport(db, {
-        auth: { organizationId: auth.organizationId, userId: auth.userId },
+        auth: { userId: auth.userId },
         payload: parsed.data,
       });
       return res.json(result);
@@ -5584,7 +5582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await db.insert(importRuns).values({
           organizationId: auth.organizationId,
           sourceOrganizationId: req.body?.manifest?.organizationId ?? null,
-          mode,
+          mode: parsed.data.mode,
           status: "failed",
           error: String(e?.message || e),
           summary: {},

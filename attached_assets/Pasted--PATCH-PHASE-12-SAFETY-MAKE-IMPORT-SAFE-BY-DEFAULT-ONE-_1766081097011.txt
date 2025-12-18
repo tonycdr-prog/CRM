@@ -1,3 +1,23 @@
+/*
+PATCH PHASE 12 SAFETY — MAKE IMPORT SAFE-BY-DEFAULT (ONE COPYABLE BLOCK)
+
+WHAT THIS PATCH DOES
+1) Apply mode now defaults to importing into a NEW orgId (auto-generated) unless targetOrgId provided.
+2) Blocks importing into an existing org unless:
+   - explicitOverwrite=true AND confirm === "IMPORT_OVERWRITE"
+3) Adds allowOrphanInspections flag (default false):
+   - If jobs aren’t restored and jobId would be null, inspections are SKIPPED unless allowOrphanInspections=true.
+4) Improves response payload with skipped counts + warnings.
+
+FILES TO UPDATE:
+- server/lib/importOrg.ts
+- server/routes.ts
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) server/lib/importOrg.ts (PATCH / REPLACE CONTENTS OF FILE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+*/
+
 import { z } from "zod";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
@@ -6,8 +26,8 @@ import {
   organizationPlans,
   organizationUsage,
   formTemplates,
-  formEntities,
-  formEntityRows,
+  entities,
+  entityRows,
   formTemplateEntities,
   formTemplateSystemTypes,
   inspectionInstances,
@@ -15,20 +35,26 @@ import {
   inspectionRowAttachments,
   files,
   importRuns,
-} from "../../shared/schema";
+} from "../shared/schema";
 
 export const ImportPayloadSchema = z.object({
   manifest: z.any(),
 
   mode: z.enum(["dry_run", "apply"]),
 
+  // Target org behaviour:
+  // - If omitted in apply => server generates a new UUID
   targetOrgId: z.string().uuid().optional(),
 
+  // Overwrite protection:
   explicitOverwrite: z.boolean().optional().default(false),
-  confirm: z.string().optional(),
+  confirm: z.string().optional(), // must be "IMPORT_OVERWRITE" when overwriting
 
+  // If jobs aren’t restored, inspections become orphans.
+  // Default false: skip inspections unless caller opts in.
   allowOrphanInspections: z.boolean().optional().default(false),
 
+  // For future expansion
   includeJobs: z.boolean().optional().default(false),
 });
 
@@ -83,8 +109,10 @@ export async function applyImport(db: any, args: {
 
   const sourceOrgId = manifest?.organizationId ?? null;
 
+  // SAFE DEFAULT: import into NEW org unless explicitly provided
   const targetOrgId = parsed.targetOrgId ?? newUuid();
 
+  // Check if target org already exists (plan row is our “org exists” signal)
   const existingPlan = await db
     .select()
     .from(organizationPlans)
@@ -92,6 +120,7 @@ export async function applyImport(db: any, args: {
     .limit(1);
 
   if (existingPlan.length) {
+    // Only allowed with explicitOverwrite + confirm
     if (!(parsed.explicitOverwrite && parsed.confirm === "IMPORT_OVERWRITE")) {
       const err: any = new Error(
         "Target org already exists. Refusing to import without explicitOverwrite=true and confirm=\"IMPORT_OVERWRITE\"."
@@ -101,6 +130,10 @@ export async function applyImport(db: any, args: {
     }
   }
 
+  // Determine whether we can import inspections safely
+  const jobsInExport = countArr(manifest?.jobs) > 0;
+  const willOrphanInspections = true; // since jobs are not restored here
+
   const skipped = {
     inspections: 0,
     responses: 0,
@@ -108,18 +141,20 @@ export async function applyImport(db: any, args: {
   };
 
   const warnings: string[] = [];
-  if (!parsed.allowOrphanInspections) {
+  if (willOrphanInspections && !parsed.allowOrphanInspections) {
     warnings.push(
       "Inspections were skipped because jobs are not restored via this endpoint. Set allowOrphanInspections=true to import them with jobId=null."
     );
   }
 
+  // ID maps
   const mapTemplate = new Map<string, string>();
   const mapEntity = new Map<string, string>();
   const mapRow = new Map<string, string>();
   const mapInspection = new Map<string, string>();
   const mapFile = new Map<string, string>();
 
+  // Plan + usage upsert for target org
   const planKey = (manifest?.plan?.plan ?? "free") as any;
 
   await db.insert(organizationPlans).values({
@@ -149,6 +184,7 @@ export async function applyImport(db: any, args: {
     },
   });
 
+  // Templates
   for (const t of (manifest?.templates ?? [])) {
     const newId = newUuid();
     mapTemplate.set(t.id, newId);
@@ -164,10 +200,11 @@ export async function applyImport(db: any, args: {
     });
   }
 
+  // Entities
   for (const e of (manifest?.entities ?? [])) {
     const newId = newUuid();
     mapEntity.set(e.id, newId);
-    await db.insert(formEntities).values({
+    await db.insert(entities).values({
       id: newId,
       organizationId: targetOrgId,
       title: e.title,
@@ -178,13 +215,14 @@ export async function applyImport(db: any, args: {
     });
   }
 
+  // Rows
   for (const r of (manifest?.entityRows ?? [])) {
     const newId = newUuid();
     mapRow.set(r.id, newId);
     const mappedEntityId = mapEntity.get(r.entityId);
     if (!mappedEntityId) continue;
 
-    await db.insert(formEntityRows).values({
+    await db.insert(entityRows).values({
       id: newId,
       organizationId: targetOrgId,
       entityId: mappedEntityId,
@@ -202,6 +240,7 @@ export async function applyImport(db: any, args: {
     });
   }
 
+  // Mappings
   for (const m of (manifest?.templateEntities ?? [])) {
     const tid = mapTemplate.get(m.templateId);
     const eid = mapEntity.get(m.entityId);
@@ -224,6 +263,7 @@ export async function applyImport(db: any, args: {
     });
   }
 
+  // Files metadata only (no binaries)
   for (const f of (manifest?.files ?? [])) {
     const newId = newUuid();
     mapFile.set(f.id, newId);
@@ -240,6 +280,7 @@ export async function applyImport(db: any, args: {
     });
   }
 
+  // Inspections + Responses + Attachments (conditionally)
   const importInspections = parsed.allowOrphanInspections;
 
   if (!importInspections) {
@@ -247,6 +288,7 @@ export async function applyImport(db: any, args: {
     skipped.responses = countArr(manifest?.inspectionResponses);
     skipped.attachments = countArr(manifest?.inspectionRowAttachments);
   } else {
+    // Inspections with jobId=null (or keep if present but not guaranteed)
     for (const insp of (manifest?.inspections ?? [])) {
       const newId = newUuid();
       mapInspection.set(insp.id, newId);
@@ -254,7 +296,7 @@ export async function applyImport(db: any, args: {
       await db.insert(inspectionInstances).values({
         id: newId,
         organizationId: targetOrgId,
-        jobId: null,
+        jobId: null, // orphan-safe
         templateId: mapTemplate.get(insp.templateId) ?? null,
         systemTypeId: insp.systemTypeId,
         createdByUserId: args.auth.userId,
@@ -300,6 +342,7 @@ export async function applyImport(db: any, args: {
     }
   }
 
+  // Update usage totals
   const totalTemplates = countArr(manifest?.templates);
   const totalEntities = countArr(manifest?.entities);
   const storageBytes = (manifest?.files ?? []).reduce((sum: number, f: any) => sum + Number(f.sizeBytes || 0), 0);
@@ -311,6 +354,7 @@ export async function applyImport(db: any, args: {
     updatedAt: new Date(),
   }).where(eq(organizationUsage.organizationId, targetOrgId));
 
+  // Audit event
   await logAudit(db, {
     organizationId: targetOrgId,
     actorUserId: args.auth.userId,
@@ -325,6 +369,7 @@ export async function applyImport(db: any, args: {
     },
   });
 
+  // import_runs record
   try {
     await db.insert(importRuns).values({
       organizationId: targetOrgId,
@@ -346,3 +391,87 @@ export async function applyImport(db: any, args: {
     note: "Server import restores metadata only. Use ZIP/CLI restore to restore attachment binaries.",
   };
 }
+
+/*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2) server/routes.ts (PATCH) — enforce safety rules at the endpoint
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REPLACE your existing POST /api/admin/import handler with this version.
+*/
+
+apiRouter.post("/admin/import", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner"]); // keep owner-only for safety
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const parsed = ImportPayloadSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+  }
+
+  try {
+    if (parsed.data.mode === "dry_run") {
+      const summary = await dryRunImport(db, parsed.data);
+      try {
+        await db.insert(importRuns).values({
+          organizationId: auth.organizationId,
+          sourceOrganizationId: summary.sourceOrganizationId,
+          mode: "dry_run",
+          status: "succeeded",
+          summary,
+          createdByUserId: auth.userId,
+        });
+      } catch {}
+      return res.json({ ok: true, summary });
+    }
+
+    // APPLY: safe-by-default behaviour is implemented inside applyImport
+    const result = await applyImport(db, { auth: { userId: auth.userId }, payload: parsed.data });
+    return res.json(result);
+  } catch (e: any) {
+    const status = Number(e?.status || 500);
+    try {
+      await db.insert(importRuns).values({
+        organizationId: auth.organizationId,
+        sourceOrganizationId: req.body?.manifest?.organizationId ?? null,
+        mode: parsed.data.mode,
+        status: "failed",
+        error: String(e?.message || e),
+        summary: {},
+        createdByUserId: auth.userId,
+      });
+    } catch {}
+    return res.status(status).json({ message: String(e?.message || "Import failed") });
+  }
+});
+
+/*
+USAGE NOTES
+- APPLY into a NEW org (default):
+  POST /api/admin/import
+  {
+    "mode":"apply",
+    "manifest": { ... }
+  }
+
+- APPLY into specific NEW org:
+  {
+    "mode":"apply",
+    "targetOrgId":"<new uuid>",
+    "manifest":{...}
+  }
+
+- OVERWRITE existing org (NOT recommended):
+  {
+    "mode":"apply",
+    "targetOrgId":"<existing org uuid>",
+    "explicitOverwrite": true,
+    "confirm": "IMPORT_OVERWRITE",
+    "manifest":{...}
+  }
+
+- Import inspections as orphans (jobId=null):
+  { ..., "allowOrphanInspections": true }
+
+DONE.
+*/ 
