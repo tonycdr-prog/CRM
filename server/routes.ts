@@ -6,12 +6,12 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
-import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances } from "@shared/schema";
+import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses } from "@shared/schema";
 import { seedDatabase } from "./seed";
 import fs from "fs";
 import path from "path";
 import { db } from "./db";
-import { eq, and, sql, isNull } from "drizzle-orm";
+import { eq, and, sql, isNull, desc, inArray } from "drizzle-orm";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -3546,38 +3546,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { id: template.id, name: template.name, entities };
   }
 
-  // GET /api/inspections/:id
-  apiRouter.get("/inspections/:id", asyncHandler(async (req, res) => {
-    const userId = getUserId(req as AuthenticatedRequest);
-    const user = await storage.getUser(userId);
-    const organizationId = user?.organizationId;
-    if (!organizationId) {
-      return res.status(400).json({ message: "User not in an organisation" });
+  // GET /api/inspections/:id - Returns template structure and latest responses
+  apiRouter.get("/inspections/:id", async (req, res) => {
+    try {
+      const { organizationId } = await requireUserOrgId(req);
+      const inspectionId = String(req.params.id);
+
+      const insp = await db
+        .select({
+          id: inspectionInstances.id,
+          templateId: inspectionInstances.templateId,
+          completedAt: inspectionInstances.completedAt,
+        })
+        .from(inspectionInstances)
+        .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+        .limit(1);
+
+      if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+
+      // Load template + ordered entities
+      const template = await db
+        .select({
+          id: formTemplates.id,
+          name: formTemplates.name,
+        })
+        .from(formTemplates)
+        .where(and(eq(formTemplates.id, insp[0].templateId), eq(formTemplates.organizationId, organizationId)))
+        .limit(1);
+
+      if (!template.length) return res.status(404).json({ message: "Template not found" });
+
+      const te = await db
+        .select({
+          entityId: formTemplateEntities.entityId,
+          sortOrder: formTemplateEntities.sortOrder,
+          title: formEntities.title,
+          description: formEntities.description,
+        })
+        .from(formTemplateEntities)
+        .innerJoin(formEntities, eq(formEntities.id, formTemplateEntities.entityId))
+        .where(and(eq(formTemplateEntities.templateId, insp[0].templateId), eq(formTemplateEntities.organizationId, organizationId)))
+        .orderBy(formTemplateEntities.sortOrder);
+
+      const entityIds = te.map((x) => x.entityId);
+
+      const rows = entityIds.length
+        ? await db
+            .select({
+              id: formEntityRows.id,
+              entityId: formEntityRows.entityId,
+              sortOrder: formEntityRows.sortOrder,
+              component: formEntityRows.component,
+              activity: formEntityRows.activity,
+              reference: formEntityRows.reference,
+              fieldType: formEntityRows.fieldType,
+              units: formEntityRows.units,
+              choices: formEntityRows.choices,
+              evidenceRequired: formEntityRows.evidenceRequired,
+            })
+            .from(formEntityRows)
+            .where(and(eq(formEntityRows.organizationId, organizationId), inArray(formEntityRows.entityId, entityIds)))
+            .orderBy(formEntityRows.entityId, formEntityRows.sortOrder)
+        : [];
+
+      // Latest responses per rowId
+      const resp = await db
+        .select({
+          rowId: inspectionResponses.rowId,
+          valueText: inspectionResponses.valueText,
+          valueNumber: inspectionResponses.valueNumber,
+          valueBool: inspectionResponses.valueBool,
+          comment: inspectionResponses.comment,
+          createdAt: inspectionResponses.createdAt,
+        })
+        .from(inspectionResponses)
+        .where(and(eq(inspectionResponses.organizationId, organizationId), eq(inspectionResponses.inspectionId, inspectionId)))
+        .orderBy(desc(inspectionResponses.createdAt));
+
+      const latestByRow = new Map<string, any>();
+      for (const r of resp) {
+        if (!latestByRow.has(r.rowId)) latestByRow.set(r.rowId, r);
+      }
+
+      const templateDto = {
+        id: template[0].id,
+        name: template[0].name,
+        entities: te.map((e) => ({
+          id: e.entityId,
+          title: e.title,
+          description: e.description ?? undefined,
+          rows: rows
+            .filter((r) => r.entityId === e.entityId)
+            .map((r) => ({
+              id: r.id,
+              component: r.component,
+              activity: r.activity,
+              reference: r.reference ?? undefined,
+              fieldType: r.fieldType,
+              units: r.units ?? undefined,
+              choices: (r.choices as any) ?? undefined,
+              evidenceRequired: r.evidenceRequired,
+            })),
+        })),
+      };
+
+      const responsesDto = Array.from(latestByRow.entries()).map(([rowId, r]) => {
+        let value: any = null;
+        if (r.valueBool !== null && r.valueBool !== undefined) value = r.valueBool;
+        else if (r.valueNumber) value = Number(r.valueNumber);
+        else if (r.valueText) value = r.valueText;
+        return { rowId, value, comment: r.comment ?? undefined };
+      });
+
+      res.json({
+        id: insp[0].id,
+        template: templateDto,
+        completedAt: insp[0].completedAt,
+        responses: responsesDto,
+      });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Error fetching inspection" });
     }
-
-    const inspection = await storage.getInspectionInstance(req.params.id);
-    if (!inspection || inspection.organizationId !== organizationId) {
-      return res.status(404).json({ message: "Not found" });
-    }
-
-    const templateDTO = await buildTemplateDTO(inspection.templateId);
-    if (!templateDTO) return res.status(500).json({ message: "Template not found" });
-
-    // Get latest responses per row
-    const latestResponses = await storage.getLatestInspectionResponses(inspection.id);
-    const responses = latestResponses.map(r => ({
-      rowId: r.rowId,
-      value: r.valueBool !== null ? r.valueBool : (r.valueNumber !== null ? r.valueNumber : r.valueText),
-      comment: r.comment,
-    }));
-
-    res.json({
-      id: inspection.id,
-      template: templateDTO,
-      completedAt: inspection.completedAt?.toISOString() || null,
-      responses,
-    });
-  }));
+  });
 
   // POST /api/inspections/:id/responses  { responses: ResponseDraft[] }
   apiRouter.post("/inspections/:id/responses", asyncHandler(async (req, res) => {
