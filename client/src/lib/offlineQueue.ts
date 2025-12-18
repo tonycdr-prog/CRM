@@ -1,0 +1,128 @@
+// client/src/lib/offlineQueue.ts
+type QueueItem = {
+  id: string;
+  createdAt: number;
+  inspectionId: string;
+  type: "responses";
+  payload: any; // { responses: [...] }
+};
+
+const DB_NAME = "lso_offline";
+const DB_VERSION = 1;
+const STORE = "queue";
+
+function uid() {
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        const store = db.createObjectStore(STORE, { keyPath: "id" });
+        store.createIndex("byCreatedAt", "createdAt", { unique: false });
+        store.createIndex("byInspectionId", "inspectionId", { unique: false });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+  });
+}
+
+export async function enqueueResponses(inspectionId: string, payload: any) {
+  const db = await openDb();
+  const item: QueueItem = {
+    id: uid(),
+    createdAt: Date.now(),
+    inspectionId,
+    type: "responses",
+    payload,
+  };
+
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.objectStore(STORE).add(item);
+  });
+
+  db.close();
+}
+
+export async function getPendingCount(inspectionId?: string) {
+  const db = await openDb();
+  const count = await new Promise<number>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readonly");
+    const store = tx.objectStore(STORE);
+    const req = inspectionId
+      ? store.index("byInspectionId").count(inspectionId)
+      : store.count();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return count;
+}
+
+async function listQueueItems(): Promise<QueueItem[]> {
+  const db = await openDb();
+  const items = await new Promise<QueueItem[]>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readonly");
+    const store = tx.objectStore(STORE);
+    const idx = store.index("byCreatedAt");
+    const req = idx.getAll();
+    req.onsuccess = () => resolve(req.result as QueueItem[]);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return items.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+async function removeItem(id: string) {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.objectStore(STORE).delete(id);
+  });
+  db.close();
+}
+
+export async function flushQueue(options?: {
+  onProgress?: (sent: number, remaining: number) => void;
+}) {
+  const items = await listQueueItems();
+  let sent = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+
+    try {
+      if (item.type === "responses") {
+        const res = await fetch(`/api/inspections/${encodeURIComponent(item.inspectionId)}/responses`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item.payload),
+        });
+
+        // If inspection completed, server returns 409; drop the queued item.
+        if (res.status === 409) {
+          await removeItem(item.id);
+          continue;
+        }
+        if (!res.ok) throw new Error(`Sync failed (${res.status})`);
+      }
+
+      await removeItem(item.id);
+      sent++;
+      options?.onProgress?.(sent, items.length - (i + 1));
+    } catch {
+      // Stop on first failure (likely still offline)
+      break;
+    }
+  }
+}
