@@ -13,7 +13,8 @@ import {
   jobTimeWindows, shiftHandovers, dailyBriefings, serviceReminders,
   locationCoordinates, schedulingConflicts, capacitySnapshots,
   checkSheetTemplates, checkSheetReadings,
-  organizations, organizationInvitations
+  organizations, organizationInvitations,
+  systemTypes, formEntities, formEntityRows, formTemplates, formTemplateEntities, formTemplateSystemTypes, inspectionInstances, inspectionResponses
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, or } from "drizzle-orm";
@@ -191,6 +192,23 @@ type DbOrganization = typeof organizations.$inferSelect;
 type NewOrganization = typeof organizations.$inferInsert;
 type DbOrganizationInvitation = typeof organizationInvitations.$inferSelect;
 type NewOrganizationInvitation = typeof organizationInvitations.$inferInsert;
+
+type DbSystemType = typeof systemTypes.$inferSelect;
+type NewSystemType = typeof systemTypes.$inferInsert;
+type DbFormEntity = typeof formEntities.$inferSelect;
+type NewFormEntity = typeof formEntities.$inferInsert;
+type DbFormEntityRow = typeof formEntityRows.$inferSelect;
+type NewFormEntityRow = typeof formEntityRows.$inferInsert;
+type DbFormTemplate = typeof formTemplates.$inferSelect;
+type NewFormTemplate = typeof formTemplates.$inferInsert;
+type DbFormTemplateEntity = typeof formTemplateEntities.$inferSelect;
+type NewFormTemplateEntity = typeof formTemplateEntities.$inferInsert;
+type DbFormTemplateSystemType = typeof formTemplateSystemTypes.$inferSelect;
+type NewFormTemplateSystemType = typeof formTemplateSystemTypes.$inferInsert;
+type DbInspectionInstance = typeof inspectionInstances.$inferSelect;
+type NewInspectionInstance = typeof inspectionInstances.$inferInsert;
+type DbInspectionResponse = typeof inspectionResponses.$inferSelect;
+type NewInspectionResponse = typeof inspectionResponses.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -680,6 +698,39 @@ export interface IStorage {
   createOrganizationInvitation(data: NewOrganizationInvitation): Promise<DbOrganizationInvitation>;
   acceptInvitation(token: string, userId: string): Promise<void>;
   deleteOrganizationInvitation(id: string): Promise<void>;
+
+  // Form Inspection: System Types
+  getSystemTypes(organizationId: string): Promise<DbSystemType[]>;
+  getSystemType(id: string): Promise<DbSystemType | undefined>;
+  createSystemType(data: NewSystemType): Promise<DbSystemType>;
+
+  // Form Inspection: Entities & Rows
+  getFormEntities(organizationId: string): Promise<DbFormEntity[]>;
+  getFormEntity(id: string): Promise<DbFormEntity | undefined>;
+  createFormEntity(data: NewFormEntity): Promise<DbFormEntity>;
+  getFormEntityRows(entityId: string): Promise<DbFormEntityRow[]>;
+  createFormEntityRow(data: NewFormEntityRow): Promise<DbFormEntityRow>;
+
+  // Form Inspection: Templates
+  getFormTemplates(organizationId: string): Promise<DbFormTemplate[]>;
+  getFormTemplate(id: string): Promise<DbFormTemplate | undefined>;
+  createFormTemplate(data: NewFormTemplate): Promise<DbFormTemplate>;
+  getFormTemplateEntities(templateId: string): Promise<DbFormTemplateEntity[]>;
+  createFormTemplateEntity(data: NewFormTemplateEntity): Promise<DbFormTemplateEntity>;
+  getFormTemplateSystemTypes(templateId: string): Promise<DbFormTemplateSystemType[]>;
+  createFormTemplateSystemType(data: NewFormTemplateSystemType): Promise<DbFormTemplateSystemType>;
+
+  // Form Inspection: Inspections
+  getInspectionInstance(id: string): Promise<DbInspectionInstance | undefined>;
+  getInspectionInstancesByJob(jobId: string): Promise<DbInspectionInstance[]>;
+  createInspectionInstance(data: NewInspectionInstance): Promise<DbInspectionInstance>;
+  completeInspectionInstance(id: string, userId: string): Promise<DbInspectionInstance | undefined>;
+
+  // Form Inspection: Responses
+  getInspectionResponses(inspectionId: string): Promise<DbInspectionResponse[]>;
+  getLatestInspectionResponses(inspectionId: string): Promise<DbInspectionResponse[]>;
+  createInspectionResponse(data: NewInspectionResponse): Promise<DbInspectionResponse>;
+  createInspectionResponses(data: NewInspectionResponse[]): Promise<DbInspectionResponse[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2643,6 +2694,139 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOrganizationInvitation(id: string): Promise<void> {
     await db.delete(organizationInvitations).where(eq(organizationInvitations.id, id));
+  }
+
+  // ============================================
+  // Form Inspection: System Types
+  // ============================================
+  async getSystemTypes(organizationId: string): Promise<DbSystemType[]> {
+    return db.select().from(systemTypes).where(eq(systemTypes.organizationId, organizationId)).orderBy(systemTypes.name);
+  }
+
+  async getSystemType(id: string): Promise<DbSystemType | undefined> {
+    const [row] = await db.select().from(systemTypes).where(eq(systemTypes.id, id));
+    return row || undefined;
+  }
+
+  async createSystemType(data: NewSystemType): Promise<DbSystemType> {
+    const [row] = await db.insert(systemTypes).values(data).returning();
+    return row;
+  }
+
+  // ============================================
+  // Form Inspection: Entities & Rows
+  // ============================================
+  async getFormEntities(organizationId: string): Promise<DbFormEntity[]> {
+    return db.select().from(formEntities).where(eq(formEntities.organizationId, organizationId)).orderBy(formEntities.title);
+  }
+
+  async getFormEntity(id: string): Promise<DbFormEntity | undefined> {
+    const [row] = await db.select().from(formEntities).where(eq(formEntities.id, id));
+    return row || undefined;
+  }
+
+  async createFormEntity(data: NewFormEntity): Promise<DbFormEntity> {
+    const [row] = await db.insert(formEntities).values(data).returning();
+    return row;
+  }
+
+  async getFormEntityRows(entityId: string): Promise<DbFormEntityRow[]> {
+    return db.select().from(formEntityRows).where(eq(formEntityRows.entityId, entityId)).orderBy(formEntityRows.sortOrder);
+  }
+
+  async createFormEntityRow(data: NewFormEntityRow): Promise<DbFormEntityRow> {
+    const [row] = await db.insert(formEntityRows).values(data).returning();
+    return row;
+  }
+
+  // ============================================
+  // Form Inspection: Templates
+  // ============================================
+  async getFormTemplates(organizationId: string): Promise<DbFormTemplate[]> {
+    return db.select().from(formTemplates).where(and(eq(formTemplates.organizationId, organizationId), eq(formTemplates.isActive, true))).orderBy(formTemplates.name);
+  }
+
+  async getFormTemplate(id: string): Promise<DbFormTemplate | undefined> {
+    const [row] = await db.select().from(formTemplates).where(eq(formTemplates.id, id));
+    return row || undefined;
+  }
+
+  async createFormTemplate(data: NewFormTemplate): Promise<DbFormTemplate> {
+    const [row] = await db.insert(formTemplates).values(data).returning();
+    return row;
+  }
+
+  async getFormTemplateEntities(templateId: string): Promise<DbFormTemplateEntity[]> {
+    return db.select().from(formTemplateEntities).where(eq(formTemplateEntities.templateId, templateId)).orderBy(formTemplateEntities.sortOrder);
+  }
+
+  async createFormTemplateEntity(data: NewFormTemplateEntity): Promise<DbFormTemplateEntity> {
+    const [row] = await db.insert(formTemplateEntities).values(data).returning();
+    return row;
+  }
+
+  async getFormTemplateSystemTypes(templateId: string): Promise<DbFormTemplateSystemType[]> {
+    return db.select().from(formTemplateSystemTypes).where(eq(formTemplateSystemTypes.templateId, templateId));
+  }
+
+  async createFormTemplateSystemType(data: NewFormTemplateSystemType): Promise<DbFormTemplateSystemType> {
+    const [row] = await db.insert(formTemplateSystemTypes).values(data).returning();
+    return row;
+  }
+
+  // ============================================
+  // Form Inspection: Inspections
+  // ============================================
+  async getInspectionInstance(id: string): Promise<DbInspectionInstance | undefined> {
+    const [row] = await db.select().from(inspectionInstances).where(eq(inspectionInstances.id, id));
+    return row || undefined;
+  }
+
+  async getInspectionInstancesByJob(jobId: string): Promise<DbInspectionInstance[]> {
+    return db.select().from(inspectionInstances).where(eq(inspectionInstances.jobId, jobId)).orderBy(desc(inspectionInstances.createdAt));
+  }
+
+  async createInspectionInstance(data: NewInspectionInstance): Promise<DbInspectionInstance> {
+    const [row] = await db.insert(inspectionInstances).values(data).returning();
+    return row;
+  }
+
+  async completeInspectionInstance(id: string, userId: string): Promise<DbInspectionInstance | undefined> {
+    const [row] = await db.update(inspectionInstances)
+      .set({ completedAt: new Date(), completedByUserId: userId })
+      .where(eq(inspectionInstances.id, id))
+      .returning();
+    return row || undefined;
+  }
+
+  // ============================================
+  // Form Inspection: Responses (append-only)
+  // ============================================
+  async getInspectionResponses(inspectionId: string): Promise<DbInspectionResponse[]> {
+    return db.select().from(inspectionResponses).where(eq(inspectionResponses.inspectionId, inspectionId)).orderBy(inspectionResponses.createdAt);
+  }
+
+  async getLatestInspectionResponses(inspectionId: string): Promise<DbInspectionResponse[]> {
+    const all = await db.select().from(inspectionResponses)
+      .where(eq(inspectionResponses.inspectionId, inspectionId))
+      .orderBy(desc(inspectionResponses.createdAt));
+    const latestByRow = new Map<string, DbInspectionResponse>();
+    for (const r of all) {
+      if (!latestByRow.has(r.rowId)) {
+        latestByRow.set(r.rowId, r);
+      }
+    }
+    return Array.from(latestByRow.values());
+  }
+
+  async createInspectionResponse(data: NewInspectionResponse): Promise<DbInspectionResponse> {
+    const [row] = await db.insert(inspectionResponses).values(data).returning();
+    return row;
+  }
+
+  async createInspectionResponses(data: NewInspectionResponse[]): Promise<DbInspectionResponse[]> {
+    if (data.length === 0) return [];
+    return db.insert(inspectionResponses).values(data).returning();
   }
 }
 

@@ -1,0 +1,185 @@
+// shared/schema.ts
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  boolean,
+  integer,
+  jsonb,
+  primaryKey,
+  index,
+} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+
+// NOTE: If you already import some of these, don’t duplicate imports.
+// NOTE: Assumes you already have organizations, users, jobs tables defined somewhere above.
+
+export const systemTypes = pgTable(
+  "system_types",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    code: text("code").notNull(), // "MSHEV", "PRESSURISATION", "NSHEV", etc
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    orgCodeIdx: index("system_types_org_code_idx").on(t.organizationId, t.code),
+  })
+);
+
+export const entities = pgTable(
+  "entities",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("entities_org_idx").on(t.organizationId),
+  })
+);
+
+export const entityRows = pgTable(
+  "entity_rows",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+
+    component: text("component").notNull(),
+    activity: text("activity").notNull(),
+    reference: text("reference"),
+
+    fieldType: text("field_type").notNull(), // "pass_fail" | "number" | "text" | "choice"
+    units: text("units"),
+    choices: jsonb("choices"), // string[] for choice fields
+    evidenceRequired: boolean("evidence_required").notNull().default(false),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    entityIdx: index("entity_rows_entity_idx").on(t.entityId),
+    orgIdx: index("entity_rows_org_idx").on(t.organizationId),
+  })
+);
+
+export const formTemplates = pgTable(
+  "form_templates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("form_templates_org_idx").on(t.organizationId),
+  })
+);
+
+// Ordered entities on a template + template-level flags
+export const formTemplateEntities = pgTable(
+  "form_template_entities",
+  {
+    templateId: uuid("template_id").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    organizationId: uuid("organization_id").notNull(),
+
+    sortOrder: integer("sort_order").notNull().default(0),
+    required: boolean("required").notNull().default(true),
+    repeatPerAsset: boolean("repeat_per_asset").notNull().default(false),
+    evidenceRequired: boolean("evidence_required").notNull().default(false),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.templateId, t.entityId] }),
+    templateIdx: index("fte_template_idx").on(t.templateId),
+    orgIdx: index("fte_org_idx").on(t.organizationId),
+  })
+);
+
+export const formTemplateSystemTypes = pgTable(
+  "form_template_system_types",
+  {
+    templateId: uuid("template_id").notNull(),
+    systemTypeId: uuid("system_type_id").notNull(),
+    organizationId: uuid("organization_id").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.templateId, t.systemTypeId] }),
+    systemIdx: index("ftst_system_idx").on(t.systemTypeId),
+    orgIdx: index("ftst_org_idx").on(t.organizationId),
+  })
+);
+
+export const inspectionInstances = pgTable(
+  "inspection_instances",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+
+    // IMPORTANT: If jobs.id is not integer, change this type.
+    jobId: integer("job_id").notNull(),
+
+    systemTypeId: uuid("system_type_id").notNull(),
+    templateId: uuid("template_id").notNull(),
+
+    createdByUserId: uuid("created_by_user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedByUserId: uuid("completed_by_user_id"),
+  },
+  (t) => ({
+    jobIdx: index("inspection_instances_job_idx").on(t.jobId),
+    orgIdx: index("inspection_instances_org_idx").on(t.organizationId),
+  })
+);
+
+// Append-only snapshots of responses.
+// Each save creates a new row. On load, you take the latest row per rowId (or latest snapshot overall).
+export const inspectionResponses = pgTable(
+  "inspection_responses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+
+    inspectionId: uuid("inspection_id").notNull(),
+    rowId: uuid("row_id").notNull(), // entity_rows.id
+
+    valueText: text("value_text"),
+    valueNumber: text("value_number"), // store as text to avoid float issues; parse in app
+    valueBool: boolean("value_bool"),
+    comment: text("comment"),
+
+    createdByUserId: uuid("created_by_user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    inspIdx: index("inspection_responses_insp_idx").on(t.inspectionId),
+    inspRowIdx: index("inspection_responses_insp_row_idx").on(t.inspectionId, t.rowId),
+    orgIdx: index("inspection_responses_org_idx").on(t.organizationId),
+  })
+);
+
+// OPTIONAL: Relations (only if you already use relations; safe to omit)
+export const entitiesRelations = relations(entities, ({ many }) => ({
+  rows: many(entityRows),
+}));
+
+export const formTemplatesRelations = relations(formTemplates, ({ many }) => ({
+  templateEntities: many(formTemplateEntities),
+}));
+
+export const inspectionInstancesRelations = relations(inspectionInstances, ({ many }) => ({
+  responses: many(inspectionResponses),
+}));

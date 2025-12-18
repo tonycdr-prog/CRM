@@ -3294,3 +3294,176 @@ export const DEFAULT_TEMPLATE_FIELDS: Record<string, CheckSheetFieldDefinition[]
     { id: "fire_alarm_link", name: "Fire Alarm Interface Test", fieldType: "pass_fail", category: "control_panel", required: true, order: 18 },
   ],
 };
+
+// ============================================
+// FORM INSPECTION TABLES (Dynamic Forms Feature)
+// ============================================
+
+export const systemTypes = pgTable("system_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("system_types_org_code_idx").on(t.organizationId, t.code),
+]);
+
+export const insertSystemTypeSchema = createInsertSchema(systemTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSystemType = z.infer<typeof insertSystemTypeSchema>;
+export type SystemType = typeof systemTypes.$inferSelect;
+
+export const formEntities = pgTable("form_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("form_entities_org_idx").on(t.organizationId),
+]);
+
+export const insertFormEntitySchema = createInsertSchema(formEntities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertFormEntity = z.infer<typeof insertFormEntitySchema>;
+export type FormEntity = typeof formEntities.$inferSelect;
+
+export const formEntityRows = pgTable("form_entity_rows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  entityId: varchar("entity_id").references(() => formEntities.id).notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  component: text("component").notNull(),
+  activity: text("activity").notNull(),
+  reference: text("reference"),
+  fieldType: text("field_type").notNull(),
+  units: text("units"),
+  choices: jsonb("choices").$type<string[]>(),
+  evidenceRequired: boolean("evidence_required").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("form_entity_rows_entity_idx").on(t.entityId),
+  index("form_entity_rows_org_idx").on(t.organizationId),
+]);
+
+export const insertFormEntityRowSchema = createInsertSchema(formEntityRows).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertFormEntityRow = z.infer<typeof insertFormEntityRowSchema>;
+export type FormEntityRow = typeof formEntityRows.$inferSelect;
+
+export const formTemplates = pgTable("form_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("form_templates_org_idx").on(t.organizationId),
+]);
+
+export const insertFormTemplateSchema = createInsertSchema(formTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertFormTemplate = z.infer<typeof insertFormTemplateSchema>;
+export type FormTemplate = typeof formTemplates.$inferSelect;
+
+export const formTemplateEntities = pgTable("form_template_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").references(() => formTemplates.id).notNull(),
+  entityId: varchar("entity_id").references(() => formEntities.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  required: boolean("required").notNull().default(true),
+  repeatPerAsset: boolean("repeat_per_asset").notNull().default(false),
+  evidenceRequired: boolean("evidence_required").notNull().default(false),
+}, (t) => [
+  index("form_template_entities_template_idx").on(t.templateId),
+  index("form_template_entities_org_idx").on(t.organizationId),
+]);
+
+export const insertFormTemplateEntitySchema = createInsertSchema(formTemplateEntities).omit({
+  id: true,
+});
+export type InsertFormTemplateEntity = z.infer<typeof insertFormTemplateEntitySchema>;
+export type FormTemplateEntity = typeof formTemplateEntities.$inferSelect;
+
+export const formTemplateSystemTypes = pgTable("form_template_system_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").references(() => formTemplates.id).notNull(),
+  systemTypeId: varchar("system_type_id").references(() => systemTypes.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+}, (t) => [
+  index("form_template_system_types_system_idx").on(t.systemTypeId),
+  index("form_template_system_types_org_idx").on(t.organizationId),
+]);
+
+export const insertFormTemplateSystemTypeSchema = createInsertSchema(formTemplateSystemTypes).omit({
+  id: true,
+});
+export type InsertFormTemplateSystemType = z.infer<typeof insertFormTemplateSystemTypeSchema>;
+export type FormTemplateSystemType = typeof formTemplateSystemTypes.$inferSelect;
+
+export const inspectionInstances = pgTable("inspection_instances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  systemTypeId: varchar("system_type_id").references(() => systemTypes.id).notNull(),
+  templateId: varchar("template_id").references(() => formTemplates.id).notNull(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  completedByUserId: varchar("completed_by_user_id").references(() => users.id),
+}, (t) => [
+  index("inspection_instances_job_idx").on(t.jobId),
+  index("inspection_instances_org_idx").on(t.organizationId),
+]);
+
+export const insertInspectionInstanceSchema = createInsertSchema(inspectionInstances).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+  completedByUserId: true,
+});
+export type InsertInspectionInstance = z.infer<typeof insertInspectionInstanceSchema>;
+export type InspectionInstance = typeof inspectionInstances.$inferSelect;
+
+export const inspectionResponses = pgTable("inspection_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  inspectionId: varchar("inspection_id").references(() => inspectionInstances.id).notNull(),
+  rowId: varchar("row_id").references(() => formEntityRows.id).notNull(),
+  valueText: text("value_text"),
+  valueNumber: text("value_number"),
+  valueBool: boolean("value_bool"),
+  comment: text("comment"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("inspection_responses_insp_idx").on(t.inspectionId),
+  index("inspection_responses_insp_row_idx").on(t.inspectionId, t.rowId),
+  index("inspection_responses_org_idx").on(t.organizationId),
+]);
+
+export const insertInspectionResponseSchema = createInsertSchema(inspectionResponses).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertInspectionResponse = z.infer<typeof insertInspectionResponseSchema>;
+export type InspectionResponse = typeof inspectionResponses.$inferSelect;
