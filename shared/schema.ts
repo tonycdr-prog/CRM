@@ -142,6 +142,32 @@ export const serverErrors = pgTable(
 
 export type ServerError = typeof serverErrors.$inferSelect;
 
+// Background jobs table for async processing (e.g., large exports)
+export const backgroundJobs = pgTable(
+  "background_jobs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organizationId: varchar("organization_id").notNull(),
+    type: text("type").notNull(), // e.g. "org_export_zip"
+    status: text("status").notNull().default("queued"), // queued|running|succeeded|failed
+    progress: integer("progress").notNull().default(0), // 0..100
+    input: jsonb("input").$type<Record<string, any>>().default({}).notNull(),
+    output: jsonb("output").$type<Record<string, any>>().default({}).notNull(),
+    error: text("error"),
+    createdByUserId: varchar("created_by_user_id").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("bg_jobs_org_idx").on(t.organizationId, t.createdAt),
+    index("bg_jobs_status_idx").on(t.status, t.createdAt),
+  ]
+);
+
+export type BackgroundJob = typeof backgroundJobs.$inferSelect;
+
 // User storage table - supports both Replit Auth and custom auth
 // User roles for permission-based access
 export const USER_ROLES = ["admin", "office_manager", "field_engineer"] as const;

@@ -1,0 +1,701 @@
+/*
+PHASE 10A + 10B + 10C — OPERATIONAL MATURITY (ALL IN ONE COPYABLE BLOCK)
+
+INCLUDES:
+10A) ZIP export endpoint: GET /api/admin/export.zip (JSON manifest + attachment binaries)
+10B) Disaster recovery restore CLI skeleton: scripts/restore-org.ts (dry-run + apply)
+10C) Background jobs (DB-backed): background_jobs table + endpoints to create job + download result
+
+──────────────────────────────────────────────────────────────
+INSTALL (Shell)
+──────────────────────────────────────────────────────────────
+npm i archiver
+# (restore script uses node core only)
+*/
+
+////////////////////////////////////////////////////////////////
+// 10C.1) shared/schema.ts — ADD backgroundJobs TABLE
+////////////////////////////////////////////////////////////////
+
+export const backgroundJobs = pgTable(
+  "background_jobs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+
+    type: text("type").notNull(), // e.g. "org_export_zip"
+    status: text("status").notNull().default("queued"), // queued|running|succeeded|failed
+    progress: integer("progress").notNull().default(0), // 0..100
+
+    input: jsonb("input").$type<Record<string, any>>().default({}).notNull(),
+    output: jsonb("output").$type<Record<string, any>>().default({}).notNull(),
+
+    error: text("error"),
+    createdByUserId: uuid("created_by_user_id").notNull(),
+
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("bg_jobs_org_idx").on(t.organizationId, t.createdAt),
+    statusIdx: index("bg_jobs_status_idx").on(t.status, t.createdAt),
+  })
+);
+
+/*
+Run migration.
+
+──────────────────────────────────────────────────────────────
+10A) ZIP EXPORT (manifest.json + attachments/)
+FILES:
+- server/lib/exportManifest.ts (NEW)
+- server/lib/zipExport.ts (NEW)
+- server/routes.ts (MODIFY: add /admin/export.zip + async endpoints)
+──────────────────────────────────────────────────────────────
+*/
+
+////////////////////////////////////////////////////////////////
+// server/lib/exportManifest.ts (NEW)
+// Builds the same manifest shape as /api/admin/export
+////////////////////////////////////////////////////////////////
+
+import { eq, desc } from "drizzle-orm";
+
+export async function buildOrgExportManifest(db: any, orgId: string) {
+  const now = new Date();
+
+  const [
+    planRow,
+    usageRow,
+    userRows,
+    jobRows,
+    inspectionRows,
+    responseRows,
+    templateRows,
+    templateEntityRows,
+    templateSystemRows,
+    entityRowsList,
+    entityRowRows,
+    fileRows,
+    inspectionAttachmentRows,
+    auditRows,
+    errorRows,
+  ] = await Promise.all([
+    db.select().from(organizationPlans).where(eq(organizationPlans.organizationId, orgId)).limit(1),
+    db.select().from(organizationUsage).where(eq(organizationUsage.organizationId, orgId)).limit(1),
+
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: (users as any).firstName,
+        lastName: (users as any).lastName,
+        role: (users as any).role,
+        organizationRole: (users as any).organizationRole,
+        organizationId: users.organizationId,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.organizationId, orgId)),
+
+    db
+      .select({
+        id: jobs.id,
+        title: (jobs as any).title,
+        status: (jobs as any).status,
+        siteId: (jobs as any).siteId,
+        userId: jobs.userId,
+        createdAt: jobs.createdAt,
+        updatedAt: jobs.updatedAt,
+      })
+      .from(jobs)
+      .innerJoin(users, eq(users.id, jobs.userId))
+      .where(eq(users.organizationId, orgId)),
+
+    db
+      .select({
+        id: inspectionInstances.id,
+        organizationId: inspectionInstances.organizationId,
+        jobId: inspectionInstances.jobId,
+        templateId: inspectionInstances.templateId,
+        systemTypeId: inspectionInstances.systemTypeId,
+        createdByUserId: inspectionInstances.createdByUserId,
+        completedAt: inspectionInstances.completedAt,
+        createdAt: inspectionInstances.createdAt,
+      })
+      .from(inspectionInstances)
+      .where(eq(inspectionInstances.organizationId, orgId)),
+
+    db
+      .select({
+        id: inspectionResponses.id,
+        organizationId: inspectionResponses.organizationId,
+        inspectionId: inspectionResponses.inspectionId,
+        rowId: inspectionResponses.rowId,
+        valueText: inspectionResponses.valueText,
+        valueNumber: inspectionResponses.valueNumber,
+        valueBool: inspectionResponses.valueBool,
+        comment: inspectionResponses.comment,
+        createdByUserId: inspectionResponses.createdByUserId,
+        createdAt: inspectionResponses.createdAt,
+      })
+      .from(inspectionResponses)
+      .where(eq(inspectionResponses.organizationId, orgId)),
+
+    db
+      .select({
+        id: formTemplates.id,
+        organizationId: formTemplates.organizationId,
+        name: formTemplates.name,
+        description: formTemplates.description,
+        isActive: formTemplates.isActive,
+        archivedAt: (formTemplates as any).archivedAt,
+        createdAt: formTemplates.createdAt,
+        updatedAt: formTemplates.updatedAt,
+      })
+      .from(formTemplates)
+      .where(eq(formTemplates.organizationId, orgId)),
+
+    db
+      .select({
+        templateId: formTemplateEntities.templateId,
+        entityId: formTemplateEntities.entityId,
+        sortOrder: formTemplateEntities.sortOrder,
+        organizationId: formTemplateEntities.organizationId,
+      })
+      .from(formTemplateEntities)
+      .where(eq(formTemplateEntities.organizationId, orgId)),
+
+    db
+      .select({
+        templateId: formTemplateSystemTypes.templateId,
+        systemTypeId: formTemplateSystemTypes.systemTypeId,
+        organizationId: formTemplateSystemTypes.organizationId,
+      })
+      .from(formTemplateSystemTypes)
+      .where(eq(formTemplateSystemTypes.organizationId, orgId)),
+
+    db
+      .select({
+        id: entities.id,
+        organizationId: entities.organizationId,
+        title: entities.title,
+        description: entities.description,
+        archivedAt: (entities as any).archivedAt,
+        createdAt: entities.createdAt,
+        updatedAt: entities.updatedAt,
+      })
+      .from(entities)
+      .where(eq(entities.organizationId, orgId)),
+
+    db
+      .select({
+        id: entityRows.id,
+        organizationId: entityRows.organizationId,
+        entityId: entityRows.entityId,
+        sortOrder: entityRows.sortOrder,
+        component: entityRows.component,
+        activity: entityRows.activity,
+        reference: entityRows.reference,
+        fieldType: entityRows.fieldType,
+        units: entityRows.units,
+        choices: entityRows.choices,
+        evidenceRequired: entityRows.evidenceRequired,
+        archivedAt: (entityRows as any).archivedAt,
+        createdAt: entityRows.createdAt,
+        updatedAt: entityRows.updatedAt,
+      })
+      .from(entityRows)
+      .where(eq(entityRows.organizationId, orgId)),
+
+    db
+      .select({
+        id: files.id,
+        organizationId: files.organizationId,
+        storage: files.storage,
+        path: files.path,
+        originalName: files.originalName,
+        mimeType: files.mimeType,
+        sizeBytes: files.sizeBytes,
+        createdByUserId: files.createdByUserId,
+        createdAt: files.createdAt,
+      })
+      .from(files)
+      .where(eq(files.organizationId, orgId)),
+
+    db
+      .select({
+        id: inspectionRowAttachments.id,
+        organizationId: inspectionRowAttachments.organizationId,
+        inspectionId: inspectionRowAttachments.inspectionId,
+        rowId: inspectionRowAttachments.rowId,
+        fileId: inspectionRowAttachments.fileId,
+        createdByUserId: inspectionRowAttachments.createdByUserId,
+        createdAt: inspectionRowAttachments.createdAt,
+      })
+      .from(inspectionRowAttachments)
+      .where(eq(inspectionRowAttachments.organizationId, orgId)),
+
+    db
+      .select({
+        id: auditEvents.id,
+        organizationId: auditEvents.organizationId,
+        actorUserId: auditEvents.actorUserId,
+        action: auditEvents.action,
+        entityType: auditEvents.entityType,
+        entityId: auditEvents.entityId,
+        jobId: auditEvents.jobId,
+        inspectionId: auditEvents.inspectionId,
+        metadata: auditEvents.metadata,
+        createdAt: auditEvents.createdAt,
+      })
+      .from(auditEvents)
+      .where(eq(auditEvents.organizationId, orgId))
+      .orderBy(desc(auditEvents.createdAt))
+      .limit(5000),
+
+    db
+      .select({
+        id: serverErrors.id,
+        organizationId: serverErrors.organizationId,
+        userId: serverErrors.userId,
+        requestId: serverErrors.requestId,
+        method: serverErrors.method,
+        path: serverErrors.path,
+        status: serverErrors.status,
+        message: serverErrors.message,
+        createdAt: serverErrors.createdAt,
+      })
+      .from(serverErrors)
+      .where(eq(serverErrors.organizationId, orgId))
+      .orderBy(desc(serverErrors.createdAt))
+      .limit(2000),
+  ]);
+
+  return {
+    exportedAt: now.toISOString(),
+    organizationId: orgId,
+    plan: planRow[0] ?? null,
+    usage: usageRow[0] ?? null,
+    users: userRows,
+    jobs: jobRows,
+    inspections: inspectionRows,
+    inspectionResponses: responseRows,
+    templates: templateRows,
+    templateEntities: templateEntityRows,
+    templateSystemTypes: templateSystemRows,
+    entities: entityRowsList,
+    entityRows: entityRowRows,
+    files: fileRows,
+    inspectionRowAttachments: inspectionAttachmentRows,
+    auditEvents: auditRows,
+    serverErrors: errorRows,
+  };
+}
+
+////////////////////////////////////////////////////////////////
+// server/lib/zipExport.ts (NEW)
+// Streams ZIP with manifest.json + attachments binaries (local storage only)
+////////////////////////////////////////////////////////////////
+
+import archiver from "archiver";
+import path from "path";
+import fs from "fs";
+import { buildOrgExportManifest } from "./exportManifest";
+
+export const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+
+function safeExists(p: string) {
+  try {
+    return fs.existsSync(p);
+  } catch {
+    return false;
+  }
+}
+
+export async function streamOrgExportZip(args: {
+  db: any;
+  orgId: string;
+  res: any; // express Response
+}) {
+  const { db, orgId, res } = args;
+
+  const manifest = await buildOrgExportManifest(db, orgId);
+
+  // Build zip
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  archive.on("warning", (err) => console.warn("[zip warning]", err?.message || err));
+  archive.on("error", (err) => {
+    console.error("[zip error]", err);
+    try {
+      res.status(500).end();
+    } catch {}
+  });
+
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="org_export_${orgId}_${new Date().toISOString().replace(/[:.]/g, "-")}.zip"`
+  );
+
+  archive.pipe(res);
+
+  // manifest.json
+  archive.append(JSON.stringify(manifest, null, 2), { name: "manifest.json" });
+
+  // attachments binaries (local storage only)
+  // Store under attachments/<fileId>_<originalName>
+  const filesMeta = Array.isArray(manifest.files) ? manifest.files : [];
+  for (const f of filesMeta) {
+    const storage = (f.storage ?? "local") as string;
+    if (storage !== "local") continue;
+
+    const rel = String(f.path || "");
+    if (!rel) continue;
+
+    const abs = path.join(UPLOAD_ROOT, rel);
+    if (!safeExists(abs)) continue;
+
+    const safeName = String(f.originalName || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const entryName = `attachments/${f.id}_${safeName}`;
+    archive.file(abs, { name: entryName });
+  }
+
+  await archive.finalize();
+}
+
+////////////////////////////////////////////////////////////////
+// 10C) server/lib/jobsQueue.ts (NEW)
+// Minimal DB-backed job queue for heavy jobs (ZIP export)
+////////////////////////////////////////////////////////////////
+
+import fsPromises from "fs/promises";
+import { backgroundJobs } from "../shared/schema";
+import { and, eq, asc } from "drizzle-orm";
+import path2 from "path";
+import archiver2 from "archiver";
+import { buildOrgExportManifest } from "./exportManifest";
+
+const JOB_OUTPUT_ROOT = path2.join(process.cwd(), "job_outputs");
+
+function ensureDirSync(p: string) {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
+ensureDirSync(JOB_OUTPUT_ROOT);
+
+async function writeZipToFile(db: any, orgId: string, outPath: string) {
+  const manifest = await buildOrgExportManifest(db, orgId);
+
+  await new Promise<void>((resolve, reject) => {
+    const output = fs.createWriteStream(outPath);
+    const archive = archiver2("zip", { zlib: { level: 9 } });
+
+    output.on("close", () => resolve());
+    output.on("error", reject);
+
+    archive.on("warning", (err) => console.warn("[job zip warning]", err?.message || err));
+    archive.on("error", reject);
+
+    archive.pipe(output);
+    archive.append(JSON.stringify(manifest, null, 2), { name: "manifest.json" });
+
+    const filesMeta = Array.isArray(manifest.files) ? manifest.files : [];
+    for (const f of filesMeta) {
+      const storage = (f.storage ?? "local") as string;
+      if (storage !== "local") continue;
+      const rel = String(f.path || "");
+      if (!rel) continue;
+      const abs = path2.join(UPLOAD_ROOT, rel);
+      if (!safeExists(abs)) continue;
+
+      const safeName = String(f.originalName || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+      archive.file(abs, { name: `attachments/${f.id}_${safeName}` });
+    }
+
+    archive.finalize();
+  });
+}
+
+export async function startJobsWorker(db: any, opts?: { pollMs?: number }) {
+  const pollMs = opts?.pollMs ?? 2500;
+
+  async function tick() {
+    // Find oldest queued job
+    const job = await db
+      .select()
+      .from(backgroundJobs)
+      .where(eq(backgroundJobs.status, "queued"))
+      .orderBy(asc(backgroundJobs.createdAt))
+      .limit(1);
+
+    if (!job.length) return;
+
+    const j = job[0];
+    const jobId = j.id as string;
+
+    // Claim
+    const claimed = await db
+      .update(backgroundJobs)
+      .set({ status: "running", startedAt: new Date(), updatedAt: new Date(), progress: 5 })
+      .where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.status, "queued")))
+      .returning({ id: backgroundJobs.id });
+
+    if (!claimed.length) return;
+
+    try {
+      if (j.type === "org_export_zip") {
+        const outName = `export_${j.organizationId}_${jobId}.zip`;
+        const outPath = path2.join(JOB_OUTPUT_ROOT, outName);
+
+        await db.update(backgroundJobs).set({ progress: 25, updatedAt: new Date() }).where(eq(backgroundJobs.id, jobId));
+
+        await writeZipToFile(db, j.organizationId, outPath);
+
+        const stat = await fsPromises.stat(outPath);
+
+        await db
+          .update(backgroundJobs)
+          .set({
+            status: "succeeded",
+            finishedAt: new Date(),
+            updatedAt: new Date(),
+            progress: 100,
+            output: { filePath: outPath, fileName: outName, sizeBytes: stat.size },
+          })
+          .where(eq(backgroundJobs.id, jobId));
+      } else {
+        await db
+          .update(backgroundJobs)
+          .set({
+            status: "failed",
+            finishedAt: new Date(),
+            updatedAt: new Date(),
+            error: `Unknown job type: ${j.type}`,
+            progress: 100,
+          })
+          .where(eq(backgroundJobs.id, jobId));
+      }
+    } catch (e: any) {
+      await db
+        .update(backgroundJobs)
+        .set({
+          status: "failed",
+          finishedAt: new Date(),
+          updatedAt: new Date(),
+          error: String(e?.message || e),
+          progress: 100,
+        })
+        .where(eq(backgroundJobs.id, jobId));
+    }
+  }
+
+  setInterval(() => {
+    tick().catch((e) => console.error("[worker tick error]", e));
+  }, pollMs);
+}
+
+////////////////////////////////////////////////////////////////
+// server/routes.ts (MODIFY) — ADD ZIP export routes + job routes
+////////////////////////////////////////////////////////////////
+
+/*
+Add imports near top:
+import { streamOrgExportZip } from "./lib/zipExport";
+import { startJobsWorker } from "./lib/jobsQueue";
+import { backgroundJobs } from "../shared/schema";
+import path from "path";
+import fs from "fs";
+
+In server entry (server/index.ts) call startJobsWorker(db) once on boot.
+*/
+
+// 10A) SYNC ZIP EXPORT (streams immediately; simplest)
+apiRouter.get("/admin/export.zip", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  // NOTE: local storage only for binaries; non-local files are skipped
+  await streamOrgExportZip({ db, orgId: auth.organizationId, res });
+});
+
+// 10C) ASYNC ZIP EXPORT JOB CREATE
+apiRouter.post("/admin/export-jobs/zip", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const created = await db
+    .insert(backgroundJobs)
+    .values({
+      organizationId: auth.organizationId,
+      type: "org_export_zip",
+      status: "queued",
+      progress: 0,
+      input: {},
+      output: {},
+      createdByUserId: auth.userId,
+    })
+    .returning({ id: backgroundJobs.id });
+
+  res.json({ jobId: created[0].id });
+});
+
+// 10C) JOB STATUS
+apiRouter.get("/admin/export-jobs/:id", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const jobId = String(req.params.id || "");
+  const rows = await db
+    .select({
+      id: backgroundJobs.id,
+      type: backgroundJobs.type,
+      status: backgroundJobs.status,
+      progress: backgroundJobs.progress,
+      input: backgroundJobs.input,
+      output: backgroundJobs.output,
+      error: backgroundJobs.error,
+      createdAt: backgroundJobs.createdAt,
+      startedAt: backgroundJobs.startedAt,
+      finishedAt: backgroundJobs.finishedAt,
+    })
+    .from(backgroundJobs)
+    .where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.organizationId, auth.organizationId)))
+    .limit(1);
+
+  if (!rows.length) return res.status(404).json({ message: "Not found" });
+  res.json({ job: rows[0] });
+});
+
+// 10C) JOB DOWNLOAD (only if succeeded)
+apiRouter.get("/admin/export-jobs/:id/download", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const jobId = String(req.params.id || "");
+  const rows = await db
+    .select({
+      id: backgroundJobs.id,
+      status: backgroundJobs.status,
+      output: backgroundJobs.output,
+    })
+    .from(backgroundJobs)
+    .where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.organizationId, auth.organizationId)))
+    .limit(1);
+
+  if (!rows.length) return res.status(404).json({ message: "Not found" });
+  if (rows[0].status !== "succeeded") return res.status(409).json({ message: "Job not ready" });
+
+  const out = rows[0].output as any;
+  const filePath = String(out?.filePath || "");
+  const fileName = String(out?.fileName || `export_${jobId}.zip`);
+  if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ message: "File missing" });
+
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+  fs.createReadStream(filePath).pipe(res);
+});
+
+////////////////////////////////////////////////////////////////
+// server/index.ts (MODIFY) — START WORKER
+////////////////////////////////////////////////////////////////
+
+/*
+After you create `db` and `app`, and before listen():
+startJobsWorker(db);
+*/
+
+////////////////////////////////////////////////////////////////
+// 10B) scripts/restore-org.ts (NEW) — DISASTER RECOVERY SKELETON
+////////////////////////////////////////////////////////////////
+
+/*
+This script restores DB data from a manifest.json (from export.zip or /api/admin/export).
+- dry-run: prints counts
+- apply: inserts into a NEW organisationId by default (safe)
+- Attachment restore: NOT performed (binaries remain in zip; we can add later)
+
+USAGE:
+  node scripts/restore-org.ts --file ./manifest.json --dry-run
+  node scripts/restore-org.ts --file ./manifest.json --apply --new-org <uuid>
+
+NOTES:
+- This is a skeleton: you’ll likely tailor which tables you restore first.
+- It assumes you can import your db instance here. If your db lives only in server runtime,
+  you can move this logic into a server admin endpoint later.
+*/
+
+// scripts/restore-org.ts
+import fs3 from "fs";
+import crypto3 from "crypto";
+
+function arg(name: string) {
+  const i = process.argv.indexOf(name);
+  return i >= 0 ? process.argv[i + 1] : null;
+}
+
+const file = arg("--file");
+const dryRun = process.argv.includes("--dry-run");
+const apply = process.argv.includes("--apply");
+const newOrg = arg("--new-org"); // required for apply
+
+if (!file) {
+  console.error("Missing --file");
+  process.exit(1);
+}
+
+const raw = fs3.readFileSync(file, "utf-8");
+const manifest = JSON.parse(raw);
+
+const counts = {
+  users: manifest.users?.length ?? 0,
+  jobs: manifest.jobs?.length ?? 0,
+  inspections: manifest.inspections?.length ?? 0,
+  responses: manifest.inspectionResponses?.length ?? 0,
+  templates: manifest.templates?.length ?? 0,
+  entities: manifest.entities?.length ?? 0,
+  entityRows: manifest.entityRows?.length ?? 0,
+  files: manifest.files?.length ?? 0,
+  attachments: manifest.inspectionRowAttachments?.length ?? 0,
+  auditEvents: manifest.auditEvents?.length ?? 0,
+};
+
+console.log("Manifest org:", manifest.organizationId);
+console.log("Counts:", counts);
+
+if (dryRun && !apply) process.exit(0);
+
+if (apply) {
+  if (!newOrg) {
+    console.error("Apply requires --new-org <uuid> (safe default: restore into a NEW org)");
+    process.exit(1);
+  }
+
+  // IMPORTANT:
+  // Implement DB inserts here using your Drizzle db import.
+  // Recommended order:
+  // 1) organizationPlans + organizationUsage (for newOrg)
+  // 2) users (map old user IDs -> new IDs OR keep if you use OIDC sub ids you control)
+  // 3) templates/entities/rows/mappings
+  // 4) jobs (map userId)
+  // 5) inspections/responses/attachments metadata
+  // 6) auditEvents (optional)
+  //
+  // Because user IDs are OIDC sub strings you may NOT want to recreate users from backup.
+  // Safer: only restore org content (templates/entities/jobs/inspections) and leave users out.
+  //
+  // Placeholder:
+  console.log("APPLY MODE (skeleton) — implement db inserts with your project’s db instance.");
+  console.log("Suggested safe restore: templates/entities/rows/mappings + inspections/responses + attachments metadata.");
+  process.exit(0);
+}
+
+console.log("Nothing to do. Use --dry-run or --apply.");
+
+/*
+NEXT:
+- If you want the restore script fully implemented against your exact schema + OIDC user model,
+  say: “Implement 10B fully” and I’ll output the complete working version tailored to your tables.
+- If you want UI for async export jobs (create + poll + download), say: “10C UI”.
+*/
