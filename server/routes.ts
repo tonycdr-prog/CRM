@@ -4243,6 +4243,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .returning({ entityId: formTemplateEntities.entityId });
 
     if (!deleted.length) return res.status(404).json({ message: "Not found" });
+
+    await logAudit(db, {
+      organizationId: auth.organizationId,
+      actorUserId: auth.userId,
+      action: "template.entity.removed",
+      entityType: "template",
+      entityId: templateId,
+      metadata: { entityId },
+    });
+
     res.json({ ok: true });
   });
 
