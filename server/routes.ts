@@ -6,12 +6,12 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
-import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes } from "@shared/schema";
+import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances } from "@shared/schema";
 import { seedDatabase } from "./seed";
 import fs from "fs";
 import path from "path";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -3453,56 +3453,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/inspections  { jobId, systemTypeId, templateId }
-  apiRouter.post("/inspections", asyncHandler(async (req, res) => {
-    const userId = getUserId(req as AuthenticatedRequest);
-    const user = await storage.getUser(userId);
-    const organizationId = user?.organizationId;
-    if (!organizationId) {
-      return res.status(400).json({ message: "User not in an organisation" });
-    }
+  // POST /api/inspections - Create or resume inspection instance
+  apiRouter.post("/inspections", async (req, res) => {
+    try {
+      const { organizationId, userId } = await requireUserOrgId(req);
 
-    const { jobId, systemTypeId, templateId } = req.body ?? {};
-    if (!jobId || !systemTypeId || !templateId) {
-      return res.status(400).json({ message: "jobId, systemTypeId, templateId are required" });
-    }
+      const { jobId, systemTypeCode, templateId } = req.body ?? {};
+      if (!jobId) return res.status(400).json({ message: "Invalid jobId" });
+      if (!systemTypeCode || !templateId) return res.status(400).json({ message: "systemTypeCode and templateId are required" });
 
-    // Validate references exist AND belong to user's organisation (tenant isolation)
-    const job = await storage.getJob(jobId);
-    if (!job) {
-      return res.status(404).json({ message: "Job not found" });
-    }
-    // Verify job belongs to same organisation via the job owner's organizationId
-    if (job.userId) {
-      const jobOwner = await storage.getUser(job.userId);
-      if (!jobOwner || jobOwner.organizationId !== organizationId) {
-        return res.status(404).json({ message: "Job not found" });
-      }
-    } else {
-      return res.status(404).json({ message: "Job not found" });
-    }
+      // Ensure template belongs to org
+      const tpl = await db
+        .select({ id: formTemplates.id, organizationId: formTemplates.organizationId })
+        .from(formTemplates)
+        .where(and(eq(formTemplates.id, templateId), eq(formTemplates.organizationId, organizationId)))
+        .limit(1);
 
-    const template = await storage.getFormTemplate(templateId);
-    if (!template || template.organizationId !== organizationId) {
-      return res.status(404).json({ message: "Template not found" });
+      if (!tpl.length) return res.status(404).json({ message: "Template not found" });
+
+      // Find system type id by code
+      const sys = await db
+        .select({ id: systemTypes.id })
+        .from(systemTypes)
+        .where(and(eq(systemTypes.organizationId, organizationId), eq(systemTypes.code, String(systemTypeCode))))
+        .limit(1);
+
+      if (!sys.length) return res.status(404).json({ message: "System type not found" });
+
+      // Resume existing incomplete inspection
+      const existing = await db
+        .select({ id: inspectionInstances.id })
+        .from(inspectionInstances)
+        .where(
+          and(
+            eq(inspectionInstances.organizationId, organizationId),
+            eq(inspectionInstances.jobId, String(jobId)),
+            eq(inspectionInstances.templateId, templateId),
+            eq(inspectionInstances.systemTypeId, sys[0].id),
+            isNull(inspectionInstances.completedAt)
+          )
+        )
+        .limit(1);
+
+      if (existing.length) return res.json({ inspectionId: existing[0].id });
+
+      const created = await db
+        .insert(inspectionInstances)
+        .values({
+          organizationId,
+          jobId: String(jobId),
+          systemTypeId: sys[0].id,
+          templateId,
+          createdByUserId: userId,
+        })
+        .returning({ id: inspectionInstances.id });
+
+      res.json({ inspectionId: created[0].id });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Error creating inspection" });
     }
-
-    const sysType = await storage.getSystemType(systemTypeId);
-    if (!sysType || sysType.organizationId !== organizationId) {
-      return res.status(404).json({ message: "System type not found" });
-    }
-
-    // Create inspection instance
-    const inspection = await storage.createInspectionInstance({
-      organizationId,
-      jobId: String(jobId),
-      systemTypeId: String(systemTypeId),
-      templateId: String(templateId),
-      createdByUserId: userId,
-    });
-
-    res.json({ inspectionId: inspection.id });
-  }));
+  });
 
   // Helper to build full template DTO with entities and rows
   async function buildTemplateDTO(templateId: string): Promise<FormTemplateDTO | null> {

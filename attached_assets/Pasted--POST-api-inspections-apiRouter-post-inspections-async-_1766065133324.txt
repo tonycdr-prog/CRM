@@ -1,0 +1,57 @@
+// POST /api/inspections
+apiRouter.post("/inspections", async (req, res) => {
+  const { organizationId, userId } = await requireUserOrgId(req);
+
+  const { jobId, systemTypeCode, templateId } = req.body ?? {};
+  const parsedJobId = Number(jobId);
+  if (!Number.isFinite(parsedJobId)) return res.status(400).json({ message: "Invalid jobId" });
+  if (!systemTypeCode || !templateId) return res.status(400).json({ message: "systemTypeCode and templateId are required" });
+
+  // Ensure template belongs to org
+  const tpl = await db
+    .select({ id: formTemplates.id, organizationId: formTemplates.organizationId })
+    .from(formTemplates)
+    .where(and(eq(formTemplates.id, templateId), eq(formTemplates.organizationId, organizationId)))
+    .limit(1);
+
+  if (!tpl.length) return res.status(404).json({ message: "Template not found" });
+
+  // Find system type id by code
+  const sys = await db
+    .select({ id: systemTypes.id })
+    .from(systemTypes)
+    .where(and(eq(systemTypes.organizationId, organizationId), eq(systemTypes.code, String(systemTypeCode))))
+    .limit(1);
+
+  if (!sys.length) return res.status(404).json({ message: "System type not found" });
+
+  // Resume existing incomplete inspection
+  const existing = await db
+    .select({ id: inspectionInstances.id })
+    .from(inspectionInstances)
+    .where(
+      and(
+        eq(inspectionInstances.organizationId, organizationId),
+        eq(inspectionInstances.jobId, parsedJobId),
+        eq(inspectionInstances.templateId, templateId),
+        eq(inspectionInstances.systemTypeId, sys[0].id),
+        sql`${inspectionInstances.completedAt} IS NULL`
+      )
+    )
+    .limit(1);
+
+  if (existing.length) return res.json({ inspectionId: existing[0].id });
+
+  const created = await db
+    .insert(inspectionInstances)
+    .values({
+      organizationId,
+      jobId: parsedJobId,
+      systemTypeId: sys[0].id,
+      templateId,
+      createdByUserId: userId,
+    })
+    .returning({ id: inspectionInstances.id });
+
+  res.json({ inspectionId: created[0].id });
+});

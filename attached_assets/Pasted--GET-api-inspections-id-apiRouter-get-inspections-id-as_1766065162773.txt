@@ -1,0 +1,118 @@
+// GET /api/inspections/:id
+apiRouter.get("/inspections/:id", async (req, res) => {
+  const { organizationId } = await requireUserOrgId(req);
+  const inspectionId = String(req.params.id);
+
+  const insp = await db
+    .select({
+      id: inspectionInstances.id,
+      templateId: inspectionInstances.templateId,
+      completedAt: inspectionInstances.completedAt,
+    })
+    .from(inspectionInstances)
+    .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+    .limit(1);
+
+  if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+
+  // Load template + ordered entities
+  const template = await db
+    .select({
+      id: formTemplates.id,
+      name: formTemplates.name,
+    })
+    .from(formTemplates)
+    .where(and(eq(formTemplates.id, insp[0].templateId), eq(formTemplates.organizationId, organizationId)))
+    .limit(1);
+
+  if (!template.length) return res.status(404).json({ message: "Template not found" });
+
+  const te = await db
+    .select({
+      entityId: formTemplateEntities.entityId,
+      sortOrder: formTemplateEntities.sortOrder,
+      title: entities.title,
+      description: entities.description,
+    })
+    .from(formTemplateEntities)
+    .innerJoin(entities, eq(entities.id, formTemplateEntities.entityId))
+    .where(and(eq(formTemplateEntities.templateId, insp[0].templateId), eq(formTemplateEntities.organizationId, organizationId)))
+    .orderBy(formTemplateEntities.sortOrder);
+
+  const entityIds = te.map((x) => x.entityId);
+
+  const rows = entityIds.length
+    ? await db
+        .select({
+          id: entityRows.id,
+          entityId: entityRows.entityId,
+          sortOrder: entityRows.sortOrder,
+          component: entityRows.component,
+          activity: entityRows.activity,
+          reference: entityRows.reference,
+          fieldType: entityRows.fieldType,
+          units: entityRows.units,
+          choices: entityRows.choices,
+          evidenceRequired: entityRows.evidenceRequired,
+        })
+        .from(entityRows)
+        .where(and(eq(entityRows.organizationId, organizationId), inArray(entityRows.entityId, entityIds)))
+        .orderBy(entityRows.entityId, entityRows.sortOrder)
+    : [];
+
+  // Latest responses per rowId
+  const resp = await db
+    .select({
+      rowId: inspectionResponses.rowId,
+      valueText: inspectionResponses.valueText,
+      valueNumber: inspectionResponses.valueNumber,
+      valueBool: inspectionResponses.valueBool,
+      comment: inspectionResponses.comment,
+      createdAt: inspectionResponses.createdAt,
+    })
+    .from(inspectionResponses)
+    .where(and(eq(inspectionResponses.organizationId, organizationId), eq(inspectionResponses.inspectionId, inspectionId)))
+    .orderBy(desc(inspectionResponses.createdAt));
+
+  const latestByRow = new Map<string, any>();
+  for (const r of resp) {
+    if (!latestByRow.has(r.rowId)) latestByRow.set(r.rowId, r);
+  }
+
+  const templateDto = {
+    id: template[0].id,
+    name: template[0].name,
+    entities: te.map((e) => ({
+      id: e.entityId,
+      title: e.title,
+      description: e.description ?? undefined,
+      rows: rows
+        .filter((r) => r.entityId === e.entityId)
+        .map((r) => ({
+          id: r.id,
+          component: r.component,
+          activity: r.activity,
+          reference: r.reference ?? undefined,
+          fieldType: r.fieldType,
+          units: r.units ?? undefined,
+          choices: (r.choices as any) ?? undefined,
+          evidenceRequired: r.evidenceRequired,
+        })),
+    })),
+  };
+
+  const responsesDto = Array.from(latestByRow.entries()).map(([rowId, r]) => {
+    let value: any = null;
+    if (r.valueBool !== null && r.valueBool !== undefined) value = r.valueBool;
+    else if (r.valueNumber) value = Number(r.valueNumber);
+    else if (r.valueText) value = r.valueText;
+    return { rowId, value, comment: r.comment ?? undefined };
+  });
+
+  res.json({
+    id: insp[0].id,
+    template: templateDto,
+    completedAt: insp[0].completedAt,
+    responses: responsesDto,
+  });
+});
