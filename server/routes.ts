@@ -3927,6 +3927,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: formTemplates.isActive,
         });
 
+      await logAudit(db, {
+        organizationId: auth.organizationId,
+        actorUserId: auth.userId,
+        action: "template.created",
+        entityType: "template",
+        entityId: created[0].id,
+        metadata: { name },
+      });
+
       res.json({ template: created[0] });
     } catch (e: any) {
       res.status(400).json({ message: e?.message ?? "Bad request" });
