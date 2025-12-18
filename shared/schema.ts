@@ -3467,3 +3467,46 @@ export const insertInspectionResponseSchema = createInsertSchema(inspectionRespo
 });
 export type InsertInspectionResponse = z.infer<typeof insertInspectionResponseSchema>;
 export type InspectionResponse = typeof inspectionResponses.$inferSelect;
+
+// Phase 4: Files & Attachments
+export const files = pgTable("files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  storage: text("storage").notNull().default("local"),
+  path: text("path").notNull(),
+  originalName: text("original_name").notNull(),
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes").notNull().default(0),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("files_org_idx").on(t.organizationId),
+]);
+
+export const insertFileSchema = createInsertSchema(files).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertFile = z.infer<typeof insertFileSchema>;
+export type File = typeof files.$inferSelect;
+
+export const inspectionRowAttachments = pgTable("inspection_row_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  inspectionId: varchar("inspection_id").references(() => inspectionInstances.id).notNull(),
+  rowId: varchar("row_id").references(() => formEntityRows.id).notNull(),
+  fileId: varchar("file_id").references(() => files.id).notNull(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("ira_org_idx").on(t.organizationId),
+  index("ira_insp_idx").on(t.inspectionId),
+  index("ira_insp_row_idx").on(t.inspectionId, t.rowId),
+]);
+
+export const insertInspectionRowAttachmentSchema = createInsertSchema(inspectionRowAttachments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertInspectionRowAttachment = z.infer<typeof insertInspectionRowAttachmentSchema>;
+export type InspectionRowAttachment = typeof inspectionRowAttachments.$inferSelect;
