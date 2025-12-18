@@ -3669,44 +3669,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/inspections/:id/responses  { responses: ResponseDraft[] }
-  apiRouter.post("/inspections/:id/responses", asyncHandler(async (req, res) => {
-    const userId = getUserId(req as AuthenticatedRequest);
-    const user = await storage.getUser(userId);
-    const organizationId = user?.organizationId;
-    if (!organizationId) {
-      return res.status(400).json({ message: "User not in an organisation" });
+  // POST /api/inspections/:id/responses - Append-only response inserts
+  apiRouter.post("/inspections/:id/responses", async (req, res) => {
+    try {
+      const { organizationId, userId } = await requireUserOrgId(req);
+      const inspectionId = String(req.params.id);
+
+      const insp = await db
+        .select({ id: inspectionInstances.id, completedAt: inspectionInstances.completedAt })
+        .from(inspectionInstances)
+        .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+        .limit(1);
+
+      if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+      if (insp[0].completedAt) return res.status(409).json({ message: "Inspection is completed" });
+
+      const { responses } = req.body ?? {};
+      if (!Array.isArray(responses)) return res.status(400).json({ message: "responses[] required" });
+
+      // Validate rows belong to org
+      const rowIds = responses.map((r: any) => String(r.rowId)).filter(Boolean);
+      if (!rowIds.length) return res.status(400).json({ message: "No rowId values" });
+
+      const validRows = await db
+        .select({ id: formEntityRows.id })
+        .from(formEntityRows)
+        .where(and(eq(formEntityRows.organizationId, organizationId), inArray(formEntityRows.id, rowIds)));
+
+      const validSet = new Set(validRows.map((r) => r.id));
+      const invalid = rowIds.find((id) => !validSet.has(id));
+      if (invalid) return res.status(400).json({ message: `Invalid rowId: ${invalid}` });
+
+      const inserts = responses.map((r: any) => {
+        const cols = coerceValueToColumns(r.value);
+        return {
+          organizationId,
+          inspectionId,
+          rowId: String(r.rowId),
+          ...cols,
+          comment: typeof r.comment === "string" ? r.comment : null,
+          createdByUserId: userId,
+        };
+      });
+
+      await db.insert(inspectionResponses).values(inserts);
+
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Error saving responses" });
     }
-
-    const inspection = await storage.getInspectionInstance(req.params.id);
-    if (!inspection || inspection.organizationId !== organizationId) {
-      return res.status(404).json({ message: "Not found" });
-    }
-    if (inspection.completedAt) return res.status(409).json({ message: "Inspection is completed" });
-
-    const { responses } = req.body ?? {};
-    if (!Array.isArray(responses)) {
-      return res.status(400).json({ message: "responses[] required" });
-    }
-
-    // Append responses (audit trail pattern)
-    const toInsert = (responses as ResponseDraft[]).map(r => {
-      const val = r.value;
-      return {
-        organizationId,
-        inspectionId: inspection.id,
-        rowId: r.rowId,
-        valueText: typeof val === "string" ? val : null,
-        valueNumber: typeof val === "number" ? String(val) : null,
-        valueBool: typeof val === "boolean" ? val : null,
-        comment: r.comment || null,
-        createdByUserId: userId,
-      };
-    });
-
-    await storage.createInspectionResponses(toInsert);
-    res.json({ ok: true });
-  }));
+  });
 
   // POST /api/inspections/:id/complete
   apiRouter.post("/inspections/:id/complete", asyncHandler(async (req, res) => {
