@@ -1,0 +1,103 @@
+// ─────────────────────────────────────────────
+// ADMIN: TEMPLATES
+// ─────────────────────────────────────────────
+apiRouter.get("/admin/templates", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const list = await db
+    .select({
+      id: formTemplates.id,
+      name: formTemplates.name,
+      description: formTemplates.description,
+      isActive: formTemplates.isActive,
+      createdAt: formTemplates.createdAt,
+      updatedAt: formTemplates.updatedAt,
+    })
+    .from(formTemplates)
+    .where(eq(formTemplates.organizationId, auth.organizationId))
+    .orderBy(formTemplates.name);
+
+  res.json({ templates: list });
+});
+
+apiRouter.post("/admin/templates", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  try {
+    const name = assertString(req.body?.name, "name");
+    const description = typeof req.body?.description === "string" ? req.body.description : null;
+
+    const created = await db
+      .insert(formTemplates)
+      .values({
+        organizationId: auth.organizationId,
+        name,
+        description,
+        isActive: true,
+      })
+      .returning({
+        id: formTemplates.id,
+        name: formTemplates.name,
+        description: formTemplates.description,
+        isActive: formTemplates.isActive,
+      });
+
+    res.json({ template: created[0] });
+  } catch (e: any) {
+    res.status(400).json({ message: e?.message ?? "Bad request" });
+  }
+});
+
+apiRouter.patch("/admin/templates/:id", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const templateId = String(req.params.id || "");
+  if (!templateId) return res.status(400).json({ message: "Invalid id" });
+
+  const patch: any = { updatedAt: new Date() };
+  if (typeof req.body?.name === "string") patch.name = req.body.name.trim();
+  if (typeof req.body?.description === "string") patch.description = req.body.description;
+  if (typeof req.body?.isActive === "boolean") patch.isActive = req.body.isActive;
+
+  const updated = await db
+    .update(formTemplates)
+    .set(patch)
+    .where(and(eq(formTemplates.id, templateId), eq(formTemplates.organizationId, auth.organizationId)))
+    .returning({
+      id: formTemplates.id,
+      name: formTemplates.name,
+      description: formTemplates.description,
+      isActive: formTemplates.isActive,
+    });
+
+  if (!updated.length) return res.status(404).json({ message: "Not found" });
+  res.json({ template: updated[0] });
+});
+
+apiRouter.delete("/admin/templates/:id", async (req, res) => {
+  const auth = await requireOrgRole(req, ["owner", "admin"]);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const templateId = String(req.params.id || "");
+  if (!templateId) return res.status(400).json({ message: "Invalid id" });
+
+  // Delete mappings first (FK safety)
+  await db
+    .delete(formTemplateEntities)
+    .where(and(eq(formTemplateEntities.templateId, templateId), eq(formTemplateEntities.organizationId, auth.organizationId)));
+
+  await db
+    .delete(formTemplateSystemTypes)
+    .where(and(eq(formTemplateSystemTypes.templateId, templateId), eq(formTemplateSystemTypes.organizationId, auth.organizationId)));
+
+  const deleted = await db
+    .delete(formTemplates)
+    .where(and(eq(formTemplates.id, templateId), eq(formTemplates.organizationId, auth.organizationId)))
+    .returning({ id: formTemplates.id });
+
+  if (!deleted.length) return res.status(404).json({ message: "Not found" });
+  res.json({ ok: true });
+});

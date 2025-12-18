@@ -209,6 +209,13 @@ const menuSections: MenuSection[] = [
       { title: "Notifications", url: ROUTES.NOTIFICATIONS, icon: Bell },
     ],
   },
+  {
+    title: "Admin",
+    icon: Settings,
+    items: [
+      { title: "Entities", url: ROUTES.ADMIN_ENTITIES, icon: FolderKanban },
+    ],
+  },
 ];
 
 interface CollapsibleMenuSectionProps {
@@ -288,6 +295,7 @@ const SECTION_PERMISSIONS: Record<string, string[]> = {
   "Sales & Pipeline": ["admin", "office_manager"],
   "Compliance & Safety": ["admin", "office_manager", "field_engineer"],
   "Documents & Reports": ["admin", "office_manager"],
+  "Admin": ["admin"],
 };
 
 export function AppLayout({ children }: AppLayoutProps) {
