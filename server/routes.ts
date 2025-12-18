@@ -101,6 +101,29 @@ function assertFieldType(x: any) {
 }
 
 // ============================================
+// FILE UPLOAD CONFIGURATION
+// ============================================
+const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+
+function ensureDir(p: string) {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      ensureDir(UPLOAD_ROOT);
+      cb(null, UPLOAD_ROOT);
+    },
+    filename: (req, file, cb) => {
+      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+      cb(null, `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safe}`);
+    },
+  }),
+  limits: { fileSize: 15 * 1024 * 1024 },
+});
+
+// ============================================
 // FORM INSPECTION API DTOs (DB-backed)
 // ============================================
 type SystemTypeDTO = { id: string; name: string; code: string };
