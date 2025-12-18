@@ -6,7 +6,8 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
-import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses, files, inspectionRowAttachments } from "@shared/schema";
+import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses, files, inspectionRowAttachments, auditEvents } from "@shared/schema";
+import { logAudit } from "./lib/audit";
 import multer from "multer";
 import { buildInspectionPdf } from "./pdf/inspectionPdf";
 import { seedDatabase } from "./seed";
@@ -4183,6 +4184,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ systemTypes: systemTypesOut, templates: templatesOut });
     } catch (err: any) {
       res.status(400).json({ message: err.message || "Error fetching forms" });
+    }
+  });
+
+  // GET /api/jobs/:jobId/audit - Timeline of audit events for a job
+  apiRouter.get("/jobs/:jobId/audit", async (req, res) => {
+    try {
+      const { organizationId } = await requireUserOrgId(req);
+      const jobId = String(req.params.jobId || "");
+      if (!jobId) return res.status(400).json({ message: "Invalid jobId" });
+
+      const access = await requireJobInOrg(jobId, organizationId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+      const rows = await db
+        .select({
+          id: auditEvents.id,
+          action: auditEvents.action,
+          entityType: auditEvents.entityType,
+          entityId: auditEvents.entityId,
+          metadata: auditEvents.metadata,
+          createdAt: auditEvents.createdAt,
+          actorUserId: auditEvents.actorUserId,
+          inspectionId: auditEvents.inspectionId,
+        })
+        .from(auditEvents)
+        .where(and(eq(auditEvents.organizationId, organizationId), eq(auditEvents.jobId, jobId)))
+        .orderBy(desc(auditEvents.createdAt))
+        .limit(200);
+
+      res.json({ events: rows });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Error fetching audit events" });
+    }
+  });
+
+  // GET /api/inspections/:id/audit - Timeline of audit events for an inspection
+  apiRouter.get("/inspections/:id/audit", async (req, res) => {
+    try {
+      const { organizationId } = await requireUserOrgId(req);
+      const inspectionId = String(req.params.id || "");
+      if (!inspectionId) return res.status(400).json({ message: "Invalid inspection id" });
+
+      const insp = await db
+        .select({ id: inspectionInstances.id, jobId: inspectionInstances.jobId })
+        .from(inspectionInstances)
+        .where(and(eq(inspectionInstances.id, inspectionId), eq(inspectionInstances.organizationId, organizationId)))
+        .limit(1);
+
+      if (!insp.length) return res.status(404).json({ message: "Inspection not found" });
+
+      const access = await requireJobInOrg(String(insp[0].jobId), organizationId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
+
+      const rows = await db
+        .select({
+          id: auditEvents.id,
+          action: auditEvents.action,
+          entityType: auditEvents.entityType,
+          entityId: auditEvents.entityId,
+          metadata: auditEvents.metadata,
+          createdAt: auditEvents.createdAt,
+          actorUserId: auditEvents.actorUserId,
+        })
+        .from(auditEvents)
+        .where(and(eq(auditEvents.organizationId, organizationId), eq(auditEvents.inspectionId, inspectionId)))
+        .orderBy(desc(auditEvents.createdAt))
+        .limit(200);
+
+      res.json({ events: rows });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Error fetching audit events" });
     }
   });
 
