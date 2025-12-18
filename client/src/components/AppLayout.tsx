@@ -83,6 +83,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 
 interface AppLayoutProps {
   children: React.ReactNode;
+  isOrgAdmin?: boolean;
 }
 
 interface MenuItem {
@@ -300,7 +301,7 @@ const SECTION_PERMISSIONS: Record<string, string[]> = {
   "Admin": ["admin"],
 };
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { isEngineerMode, enterCompanionMode, enterOfficeMode } = useViewMode();
@@ -308,11 +309,15 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const filteredMenuSections = useMemo(() => {
     return menuSections.filter(section => {
+      // Admin section uses organizationRole check (owner/admin)
+      if (section.title === "Admin") {
+        return isOrgAdmin === true;
+      }
       const allowedRoles = SECTION_PERMISSIONS[section.title];
       if (!allowedRoles) return true;
       return allowedRoles.includes(role);
     });
-  }, [role]);
+  }, [role, isOrgAdmin]);
 
   const handleCompanionClick = (path: string) => {
     enterCompanionMode(path);
