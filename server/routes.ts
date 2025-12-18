@@ -3593,6 +3593,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     if (!updated.length) return res.status(404).json({ message: "Not found" });
+
+    await logAudit(db, {
+      organizationId: auth.organizationId,
+      actorUserId: auth.userId,
+      action: "entity.updated",
+      entityType: "entity",
+      entityId: updated[0].id,
+      metadata: { title: updated[0].title },
+    });
+
     res.json({ entity: updated[0] });
   });
 
@@ -3615,6 +3625,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .returning({ id: formEntities.id });
 
     if (!deleted.length) return res.status(404).json({ message: "Not found" });
+
+    await logAudit(db, {
+      organizationId: auth.organizationId,
+      actorUserId: auth.userId,
+      action: "entity.deleted",
+      entityType: "entity",
+      entityId,
+      metadata: {},
+    });
+
     res.json({ ok: true });
   });
 
@@ -3703,6 +3723,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           evidenceRequired: formEntityRows.evidenceRequired,
         });
 
+      await logAudit(db, {
+        organizationId: auth.organizationId,
+        actorUserId: auth.userId,
+        action: "entity_row.created",
+        entityType: "entity_row",
+        entityId: created[0].id,
+        metadata: { entityId, component, activity, fieldType },
+      });
+
       res.json({ row: created[0] });
     } catch (e: any) {
       res.status(400).json({ message: e?.message ?? "Bad request" });
@@ -3754,6 +3783,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
       if (!updated.length) return res.status(404).json({ message: "Not found" });
+
+      await logAudit(db, {
+        organizationId: auth.organizationId,
+        actorUserId: auth.userId,
+        action: "entity_row.updated",
+        entityType: "entity_row",
+        entityId: updated[0].id,
+        metadata: { entityId: updated[0].entityId },
+      });
+
       res.json({ row: updated[0] });
     } catch (e: any) {
       res.status(400).json({ message: e?.message ?? "Bad request" });
@@ -3774,6 +3813,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .returning({ id: formEntityRows.id });
 
     if (!deleted.length) return res.status(404).json({ message: "Not found" });
+
+    await logAudit(db, {
+      organizationId: auth.organizationId,
+      actorUserId: auth.userId,
+      action: "entity_row.deleted",
+      entityType: "entity_row",
+      entityId: rowId,
+      metadata: {},
+    });
+
     res.json({ ok: true });
   });
 
