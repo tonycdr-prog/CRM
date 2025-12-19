@@ -913,6 +913,7 @@ export type DbContract = typeof contracts.$inferSelect;
 // Jobs table - work orders
 export const jobs = pgTable("jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
   userId: varchar("user_id").references(() => users.id),
   clientId: varchar("client_id").references(() => clients.id),
   contractId: varchar("contract_id").references(() => contracts.id),
@@ -959,7 +960,10 @@ export const jobs = pgTable("jobs", {
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (t) => [
+  index("jobs_org_idx").on(t.organizationId),
+  index("jobs_org_created_idx").on(t.organizationId, t.createdAt),
+]);
 
 export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true });
 export type InsertJob = z.infer<typeof insertJobSchema>;

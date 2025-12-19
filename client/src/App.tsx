@@ -81,6 +81,11 @@ import AdminTemplateEditPage from "@/pages/admin/template-edit";
 import AdminUsagePage from "@/pages/admin/usage";
 import JobActivityPage from "@/pages/job-activity";
 import NotFound from "@/pages/not-found";
+import WorkHub from "@/pages/hubs/work";
+import FormsHub from "@/pages/hubs/forms";
+import CustomersHub from "@/pages/hubs/customers";
+import ReportsHub from "@/pages/hubs/reports";
+import ManageHub from "@/pages/hubs/manage";
 import { Loader2 } from "lucide-react";
 
 function PlaceholderPage({ title }: { title: string }) {
@@ -100,6 +105,14 @@ function LayoutRoutes() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path={ROUTES.DASHBOARD} component={Dashboard} />
+        
+        {/* Journey Hub routes */}
+        <Route path={ROUTES.HUB_WORK} component={WorkHub} />
+        <Route path={ROUTES.HUB_FORMS} component={FormsHub} />
+        <Route path={ROUTES.HUB_CUSTOMERS} component={CustomersHub} />
+        <Route path={ROUTES.HUB_REPORTS} component={ReportsHub} />
+        <Route path={ROUTES.HUB_MANAGE} component={ManageHub} />
+        
         <Route path="/test" component={FieldTesting} />
         <Route path="/clients" component={Clients} />
         <Route path="/clients/:id" component={ClientDetail} />

@@ -1,6 +1,13 @@
 export const ROUTES = {
   DASHBOARD: "/dashboard",
   FIELD_COMPANION_HOME: "/field-companion",
+  
+  // Phase 1 journey hubs (prefixed to avoid collision with existing routes)
+  HUB_WORK: "/hub/work",
+  HUB_FORMS: "/hub/forms",
+  HUB_CUSTOMERS: "/hub/customers",
+  HUB_REPORTS: "/hub/reports",
+  HUB_MANAGE: "/hub/manage",
   FIELD_COMPANION_JOB: "/field-companion/:id",
   FIELD_COMPANION_JOB_FORMS: "/field-companion/:id/forms",
   FIELD_TESTING: "/test",

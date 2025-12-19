@@ -301,10 +301,14 @@ export interface IStorage {
   
   // Jobs
   getJobs(userId: string): Promise<DbJob[]>;
+  getJobsByOrg(organizationId: string): Promise<DbJob[]>;
   getJob(id: string): Promise<DbJob | undefined>;
+  getJobByOrg(id: string, organizationId: string): Promise<DbJob | undefined>;
   createJob(job: NewJob): Promise<DbJob>;
   updateJob(id: string, job: Partial<DbJob>): Promise<DbJob | undefined>;
+  updateJobByOrg(id: string, organizationId: string, job: Partial<DbJob>): Promise<DbJob | undefined>;
   deleteJob(id: string): Promise<boolean>;
+  deleteJobByOrg(id: string, organizationId: string): Promise<boolean>;
   
   // Quotes
   getQuotes(userId: string): Promise<DbQuote[]>;
@@ -1127,8 +1131,17 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(jobs).where(or(eq(jobs.userId, userId), eq(jobs.userId, SHARED_USER_ID))).orderBy(desc(jobs.createdAt));
   }
 
+  async getJobsByOrg(organizationId: string): Promise<DbJob[]> {
+    return db.select().from(jobs).where(eq(jobs.organizationId, organizationId)).orderBy(desc(jobs.createdAt));
+  }
+
   async getJob(id: string): Promise<DbJob | undefined> {
     const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
+    return job || undefined;
+  }
+
+  async getJobByOrg(id: string, organizationId: string): Promise<DbJob | undefined> {
+    const [job] = await db.select().from(jobs).where(and(eq(jobs.id, id), eq(jobs.organizationId, organizationId)));
     return job || undefined;
   }
 
@@ -1142,8 +1155,18 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async updateJobByOrg(id: string, organizationId: string, job: Partial<DbJob>): Promise<DbJob | undefined> {
+    const [updated] = await db.update(jobs).set({ ...job, updatedAt: new Date() }).where(and(eq(jobs.id, id), eq(jobs.organizationId, organizationId))).returning();
+    return updated || undefined;
+  }
+
   async deleteJob(id: string): Promise<boolean> {
     await db.delete(jobs).where(eq(jobs.id, id));
+    return true;
+  }
+
+  async deleteJobByOrg(id: string, organizationId: string): Promise<boolean> {
+    const result = await db.delete(jobs).where(and(eq(jobs.id, id), eq(jobs.organizationId, organizationId)));
     return true;
   }
 

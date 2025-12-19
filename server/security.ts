@@ -32,10 +32,15 @@ export const securityHeaders = helmet({
 
 export const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 180,
+  limit: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Please slow down." },
+  skip: (req) => {
+    // Skip rate limiting for Vite dev assets during development
+    const url = req.originalUrl || req.url;
+    return url.startsWith("/@") || url.startsWith("/node_modules") || url.endsWith(".ts") || url.endsWith(".tsx") || url.endsWith(".css");
+  },
 });
 
 export const authLimiter = rateLimit({

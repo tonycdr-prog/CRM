@@ -58,14 +58,13 @@ function coerceValueToColumns(value: any) {
 
 async function requireJobInOrg(jobId: string, organizationId: string) {
   const job = await db
-    .select({ id: jobs.id, userOrg: users.organizationId })
+    .select({ id: jobs.id, organizationId: jobs.organizationId })
     .from(jobs)
-    .innerJoin(users, eq(users.id, jobs.userId))
     .where(eq(jobs.id, jobId))
     .limit(1);
 
   if (!job.length) return { ok: false as const, status: 404 as const, message: "Job not found" };
-  if (job[0].userOrg !== organizationId) {
+  if (job[0].organizationId !== organizationId) {
     return { ok: false as const, status: 403 as const, message: "Forbidden" };
   }
   return { ok: true as const };
@@ -884,8 +883,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!client || !client.portalEnabled) {
         return res.status(404).json({ error: "Invalid portal access" });
       }
+      // Get organizationId from the client's owner user
+      let organizationId: string | null = null;
+      if (client.userId) {
+        const [owner] = await db.select({ organizationId: users.organizationId }).from(users).where(eq(users.id, client.userId)).limit(1);
+        organizationId = owner?.organizationId ?? null;
+      }
+      if (!organizationId) {
+        return res.status(400).json({ error: "Client organisation not configured" });
+      }
       // Create a job with pending status
       const job = await storage.createJob({
+        organizationId,
         userId: client.userId,
         clientId: client.id,
         jobNumber: `SR-${Date.now()}`,
@@ -989,14 +998,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
 
   apiRouter.get("/jobs", asyncHandler(async (req, res) => {
-    const userId = getUserId(req as AuthenticatedRequest);
-    const jobs = await storage.getJobs(userId);
+    const { organizationId } = await requireUserOrgId(req);
+    const jobs = await storage.getJobsByOrg(organizationId);
     res.json(jobs);
   }));
 
   apiRouter.get("/jobs-with-sites", asyncHandler(async (req, res) => {
+    const { organizationId } = await requireUserOrgId(req);
     const userId = getUserId(req as AuthenticatedRequest);
-    const jobs = await storage.getJobs(userId);
+    const jobs = await storage.getJobsByOrg(organizationId);
     const sites = await storage.getSites(userId);
     
     const siteMap = new Map(sites.map(s => [s.id, s]));
@@ -1027,12 +1037,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   apiRouter.get("/jobs/detail/:id", asyncHandler(async (req, res) => {
-    const job = await storage.getJob(req.params.id);
+    const { organizationId } = await requireUserOrgId(req);
+    const job = await storage.getJobByOrg(req.params.id, organizationId);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
     res.json(job);
   }));
 
   apiRouter.get("/jobs/detail-with-site/:id", asyncHandler(async (req, res) => {
-    const job = await storage.getJob(req.params.id);
+    const { organizationId } = await requireUserOrgId(req);
+    const job = await storage.getJobByOrg(req.params.id, organizationId);
     if (!job) {
       return res.status(404).json({ error: "Job not found" });
     }
@@ -1057,7 +1072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { limits, usage } = await getOrgPlanAndUsage(db, organizationId);
     enforce(usage.jobsThisMonth < limits.jobsPerMonth, "Monthly job limit reached");
 
-    const job = await storage.createJob({ ...req.body, userId });
+    const job = await storage.createJob({ ...req.body, userId, organizationId });
 
     // Increment usage counter
     await db
@@ -1072,12 +1087,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   apiRouter.patch("/jobs/:id", asyncHandler(async (req, res) => {
-    const job = await storage.updateJob(req.params.id, req.body);
+    const { organizationId } = await requireUserOrgId(req);
+    const job = await storage.updateJobByOrg(req.params.id, organizationId, req.body);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
     res.json(job);
   }));
 
   apiRouter.delete("/jobs/:id", asyncHandler(async (req, res) => {
-    await storage.deleteJob(req.params.id);
+    const { organizationId } = await requireUserOrgId(req);
+    const job = await storage.getJobByOrg(req.params.id, organizationId);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+    await storage.deleteJobByOrg(req.params.id, organizationId);
     res.json({ success: true });
   }));
 
