@@ -663,7 +663,7 @@ export default function FieldJobDetail() {
           // Create notification for back office
           try {
             await apiRequest("POST", "/api/notifications", {
-              userId: user?.id,
+              userId: job?.userId || undefined,
               title: "Job Completed",
               message: `Job ${job?.jobNumber} at ${job?.site?.name || job?.siteAddress} has been completed by the field engineer.`,
               type: "success",

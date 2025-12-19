@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -7,6 +8,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -20,11 +22,13 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useToast } from "@/hooks/use-toast";
 import { ROUTES } from "@/lib/routes";
-import { 
-  LayoutDashboard, 
-  Wind, 
-  Briefcase, 
+import { buildLayoutWithSidebarWidget } from "@shared/sidebarWidgets";
+import {
+  LayoutDashboard,
+  Wind,
+  Briefcase,
   BarChart3,
   LogOut,
   Building2,
@@ -32,8 +36,10 @@ import {
   Settings,
   HardDrive,
   Smartphone,
+  Plus,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -89,8 +95,12 @@ const journeyMenuItems: JourneyMenuItem[] = [
 export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { isEngineerMode, enterCompanionMode, enterOfficeMode } = useViewMode();
   const { role, roleLabel } = usePermissions();
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const [pendingRoute, setPendingRoute] = useState<string | null>(null);
 
   const handleToggleChange = () => {
     if (!isEngineerMode) {
@@ -104,6 +114,62 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch("/api/csrf-token", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setCsrfToken(data?.csrfToken ?? null))
+      .catch(() => setCsrfToken(null));
+  }, [user?.id]);
+
+  const addToDashboard = useMutation({
+    mutationFn: async ({ route }: { route: string }) => {
+      const layoutResponse = await fetch("/api/dashboard/layout", { credentials: "include" });
+      if (!layoutResponse.ok) throw new Error("Failed to load dashboard layout");
+      const layoutBody = await layoutResponse.json();
+      const existingLayout = layoutBody.layout as
+        | { id: string; name: string; items: any[]; isDefault: boolean }
+        | null;
+
+      const payload = buildLayoutWithSidebarWidget(route, {
+        name: existingLayout?.name,
+        items: existingLayout?.items,
+      });
+
+      if (!payload) throw new Error("No widget mapping found for this route");
+
+      const method = existingLayout?.id ? "PUT" : "POST";
+      const url = existingLayout?.id
+        ? `/api/dashboard/layouts/${existingLayout.id}`
+        : "/api/dashboard/layouts";
+
+      const res = await fetch(url, {
+        method,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to add widget to dashboard");
+      return res.json();
+    },
+    onMutate: ({ route }) => setPendingRoute(route),
+    onError: (error) =>
+      toast({
+        title: "Could not add to dashboard",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      }),
+    onSuccess: () => {
+      toast({ title: "Added to dashboard", description: "Widget saved to your layout." });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] });
+    },
+    onSettled: () => setPendingRoute(null),
+  });
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
@@ -131,29 +197,45 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                       location.startsWith(item.url + "/") || 
                       (item.url === ROUTES.DASHBOARD && location === "/");
                     
-                    return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          isActive={isActive}
-                          className="h-auto py-2"
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        className="h-auto py-2"
+                      >
+                        <Link
+                          href={item.url}
+                          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                         >
-                          <Link 
-                            href={item.url} 
-                            data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                          >
-                            <item.icon className="h-4 w-4 shrink-0" />
-                            <div className="flex flex-col">
-                              <span className="leading-tight">{item.title}</span>
-                              <span className="text-xs text-muted-foreground leading-snug">
-                                {item.description}
-                              </span>
-                            </div>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="leading-tight">{item.title}</span>
+                            <span className="text-xs text-muted-foreground leading-snug">
+                              {item.description}
+                            </span>
+                          </div>
+                        </Link>
+                      </SidebarMenuButton>
+                      <SidebarMenuAction>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Add ${item.title} to dashboard`}
+                          data-testid={`add-${item.title.toLowerCase().replace(/\s+/g, '-')}-to-dashboard`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            addToDashboard.mutate({ route: item.url });
+                          }}
+                          disabled={pendingRoute === item.url && addToDashboard.isPending}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </SidebarMenuAction>
+                    </SidebarMenuItem>
+                  );
+                })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

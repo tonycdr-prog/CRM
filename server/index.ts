@@ -96,6 +96,14 @@ app.use((req, res, next) => {
       });
     }
 
+    const errMessage = (err as Error)?.message;
+    if (errMessage === "Session not initialized") {
+      return res.status(401).json({ message: "Session missing", requestId: requestIdVal });
+    }
+    if (errMessage === "Invalid CSRF token") {
+      return res.status(403).json({ message: "Invalid CSRF token", requestId: requestIdVal });
+    }
+
     const errMsg = (err as Error)?.message || "";
     const errCode = (err as any)?.code || "";
 

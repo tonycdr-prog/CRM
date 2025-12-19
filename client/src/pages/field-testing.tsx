@@ -438,13 +438,14 @@ export default function FieldTesting() {
       const timeoutId = setTimeout(() => {
         try {
           // Preserve all existing reports, only update the current one being edited
-          const updatedReports = {
+          const existingReport = storageData.reports[currentReportId] ?? {};
+          const updatedReports: Record<string, Partial<Report>> = {
             ...storageData.reports,
             [currentReportId]: {
+              ...existingReport,
+              ...damperReport,
               id: currentReportId,
-              ...(storageData.reports[currentReportId] ?? {}), // Preserve existing fields (empty object if new)
-              ...damperReport, // Overlay with current changes
-            } as Partial<Report> & {id: string},
+            },
           };
           
           const updatedData: StorageData = {

@@ -9,7 +9,7 @@ export interface StorageData {
   version: number;
   tests: Record<string, Test>;
   dampers: Record<string, Damper>;
-  reports: Record<string, Report>;
+  reports: Record<string, Partial<Report>>;
   stairwellTests: Record<string, StairwellPressureTest>;
   projects: Record<string, Project>;
   damperTemplates: Record<string, DamperTemplate>;

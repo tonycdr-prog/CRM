@@ -16,10 +16,12 @@ export const securityHeaders = helmet({
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
+      "default-src": ["'self'"],
       "img-src": ["'self'", "data:", "blob:"],
-      "connect-src": ["'self'"],
-      "script-src": ["'self'", "'unsafe-inline'"],
-      "style-src": ["'self'", "'unsafe-inline'"],
+      "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+      "connect-src": ["'self'", "wss:", "ws:"],
+      "script-src": ["'self'"],
+      "style-src": ["'self'", "https://fonts.googleapis.com"],
       "object-src": ["'none'"],
       "base-uri": ["'self'"],
       "form-action": ["'self'"],
@@ -32,7 +34,7 @@ export const securityHeaders = helmet({
 
 export const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 500,
+  limit: 120,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Please slow down." },
@@ -45,7 +47,7 @@ export const generalLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 60,
+  limit: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many auth requests. Try again later." },
@@ -53,7 +55,7 @@ export const authLimiter = rateLimit({
 
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 30,
+  limit: 15,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many uploads. Please slow down." },
@@ -61,7 +63,7 @@ export const uploadLimiter = rateLimit({
 
 export const pdfLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 40,
+  limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many PDF requests. Please slow down." },

@@ -39,6 +39,11 @@ export default function FormsHub() {
           blurb="Fill forms on-site and upload evidence."
           onOpen={() => setLocation(ROUTES.FIELD_COMPANION_HOME)}
         />
+        <Tile
+          title="Smoke Control Library"
+          blurb="Generate templates from standards-based smoke control libraries."
+          onOpen={() => setLocation(ROUTES.SMOKE_CONTROL_LIBRARY)}
+        />
       </div>
     </HubShell>
   );

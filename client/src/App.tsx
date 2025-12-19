@@ -79,6 +79,7 @@ import AdminEntityEditPage from "@/pages/admin/entity-edit";
 import AdminTemplatesPage from "@/pages/admin/templates";
 import AdminTemplateEditPage from "@/pages/admin/template-edit";
 import AdminUsagePage from "@/pages/admin/usage";
+import SmokeControlLibraryPage from "@/pages/smoke-control-library";
 import JobActivityPage from "@/pages/job-activity";
 import NotFound from "@/pages/not-found";
 import WorkHub from "@/pages/hubs/work";
@@ -86,6 +87,8 @@ import FormsHub from "@/pages/hubs/forms";
 import CustomersHub from "@/pages/hubs/customers";
 import ReportsHub from "@/pages/hubs/reports";
 import ManageHub from "@/pages/hubs/manage";
+import FormsBuilderPage from "@/pages/forms-builder";
+import FormsRunnerPage from "@/pages/forms-runner";
 import { Loader2 } from "lucide-react";
 
 function PlaceholderPage({ title }: { title: string }) {
@@ -112,7 +115,9 @@ function LayoutRoutes() {
         <Route path={ROUTES.HUB_CUSTOMERS} component={CustomersHub} />
         <Route path={ROUTES.HUB_REPORTS} component={ReportsHub} />
         <Route path={ROUTES.HUB_MANAGE} component={ManageHub} />
-        
+        <Route path={ROUTES.FORMS_BUILDER} component={FormsBuilderPage} />
+        <Route path={ROUTES.FORMS_RUNNER} component={FormsRunnerPage} />
+
         <Route path="/test" component={FieldTesting} />
         <Route path="/clients" component={Clients} />
         <Route path="/clients/:id" component={ClientDetail} />
@@ -182,6 +187,7 @@ function LayoutRoutes() {
             <Route path={ROUTES.ADMIN_TEMPLATE_EDIT} component={AdminTemplateEditPage} />
             <Route path={ROUTES.ADMIN_TEMPLATES} component={AdminTemplatesPage} />
             <Route path={ROUTES.ADMIN_USAGE} component={AdminUsagePage} />
+            <Route path={ROUTES.SMOKE_CONTROL_LIBRARY} component={SmokeControlLibraryPage} />
           </>
         ) : (
           <>
