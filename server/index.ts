@@ -14,6 +14,7 @@ import {
 import { slowRequestLogger, createErrorHandler } from "./observability";
 import { db } from "./db";
 import { startJobsWorker } from "./lib/jobsQueue";
+import { ZodError } from "zod";
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -81,9 +82,22 @@ app.use((req, res, next) => {
   startJobsWorker(db);
 
   app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+    const requestIdVal = (req as any).requestId;
+
+    if (err instanceof ZodError) {
+      return res.status(400).json({
+        message: "Validation error",
+        requestId: requestIdVal,
+        issues: err.issues.map((i) => ({
+          path: i.path.join("."),
+          message: i.message,
+          code: i.code,
+        })),
+      });
+    }
+
     const errMsg = (err as Error)?.message || "";
     const errCode = (err as any)?.code || "";
-    const requestIdVal = (req as any).requestId;
 
     if (errMsg.includes("Unsupported file type")) {
       return res.status(415).json({ message: errMsg, requestId: requestIdVal });
