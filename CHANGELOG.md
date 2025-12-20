@@ -14,3 +14,4 @@
 - Added Phase 5 planning docs, instrumentation/calibration schema and migration, meter + reading APIs, runner meter selection UI, and calibration enforcement tests.
 - Added Phase 6 planning docs, smoke control library schema/migration, generator endpoints/UI, and catalog + generator tests.
 - Added Phase 7 planning docs, reporting/defect migrations, report/signature and defect/remedial APIs with UI, and automated reporting workflow tests.
+- Added a development-only auth bypass flag to run the app locally without OIDC discovery.

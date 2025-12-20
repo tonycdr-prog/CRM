@@ -29,6 +29,10 @@
 - DB migrate/push: `DATABASE_URL=<postgres-url> npm run db:push`
 - DB seed: `DATABASE_URL=<postgres-url> SESSION_SECRET=<secret> REPL_ID=<repl-id> ISSUER_URL=<issuer> npm run db:seed`
 
+### Preview (Replit/local dev)
+- Set `NODE_ENV=development DEV_AUTH_BYPASS=true SESSION_SECRET=dev`
+- Run `npm run dev` (bypasses OIDC for local preview)
+
 ## D) Conventions
 - TypeScript strict across client/server/shared.
 - Keep commits small; avoid unrelated refactors.

@@ -6,7 +6,14 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
+let cachedStorage: typeof import("./storage").storage | null = null;
+
+async function getStorage(): Promise<typeof import("./storage").storage> {
+  if (!cachedStorage) {
+    ({ storage: cachedStorage } = await import("./storage"));
+  }
+  return cachedStorage!;
+}
 
 const getOidcConfig = memoize(
   async () => {
@@ -53,6 +60,7 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
+  const storage = await getStorage();
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -62,11 +70,26 @@ async function upsertUser(claims: any) {
   });
 }
 
+function isDevAuthBypassEnabled() {
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.DEV_AUTH_BYPASS?.toLowerCase() === "true"
+  );
+}
+
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+
+  const devAuthBypass = isDevAuthBypassEnabled();
+  if (devAuthBypass) {
+    return;
+  }
 
   const config = await getOidcConfig();
 
@@ -99,9 +122,6 @@ export async function setupAuth(app: Express) {
     }
   };
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
@@ -131,6 +151,16 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  if (isDevAuthBypassEnabled()) {
+    req.user = {
+      claims: {
+        sub: "dev-user",
+        email: "dev@local",
+      },
+    } as Express.User;
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {
