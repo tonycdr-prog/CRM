@@ -30,9 +30,10 @@
 - DB seed: `DATABASE_URL=<postgres-url> SESSION_SECRET=<secret> REPL_ID=<repl-id> ISSUER_URL=<issuer> npm run db:seed`
 
 ### Preview (Replit/local dev)
-- Set `NODE_ENV=development DEV_AUTH_BYPASS=true SESSION_SECRET=dev`
-- Optional: `DEV_REVIEW_MODE=true` to surface the dev-only Review links
+- Set `NODE_ENV=development DEV_AUTH_BYPASS=true DEV_REVIEW_MODE=true SESSION_SECRET=dev`
 - Run `npm run dev` (bypasses OIDC for local preview and relaxes CSP for Vite/React refresh)
+- Optional seed once running: `curl -X POST http://localhost:5000/api/dev/seed-demo`
+- Verify pages: `/dashboard`, `/forms-builder`, `/forms-runner`, `/hub/forms`, `/reports`, `/defects`, `/smoke-control-library`, `/schedule`, `/finance`
 - If no `DATABASE_URL` is available, the dev server will still start in limited mode with in-memory auth/layouts and show a dev banner noting the database is unavailable.
 
 ## D) Conventions

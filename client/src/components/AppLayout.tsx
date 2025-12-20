@@ -102,7 +102,16 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   const { role, roleLabel } = usePermissions();
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
-  const [devStatus, setDevStatus] = useState<{ devAuthBypass: boolean; databaseAvailable: boolean } | null>(null);
+  const [devStatus, setDevStatus] = useState<
+    | {
+        isDev: boolean;
+        devAuthBypass: boolean;
+        devReviewMode: boolean;
+        hasDbConnection: boolean;
+        limitedMode: boolean;
+      }
+    | null
+  >(null);
   const hasNotifiedNoDb = useRef(false);
   const devReviewModeEnv =
     (import.meta.env as any).DEV_REVIEW_MODE ??
@@ -146,7 +155,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   useEffect(() => {
     if (
       devStatus?.devAuthBypass &&
-      devStatus.databaseAvailable === false &&
+      devStatus.limitedMode &&
       !hasNotifiedNoDb.current
     ) {
       hasNotifiedNoDb.current = true;
@@ -273,40 +282,49 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-
             {showReviewSection && (
               <SidebarGroup>
                 <SidebarGroupLabel>Review (Dev Only)</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="space-y-1">
-                    {[{
-                      title: "Dashboard",
-                      url: ROUTES.DASHBOARD,
-                    },
-                    {
-                      title: "Forms Builder",
-                      url: "/forms-builder",
-                    },
-                    {
-                      title: "Forms Runner",
-                      url: "/forms-runner",
-                    },
-                    {
-                      title: "Forms Hub",
-                      url: ROUTES.HUB_FORMS,
-                    },
-                    {
-                      title: "Reports",
-                      url: "/reports",
-                    },
-                    {
-                      title: "Defects",
-                      url: "/defects",
-                    },
-                    {
-                      title: "Smoke Control Library",
-                      url: "/smoke-control-library",
-                    }].map((item) => (
+                    {[
+                      {
+                        title: "Dashboard",
+                        url: ROUTES.DASHBOARD,
+                      },
+                      {
+                        title: "Forms Builder",
+                        url: "/forms-builder",
+                      },
+                      {
+                        title: "Forms Runner",
+                        url: "/forms-runner",
+                      },
+                      {
+                        title: "Forms Hub",
+                        url: ROUTES.HUB_FORMS,
+                      },
+                      {
+                        title: "Reports",
+                        url: "/reports",
+                      },
+                      {
+                        title: "Defects",
+                        url: "/defects",
+                      },
+                      {
+                        title: "Smoke Control Library",
+                        url: "/smoke-control-library",
+                      },
+                      {
+                        title: "Schedule",
+                        url: "/schedule",
+                      },
+                      {
+                        title: "Finance",
+                        url: "/finance",
+                      },
+                    ].map((item) => (
                       <SidebarMenuItem key={item.url}>
                         <SidebarMenuButton asChild className="h-auto py-2">
                           <Link href={item.url}>
@@ -324,21 +342,21 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               </SidebarGroup>
             )}
 
-            {showReviewSection && (
-              <div className="m-4 rounded-md border bg-muted/40 p-3 text-xs space-y-1" data-testid="dev-flags-banner">
-                <div className="font-semibold text-sm">Dev Flags</div>
-                <div>NODE_ENV: {import.meta.env.MODE || "development"}</div>
-                <div>DEV_AUTH_BYPASS: {String(!!devAuthBypassFlag)}</div>
-                <div>
-                  DEV_REVIEW_MODE: {devReviewModeEnv ? String(devReviewModeEnv) : String(showReviewSection)}
+              {showReviewSection && (
+                <div className="m-4 rounded-md border bg-muted/40 p-3 text-xs space-y-1" data-testid="dev-flags-banner">
+                  <div className="font-semibold text-sm">Dev Flags</div>
+                  <div>NODE_ENV: {devStatus?.isDev ? "development" : import.meta.env.MODE || "development"}</div>
+                  <div>DEV_AUTH_BYPASS: {String(devStatus?.devAuthBypass ?? !!devAuthBypassFlag)}</div>
+                  <div>DEV_REVIEW_MODE: {String(devStatus?.devReviewMode ?? showReviewSection)}</div>
+                  <div>DB available: {devStatus?.hasDbConnection === false ? "false" : "true"}</div>
+                  <div>Limited mode: {String(devStatus?.limitedMode ?? false)}</div>
+                  {devStatus?.limitedMode && (
+                    <div className="text-amber-600 font-semibold">
+                      DEV_AUTH_BYPASS enabled — database unavailable — limited mode
+                    </div>
+                  )}
                 </div>
-                {devStatus?.devAuthBypass && devStatus.databaseAvailable === false && (
-                  <div className="text-amber-600 font-semibold">
-                    DEV_AUTH_BYPASS enabled — database unavailable — limited mode
-                  </div>
-                )}
-              </div>
-            )}
+              )}
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t">

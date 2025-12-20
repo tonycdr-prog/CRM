@@ -278,12 +278,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   const devBypass = isDevAuthBypassEnabled();
+  const devReviewMode =
+    process.env.DEV_REVIEW_MODE?.toLowerCase() === "true" ||
+    process.env.VITE_DEV_REVIEW_MODE?.toLowerCase() === "true";
   const limitedMode = devBypass && !isDatabaseAvailable;
 
   app.get("/api/dev/status", (_req, res) => {
     res.json({
+      isDev: process.env.NODE_ENV === "development",
       devAuthBypass: devBypass,
-      databaseAvailable: isDatabaseAvailable,
+      devReviewMode,
+      hasDbConnection: isDatabaseAvailable,
+      limitedMode,
     });
   });
 

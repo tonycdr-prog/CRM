@@ -78,11 +78,16 @@ test("server boots without database in dev bypass mode", async (t) => {
   const port = typeof address === "object" && address ? address.port : 0;
 
   const statusResponse = await fetch(`http://127.0.0.1:${port}/api/dev/status`);
-  const status = (await statusResponse.json()) as { devAuthBypass: boolean; databaseAvailable: boolean };
+  const status = (await statusResponse.json()) as {
+    devAuthBypass: boolean;
+    hasDbConnection: boolean;
+    limitedMode: boolean;
+  };
 
   assert.strictEqual(statusResponse.status, 200);
   assert.strictEqual(status.devAuthBypass, true);
-  assert.strictEqual(status.databaseAvailable, false);
+  assert.strictEqual(status.hasDbConnection, false);
+  assert.strictEqual(status.limitedMode, true);
 
   const layoutResponse = await fetch(`http://127.0.0.1:${port}/api/dashboard/layout`);
   assert.strictEqual(layoutResponse.status, 200);
