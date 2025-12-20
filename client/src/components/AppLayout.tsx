@@ -37,6 +37,7 @@ import {
   HardDrive,
   Smartphone,
   Plus,
+  Eye,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -101,6 +102,10 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   const { role, roleLabel } = usePermissions();
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
+  const devReviewFlag =
+    (import.meta.env as any).DEV_REVIEW_MODE === "true" ||
+    (import.meta.env as any).VITE_DEV_REVIEW_MODE === "true";
+  const showReviewSection = import.meta.env.DEV || import.meta.env.MODE === "development" || devReviewFlag;
 
   const handleToggleChange = () => {
     if (!isEngineerMode) {
@@ -239,6 +244,56 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            {showReviewSection && (
+              <SidebarGroup>
+                <SidebarGroupLabel>Review (Dev Only)</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {[{
+                      title: "Dashboard",
+                      url: ROUTES.DASHBOARD,
+                    },
+                    {
+                      title: "Forms Builder",
+                      url: "/forms-builder",
+                    },
+                    {
+                      title: "Forms Runner",
+                      url: "/forms-runner",
+                    },
+                    {
+                      title: "Forms Hub",
+                      url: ROUTES.HUB_FORMS,
+                    },
+                    {
+                      title: "Reports",
+                      url: "/reports",
+                    },
+                    {
+                      title: "Defects",
+                      url: "/defects",
+                    },
+                    {
+                      title: "Smoke Control Library",
+                      url: "/smoke-control-library",
+                    }].map((item) => (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton asChild className="h-auto py-2">
+                          <Link href={item.url}>
+                            <Eye className="h-4 w-4 shrink-0" />
+                            <div className="flex flex-col text-left">
+                              <span className="leading-tight">{item.title}</span>
+                              <span className="text-xs text-muted-foreground leading-snug">Direct preview</span>
+                            </div>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t">
