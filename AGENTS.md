@@ -31,8 +31,8 @@
 
 ### Preview (Replit/local dev)
 - Set `NODE_ENV=development DEV_AUTH_BYPASS=true SESSION_SECRET=dev`
+- Optional: `DEV_REVIEW_MODE=true` to surface the dev-only Review links
 - Run `npm run dev` (bypasses OIDC for local preview and relaxes CSP for Vite/React refresh)
-- Optional review navigation: set `DEV_REVIEW_MODE=true` to show the dev-only Review sidebar links
 
 ## D) Conventions
 - TypeScript strict across client/server/shared.

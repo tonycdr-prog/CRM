@@ -88,15 +88,22 @@ export function serveStatic(app: Express) {
   });
 }
 
-export function shouldServeSpaRoute(req: Pick<Request, "originalUrl"> | string) {
+export function shouldServeSpaRoute(
+  req: Pick<Request, "originalUrl" | "headers"> | string,
+) {
   const url = typeof req === "string" ? req : req.originalUrl;
   const pathname = url.split("?")[0];
+  const acceptsHtml =
+    typeof req === "string" ||
+    !req.headers?.accept ||
+    req.headers.accept.includes("text/html");
 
   if (pathname.startsWith("/api")) return false;
   if (pathname.startsWith("/uploads")) return false;
   if (pathname.startsWith("/@")) return false; // Vite internals
   if (pathname.includes("/assets/")) return false;
   if (/\.[a-zA-Z0-9]+$/.test(pathname)) return false; // static files & service workers
+  if (!acceptsHtml) return false;
 
   return true;
 }

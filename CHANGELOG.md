@@ -18,3 +18,4 @@
 - Added SPA fallback routing and a dev-only Review sidebar section to preview new pages together.
 - Loosened CSP directives in development to allow Vite/react-refresh while keeping production directives strict.
 - Ensured production CSP keeps strict connect-src while development explicitly allows websocket/inlined scripts for Vite.
+- Refined the development preview path with memory-backed dev auth, environment-aware CSP helpers, SPA accept-header checks, and a dev flag banner plus tests.

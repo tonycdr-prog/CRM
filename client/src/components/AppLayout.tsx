@@ -102,9 +102,15 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   const { role, roleLabel } = usePermissions();
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
-  const devReviewFlag =
-    (import.meta.env as any).DEV_REVIEW_MODE === "true" ||
-    (import.meta.env as any).VITE_DEV_REVIEW_MODE === "true";
+  const devReviewModeEnv =
+    (import.meta.env as any).DEV_REVIEW_MODE ??
+    (import.meta.env as any).VITE_DEV_REVIEW_MODE ??
+    "";
+  const devReviewFlag = devReviewModeEnv === "true";
+  const devAuthBypassFlag =
+    (import.meta.env as any).DEV_AUTH_BYPASS ??
+    (import.meta.env as any).VITE_DEV_AUTH_BYPASS ??
+    "";
   const showReviewSection = import.meta.env.DEV || import.meta.env.MODE === "development" || devReviewFlag;
 
   const handleToggleChange = () => {
@@ -293,6 +299,17 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
+            )}
+
+            {showReviewSection && (
+              <div className="m-4 rounded-md border bg-muted/40 p-3 text-xs space-y-1" data-testid="dev-flags-banner">
+                <div className="font-semibold text-sm">Dev Flags</div>
+                <div>NODE_ENV: {import.meta.env.MODE || "development"}</div>
+                <div>DEV_AUTH_BYPASS: {String(!!devAuthBypassFlag)}</div>
+                <div>
+                  DEV_REVIEW_MODE: {devReviewModeEnv ? String(devReviewModeEnv) : String(showReviewSection)}
+                </div>
+              </div>
             )}
           </SidebarContent>
 

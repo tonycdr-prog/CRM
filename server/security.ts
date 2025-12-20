@@ -11,38 +11,34 @@ export const requestId: RequestHandler = (req, res, next) => {
   next();
 };
 
-export const buildContentSecurityPolicyDirectives = (enableDevRelaxation: boolean) => ({
+export const buildContentSecurityPolicyDirectives = (isDev: boolean) => ({
   "default-src": ["'self'"],
   "img-src": ["'self'", "data:", "blob:"],
   "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
-  "connect-src": enableDevRelaxation
-    ? ["'self'", "wss:", "ws:"]
-    : ["'self'"],
-  "script-src": enableDevRelaxation
+  "connect-src": isDev ? ["'self'", "wss:", "ws:"] : ["'self'"],
+  "script-src": isDev
     ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
     : ["'self'"],
-  "style-src": ["'self'", "https://fonts.googleapis.com"],
+  "style-src": isDev
+    ? ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"]
+    : ["'self'", "https://fonts.googleapis.com"],
   "object-src": ["'none'"],
   "base-uri": ["'self'"],
   "form-action": ["'self'"],
   "frame-ancestors": ["'none'"],
 });
 
-export const createSecurityHeaders = (nodeEnv = process.env.NODE_ENV) => {
-  const enableDevRelaxation = nodeEnv === "development";
-
+export function buildSecurityHeaders({ isDev }: { isDev: boolean }) {
   return helmet({
     frameguard: { action: "deny" },
     contentSecurityPolicy: {
       useDefaults: true,
-      directives: buildContentSecurityPolicyDirectives(enableDevRelaxation),
+      directives: buildContentSecurityPolicyDirectives(isDev),
     },
     referrerPolicy: { policy: "no-referrer" },
     crossOriginResourcePolicy: { policy: "same-site" },
   });
-};
-
-export const securityHeaders = createSecurityHeaders();
+}
 
 export const generalLimiter = rateLimit({
   windowMs: 60 * 1000,

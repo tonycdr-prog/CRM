@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import test from "node:test";
 import express from "express";
-import { buildContentSecurityPolicyDirectives, createSecurityHeaders } from "../security";
+import { buildContentSecurityPolicyDirectives, buildSecurityHeaders } from "../security";
 
 const listen = (app: express.Express) => {
   return new Promise<ReturnType<typeof app.listen>>((resolve) => {
@@ -23,7 +23,7 @@ test("production CSP stays strict without inline/eval", () => {
 
 test("securityHeaders emits relaxed CSP in development", async (t) => {
   const app = express();
-  app.use(createSecurityHeaders("development"));
+  app.use(buildSecurityHeaders({ isDev: true }));
   app.get("/", (_req, res) => res.send("ok"));
 
   const server = await listen(app);
@@ -39,7 +39,7 @@ test("securityHeaders emits relaxed CSP in development", async (t) => {
 
 test("securityHeaders stays strict outside development", async (t) => {
   const app = express();
-  app.use(createSecurityHeaders("production"));
+  app.use(buildSecurityHeaders({ isDev: false }));
   app.get("/", (_req, res) => res.send("ok"));
 
   const server = await listen(app);

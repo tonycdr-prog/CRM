@@ -79,17 +79,46 @@ function isDevAuthBypassEnabled() {
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
+  const devAuthBypass = isDevAuthBypassEnabled();
+  if (devAuthBypass) {
+    const devSessionTtl = 7 * 24 * 60 * 60 * 1000;
+    const devSession = session({
+      secret: process.env.SESSION_SECRET || "dev",
+      store: new session.MemoryStore(),
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: devSessionTtl,
+      },
+    });
+
+    app.use(devSession);
+    app.use((req, _res, next) => {
+      if (!req.user) {
+        req.user = {
+          claims: {
+            sub: "dev-user",
+            email: "dev@local",
+          },
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+        } as Express.User & { claims: any; expires_at: number };
+      }
+      (req as any).isAuthenticated = () => true;
+      next();
+    });
+    app.get("/api/logout", (_req, res) => res.redirect("/"));
+    return;
+  }
+
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-
-  const devAuthBypass = isDevAuthBypassEnabled();
-  if (devAuthBypass) {
-    return;
-  }
 
   const config = await getOidcConfig();
 
@@ -157,7 +186,9 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
         sub: "dev-user",
         email: "dev@local",
       },
-    } as Express.User;
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    } as Express.User & { claims: any; expires_at: number };
+    (req as any).isAuthenticated = () => true;
     return next();
   }
 

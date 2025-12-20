@@ -21,6 +21,7 @@ test("DEV auth bypass allows access without OIDC", async (t) => {
     res.json({
       ok: true,
       claims: (req.user as any)?.claims,
+      authenticated: req.isAuthenticated(),
     });
   });
 
@@ -34,10 +35,11 @@ test("DEV auth bypass allows access without OIDC", async (t) => {
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;
   const response = await fetch(`http://127.0.0.1:${port}/api/protected`);
-  const body = (await response.json()) as { ok: boolean; claims: any };
+  const body = (await response.json()) as { ok: boolean; claims: any; authenticated: boolean };
 
   assert.strictEqual(response.status, 200);
   assert.strictEqual(body.ok, true);
   assert.strictEqual(body.claims.sub, "dev-user");
   assert.strictEqual(body.claims.email, "dev@local");
+  assert.strictEqual(body.authenticated, true);
 });

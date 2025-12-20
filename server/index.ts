@@ -5,7 +5,7 @@ import { redactSensitiveData } from "./utils/routeHelpers";
 import {
   requestId,
   requestLogger,
-  securityHeaders,
+  buildSecurityHeaders,
   generalLimiter,
   authLimiter,
   uploadLimiter,
@@ -22,7 +22,7 @@ const isProduction = process.env.NODE_ENV === "production";
 app.set("trust proxy", 1);
 app.use(requestId);
 app.use(requestLogger);
-app.use(securityHeaders);
+app.use(buildSecurityHeaders({ isDev: !isProduction }));
 app.use(generalLimiter);
 app.use(slowRequestLogger(1500));
 
