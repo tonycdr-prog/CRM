@@ -27,3 +27,5 @@
 - Grouped the defects UI by job with friendlier unauthorized messaging to aid review of defect workflows in preview mode.
 - Added a global dev review banner to surface auth/review/database flags during preview sessions.
 - Introduced a reusable widget chrome with expand/new-tab controls and a standalone widget view route.
+- Added a schedule service with in-memory assignments, duplication, and conflict detection plus API tests for create/update/duplicate flows.
+- Rebuilt the schedule page with calendar and gantt drag/drop, shift-duplicate, resize, conflict warnings, and engineer selection for duplicates.

@@ -27,6 +27,7 @@ import { createDashboardRouter } from "./dashboardRoutes";
 import { createFormsRouter, createMetersRouter } from "./formsRoutes";
 import { createSmokeControlRouter } from "./smokeControlRoutes";
 import { createReportingRouter } from "./reportingRoutes";
+import { buildScheduleRouter } from "./scheduleRoutes";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -396,6 +397,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ layout: inMemoryLayout });
     });
 
+    apiRouter.use("/schedule", buildScheduleRouter());
+
     apiRouter.all("*", (_req, res) =>
       res.status(503).json({
         message: "Database unavailable in dev auth bypass mode",
@@ -482,6 +485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Forms core + meters
   apiRouter.use("/forms", createFormsRouter());
   apiRouter.use("/meters", createMetersRouter());
+  apiRouter.use("/schedule", buildScheduleRouter());
   apiRouter.use("/smoke-control", createSmokeControlRouter());
   apiRouter.use(createReportingRouter());
 
