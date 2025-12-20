@@ -16,3 +16,4 @@
 - Added Phase 7 planning docs, reporting/defect migrations, report/signature and defect/remedial APIs with UI, and automated reporting workflow tests.
 - Added a development-only auth bypass flag to run the app locally without OIDC discovery.
 - Added SPA fallback routing and a dev-only Review sidebar section to preview new pages together.
+- Loosened CSP directives in development to allow Vite/react-refresh while keeping production directives strict.

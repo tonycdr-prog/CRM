@@ -11,22 +11,28 @@ export const requestId: RequestHandler = (req, res, next) => {
   next();
 };
 
+const isDev = process.env.NODE_ENV === "development";
+
+export const buildContentSecurityPolicyDirectives = (enableDevRelaxation: boolean) => ({
+  "default-src": ["'self'"],
+  "img-src": ["'self'", "data:", "blob:"],
+  "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+  "connect-src": ["'self'", "wss:", "ws:"],
+  "script-src": enableDevRelaxation
+    ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+    : ["'self'"],
+  "style-src": ["'self'", "https://fonts.googleapis.com"],
+  "object-src": ["'none'"],
+  "base-uri": ["'self'"],
+  "form-action": ["'self'"],
+  "frame-ancestors": ["'none'"],
+});
+
 export const securityHeaders = helmet({
   frameguard: { action: "deny" },
   contentSecurityPolicy: {
     useDefaults: true,
-    directives: {
-      "default-src": ["'self'"],
-      "img-src": ["'self'", "data:", "blob:"],
-      "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
-      "connect-src": ["'self'", "wss:", "ws:"],
-      "script-src": ["'self'"],
-      "style-src": ["'self'", "https://fonts.googleapis.com"],
-      "object-src": ["'none'"],
-      "base-uri": ["'self'"],
-      "form-action": ["'self'"],
-      "frame-ancestors": ["'none'"],
-    },
+    directives: buildContentSecurityPolicyDirectives(isDev),
   },
   referrerPolicy: { policy: "no-referrer" },
   crossOriginResourcePolicy: { policy: "same-site" },

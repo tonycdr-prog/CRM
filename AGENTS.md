@@ -31,7 +31,7 @@
 
 ### Preview (Replit/local dev)
 - Set `NODE_ENV=development DEV_AUTH_BYPASS=true SESSION_SECRET=dev`
-- Run `npm run dev` (bypasses OIDC for local preview)
+- Run `npm run dev` (bypasses OIDC for local preview and relaxes CSP for Vite/React refresh)
 - Optional review navigation: set `DEV_REVIEW_MODE=true` to show the dev-only Review sidebar links
 
 ## D) Conventions
