@@ -85,10 +85,10 @@ export default function DefectsPage() {
       byJob.set(key, arr);
     }
 
-    for (const [jobId, items] of byJob.entries()) {
+    byJob.forEach((items, jobId) => {
       const sorted = [...items].sort((a, b) => (a.status ?? "open").localeCompare(b.status ?? "open"));
       groups.push({ jobId, items: sorted });
-    }
+    });
 
     return groups.sort((a, b) => a.jobId.localeCompare(b.jobId));
   }, [defects]);

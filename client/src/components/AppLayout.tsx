@@ -428,6 +428,24 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
             </div>
           </header>
           <main className="flex-1 overflow-auto">
+            {showReviewSection && (
+              <div
+                className="flex flex-wrap items-center gap-3 border-b bg-amber-50 px-4 py-2 text-xs sm:text-sm text-amber-900"
+                data-testid="dev-review-banner"
+              >
+                <span className="font-semibold">Review mode</span>
+                <span>DEV_AUTH_BYPASS: {String(devStatus?.devAuthBypass ?? !!devAuthBypassFlag)}</span>
+                <span>DEV_REVIEW_MODE: {String(devStatus?.devReviewMode ?? showReviewSection)}</span>
+                <span>
+                  DB mode:
+                  {" "}
+                  {devStatus?.limitedMode ? "No-DB Limited" : devStatus?.hasDbConnection === false ? "Unavailable" : "Connected"}
+                </span>
+                {devStatus?.limitedMode && (
+                  <span className="font-semibold">Some actions are stubbed while the database is unavailable.</span>
+                )}
+              </div>
+            )}
             {children}
           </main>
         </div>
