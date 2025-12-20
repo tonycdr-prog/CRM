@@ -15,6 +15,7 @@
 - Added Phase 6 planning docs, smoke control library schema/migration, generator endpoints/UI, and catalog + generator tests.
 - Added Phase 7 planning docs, reporting/defect migrations, report/signature and defect/remedial APIs with UI, and automated reporting workflow tests.
 - Added a development-only auth bypass flag to run the app locally without OIDC discovery.
+- Added a database-optional dev preview path that boots with in-memory sessions/layouts when DEV_AUTH_BYPASS is enabled without a database.
 - Added SPA fallback routing and a dev-only Review sidebar section to preview new pages together.
 - Loosened CSP directives in development to allow Vite/react-refresh while keeping production directives strict.
 - Ensured production CSP keeps strict connect-src while development explicitly allows websocket/inlined scripts for Vite.

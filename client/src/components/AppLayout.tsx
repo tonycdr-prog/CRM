@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -102,6 +102,8 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   const { role, roleLabel } = usePermissions();
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
+  const [devStatus, setDevStatus] = useState<{ devAuthBypass: boolean; databaseAvailable: boolean } | null>(null);
+  const hasNotifiedNoDb = useRef(false);
   const devReviewModeEnv =
     (import.meta.env as any).DEV_REVIEW_MODE ??
     (import.meta.env as any).VITE_DEV_REVIEW_MODE ??
@@ -133,6 +135,27 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
       .then((data) => setCsrfToken(data?.csrfToken ?? null))
       .catch(() => setCsrfToken(null));
   }, [user?.id]);
+
+  useEffect(() => {
+    fetch("/api/dev/status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setDevStatus(data))
+      .catch(() => setDevStatus(null));
+  }, []);
+
+  useEffect(() => {
+    if (
+      devStatus?.devAuthBypass &&
+      devStatus.databaseAvailable === false &&
+      !hasNotifiedNoDb.current
+    ) {
+      hasNotifiedNoDb.current = true;
+      toast({
+        title: "DEV_AUTH_BYPASS enabled — database unavailable — limited mode",
+        description: "Preview UI is running without backend data; some actions are stubbed.",
+      });
+    }
+  }, [devStatus, toast]);
 
   const addToDashboard = useMutation({
     mutationFn: async ({ route }: { route: string }) => {
@@ -309,6 +332,11 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 <div>
                   DEV_REVIEW_MODE: {devReviewModeEnv ? String(devReviewModeEnv) : String(showReviewSection)}
                 </div>
+                {devStatus?.devAuthBypass && devStatus.databaseAvailable === false && (
+                  <div className="text-amber-600 font-semibold">
+                    DEV_AUTH_BYPASS enabled — database unavailable — limited mode
+                  </div>
+                )}
               </div>
             )}
           </SidebarContent>

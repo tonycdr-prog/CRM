@@ -12,7 +12,7 @@ import {
   pdfLimiter,
 } from "./security";
 import { slowRequestLogger, createErrorHandler } from "./observability";
-import { db } from "./db";
+import { db, isDatabaseAvailable } from "./db";
 import { startJobsWorker } from "./lib/jobsQueue";
 import { ZodError } from "zod";
 
@@ -79,7 +79,11 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  startJobsWorker(db);
+  if (isDatabaseAvailable) {
+    startJobsWorker(db);
+  } else {
+    log("Database unavailable; skipping jobs worker startup in dev bypass mode");
+  }
 
   app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     const requestIdVal = (req as any).requestId;
@@ -117,7 +121,14 @@ app.use((req, res, next) => {
     return next(err);
   });
 
-  app.use(createErrorHandler(db));
+  if (isDatabaseAvailable) {
+    app.use(createErrorHandler(db));
+  } else {
+    app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+      const message = (err as Error)?.message || "Database unavailable";
+      res.status(503).json({ message });
+    });
+  }
 
   if (app.get("env") === "development") {
     await setupVite(app, server);

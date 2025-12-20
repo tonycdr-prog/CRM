@@ -2,7 +2,7 @@ import { Router, type Express, type Request, type RequestHandler } from "express
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, isDevAuthBypassEnabled } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
 import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses, files, inspectionRowAttachments, auditEvents, serverErrors, type DbStaffDirectory, type InsertCheckSheetTemplate, type InsertCheckSheetReading, type CheckSheetFieldDefinition, type CheckSheetReadingValue } from "@shared/schema";
@@ -13,7 +13,7 @@ import { seedDatabase } from "./seed";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { db } from "./db";
+import { db, isDatabaseAvailable } from "./db";
 import { eq, and, sql, isNull, desc, inArray } from "drizzle-orm";
 import { uploadLimiter, pdfLimiter } from "./security";
 import { getOrgPlanAndUsage, enforce } from "./lib/usage";
@@ -276,6 +276,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AUTH SETUP (Replit Auth)
   // ============================================
   await setupAuth(app);
+
+  const devBypass = isDevAuthBypassEnabled();
+  const limitedMode = devBypass && !isDatabaseAvailable;
+
+  app.get("/api/dev/status", (_req, res) => {
+    res.json({
+      devAuthBypass: devBypass,
+      databaseAvailable: isDatabaseAvailable,
+    });
+  });
+
+  if (limitedMode) {
+    let inMemoryLayout: any = null;
+    app.get("/api/health", (_req, res) =>
+      res.json({ ok: true, limitedMode: true }),
+    );
+
+    const apiRouter = Router();
+    apiRouter.use(csrfProtection);
+
+    apiRouter.get("/csrf-token", (req, res) => {
+      const token = ensureCsrfToken(req);
+      res.json({ csrfToken: token });
+    });
+
+    apiRouter.get("/auth/user", asyncHandler(async (_req, res) => {
+      res.json({
+        id: "dev-user",
+        email: "dev@local",
+        firstName: "Dev",
+        lastName: "User",
+        profileImageUrl: null,
+        username: null,
+        password: null,
+        displayName: "Dev User",
+        companyName: "Dev Preview",
+        role: "admin",
+        organizationId: null,
+        organizationRole: "owner",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }));
+
+    apiRouter.get("/me", asyncHandler(async (_req, res) => {
+      res.json({
+        userId: "dev-user",
+        organizationId: null,
+        organizationRole: "owner",
+        role: "admin",
+        email: "dev@local",
+        firstName: "Dev",
+        lastName: "User",
+      });
+    }));
+
+    apiRouter.get("/dashboard/layout", (_req, res) => {
+      if (!inMemoryLayout) {
+        inMemoryLayout = {
+          id: "dev-layout",
+          name: "Dev Preview Layout",
+          items: [],
+          isDefault: true,
+        };
+      }
+      res.json({ layout: inMemoryLayout });
+    });
+
+    apiRouter.post("/dashboard/layouts", (req, res) => {
+      const payload = req.body || {};
+      inMemoryLayout = {
+        id: "dev-layout",
+        name: payload.name || "Dev Preview Layout",
+        isDefault: true,
+        items: payload.items || [],
+      };
+      res.json({ layout: inMemoryLayout });
+    });
+
+    apiRouter.put("/dashboard/layouts/:id", (req, res) => {
+      const payload = req.body || {};
+      inMemoryLayout = {
+        id: req.params.id || "dev-layout",
+        name: payload.name || "Dev Preview Layout",
+        isDefault: true,
+        items: payload.items || [],
+      };
+      res.json({ layout: inMemoryLayout });
+    });
+
+    apiRouter.all("*", (_req, res) =>
+      res.status(503).json({
+        message: "Database unavailable in dev auth bypass mode",
+        limitedMode: true,
+      }),
+    );
+
+    app.use("/api", isAuthenticated, apiRouter);
+    const httpServer = createServer(app);
+    return httpServer;
+  }
 
   // ============================================
   // SEED TEST USER (for TEST_MODE in frontend)

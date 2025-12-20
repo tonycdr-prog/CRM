@@ -33,6 +33,7 @@
 - Set `NODE_ENV=development DEV_AUTH_BYPASS=true SESSION_SECRET=dev`
 - Optional: `DEV_REVIEW_MODE=true` to surface the dev-only Review links
 - Run `npm run dev` (bypasses OIDC for local preview and relaxes CSP for Vite/React refresh)
+- If no `DATABASE_URL` is available, the dev server will still start in limited mode with in-memory auth/layouts and show a dev banner noting the database is unavailable.
 
 ## D) Conventions
 - TypeScript strict across client/server/shared.

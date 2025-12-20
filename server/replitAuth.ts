@@ -70,7 +70,7 @@ async function upsertUser(claims: any) {
   });
 }
 
-function isDevAuthBypassEnabled() {
+export function isDevAuthBypassEnabled() {
   return (
     process.env.NODE_ENV === "development" &&
     process.env.DEV_AUTH_BYPASS?.toLowerCase() === "true"

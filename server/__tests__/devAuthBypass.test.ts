@@ -43,3 +43,47 @@ test("DEV auth bypass allows access without OIDC", async (t) => {
   assert.strictEqual(body.claims.email, "dev@local");
   assert.strictEqual(body.authenticated, true);
 });
+
+test("server boots without database in dev bypass mode", async (t) => {
+  const originalEnv = {
+    NODE_ENV: process.env.NODE_ENV,
+    DEV_AUTH_BYPASS: process.env.DEV_AUTH_BYPASS,
+    SESSION_SECRET: process.env.SESSION_SECRET,
+    DATABASE_URL: process.env.DATABASE_URL,
+  };
+
+  process.env.NODE_ENV = "development";
+  process.env.DEV_AUTH_BYPASS = "true";
+  process.env.SESSION_SECRET = "dev";
+  delete process.env.DATABASE_URL;
+
+  const { registerRoutes } = await import("../routes");
+  const app = express();
+  const server = await registerRoutes(app);
+  const listener = await new Promise<ReturnType<typeof server.listen>>((resolve) => {
+    const srv = server.listen(0, () => resolve(srv));
+  });
+
+  t.after(() => {
+    listener.close();
+    process.env.NODE_ENV = originalEnv.NODE_ENV;
+    process.env.DEV_AUTH_BYPASS = originalEnv.DEV_AUTH_BYPASS;
+    process.env.SESSION_SECRET = originalEnv.SESSION_SECRET;
+    if (originalEnv.DATABASE_URL) {
+      process.env.DATABASE_URL = originalEnv.DATABASE_URL;
+    }
+  });
+
+  const address = listener.address();
+  const port = typeof address === "object" && address ? address.port : 0;
+
+  const statusResponse = await fetch(`http://127.0.0.1:${port}/api/dev/status`);
+  const status = (await statusResponse.json()) as { devAuthBypass: boolean; databaseAvailable: boolean };
+
+  assert.strictEqual(statusResponse.status, 200);
+  assert.strictEqual(status.devAuthBypass, true);
+  assert.strictEqual(status.databaseAvailable, false);
+
+  const layoutResponse = await fetch(`http://127.0.0.1:${port}/api/dashboard/layout`);
+  assert.strictEqual(layoutResponse.status, 200);
+});
