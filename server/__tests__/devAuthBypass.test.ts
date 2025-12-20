@@ -92,3 +92,45 @@ test("server boots without database in dev bypass mode", async (t) => {
   const layoutResponse = await fetch(`http://127.0.0.1:${port}/api/dashboard/layout`);
   assert.strictEqual(layoutResponse.status, 200);
 });
+
+test("dev seed endpoint is guarded and fails gracefully without db", async (t) => {
+  const originalEnv = {
+    NODE_ENV: process.env.NODE_ENV,
+    DEV_AUTH_BYPASS: process.env.DEV_AUTH_BYPASS,
+    SESSION_SECRET: process.env.SESSION_SECRET,
+    DATABASE_URL: process.env.DATABASE_URL,
+    SEED_DEMO: process.env.SEED_DEMO,
+  };
+
+  process.env.NODE_ENV = "development";
+  process.env.DEV_AUTH_BYPASS = "true";
+  process.env.SESSION_SECRET = "dev";
+  process.env.SEED_DEMO = "true";
+  delete process.env.DATABASE_URL;
+
+  const { registerRoutes } = await import("../routes");
+  const app = express();
+  const server = await registerRoutes(app);
+  const listener = await new Promise<ReturnType<typeof server.listen>>((resolve) => {
+    const srv = server.listen(0, () => resolve(srv));
+  });
+
+  t.after(() => {
+    listener.close();
+    process.env.NODE_ENV = originalEnv.NODE_ENV;
+    process.env.DEV_AUTH_BYPASS = originalEnv.DEV_AUTH_BYPASS;
+    process.env.SESSION_SECRET = originalEnv.SESSION_SECRET;
+    process.env.SEED_DEMO = originalEnv.SEED_DEMO;
+    if (originalEnv.DATABASE_URL) {
+      process.env.DATABASE_URL = originalEnv.DATABASE_URL;
+    }
+  });
+
+  const address = listener.address();
+  const port = typeof address === "object" && address ? address.port : 0;
+
+  const response = await fetch(`http://127.0.0.1:${port}/api/dev/seed-demo`, { method: "POST" });
+  assert.strictEqual(response.status, 503);
+  const body = (await response.json()) as { message: string };
+  assert.ok(body.message.includes("Database unavailable"));
+});

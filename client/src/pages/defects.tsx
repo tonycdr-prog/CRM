@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,14 +29,9 @@ interface DefectRecord {
   remedials?: RemedialRecord[];
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
-  return (await res.json()) as T;
-}
-
 export default function DefectsPage() {
   const { toast } = useToast();
+  const authToastShown = useRef(false);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [filterJobId, setFilterJobId] = useState("");
   const [formData, setFormData] = useState({
@@ -61,10 +56,42 @@ export default function DefectsPage() {
     queryKey: ["/api/defects", filterJobId],
     queryFn: async () => {
       const query = filterJobId ? `/api/defects?jobId=${encodeURIComponent(filterJobId)}` : "/api/defects";
-      const data = await fetchJson<{ defects: DefectRecord[] }>(query);
+      const res = await fetch(query, { credentials: "include" });
+      if (res.status === 401 || res.status === 403) {
+        if (!authToastShown.current) {
+          authToastShown.current = true;
+          toast({
+            title: "Not authorised",
+            description: "Auth/CSRF missing — refresh page.",
+            variant: "destructive",
+          });
+        }
+        throw new Error("Unauthorized");
+      }
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = (await res.json()) as { defects: DefectRecord[] };
       return data.defects ?? [];
     },
   });
+
+  const groupedDefects = useMemo(() => {
+    const groups: Array<{ jobId: string; items: DefectRecord[] }> = [];
+    const byJob = new Map<string, DefectRecord[]>();
+
+    for (const defect of defects) {
+      const key = defect.jobId || "unassigned";
+      const arr = byJob.get(key) ?? [];
+      arr.push(defect);
+      byJob.set(key, arr);
+    }
+
+    for (const [jobId, items] of byJob.entries()) {
+      const sorted = [...items].sort((a, b) => (a.status ?? "open").localeCompare(b.status ?? "open"));
+      groups.push({ jobId, items: sorted });
+    }
+
+    return groups.sort((a, b) => a.jobId.localeCompare(b.jobId));
+  }, [defects]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -229,82 +256,91 @@ export default function DefectsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {defects.map((defect) => (
-          <Card key={defect.id}>
-            <CardHeader className="space-y-1">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base">{defect.defectNumber}</CardTitle>
-                <Badge className={severityColor(defect.severity)}>{defect.severity ?? "medium"}</Badge>
-              </div>
-              <CardDescription>{defect.description || "No description"}</CardDescription>
-              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                {defect.jobId ? <Badge variant="outline">Job {defect.jobId}</Badge> : null}
-                {defect.assetId ? <Badge variant="outline">Asset {defect.assetId}</Badge> : null}
-                {defect.entityInstanceId ? <Badge variant="outline">Entity {defect.entityInstanceId}</Badge> : null}
-                <Badge variant="secondary">Status: {defect.status ?? "open"}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Select
-                  value={defect.status ?? "open"}
-                  onValueChange={(value) => updateStatus.mutate({ id: defect.id, status: value })}
-                >
-                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="in_progress">In progress</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateStatus.mutate({ id: defect.id, status: "resolved" })}
-                  disabled={updateStatus.isPending}
-                >
-                  Resolve
-                </Button>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <ShieldCheck className="h-4 w-4 text-primary" /> Remedials
-                </div>
-                {defect.remedials?.length ? (
-                  <div className="space-y-2 text-sm">
-                    {defect.remedials.map((remedial) => (
-                      <div key={remedial.id} className="rounded-md border p-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{remedial.status}</span>
-                        </div>
-                        <div className="text-muted-foreground">{remedial.notes || "No notes"}</div>
+      <div className="space-y-6">
+        {groupedDefects.map((group) => (
+          <div key={group.jobId} className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">{group.jobId === "unassigned" ? "Unassigned defects" : `Job ${group.jobId}`}</h3>
+              <Badge variant="outline">{group.items.length} issues</Badge>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {group.items.map((defect) => (
+                <Card key={defect.id}>
+                  <CardHeader className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-base">{defect.defectNumber}</CardTitle>
+                      <Badge className={severityColor(defect.severity)}>{defect.severity ?? "medium"}</Badge>
+                    </div>
+                    <CardDescription>{defect.description || "No description"}</CardDescription>
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      {defect.assetId ? <Badge variant="outline">Asset {defect.assetId}</Badge> : null}
+                      {defect.entityInstanceId ? <Badge variant="outline">Entity {defect.entityInstanceId}</Badge> : null}
+                      <Badge variant="secondary">Status: {defect.status ?? "open"}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Select
+                        value={defect.status ?? "open"}
+                        onValueChange={(value) => updateStatus.mutate({ id: defect.id, status: value })}
+                      >
+                        <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">Open</SelectItem>
+                          <SelectItem value="in_progress">In progress</SelectItem>
+                          <SelectItem value="resolved">Resolved</SelectItem>
+                          <SelectItem value="closed">Closed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateStatus.mutate({ id: defect.id, status: "resolved" })}
+                        disabled={updateStatus.isPending}
+                      >
+                        Resolve
+                      </Button>
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <ShieldCheck className="h-4 w-4 text-primary" /> Remedials
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No remedials logged.</p>
-                )}
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="Add remedial note"
-                    value={remedialNotes[defect.id] ?? ""}
-                    onChange={(e) => setRemedialNotes((prev) => ({ ...prev, [defect.id]: e.target.value }))}
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => addRemedial.mutate({ id: defect.id, notes: remedialNotes[defect.id] ?? "" })}
-                    disabled={addRemedial.isPending}
-                  >
-                    Add
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                      {defect.remedials?.length ? (
+                        <div className="space-y-2 text-sm">
+                          {defect.remedials.map((remedial) => (
+                            <div key={remedial.id} className="rounded-md border p-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">{remedial.status}</span>
+                              </div>
+                              <div className="text-muted-foreground">{remedial.notes || "No notes"}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No remedials logged.</p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="Add remedial note"
+                          value={remedialNotes[defect.id] ?? ""}
+                          onChange={(e) => setRemedialNotes((prev) => ({ ...prev, [defect.id]: e.target.value }))}
+                        />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => addRemedial.mutate({ id: defect.id, notes: remedialNotes[defect.id] ?? "" })}
+                          disabled={addRemedial.isPending}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>

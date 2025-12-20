@@ -293,6 +293,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  app.post(
+    "/api/dev/seed-demo",
+    asyncHandler(async (_req, res) => {
+      if (process.env.NODE_ENV !== "development") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      if (process.env.SEED_DEMO?.toLowerCase() !== "true") {
+        return res
+          .status(400)
+          .json({ message: "Set SEED_DEMO=true to seed demo data" });
+      }
+
+      if (!isDatabaseAvailable) {
+        return res.status(503).json({
+          message: "Database unavailable; cannot seed in limited mode",
+        });
+      }
+
+      const result = await seedDatabase();
+      res.json({ ok: true, result });
+    }),
+  );
+
   if (limitedMode) {
     let inMemoryLayout: any = null;
     app.get("/api/health", (_req, res) =>
