@@ -10,6 +10,7 @@ export const ROUTES = {
   HUB_MANAGE: "/hub/manage",
   FORMS_BUILDER: "/forms/builder",
   FORMS_RUNNER: "/forms/runner",
+  WIDGET_VIEW: "/dashboard/widget/:widgetId",
   FIELD_COMPANION_JOB: "/field-companion/:id",
   FIELD_COMPANION_JOB_FORMS: "/field-companion/:id/forms",
   FIELD_TESTING: "/test",

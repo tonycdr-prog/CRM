@@ -17,6 +17,11 @@ export interface DashboardWidgetDefinition<Params extends Record<string, unknown
   defaultParams: Params;
   checkPermissions: (ctx: WidgetPermissionContext) => Promise<boolean> | boolean;
   refresh: WidgetRefreshPolicy;
+  supportsExpand?: boolean;
+  supportsNewTab?: boolean;
+  minSize?: { w: number; h: number };
+  preferredSize?: { w: number; h: number };
+  allowedContexts?: Array<"dashboard" | "modal" | "standalone">;
 }
 
 const widgetRegistry = new Map<string, DashboardWidgetDefinition<Record<string, unknown>>>();
@@ -72,6 +77,10 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     defaultParams: { label: "System health" },
     checkPermissions: () => true,
     refresh: { mode: "interval", intervalMs: 30000 },
+    supportsExpand: true,
+    supportsNewTab: true,
+    preferredSize: { w: 1, h: 1 },
+    allowedContexts: ["dashboard", "modal", "standalone"],
   },
   {
     widgetId: "team-note",
@@ -84,6 +93,10 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     defaultParams: { message: "", audience: "all" },
     checkPermissions: () => true,
     refresh: { mode: "manual" },
+    supportsExpand: true,
+    supportsNewTab: true,
+    preferredSize: { w: 2, h: 1 },
+    allowedContexts: ["dashboard", "modal", "standalone"],
   },
   {
     widgetId: "navigation-shortcut",
@@ -97,6 +110,10 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     defaultParams: { label: "Shortcut", route: "/dashboard", description: "" },
     checkPermissions: () => true,
     refresh: { mode: "manual" },
+    supportsExpand: false,
+    supportsNewTab: true,
+    preferredSize: { w: 1, h: 1 },
+    allowedContexts: ["dashboard", "standalone"],
   },
 ];
 

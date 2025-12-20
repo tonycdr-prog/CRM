@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -26,6 +19,7 @@ import {
   type DashboardLayoutItem,
   type DashboardWidgetDefinition,
 } from "@shared/dashboard";
+import { WidgetFrame } from "@/components/widgets/WidgetFrame";
 
 const numberFromInput = (value: string, fallback: number) => {
   const parsed = Number.parseInt(value, 10);
@@ -235,11 +229,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="rounded-lg border">
+        <div className="flex flex-col gap-4 border-b p-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle>Widgets</CardTitle>
-            <CardDescription>Select a widget to add to your dashboard.</CardDescription>
+            <h2 className="text-lg font-semibold">Widgets</h2>
+            <p className="text-sm text-muted-foreground">Select a widget to add to your dashboard.</p>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <Select value={selectedWidgetId} onValueChange={setSelectedWidgetId}>
@@ -258,8 +252,8 @@ export default function Dashboard() {
               Add widget
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-4">
           {emptyState ? (
             <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center text-muted-foreground">
               <p>No widgets yet.</p>
@@ -270,66 +264,66 @@ export default function Dashboard() {
               {items.map((item, index) => {
                 const widget = getWidget(item.widgetId) as DashboardWidgetDefinition<any> | undefined;
                 return (
-                  <Card key={`${item.widgetId}-${index}`} className="border-primary/30">
-                    <CardHeader className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <CardTitle className="text-lg">{widget?.title ?? item.widgetId}</CardTitle>
-                          {widget?.description && (
-                            <CardDescription>{widget.description}</CardDescription>
-                          )}
-                        </div>
-                        <Badge variant={widget?.refresh.mode === "interval" ? "default" : "secondary"}>
-                          {widget?.refresh.mode === "interval"
+                  <WidgetFrame
+                    key={`${item.widgetId}-${index}`}
+                    widgetId={item.widgetId}
+                    title={widget?.title ?? item.widgetId}
+                    description={widget?.description}
+                    supportsExpand={widget?.supportsExpand ?? true}
+                    supportsNewTab={widget?.supportsNewTab ?? true}
+                    params={item.params as Record<string, unknown>}
+                    headerExtras={
+                      widget ? (
+                        <Badge variant={widget.refresh.mode === "interval" ? "default" : "secondary"}>
+                          {widget.refresh.mode === "interval"
                             ? `Auto every ${Math.round((widget.refresh as any).intervalMs / 1000)}s`
                             : "Manual"}
                         </Badge>
+                      ) : null
+                    }
+                  >
+                    <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                      <span>Size</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        className="w-16"
+                        value={item.position.w}
+                        onChange={(e) => updateSize(index, "w", numberFromInput(e.target.value, item.position.w))}
+                      />
+                      <span>×</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        className="w-16"
+                        value={item.position.h}
+                        onChange={(e) => updateSize(index, "h", numberFromInput(e.target.value, item.position.h))}
+                      />
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => moveItem(index, -1)} disabled={index === 0}>
+                          Move up
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveItem(index, 1)}
+                          disabled={index === items.length - 1}
+                        >
+                          Move down
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => removeItem(index)}>
+                          Remove
+                        </Button>
                       </div>
-                      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                        <span>Size</span>
-                        <Input
-                          type="number"
-                          min={1}
-                          className="w-16"
-                          value={item.position.w}
-                          onChange={(e) => updateSize(index, "w", numberFromInput(e.target.value, item.position.w))}
-                        />
-                        <span>×</span>
-                        <Input
-                          type="number"
-                          min={1}
-                          className="w-16"
-                          value={item.position.h}
-                          onChange={(e) => updateSize(index, "h", numberFromInput(e.target.value, item.position.h))}
-                        />
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => moveItem(index, -1)} disabled={index === 0}>
-                            Move up
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => moveItem(index, 1)}
-                            disabled={index === items.length - 1}
-                          >
-                            Move down
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => removeItem(index)}>
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {renderWidgetControls(item, index)}
-                    </CardContent>
-                  </Card>
+                    </div>
+                    {renderWidgetControls(item, index)}
+                  </WidgetFrame>
                 );
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -21,7 +21,8 @@
  - Expanded the dev preview path to surface review-mode status (including DB availability) via `/api/dev/status` and sidebar
    flags while keeping production auth/CSP unchanged.
  - Ensured production CSP keeps strict connect-src while development explicitly allows websocket/inlined scripts for Vite.
- - Refined the development preview path with memory-backed dev auth, environment-aware CSP helpers, SPA accept-header checks, and a dev flag banner plus tests.
- - Added a guarded `/api/dev/seed-demo` endpoint to seed demo data when a database is available under `SEED_DEMO=true`.
- - Grouped the defects UI by job with friendlier unauthorized messaging to aid review of defect workflows in preview mode.
- - Added a global dev review banner to surface auth/review/database flags during preview sessions.
+- Refined the development preview path with memory-backed dev auth, environment-aware CSP helpers, SPA accept-header checks, and a dev flag banner plus tests.
+- Added a guarded `/api/dev/seed-demo` endpoint to seed demo data when a database is available under `SEED_DEMO=true`.
+- Grouped the defects UI by job with friendlier unauthorized messaging to aid review of defect workflows in preview mode.
+- Added a global dev review banner to surface auth/review/database flags during preview sessions.
+- Introduced a reusable widget chrome with expand/new-tab controls and a standalone widget view route.

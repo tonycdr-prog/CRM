@@ -89,6 +89,7 @@ import ReportsHub from "@/pages/hubs/reports";
 import ManageHub from "@/pages/hubs/manage";
 import FormsBuilderPage from "@/pages/forms-builder";
 import FormsRunnerPage from "@/pages/forms-runner";
+import WidgetView from "@/pages/widget-view";
 import { Loader2 } from "lucide-react";
 
 function PlaceholderPage({ title }: { title: string }) {
@@ -108,6 +109,7 @@ function LayoutRoutes() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path={ROUTES.DASHBOARD} component={Dashboard} />
+        <Route path={ROUTES.WIDGET_VIEW} component={WidgetView} />
         
         {/* Journey Hub routes */}
         <Route path={ROUTES.HUB_WORK} component={WorkHub} />
