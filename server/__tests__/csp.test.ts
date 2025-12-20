@@ -18,7 +18,7 @@ test("dev CSP relaxes script restrictions for Vite", () => {
 test("production CSP stays strict without inline/eval", () => {
   const directives = buildContentSecurityPolicyDirectives(false);
   assert.deepStrictEqual(directives["script-src"], ["'self'"]);
-  assert.ok(directives["connect-src"].includes("ws:"));
+  assert.deepStrictEqual(directives["connect-src"], ["'self'"]);
 });
 
 test("securityHeaders emits relaxed CSP in development", async (t) => {

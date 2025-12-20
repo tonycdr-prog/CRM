@@ -17,3 +17,4 @@
 - Added a development-only auth bypass flag to run the app locally without OIDC discovery.
 - Added SPA fallback routing and a dev-only Review sidebar section to preview new pages together.
 - Loosened CSP directives in development to allow Vite/react-refresh while keeping production directives strict.
+- Ensured production CSP keeps strict connect-src while development explicitly allows websocket/inlined scripts for Vite.

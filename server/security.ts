@@ -15,7 +15,9 @@ export const buildContentSecurityPolicyDirectives = (enableDevRelaxation: boolea
   "default-src": ["'self'"],
   "img-src": ["'self'", "data:", "blob:"],
   "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
-  "connect-src": ["'self'", "wss:", "ws:"],
+  "connect-src": enableDevRelaxation
+    ? ["'self'", "wss:", "ws:"]
+    : ["'self'"],
   "script-src": enableDevRelaxation
     ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
     : ["'self'"],
