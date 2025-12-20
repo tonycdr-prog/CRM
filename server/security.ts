@@ -11,8 +11,6 @@ export const requestId: RequestHandler = (req, res, next) => {
   next();
 };
 
-const isDev = process.env.NODE_ENV === "development";
-
 export const buildContentSecurityPolicyDirectives = (enableDevRelaxation: boolean) => ({
   "default-src": ["'self'"],
   "img-src": ["'self'", "data:", "blob:"],
@@ -28,15 +26,21 @@ export const buildContentSecurityPolicyDirectives = (enableDevRelaxation: boolea
   "frame-ancestors": ["'none'"],
 });
 
-export const securityHeaders = helmet({
-  frameguard: { action: "deny" },
-  contentSecurityPolicy: {
-    useDefaults: true,
-    directives: buildContentSecurityPolicyDirectives(isDev),
-  },
-  referrerPolicy: { policy: "no-referrer" },
-  crossOriginResourcePolicy: { policy: "same-site" },
-});
+export const createSecurityHeaders = (nodeEnv = process.env.NODE_ENV) => {
+  const enableDevRelaxation = nodeEnv === "development";
+
+  return helmet({
+    frameguard: { action: "deny" },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: buildContentSecurityPolicyDirectives(enableDevRelaxation),
+    },
+    referrerPolicy: { policy: "no-referrer" },
+    crossOriginResourcePolicy: { policy: "same-site" },
+  });
+};
+
+export const securityHeaders = createSecurityHeaders();
 
 export const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
