@@ -1,4 +1,10 @@
-import { dashboardLayoutPayloadSchema, type DashboardLayoutItem, type DashboardLayoutPayload, getWidget } from "./dashboard";
+import {
+  dashboardLayoutPayloadSchema,
+  generateLayoutItemId,
+  type DashboardLayoutItem,
+  type DashboardLayoutPayload,
+  getWidget,
+} from "./dashboard";
 
 export type SidebarWidgetMapping = {
   route: string;
@@ -72,6 +78,7 @@ export function buildLayoutWithSidebarWidget(
 
   const existingItems = layout?.items ?? [];
   const nextItem: DashboardLayoutItem = {
+    id: generateLayoutItemId(),
     widgetId: resolved.widgetId,
     params: resolved.params,
     position: {

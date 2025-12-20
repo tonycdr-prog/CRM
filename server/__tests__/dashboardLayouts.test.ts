@@ -31,6 +31,7 @@ const baseLayout = {
   name: "Team dashboard",
   items: [
     {
+      id: "item-1",
       widgetId: healthWidgetId,
       params: { label: "Primary health" },
       position: { x: 0, y: 0, w: 1, h: 1 },
@@ -95,4 +96,54 @@ test("dashboard layouts can be created, updated, and set as default", async (t) 
   assert.strictEqual(loadResponse.status, 200);
   assert.strictEqual(loadBody.layout?.id, secondId);
   assert.strictEqual(loadBody.layout?.isDefault, true);
+});
+
+test("dashboard layout updates persist size changes and allow duplication", async (t) => {
+  const repository = new InMemoryDashboardLayoutRepository();
+  const app = buildApp(repository);
+  const server = await listen(app);
+  t.after(() => server.close());
+
+  const address = server.address();
+  const port = typeof address === "object" && address ? address.port : 0;
+  const baseUrl = `http://127.0.0.1:${port}/api/dashboard`;
+
+  const createResponse = await fetch(`${baseUrl}/layouts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(baseLayout),
+  });
+  const createdBody = await createResponse.json();
+  const layoutId = createdBody.layout.id as string;
+
+  const widened = await fetch(`${baseUrl}/layouts/${layoutId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...baseLayout,
+      items: baseLayout.items.map((item) => ({ ...item, position: { ...item.position, w: 3, h: 2 } })),
+    }),
+  });
+  const widenedBody = await widened.json();
+  assert.strictEqual(widened.status, 200);
+  assert.strictEqual(widenedBody.layout.items[0].position.w, 3);
+  assert.strictEqual(widenedBody.layout.items[0].position.h, 2);
+
+  const duplicatePayload = {
+    ...baseLayout,
+    items: [
+      { ...baseLayout.items[0], position: { x: 0, y: 0, w: 1, h: 1 } },
+      { ...baseLayout.items[0], id: "item-2", position: { x: 0, y: 1, w: 2, h: 1 } },
+    ],
+  };
+
+  const duplicateResponse = await fetch(`${baseUrl}/layouts/${layoutId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(duplicatePayload),
+  });
+  const duplicateBody = await duplicateResponse.json();
+
+  assert.strictEqual(duplicateResponse.status, 200);
+  assert.strictEqual(duplicateBody.layout.items.length, 2);
 });

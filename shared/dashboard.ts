@@ -19,9 +19,18 @@ export interface DashboardWidgetDefinition<Params extends Record<string, unknown
   refresh: WidgetRefreshPolicy;
   supportsExpand?: boolean;
   supportsNewTab?: boolean;
+  supportsSendToScreen?: boolean;
+  supportsRefreshAction?: boolean;
   minSize?: { w: number; h: number };
   preferredSize?: { w: number; h: number };
   allowedContexts?: Array<"dashboard" | "modal" | "standalone">;
+}
+
+export function generateLayoutItemId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `layout-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 const widgetRegistry = new Map<string, DashboardWidgetDefinition<Record<string, unknown>>>();
@@ -53,6 +62,7 @@ export const widgetPositionSchema = z.object({
 });
 
 export const dashboardLayoutItemSchema = z.object({
+  id: z.string().optional().default(generateLayoutItemId),
   widgetId: z.string(),
   params: z.record(z.any()).default({}),
   position: widgetPositionSchema,
@@ -79,6 +89,8 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     refresh: { mode: "interval", intervalMs: 30000 },
     supportsExpand: true,
     supportsNewTab: true,
+    supportsSendToScreen: true,
+    supportsRefreshAction: true,
     preferredSize: { w: 1, h: 1 },
     allowedContexts: ["dashboard", "modal", "standalone"],
   },
@@ -95,6 +107,8 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     refresh: { mode: "manual" },
     supportsExpand: true,
     supportsNewTab: true,
+    supportsSendToScreen: true,
+    supportsRefreshAction: false,
     preferredSize: { w: 2, h: 1 },
     allowedContexts: ["dashboard", "modal", "standalone"],
   },
@@ -112,6 +126,8 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     refresh: { mode: "manual" },
     supportsExpand: false,
     supportsNewTab: true,
+    supportsSendToScreen: true,
+    supportsRefreshAction: false,
     preferredSize: { w: 1, h: 1 },
     allowedContexts: ["dashboard", "standalone"],
   },

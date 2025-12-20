@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import {
   dashboardLayoutPayloadSchema,
   dashboardLayoutItemSchema,
+  generateLayoutItemId,
   getWidget,
   type DashboardLayoutItem,
   type DashboardLayoutPayload,
@@ -45,6 +46,7 @@ export async function validateLayoutForUser(payload: unknown, userId: string): P
     );
 
     normalizedItems.push({
+      id: normalized.id ?? generateLayoutItemId(),
       widgetId: normalized.widgetId,
       params,
       position: normalized.position,

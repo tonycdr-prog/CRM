@@ -10,7 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ExternalLink, Maximize2, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ExternalLink, Maximize2, RefreshCw, Send, Tv, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type WidgetFrameProps = PropsWithChildren<{
@@ -19,11 +20,14 @@ type WidgetFrameProps = PropsWithChildren<{
   description?: string;
   supportsExpand?: boolean;
   supportsNewTab?: boolean;
+  supportsSendToScreen?: boolean;
+  supportsRefreshAction?: boolean;
   params?: Record<string, unknown>;
   headerExtras?: ReactNode;
   footer?: ReactNode;
   className?: string;
-}>;
+  onRefresh?: () => void;
+}>; 
 
 export function WidgetFrame({
   widgetId,
@@ -31,11 +35,14 @@ export function WidgetFrame({
   description,
   supportsExpand = true,
   supportsNewTab = true,
+  supportsSendToScreen = false,
+  supportsRefreshAction = false,
   params,
   headerExtras,
   footer,
   className,
   children,
+  onRefresh,
 }: WidgetFrameProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -57,6 +64,19 @@ export function WidgetFrame({
             </div>
             <div className="flex items-center gap-1">
               {headerExtras}
+              {supportsRefreshAction && onRefresh ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={onRefresh}>
+                        <RefreshCw className="h-4 w-4" />
+                        <span className="sr-only">Refresh widget</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Refresh</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : null}
               {supportsNewTab ? (
                 <TooltipProvider>
                   <Tooltip>
@@ -71,6 +91,39 @@ export function WidgetFrame({
                     <TooltipContent side="bottom">Open in new tab</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+              ) : null}
+              {supportsSendToScreen ? (
+                <DropdownMenu>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Tv className="h-4 w-4" />
+                            <span className="sr-only">Send to screen</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">Send to Screen</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <DropdownMenuContent align="end">
+                    {[1, 2, 3].map((screenId) => (
+                      <DropdownMenuItem
+                        key={screenId}
+                        onSelect={() =>
+                          window.open(
+                            newTabHref,
+                            `lso-screen-${screenId}`,
+                            "noopener,noreferrer,width=1200,height=800",
+                          )
+                        }
+                      >
+                        <Send className="mr-2 h-4 w-4" /> Screen {screenId}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : null}
               {supportsExpand ? (
                 <TooltipProvider>

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { listWidgets } from "@shared/dashboard";
+import { generateLayoutItemId, listWidgets } from "@shared/dashboard";
 import { type DashboardLayout } from "@shared/schema";
 import {
   DbDashboardLayoutRepository,
@@ -9,12 +9,16 @@ import {
 } from "./lib/dashboardLayouts";
 import { asyncHandler, getUserId, type AuthenticatedRequest } from "./utils/routeHelpers";
 
+function ensureLayoutItemIds(layoutItems: DashboardLayout["layout"] = []) {
+  return layoutItems.map((item) => ({ ...item, id: (item as any).id ?? generateLayoutItemId() }));
+}
+
 function toLayoutResponse(layout: DashboardLayout | null) {
   if (!layout) return null;
   return {
     id: layout.id,
     name: layout.name,
-    items: layout.layout,
+    items: ensureLayoutItemIds(layout.layout),
     isDefault: layout.isDefault,
     createdAt: layout.createdAt,
     updatedAt: layout.updatedAt,
