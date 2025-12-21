@@ -2,6 +2,10 @@ export const MODULES = {
   LIFE_SAFETY: "life-safety",
   SCHEDULING: "scheduling",
   FINANCE: "finance",
+  REPORTING: "reporting",
+  ASSET_MANAGEMENT: "asset-management",
+  COMPLIANCE: "compliance",
+  FORMS_ENGINE: "forms-engine",
 } as const;
 
 export type ModuleId = typeof MODULES[keyof typeof MODULES];
@@ -68,6 +72,56 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Reports", path: "/reports" },
     ],
     widgets: ["finance", "reports"],
+  },
+  [MODULES.REPORTING]: {
+    id: MODULES.REPORTING,
+    label: "Reporting",
+    description: "Operational and client-facing outputs across modules.",
+    tagline: "Role-based reports that tie submissions, defects, and finance together.",
+    enabledByDefault: true,
+    routes: [
+      { title: "Reports", path: "/reports" },
+      { title: "Dashboard", path: "/dashboard" },
+    ],
+    widgets: ["reports"],
+  },
+  [MODULES.ASSET_MANAGEMENT]: {
+    id: MODULES.ASSET_MANAGEMENT,
+    label: "Asset Management",
+    description: "Track sites, assets, and maintenance context for jobs and forms.",
+    tagline: "Assets, sites, and lineage that feed jobs, forms, and defects.",
+    enabledByDefault: true,
+    routes: [
+      { title: "Sites", path: "/sites" },
+      { title: "Site Assets", path: "/site-assets" },
+    ],
+    widgets: ["assets"],
+  },
+  [MODULES.COMPLIANCE]: {
+    id: MODULES.COMPLIANCE,
+    label: "Compliance & Certifications",
+    description: "Maintain certifications, golden thread, and safety documentation.",
+    tagline: "Compliance records and certifications tied to assets and jobs.",
+    enabledByDefault: true,
+    routes: [
+      { title: "Certifications", path: "/certifications" },
+      { title: "Golden Thread", path: "/golden-thread" },
+    ],
+    widgets: ["compliance"],
+  },
+  [MODULES.FORMS_ENGINE]: {
+    id: MODULES.FORMS_ENGINE,
+    label: "Forms Engine",
+    description: "Versioned templates, runner, and smoke-control library.",
+    tagline: "Standards-led forms engine for smoke-control and calibrated testing.",
+    enabledByDefault: true,
+    routes: [
+      { title: "Forms Hub", path: "/hub/forms" },
+      { title: "Forms Builder", path: "/forms/builder" },
+      { title: "Forms Runner", path: "/forms/runner" },
+      { title: "Smoke Control Library", path: "/admin/smoke-control" },
+    ],
+    widgets: ["forms"],
   },
 };
 

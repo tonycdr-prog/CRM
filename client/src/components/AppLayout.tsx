@@ -143,15 +143,12 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   };
 
   const bannerModule = enabledModules[0];
-  const moduleNavEntries =
-    enabledModules.length > 0
-      ? enabledModules.map((module) => ({
-          id: module.id,
-          label: module.label,
-          tagline: module.tagline,
-          links: MODULE_NAV[module.id]?.links ?? module.routes,
-        }))
-      : getModulesList();
+  const moduleNavEntries = enabledModules.map((module) => ({
+    id: module.id,
+    label: module.label,
+    tagline: module.tagline,
+    links: MODULE_NAV[module.id]?.links ?? module.routes,
+  }));
 
   useEffect(() => {
     if (!user?.id) return;
