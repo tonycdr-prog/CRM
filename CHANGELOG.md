@@ -30,3 +30,4 @@
 - Added a schedule service with in-memory assignments, duplication, and conflict detection plus API tests for create/update/duplicate flows.
 - Rebuilt the schedule page with calendar and gantt drag/drop, shift-duplicate, resize, conflict warnings, and engineer selection for duplicates.
 - Introduced Life Safety Ops module framing with module constants, sidebar grouping, a review banner tagline, and supporting documentation.
+- Added a module registry with env-driven enablement, dev status surfacing, and client hooks so modules can be toggled without impacting CRM core routes.
