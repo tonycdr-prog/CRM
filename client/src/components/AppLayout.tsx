@@ -24,6 +24,8 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useToast } from "@/hooks/use-toast";
 import { ROUTES } from "@/lib/routes";
+import { getModulesList, MODULE_NAV } from "@/lib/modules";
+import { MODULES } from "@shared/modules";
 import { buildLayoutWithSidebarWidget } from "@shared/sidebarWidgets";
 import {
   LayoutDashboard,
@@ -112,6 +114,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
       }
     | null
   >(null);
+  const [moduleBannerDismissed, setModuleBannerDismissed] = useState(false);
   const hasNotifiedNoDb = useRef(false);
   const devReviewModeEnv =
     (import.meta.env as any).DEV_REVIEW_MODE ??
@@ -150,6 +153,12 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setDevStatus(data))
       .catch(() => setDevStatus(null));
+  }, []);
+
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    const dismissed = localStorage.getItem("module-banner-dismissed");
+    setModuleBannerDismissed(dismissed === "true");
   }, []);
 
   useEffect(() => {
@@ -231,6 +240,40 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
           </SidebarHeader>
           
           <SidebarContent className="overflow-y-auto">
+            <SidebarGroup data-testid="modules-nav-section">
+              <SidebarGroupLabel>Modules</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {getModulesList().map((module) => (
+                    <SidebarMenuItem key={module.id}>
+                      <SidebarMenuButton
+                        asChild
+                        className="h-auto py-2"
+                        isActive={location === module.links[0]?.path}
+                      >
+                        <Link href={module.links[0]?.path || ROUTES.DASHBOARD}>
+                          <div className="flex flex-col text-left">
+                            <span className="leading-tight font-medium">{module.label}</span>
+                            <span className="text-[11px] text-muted-foreground leading-snug">
+                              {module.tagline}
+                            </span>
+                          </div>
+                        </Link>
+                      </SidebarMenuButton>
+                      <SidebarMenu className="ml-3 mt-1 space-y-1">
+                        {module.links.map((link) => (
+                          <SidebarMenuItem key={`${module.id}-${link.path}`}>
+                            <SidebarMenuButton asChild isActive={location === link.path}>
+                              <Link href={link.path}>{link.title}</Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
             <SidebarGroup>
               <SidebarGroupLabel>Journey</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -294,11 +337,11 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                       },
                       {
                         title: "Forms Builder",
-                        url: "/forms-builder",
+                        url: ROUTES.FORMS_BUILDER,
                       },
                       {
                         title: "Forms Runner",
-                        url: "/forms-runner",
+                        url: ROUTES.FORMS_RUNNER,
                       },
                       {
                         title: "Forms Hub",
@@ -306,23 +349,23 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                       },
                       {
                         title: "Reports",
-                        url: "/reports",
+                        url: ROUTES.REPORTS,
                       },
                       {
                         title: "Defects",
-                        url: "/defects",
+                        url: ROUTES.DEFECTS,
                       },
                       {
                         title: "Smoke Control Library",
-                        url: "/smoke-control-library",
+                        url: ROUTES.SMOKE_CONTROL_LIBRARY,
                       },
                       {
                         title: "Schedule",
-                        url: "/schedule",
+                        url: ROUTES.SCHEDULE,
                       },
                       {
                         title: "Finance",
-                        url: "/finance",
+                        url: ROUTES.FINANCE,
                       },
                     ].map((item) => (
                       <SidebarMenuItem key={item.url}>
@@ -444,6 +487,33 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 {devStatus?.limitedMode && (
                   <span className="font-semibold">Some actions are stubbed while the database is unavailable.</span>
                 )}
+              </div>
+            )}
+            {showReviewSection && !moduleBannerDismissed && (
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 border-b bg-primary/5 px-4 py-3 text-xs sm:text-sm"
+                data-testid="module-review-banner"
+              >
+                <div className="space-y-1 max-w-4xl">
+                  <div className="font-semibold text-sm">
+                    Module: {MODULE_NAV[MODULES.LIFE_SAFETY]?.label ?? "Life Safety Ops"}
+                  </div>
+                  <p className="text-muted-foreground leading-snug">
+                    {MODULE_NAV[MODULES.LIFE_SAFETY]?.tagline}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setModuleBannerDismissed(true);
+                    if (typeof localStorage !== "undefined") {
+                      localStorage.setItem("module-banner-dismissed", "true");
+                    }
+                  }}
+                >
+                  Dismiss
+                </Button>
               </div>
             )}
             {children}

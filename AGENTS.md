@@ -50,3 +50,8 @@
 - No console errors.
 - Basic happy-path manually verified.
 - Notes added to `CHANGELOG.md`.
+
+## Modules
+- Current module: **Life Safety Ops** (`life-safety`).
+- Positioning: "Life Safety Ops is a standards-led operations module that turns site assets and calibrated test readings into compliant smoke-control forms, defects, and signed reports—fast, repeatably, and audit-ready."
+- Sidebar "Modules" section links to the Life Safety Ops entry and its core pages (dashboard, forms, smoke control library, reports, defects, schedule, finance). In dev review mode, an inline banner reiterates the module tagline for clarity.
