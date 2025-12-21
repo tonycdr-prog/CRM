@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useModules } from "@/hooks/use-modules";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -115,6 +116,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     | null
   >(null);
   const [moduleBannerDismissed, setModuleBannerDismissed] = useState(false);
+  const { modules: enabledModules } = useModules();
   const hasNotifiedNoDb = useRef(false);
   const devReviewModeEnv =
     (import.meta.env as any).DEV_REVIEW_MODE ??
@@ -139,6 +141,17 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   };
+
+  const bannerModule = enabledModules[0];
+  const moduleNavEntries =
+    enabledModules.length > 0
+      ? enabledModules.map((module) => ({
+          id: module.id,
+          label: module.label,
+          tagline: module.tagline,
+          links: MODULE_NAV[module.id]?.links ?? module.routes,
+        }))
+      : getModulesList();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -244,7 +257,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               <SidebarGroupLabel>Modules</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
-                  {getModulesList().map((module) => (
+                  {moduleNavEntries.map((module) => (
                     <SidebarMenuItem key={module.id}>
                       <SidebarMenuButton
                         asChild
@@ -496,10 +509,10 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               >
                 <div className="space-y-1 max-w-4xl">
                   <div className="font-semibold text-sm">
-                    Module: {MODULE_NAV[MODULES.LIFE_SAFETY]?.label ?? "Life Safety Ops"}
+                    Module: {bannerModule?.label ?? MODULE_NAV[MODULES.LIFE_SAFETY]?.label ?? "Life Safety Ops"}
                   </div>
                   <p className="text-muted-foreground leading-snug">
-                    {MODULE_NAV[MODULES.LIFE_SAFETY]?.tagline}
+                    {bannerModule?.tagline ?? MODULE_NAV[MODULES.LIFE_SAFETY]?.tagline}
                   </p>
                 </div>
                 <Button

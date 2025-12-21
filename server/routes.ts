@@ -28,6 +28,7 @@ import { createFormsRouter, createMetersRouter } from "./formsRoutes";
 import { createSmokeControlRouter } from "./smokeControlRoutes";
 import { createReportingRouter } from "./reportingRoutes";
 import { buildScheduleRouter } from "./scheduleRoutes";
+import { getEnabledModuleIds } from "./lib/modules";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -279,18 +280,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   const devBypass = isDevAuthBypassEnabled();
+  const isDev = process.env.NODE_ENV === "development";
   const devReviewMode =
     process.env.DEV_REVIEW_MODE?.toLowerCase() === "true" ||
     process.env.VITE_DEV_REVIEW_MODE?.toLowerCase() === "true";
   const limitedMode = devBypass && !isDatabaseAvailable;
+  const enabledModuleIds = getEnabledModuleIds(isDev);
 
   app.get("/api/dev/status", (_req, res) => {
     res.json({
-      isDev: process.env.NODE_ENV === "development",
+      isDev,
       devAuthBypass: devBypass,
       devReviewMode,
       hasDbConnection: isDatabaseAvailable,
       limitedMode,
+      modules: enabledModuleIds.map((id) => ({ id, enabled: true })),
     });
   });
 
