@@ -28,6 +28,7 @@
 - DB generate: `DATABASE_URL=<postgres-url> npm run db:generate`
 - DB migrate/push: `DATABASE_URL=<postgres-url> npm run db:push`
 - DB seed: `DATABASE_URL=<postgres-url> SESSION_SECRET=<secret> REPL_ID=<repl-id> ISSUER_URL=<issuer> npm run db:seed`
+- Install deps: `npm install` (registry pinned via `.npmrc` to npmjs; may fail in restricted networks)
 
 ### Preview (Replit/local dev)
 - Set `NODE_ENV=development DEV_AUTH_BYPASS=true DEV_REVIEW_MODE=true SESSION_SECRET=dev`
