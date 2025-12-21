@@ -7,21 +7,31 @@ export const MODULES = {
   COMPLIANCE: "compliance",
   FORMS_ENGINE: "forms-engine",
 } as const;
+export type ModuleKey = typeof MODULES[keyof typeof MODULES];
+
+export type WidgetKey = string;
+
+export type SidebarSectionKey = string;
 
 export type ModuleId = typeof MODULES[keyof typeof MODULES];
 
 export interface ModuleDefinition {
+  key: ModuleKey;
   id: ModuleId;
   label: string;
   description: string;
   tagline: string;
   enabledByDefault?: boolean;
   routes: { title: string; path: string }[];
-  widgets?: string[];
+  widgets?: WidgetKey[];
+  ownsRoutes: string[];
+  ownsWidgets: WidgetKey[];
+  ownsSidebarSections: SidebarSectionKey[];
 }
 
 export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
   [MODULES.LIFE_SAFETY]: {
+    key: MODULES.LIFE_SAFETY,
     id: MODULES.LIFE_SAFETY,
     label: "Life Safety Ops",
     description:
@@ -48,8 +58,29 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       "finance",
       "schedule",
     ],
+    ownsRoutes: [
+      "/dashboard",
+      "/hub/forms",
+      "/forms/builder",
+      "/forms/runner",
+      "/admin/smoke-control",
+      "/reports",
+      "/defects",
+      "/schedule",
+      "/finance",
+    ],
+    ownsWidgets: [
+      "dashboard",
+      "reports",
+      "defects",
+      "forms",
+      "finance",
+      "schedule",
+    ],
+    ownsSidebarSections: [],
   },
   [MODULES.SCHEDULING]: {
+    key: MODULES.SCHEDULING,
     id: MODULES.SCHEDULING,
     label: "Advanced Scheduling",
     description: "Multi-engineer drag/drop dispatching and conflict visibility.",
@@ -60,8 +91,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Dashboard", path: "/dashboard" },
     ],
     widgets: ["schedule"],
+    ownsRoutes: ["/schedule", "/dashboard"],
+    ownsWidgets: ["schedule"],
+    ownsSidebarSections: [],
   },
   [MODULES.FINANCE]: {
+    key: MODULES.FINANCE,
     id: MODULES.FINANCE,
     label: "Finance Ops",
     description: "Quotes, invoices, and profitability insights tied to operational workflows.",
@@ -72,8 +107,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Reports", path: "/reports" },
     ],
     widgets: ["finance", "reports"],
+    ownsRoutes: ["/finance", "/reports"],
+    ownsWidgets: ["finance", "reports"],
+    ownsSidebarSections: [],
   },
   [MODULES.REPORTING]: {
+    key: MODULES.REPORTING,
     id: MODULES.REPORTING,
     label: "Reporting",
     description: "Operational and client-facing outputs across modules.",
@@ -84,8 +123,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Dashboard", path: "/dashboard" },
     ],
     widgets: ["reports"],
+    ownsRoutes: ["/reports", "/dashboard"],
+    ownsWidgets: ["reports"],
+    ownsSidebarSections: [],
   },
   [MODULES.ASSET_MANAGEMENT]: {
+    key: MODULES.ASSET_MANAGEMENT,
     id: MODULES.ASSET_MANAGEMENT,
     label: "Asset Management",
     description: "Track sites, assets, and maintenance context for jobs and forms.",
@@ -96,8 +139,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Site Assets", path: "/site-assets" },
     ],
     widgets: ["assets"],
+    ownsRoutes: ["/sites", "/site-assets"],
+    ownsWidgets: ["assets"],
+    ownsSidebarSections: [],
   },
   [MODULES.COMPLIANCE]: {
+    key: MODULES.COMPLIANCE,
     id: MODULES.COMPLIANCE,
     label: "Compliance & Certifications",
     description: "Maintain certifications, golden thread, and safety documentation.",
@@ -108,8 +155,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Golden Thread", path: "/golden-thread" },
     ],
     widgets: ["compliance"],
+    ownsRoutes: ["/certifications", "/golden-thread"],
+    ownsWidgets: ["compliance"],
+    ownsSidebarSections: [],
   },
   [MODULES.FORMS_ENGINE]: {
+    key: MODULES.FORMS_ENGINE,
     id: MODULES.FORMS_ENGINE,
     label: "Forms Engine",
     description: "Versioned templates, runner, and smoke-control library.",
@@ -122,6 +173,14 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Smoke Control Library", path: "/admin/smoke-control" },
     ],
     widgets: ["forms"],
+    ownsRoutes: [
+      "/hub/forms",
+      "/forms/builder",
+      "/forms/runner",
+      "/admin/smoke-control",
+    ],
+    ownsWidgets: ["forms"],
+    ownsSidebarSections: [],
   },
 };
 
