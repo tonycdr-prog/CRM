@@ -36,6 +36,24 @@ const MODULE_LINKS: Partial<Record<ModuleId, { title: string; path: string }[]>>
     { title: "Finance", path: ROUTES.FINANCE },
     { title: "Reports", path: ROUTES.REPORTS },
   ],
+  [MODULES.REPORTING]: [
+    { title: "Reports", path: ROUTES.REPORTS },
+    { title: "Dashboard", path: ROUTES.DASHBOARD },
+  ],
+  [MODULES.ASSET_MANAGEMENT]: [
+    { title: "Sites", path: ROUTES.SITES },
+    { title: "Site Assets", path: ROUTES.SITE_ASSETS },
+  ],
+  [MODULES.COMPLIANCE]: [
+    { title: "Certifications", path: ROUTES.CERTIFICATIONS },
+    { title: "Golden Thread", path: ROUTES.GOLDEN_THREAD },
+  ],
+  [MODULES.FORMS_ENGINE]: [
+    { title: "Forms Hub", path: ROUTES.HUB_FORMS },
+    { title: "Forms Builder", path: ROUTES.FORMS_BUILDER },
+    { title: "Forms Runner", path: ROUTES.FORMS_RUNNER },
+    { title: "Smoke Control Library", path: ROUTES.SMOKE_CONTROL_LIBRARY },
+  ],
 };
 
 export const MODULE_NAV: Record<string, ModuleNavEntry> = Object.fromEntries(

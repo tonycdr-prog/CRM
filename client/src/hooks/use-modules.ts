@@ -19,11 +19,11 @@ export function useModules(): { modules: ModuleDefinition[]; loading: boolean } 
         }
         const enabledIds = data.modules.filter((m) => m.enabled).map((m) => m.id);
         if (enabledIds.length === 0) {
-          setModules(getModuleList());
-        } else {
-          const enabledSet = new Set(enabledIds);
-          setModules(getModuleList().filter((module) => enabledSet.has(module.id)));
+          setModules([]);
+          return;
         }
+        const enabledSet = new Set(enabledIds);
+        setModules(getModuleList().filter((module) => enabledSet.has(module.id)));
       })
       .catch(() => setModules(getModuleList()))
       .finally(() => setLoading(false));

@@ -46,4 +46,8 @@ test("module list exposes new definitions", () => {
   const list = getModuleList();
   assert.ok(list.find((m) => m.id === MODULES.SCHEDULING));
   assert.ok(list.find((m) => m.id === MODULES.FINANCE));
+  assert.ok(list.find((m) => m.id === MODULES.REPORTING));
+  assert.ok(list.find((m) => m.id === MODULES.ASSET_MANAGEMENT));
+  assert.ok(list.find((m) => m.id === MODULES.COMPLIANCE));
+  assert.ok(list.find((m) => m.id === MODULES.FORMS_ENGINE));
 });

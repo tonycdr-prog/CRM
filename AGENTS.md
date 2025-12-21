@@ -53,7 +53,7 @@
 
 ## Modules
 - Current module: **Life Safety Ops** (`life-safety`).
-- Additional module keys are scaffolded for scheduling (`scheduling`) and finance (`finance`).
+- Additional module keys are scaffolded for scheduling (`scheduling`), finance (`finance`), reporting (`reporting`), asset management (`asset-management`), compliance/certifications (`compliance`), and forms engine (`forms-engine`).
 - Positioning: "Life Safety Ops is a standards-led operations module that turns site assets and calibrated test readings into compliant smoke-control forms, defects, and signed reports—fast, repeatably, and audit-ready."
-- Toggle modules via env flags (dev-only defaults on): `ENABLE_MODULE_LIFE_SAFETY_OPS`, `ENABLE_MODULE_SCHEDULING`, `ENABLE_MODULE_FINANCE`.
+- Toggle modules via env flags (dev-only defaults on): `ENABLE_MODULE_LIFE_SAFETY_OPS`, `ENABLE_MODULE_SCHEDULING`, `ENABLE_MODULE_FINANCE`, `ENABLE_MODULE_REPORTING`, `ENABLE_MODULE_ASSET_MANAGEMENT`, `ENABLE_MODULE_COMPLIANCE`, `ENABLE_MODULE_FORMS_ENGINE`.
 - Sidebar "Modules" section links to the Life Safety Ops entry and its core pages (dashboard, forms, smoke control library, reports, defects, schedule, finance). In dev review mode, an inline banner reiterates the module tagline for clarity.
