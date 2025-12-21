@@ -1925,6 +1925,34 @@ export const insertRecurringScheduleSchema = createInsertSchema(recurringSchedul
 export type InsertRecurringSchedule = z.infer<typeof insertRecurringScheduleSchema>;
 export type DbRecurringSchedule = typeof recurringSchedules.$inferSelect;
 
+// Schedule assignments (jobs → engineers, persisted scheduling rows)
+export const scheduleAssignments = pgTable(
+  "schedule_assignments",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organizationId: varchar("organization_id").notNull(),
+    jobId: varchar("job_id").notNull(),
+    engineerUserId: text("engineer_user_id").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    requiredEngineers: integer("required_engineers").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("idx_schedule_assignments_org_time").on(t.organizationId, t.startsAt, t.endsAt),
+    index("idx_schedule_assignments_engineer_time").on(t.engineerUserId, t.startsAt, t.endsAt),
+  ],
+);
+
+export const insertScheduleAssignmentSchema = createInsertSchema(scheduleAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertScheduleAssignment = z.infer<typeof insertScheduleAssignmentSchema>;
+export type DbScheduleAssignment = typeof scheduleAssignments.$inferSelect;
+
 // Risk assessments / RAMS templates
 export const riskAssessments = pgTable("risk_assessments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
