@@ -51,3 +51,12 @@ test("module list exposes new definitions", () => {
   assert.ok(list.find((m) => m.id === MODULES.COMPLIANCE));
   assert.ok(list.find((m) => m.id === MODULES.FORMS_ENGINE));
 });
+
+test("module definitions include ownership metadata", () => {
+  const lifeSafety = getModuleList().find((m) => m.id === MODULES.LIFE_SAFETY);
+  assert.ok(lifeSafety, "Life Safety Ops module should exist");
+  assert.strictEqual(lifeSafety?.key, MODULES.LIFE_SAFETY);
+  assert.ok(lifeSafety?.ownsRoutes.length);
+  assert.ok(Array.isArray(lifeSafety?.ownsWidgets));
+  assert.ok(Array.isArray(lifeSafety?.ownsSidebarSections));
+});
