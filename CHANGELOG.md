@@ -33,3 +33,4 @@
 - Added a module registry with env-driven enablement, dev status surfacing, and client hooks so modules can be toggled without impacting CRM core routes.
 - Expanded module placeholders (reporting, asset management, compliance, forms engine) and added module gating with a friendly disabled state.
 - Declared @dnd-kit dependencies to support dashboard and scheduling drag-and-drop interactions.
+- Pinned npm installs to the public registry via `.npmrc` for consistent dependency resolution in dev environments.
