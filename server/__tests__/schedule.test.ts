@@ -3,6 +3,7 @@ import test from "node:test";
 import express from "express";
 import { buildScheduleRouter } from "../scheduleRoutes";
 import { getScheduleState } from "../lib/scheduleAssignments";
+import { insertScheduleAssignmentSchema } from "@shared/schema";
 
 const listen = (app: express.Express) => {
   return new Promise<ReturnType<typeof app.listen>>((resolve) => {
@@ -77,4 +78,22 @@ test("duplicate creates new assignment and conflicts are detected", async (t) =>
 
   const conflicts = dupBody.conflicts as any[];
   assert.ok(conflicts.length > 0, "conflict should be reported for overlapping duplicates");
+});
+
+test("schedule assignment insert schema validates required fields", () => {
+  const now = new Date();
+  const payload = {
+    organizationId: "org-1",
+    jobId: "job-1",
+    engineerUserId: "eng-1",
+    startsAt: now,
+    endsAt: new Date(now.getTime() + 60 * 60 * 1000),
+  };
+
+  assert.doesNotThrow(() => insertScheduleAssignmentSchema.parse(payload));
+
+  assert.throws(
+    () => insertScheduleAssignmentSchema.parse({ ...payload, jobId: undefined }),
+    /jobId/,
+  );
 });
