@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
@@ -146,6 +147,53 @@ export default function SchedulePage() {
 
   const columnHeight = 720; // px
 
+  const showOverrideToast = React.useCallback(
+    (
+      message: string,
+      endpoint: string,
+      method: "POST" | "PATCH",
+      payload: Record<string, unknown>
+    ) => {
+      let dismissToast: (() => void) | undefined;
+      const action = (
+        <ToastAction
+          altText="Override & place anyway"
+          onClick={async () => {
+            try {
+              const res = await apiRequest(
+                method,
+                `${endpoint}${endpoint.includes("?") ? "&" : "?"}allowConflict=true`,
+                payload
+              );
+              if (!res.ok) {
+                throw new Error(await res.text());
+              }
+              dismissToast?.();
+              await qc.invalidateQueries({ queryKey: ["schedule-assignments", day.toISOString()] });
+              showToast({ title: "Placed with override", description: "Saved despite conflict." });
+            } catch (err: any) {
+              showToast({
+                title: "Override failed",
+                description: err?.message ?? "Unknown error",
+                variant: "destructive",
+              });
+            }
+          }}
+        >
+          Override & place anyway
+        </ToastAction>
+      );
+
+      const toastHandle = showToast({
+        title: message,
+        description: "Engineer already has an overlapping job.",
+        action,
+      });
+      dismissToast = toastHandle.dismiss;
+    },
+    [day, qc, showToast]
+  );
+
   const handleDrop = async (engineerId: string, minutesFromTop: number, assignmentId: string, shiftHeld: boolean) => {
     const current = assignments.find((a) => a.id === assignmentId);
     if (!current) return;
@@ -170,11 +218,18 @@ export default function SchedulePage() {
           requiredEngineers: current.requiredEngineers ?? 1,
         });
         if (createRes.status === 409) {
-          const conflict = (await createRes.json()) as ScheduleConflict & { message?: string };
-          showToast({
-            title: conflict.message || "Conflict detected",
-            description: "Engineer already has an overlapping job. Retry with override if needed.",
-          });
+          showOverrideToast(
+            "Conflict detected",
+            `/api/schedule/assignments`,
+            "POST",
+            {
+              jobId: current.jobId,
+              engineerUserId: engineerId,
+              startsAt: clampedStart.toISOString(),
+              endsAt: nextEnd.toISOString(),
+              requiredEngineers: current.requiredEngineers ?? 1,
+            }
+          );
           return;
         }
         if (createRes.status === 401 || createRes.status === 403) {
@@ -193,10 +248,16 @@ export default function SchedulePage() {
           endsAt: nextEnd.toISOString(),
         });
         if (patchRes.status === 409) {
-          showToast({
-            title: "Conflict detected",
-            description: "Engineer already has an overlapping job. Hold Shift to duplicate elsewhere or override.",
-          });
+          showOverrideToast(
+            "Conflict detected",
+            `/api/schedule/assignments/${assignmentId}`,
+            "PATCH",
+            {
+              engineerUserId: engineerId,
+              startsAt: clampedStart.toISOString(),
+              endsAt: nextEnd.toISOString(),
+            }
+          );
           return;
         }
         if (patchRes.status === 401 || patchRes.status === 403) {
