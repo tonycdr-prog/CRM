@@ -21,6 +21,8 @@ import {
   ScheduleJob,
   UpdateScheduleAssignmentSchema,
   ScheduleJobSlot,
+  listScheduleConflicts,
+  type ScheduleConflictDetail,
 } from "@shared/schedule";
 import { db, isDatabaseAvailable } from "./db";
 import { scheduleAssignments } from "@shared/schema";
@@ -123,6 +125,10 @@ function buildWarnings(assignments: ScheduleAssignment[], candidate: ScheduleAss
   ];
 }
 
+function computeConflicts(assignments: ScheduleAssignment[]): ScheduleConflictDetail[] {
+  return listScheduleConflicts(assignments);
+}
+
 async function maybeSeedScheduleDemo(organizationId: string) {
   if (!isDevAuthBypassEnabled() || process.env.SEED_DEMO?.toLowerCase() !== "true") return;
   const existing = await db
@@ -186,8 +192,9 @@ function buildDbRouter(): Router {
         );
 
       const assignments = rows.map(mapDbRow);
-      const { jobs, conflicts } = aggregateJobs(assignments);
-      res.json({ jobs, conflicts, warnings: [], assignments });
+      const { jobs } = aggregateJobs(assignments);
+      const detailedConflicts = computeConflicts(assignments);
+      res.json({ jobs, conflicts: detailedConflicts, warnings: [], assignments });
     }),
   );
 
@@ -210,40 +217,49 @@ function buildDbRouter(): Router {
       const existing = existingRows.map(mapDbRow);
 
       const engineerIds = parsed.data.engineerIds.length ? parsed.data.engineerIds : ["unassigned"];
-      const warnings: ScheduleWarning[] = [];
-      const createdAssignments: ScheduleAssignment[] = [];
+      const candidates: ScheduleAssignment[] = engineerIds.map((engId) => ({
+        id: nanoid(),
+        jobId: parsed.data.jobId,
+        engineerUserId: engId,
+        engineerId: engId,
+        startsAt: startAt.toISOString(),
+        endsAt: endAt.toISOString(),
+        start: startAt.toISOString(),
+        end: endAt.toISOString(),
+        requiredEngineers: 1,
+        jobTitle: parsed.data.title,
+      })) as ScheduleAssignment[];
 
-      for (const engId of engineerIds) {
-        const candidate: ScheduleAssignment = {
-          id: nanoid(),
-          jobId: parsed.data.jobId,
-          engineerUserId: engId,
-          engineerId: engId,
-          startsAt: startAt.toISOString(),
-          endsAt: endAt.toISOString(),
-          start: startAt.toISOString(),
-          end: endAt.toISOString(),
-          requiredEngineers: 1,
-          jobTitle: parsed.data.title,
-        } as ScheduleAssignment;
-        warnings.push(...buildWarnings(existing, candidate));
+      const combined = [...existing, ...candidates];
+      const conflictDetails = computeConflicts(combined).filter((c) => candidates.some((cand) => cand.id === c.itemId));
+
+      if (conflictDetails.length && req.query.allowConflict !== "true") {
+        return res.status(409).json({ message: "Scheduling conflict", conflicts: conflictDetails });
+      }
+
+      const createdAssignments: ScheduleAssignment[] = [];
+      for (const candidate of candidates) {
         const [inserted] = await db
           .insert(scheduleAssignments)
           .values({
+            id: candidate.id,
             organizationId,
-            jobId: parsed.data.jobId,
-            engineerUserId: engId,
-            startsAt: startAt,
-            endsAt: endAt,
-            requiredEngineers: 1,
+            jobId: candidate.jobId,
+            engineerUserId: candidate.engineerUserId ?? "unassigned",
+            startsAt: new Date(candidate.startsAt),
+            endsAt: new Date(candidate.endsAt),
+            requiredEngineers: candidate.requiredEngineers ?? 1,
           })
           .returning();
         createdAssignments.push(mapDbRow(inserted));
       }
 
       const assignments = [...existing, ...createdAssignments];
-      const { jobs, conflicts } = aggregateJobs(assignments);
-      res.status(201).json({ jobs, conflicts, warnings, assignments });
+      const { jobs } = aggregateJobs(assignments);
+      const detailedConflicts = computeConflicts(assignments).filter((c) =>
+        createdAssignments.some((a) => a.id === c.itemId),
+      );
+      res.status(201).json({ jobs, conflicts: detailedConflicts, warnings: [], assignments });
     }),
   );
 
@@ -255,18 +271,43 @@ function buildDbRouter(): Router {
       const parsed = ScheduleUpsertSchema.partial().required({ startAt: true, endAt: true }).safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
 
-      const existing = await db
+      const existingRow = await db
         .select()
         .from(scheduleAssignments)
         .where(and(eq(scheduleAssignments.organizationId, organizationId), eq(scheduleAssignments.id, req.params.id)))
         .then((r) => r[0]);
-      if (!existing) return res.status(404).json({ message: "Not found" });
+      if (!existingRow) return res.status(404).json({ message: "Not found" });
+      const existing = mapDbRow(existingRow);
 
       const startAt = new Date(parsed.data.startAt);
       const endAt = new Date(parsed.data.endAt);
       if (!(startAt < endAt)) return res.status(400).json({ message: "startAt must be before endAt" });
 
       const nextEngineerId = parsed.data.engineerIds?.[0] ?? parsed.data.engineerId;
+
+      const allRows = await db
+        .select()
+        .from(scheduleAssignments)
+        .where(eq(scheduleAssignments.organizationId, organizationId));
+      const mapped = allRows.map(mapDbRow);
+
+      const updatedAssignment: ScheduleAssignment = {
+        ...existing,
+        startsAt: startAt.toISOString(),
+        endsAt: endAt.toISOString(),
+        start: startAt.toISOString(),
+        end: endAt.toISOString(),
+        engineerUserId: nextEngineerId ?? existing.engineerUserId,
+        engineerId: nextEngineerId ?? existing.engineerId,
+      } as ScheduleAssignment;
+
+      const others = mapped.filter((a) => a.id !== req.params.id);
+      const conflictDetails = computeConflicts([...others, updatedAssignment]).filter((c) => c.itemId === updatedAssignment.id);
+
+      if (conflictDetails.length && req.query.allowConflict !== "true") {
+        return res.status(409).json({ message: "Scheduling conflict", conflicts: conflictDetails });
+      }
+
       await db
         .update(scheduleAssignments)
         .set({
@@ -277,15 +318,14 @@ function buildDbRouter(): Router {
         })
         .where(and(eq(scheduleAssignments.organizationId, organizationId), eq(scheduleAssignments.id, req.params.id)));
 
-      const allRows = await db
+      const refreshedRows = await db
         .select()
         .from(scheduleAssignments)
         .where(eq(scheduleAssignments.organizationId, organizationId));
-      const mapped = allRows.map(mapDbRow);
-      const updatedAssignment = mapped.find((a) => a.id === req.params.id)!;
-      const warnings = buildWarnings(mapped, updatedAssignment, req.params.id);
-      const { jobs, conflicts } = aggregateJobs(mapped);
-      res.json({ jobs, conflicts, warnings, assignments: mapped });
+      const refreshed = refreshedRows.map(mapDbRow);
+      const detailedConflicts = computeConflicts(refreshed);
+      const { jobs } = aggregateJobs(refreshed);
+      res.json({ jobs, conflicts: detailedConflicts, warnings: buildWarnings(refreshed, updatedAssignment, req.params.id), assignments: refreshed });
     }),
   );
 
@@ -329,18 +369,19 @@ function buildDbRouter(): Router {
         updatedAt: (r.updatedAt as Date | undefined)?.toISOString(),
       }));
 
-      const { jobs, conflicts } = aggregateJobs(assignments);
+        const { jobs } = aggregateJobs(assignments);
+        const conflicts = computeConflicts(assignments);
 
-      res.json({
-        jobs: jobs.map((j) => ({
-          ...j,
-          startAt: new Date(j.startAt).toISOString(),
-          endAt: new Date(j.endAt).toISOString(),
-        })),
-        conflicts,
-      });
-    }),
-  );
+        res.json({
+          jobs: jobs.map((j) => ({
+            ...j,
+            startAt: new Date(j.startAt).toISOString(),
+            endAt: new Date(j.endAt).toISOString(),
+          })),
+          conflicts,
+        });
+      }),
+    );
 
   router.post(
     "/move-job",
@@ -481,6 +522,8 @@ function buildDbRouter(): Router {
       const endsAt = new Date(parsed.data.endsAt ?? parsed.data.end ?? "");
       if (!(startsAt < endsAt)) return res.status(400).json({ message: "startsAt must be before endsAt" });
 
+      const candidateId = nanoid();
+
       const overlapping = await db
         .select({
           id: scheduleAssignments.id,
@@ -498,17 +541,17 @@ function buildDbRouter(): Router {
         );
 
       if (overlapping.length > 0 && req.query.allowConflict !== "true") {
+        const conflicts: ScheduleConflictDetail[] = overlapping.map((o) => ({
+          engineerId: engineerUserId,
+          itemId: candidateId,
+          itemJobId: parsed.data.jobId,
+          overlapsWithId: o.id,
+          overlapsWithJobId: o.jobId,
+          overlapRange: { start: toISO(startsAt), end: toISO(endsAt) },
+        }));
         return res.status(409).json({
           message: "Scheduling conflict",
-          engineerUserId,
-          startsAt: parsed.data.startsAt ?? parsed.data.start,
-          endsAt: parsed.data.endsAt ?? parsed.data.end,
-          overlapping: overlapping.map((o) => ({
-            id: o.id,
-            jobId: o.jobId,
-            startsAt: toISO(o.startsAt as any),
-            endsAt: toISO(o.endsAt as any),
-          })),
+          conflicts,
         });
       }
 
@@ -521,6 +564,7 @@ function buildDbRouter(): Router {
           startsAt,
           endsAt,
           requiredEngineers: parsed.data.requiredEngineers ?? 1,
+          id: candidateId,
         })
         .returning();
 
@@ -574,18 +618,15 @@ function buildDbRouter(): Router {
         );
 
       if (overlapping.length > 0 && req.query.allowConflict !== "true") {
-        return res.status(409).json({
-          message: "Scheduling conflict",
-          engineerUserId,
-          startsAt: toISO(startsAt),
-          endsAt: toISO(endsAt),
-          overlapping: overlapping.map((o) => ({
-            id: o.id,
-            jobId: o.jobId,
-            startsAt: toISO(o.startsAt as any),
-            endsAt: toISO(o.endsAt as any),
-          })),
-        });
+        const conflicts: ScheduleConflictDetail[] = overlapping.map((o) => ({
+          engineerId: engineerUserId,
+          itemId: parsed.data.id,
+          itemJobId: existing.jobId,
+          overlapsWithId: o.id,
+          overlapsWithJobId: o.jobId,
+          overlapRange: { start: toISO(startsAt), end: toISO(endsAt) },
+        }));
+        return res.status(409).json({ message: "Scheduling conflict", conflicts });
       }
 
       const [updated] = await db
@@ -610,50 +651,31 @@ function buildDbRouter(): Router {
     }),
   );
 
-  router.post(
-    "/conflicts",
-    ensureOrg,
-    asyncHandler(async (req, res) => {
-      const { organizationId } = req as any;
-      const engineerUserId = String(req.body.engineerUserId || req.body.engineerId || "");
-      const startsAt = new Date(String(req.body.startsAt || req.body.start || ""));
-      const endsAt = new Date(String(req.body.endsAt || req.body.end || ""));
-      const ignoreId = req.body.ignoreId ? String(req.body.ignoreId) : null;
+    router.get(
+      "/conflicts",
+      ensureOrg,
+      asyncHandler(async (req, res) => {
+        const { organizationId } = req as any;
+        const from = req.query.from ? new Date(String(req.query.from)) : new Date(Date.now() - 7 * 86400000);
+        const to = req.query.to ? new Date(String(req.query.to)) : new Date(Date.now() + 14 * 86400000);
+        const engineerFilter = req.query.engineerId ? String(req.query.engineerId) : null;
 
-      if (!engineerUserId || !(startsAt < endsAt)) {
-        return res.status(400).json({ message: "Invalid payload" });
-      }
+        const rows = await db
+          .select()
+          .from(scheduleAssignments)
+          .where(
+            and(
+              eq(scheduleAssignments.organizationId, organizationId),
+              sql`${scheduleAssignments.startsAt} < ${to} AND ${scheduleAssignments.endsAt} > ${from}`,
+              engineerFilter ? eq(scheduleAssignments.engineerUserId, engineerFilter) : sql`TRUE`,
+            ),
+          );
 
-      const rows = await db
-        .select({
-          id: scheduleAssignments.id,
-          jobId: scheduleAssignments.jobId,
-          startsAt: scheduleAssignments.startsAt,
-          endsAt: scheduleAssignments.endsAt,
-        })
-        .from(scheduleAssignments)
-        .where(
-          and(
-            eq(scheduleAssignments.organizationId, organizationId),
-            eq(scheduleAssignments.engineerUserId, engineerUserId),
-            ignoreId ? sql`${scheduleAssignments.id} <> ${ignoreId}` : sql`TRUE`,
-            overlapWhere(startsAt, endsAt),
-          ),
-        );
-
-      res.json({
-        engineerUserId,
-        startsAt: toISO(startsAt),
-        endsAt: toISO(endsAt),
-        overlapping: rows.map((r) => ({
-          id: r.id,
-          jobId: r.jobId,
-          startsAt: toISO(r.startsAt as any),
-          endsAt: toISO(r.endsAt as any),
-        })),
-      });
-    }),
-  );
+        const assignments = rows.map(mapDbRow);
+        const conflicts = computeConflicts(assignments);
+        res.json({ conflicts });
+      }),
+    );
 
   return router;
 }
@@ -684,26 +706,34 @@ function buildInMemoryRouter(): Router {
       const engineerIds = parsed.data.engineerIds.length ? parsed.data.engineerIds : ["unassigned"];
       const created: ScheduleAssignment[] = [];
       let warnings: ScheduleWarning[] = [];
+      const candidates: ScheduleAssignment[] = engineerIds.map((engId) => ({
+        id: nanoid(),
+        jobId: parsed.data.jobId,
+        engineerId: engId,
+        engineerUserId: engId,
+        startsAt: startAt.toISOString(),
+        endsAt: endAt.toISOString(),
+        start: startAt.toISOString(),
+        end: endAt.toISOString(),
+        requiredEngineers: 1,
+        jobTitle: parsed.data.title,
+      })) as ScheduleAssignment[];
 
-      engineerIds.forEach((engId) => {
-        const candidate: ScheduleAssignment = {
-          id: nanoid(),
-          jobId: parsed.data.jobId,
-          engineerId: engId,
-          engineerUserId: engId,
-          startsAt: startAt.toISOString(),
-          endsAt: endAt.toISOString(),
-          start: startAt.toISOString(),
-          end: endAt.toISOString(),
-          requiredEngineers: 1,
-          jobTitle: parsed.data.title,
-        } as ScheduleAssignment;
+      const conflictDetails = computeConflicts([...state.assignments, ...candidates]).filter((c) =>
+        candidates.some((cand) => cand.id === c.itemId),
+      );
+      if (conflictDetails.length && req.query.allowConflict !== "true") {
+        return res.status(409).json({ message: "Scheduling conflict", conflicts: conflictDetails });
+      }
+
+      candidates.forEach((candidate) => {
         warnings = warnings.concat(buildWarnings(state.assignments, candidate));
         created.push(createAssignment(candidate));
       });
 
       const { assignments } = getScheduleState();
-      const { jobs, conflicts } = aggregateJobs(assignments, state.jobs as any);
+      const { jobs } = aggregateJobs(assignments, state.jobs as any);
+      const conflicts = computeConflicts(assignments).filter((c) => created.some((a) => a.id === c.itemId));
       res.status(201).json({ jobs, conflicts, warnings, assignments });
     }),
   );
@@ -747,14 +777,23 @@ function buildInMemoryRouter(): Router {
     }),
   );
 
-  router.get(
-    "/jobs",
-    asyncHandler(async (_req, res) => {
-      const state = getScheduleState();
-      const { jobs, conflicts } = aggregateJobs(state.assignments, state.jobs as any);
-      res.json({ jobs, conflicts });
-    }),
-  );
+    router.get(
+      "/jobs",
+      asyncHandler(async (_req, res) => {
+        const state = getScheduleState();
+        const { jobs, conflicts } = aggregateJobs(state.assignments, state.jobs as any);
+        res.json({ jobs, conflicts });
+      }),
+    );
+
+    router.get(
+      "/conflicts",
+      asyncHandler(async (_req, res) => {
+        const state = getScheduleState();
+        const conflicts = computeConflicts(state.assignments);
+        res.json({ conflicts });
+      }),
+    );
 
   router.post(
     "/move-job",
@@ -889,27 +928,24 @@ function buildInMemoryRouter(): Router {
       if (!updated) {
         return res.status(404).json({ message: "Assignment not found" });
       }
-      const overlaps = getScheduleState().assignments.filter(
-        (a) => a.id !== updated.id && assignmentsOverlap(a, updated),
-      );
-      if (overlaps.length && req.query.allowConflict !== "true") {
-        return res.status(409).json({
-          message: "Scheduling conflict",
-          engineerUserId: updated.engineerUserId ?? updated.engineerId,
-          startsAt: updated.startsAt ?? updated.start,
-          endsAt: updated.endsAt ?? updated.end,
-          overlapping: overlaps.map((o) => ({
-            id: o.id,
-            jobId: o.jobId,
-            startsAt: o.startsAt ?? o.start,
-            endsAt: o.endsAt ?? o.end,
-          })),
-        });
-      }
-      const conflicts = findConflicts(getScheduleState().assignments);
-      res.json({ assignment: updated, conflicts });
-    }),
-  );
+        const overlaps = getScheduleState().assignments.filter(
+          (a) => a.id !== updated.id && assignmentsOverlap(a, updated),
+        );
+        if (overlaps.length && req.query.allowConflict !== "true") {
+          const conflicts: ScheduleConflictDetail[] = overlaps.map((o) => ({
+            engineerId: updated.engineerUserId ?? updated.engineerId ?? "",
+            itemId: updated.id,
+            itemJobId: updated.jobId ?? "",
+            overlapsWithId: o.id,
+            overlapsWithJobId: o.jobId,
+            overlapRange: { start: updated.startsAt ?? updated.start, end: updated.endsAt ?? updated.end },
+          }));
+          return res.status(409).json({ message: "Scheduling conflict", conflicts });
+        }
+        const conflicts = findConflicts(getScheduleState().assignments);
+        res.json({ assignment: updated, conflicts });
+      }),
+    );
 
   router.post(
     "/assignments/:id/duplicate",

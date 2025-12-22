@@ -16,6 +16,12 @@ export async function updateAssignment(
 ): Promise<ScheduleRangeResponse> {
   const res = await apiRequest("PATCH", `/api/schedule/${assignmentId}`, payload);
   if (!res.ok) {
+    if (res.status === 409) {
+      const body = await res.json();
+      const err: any = new Error(body?.message || "Scheduling conflict");
+      err.conflicts = body?.conflicts;
+      throw err;
+    }
     const message = await res.text();
     throw new Error(message || "Failed to move job");
   }
@@ -31,6 +37,12 @@ export async function createScheduledJob(payload: {
 }): Promise<ScheduleRangeResponse> {
   const res = await apiRequest("POST", "/api/schedule", payload);
   if (!res.ok) {
+    if (res.status === 409) {
+      const body = await res.json();
+      const err: any = new Error(body?.message || "Scheduling conflict");
+      err.conflicts = body?.conflicts;
+      throw err;
+    }
     const message = await res.text();
     throw new Error(message || "Failed to duplicate job");
   }

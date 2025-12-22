@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { ScheduleAssignment, ScheduleJobConflict, ScheduleJobSlot } from "@shared/schedule";
+import type { ScheduleAssignment, ScheduleConflictDetail, ScheduleJobSlot } from "@shared/schedule";
 import { useScheduleRange } from "@/modules/scheduling";
 
 const SNAP_MINUTES = 15;
@@ -68,6 +68,7 @@ export default function SchedulePage() {
   const [view, setView] = React.useState<"calendar" | "gantt">("calendar");
   const snapshotRef = React.useRef<ScheduleAssignment[] | null>(null);
   const [draftAssignments, setDraftAssignments] = React.useState<ScheduleAssignment[] | null>(null);
+  const [showConflicts, setShowConflicts] = React.useState(false);
 
   const fromISO = new Date(day);
   const toISO = new Date(day);
@@ -108,13 +109,11 @@ export default function SchedulePage() {
   const assignments = draftAssignments ?? schedule.assignments;
   const conflicts = schedule.conflicts ?? [];
 
-  const conflictMap = React.useMemo(() => {
-    const map = new Map<string, ScheduleJobConflict>();
-    conflicts.forEach((c: ScheduleJobConflict) => {
-      map.set(`${c.jobId}:${c.engineerId}`, c);
-    });
-    return map;
+  React.useEffect(() => {
+    if (conflicts.length > 0) setShowConflicts(true);
   }, [conflicts]);
+
+  const conflictIds = React.useMemo(() => new Set(conflicts.map((c) => c.itemId)), [conflicts]);
 
   const engineers: Engineer[] = React.useMemo(() => {
     const seen = new Map<string, Engineer>();
@@ -142,7 +141,7 @@ export default function SchedulePage() {
     newStart: Date,
     shiftHeld: boolean,
   ) => {
-    const job = jobs.find((j) => j.id === assignment.jobId);
+    const job = jobs.find((j: ScheduleJobSlot) => j.id === assignment.jobId);
     const startValue = assignment.startsAt ?? assignment.start ?? newStart.toISOString();
     const endValue = assignment.endsAt ?? assignment.end ?? new Date(newStart.getTime() + 60 * 60 * 1000).toISOString();
     const durationMs = new Date(endValue).getTime() - new Date(startValue).getTime();
@@ -268,6 +267,11 @@ export default function SchedulePage() {
             Gantt
           </Button>
           <span className="hidden sm:inline">Drag to move • Shift+drag duplicates • Esc cancels</span>
+          {conflicts.length > 0 ? (
+            <Button size="sm" variant="destructive" onClick={() => setShowConflicts((v) => !v)}>
+              Conflicts ({conflicts.length})
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -282,7 +286,7 @@ export default function SchedulePage() {
                 day={day}
                 columnHeight={columnHeight}
                 activeJobId={activeAssignmentId}
-                conflicts={conflictMap}
+                conflictIds={conflictIds}
                 onDrop={(minutes, placement) => handleDrop(placement, minutes, eng.id)}
                 onDragStart={(id) => setActiveAssignmentId(id)}
                 onDragEnd={() => setActiveAssignmentId(null)}
@@ -294,13 +298,24 @@ export default function SchedulePage() {
         <GanttView jobs={jobs} assignments={placements} onMove={performMove} day={day} />
       )}
 
-      {conflicts.length > 0 && (
-        <Card className="p-3">
-          <div className="font-medium mb-2">Conflicts detected</div>
-          <div className="space-y-1 text-sm text-amber-700">
-            {conflicts.map((c: ScheduleJobConflict, idx: number) => (
-              <div key={`${c.jobId}-${idx}`}>
-                Engineer {c.engineerId} overlaps with jobs {c.overlappingJobIds.join(", ")}
+      {showConflicts && conflicts.length > 0 && (
+        <Card className="p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="font-medium">Conflicts detected</div>
+            <Button size="sm" variant="ghost" onClick={() => setShowConflicts(false)}>
+              Dismiss
+            </Button>
+          </div>
+          <div className="space-y-2 text-sm text-amber-700">
+            {conflicts.map((c: ScheduleConflictDetail, idx: number) => (
+              <div key={`${c.itemId}-${idx}`} className="flex flex-col gap-1">
+                <div>
+                  Engineer {c.engineerId} conflict between jobs {c.itemJobId} and {c.overlapsWithJobId}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(c.overlapRange.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –
+                  {new Date(c.overlapRange.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </div>
               </div>
             ))}
           </div>
@@ -320,13 +335,13 @@ type EngineerColumnProps = {
   day: Date;
   columnHeight: number;
   activeJobId: string | null;
-  conflicts: Map<string, ScheduleJobConflict>;
+  conflictIds: Set<string>;
   onDrop: (minutes: number, placement: Placement) => void;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
 };
 
-function EngineerColumn({ engineer, placements, day, columnHeight, activeJobId, conflicts, onDrop, onDragEnd, onDragStart }: EngineerColumnProps) {
+function EngineerColumn({ engineer, placements, day, columnHeight, activeJobId, conflictIds, onDrop, onDragEnd, onDragStart }: EngineerColumnProps) {
   const dayStart = startOfDay(day);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -374,8 +389,7 @@ function EngineerColumn({ engineer, placements, day, columnHeight, activeJobId, 
           const durMin = minutesBetween(s, e);
           const top = minutesToY(topMin, columnHeight);
           const height = minutesToY(durMin, columnHeight);
-          const conflictKey = `${placement.assignment.jobId}:${placement.engineerId}`;
-          const hasConflict = conflicts.has(conflictKey);
+          const hasConflict = conflictIds.has(placement.assignment.id);
 
           return (
             <DraggableAssignment

@@ -2,12 +2,14 @@ import { nanoid } from "nanoid";
 import {
   assignmentsOverlap,
   detectJobConflicts,
+  listScheduleConflicts,
   ScheduleAssignment,
   ScheduleEngineer,
   ScheduleJob,
   ScheduleJobConflict,
   ScheduleJobSlot,
   ScheduleState,
+  type ScheduleConflictDetail,
 } from "@shared/schedule";
 
 const demoEngineers: ScheduleEngineer[] = [
@@ -167,16 +169,8 @@ export function duplicateAssignment(sourceId: string, overrides?: Partial<Schedu
   return duplicate;
 }
 
-export function findConflicts(assignments: ScheduleAssignment[]): ScheduleAssignment[] {
-  const conflicts: ScheduleAssignment[] = [];
-  for (let i = 0; i < assignments.length; i++) {
-    for (let j = i + 1; j < assignments.length; j++) {
-      if (assignmentsOverlap(assignments[i], assignments[j])) {
-        conflicts.push(assignments[i], assignments[j]);
-      }
-    }
-  }
-  return Array.from(new Map(conflicts.map((c) => [c.id, c])).values());
+export function findConflicts(assignments: ScheduleAssignment[]): ScheduleConflictDetail[] {
+  return listScheduleConflicts(assignments);
 }
 
 export function jobsFromAssignments(assignments: ScheduleAssignment[], jobs: ScheduleJob[] = []): ScheduleJobSlot[] {
