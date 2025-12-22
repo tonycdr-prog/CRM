@@ -49,3 +49,4 @@
 - Added job-centric schedule endpoints (list/move/duplicate) with conflict warnings instead of hard failures plus in-memory/demo seeds for two engineers and three jobs, including an intentional overlap.
 - Rebuilt the schedule page to consume the new job model across calendar and gantt views with shift-duplicate, escape-to-cancel drag, pop-out widget support, and inline conflict badges.
 - Refactored scheduling into a dedicated module boundary with RESTful /api/schedule handlers, in-memory and DB demo seeds, shared client services/hooks, and updated conflict tests for warning-based responses.
+- Added assignment-level schedule responses (including assignments in range results), optimistic drag/drop with 15-minute snapping across calendar and gantt views, and regression tests for patch/create flows.

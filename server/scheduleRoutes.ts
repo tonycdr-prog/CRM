@@ -67,6 +67,7 @@ const ScheduleUpsertSchema = z.object({
   endAt: z.string(),
   engineerIds: z.array(z.string()).default([]),
   title: z.string().optional(),
+  engineerId: z.string().optional(),
 });
 
 type ScheduleWarning = {
@@ -186,7 +187,7 @@ function buildDbRouter(): Router {
 
       const assignments = rows.map(mapDbRow);
       const { jobs, conflicts } = aggregateJobs(assignments);
-      res.json({ jobs, conflicts, warnings: [] });
+      res.json({ jobs, conflicts, warnings: [], assignments });
     }),
   );
 
@@ -240,8 +241,9 @@ function buildDbRouter(): Router {
         createdAssignments.push(mapDbRow(inserted));
       }
 
-      const { jobs, conflicts } = aggregateJobs([...existing, ...createdAssignments]);
-      res.status(201).json({ jobs, conflicts, warnings });
+      const assignments = [...existing, ...createdAssignments];
+      const { jobs, conflicts } = aggregateJobs(assignments);
+      res.status(201).json({ jobs, conflicts, warnings, assignments });
     }),
   );
 
@@ -264,12 +266,14 @@ function buildDbRouter(): Router {
       const endAt = new Date(parsed.data.endAt);
       if (!(startAt < endAt)) return res.status(400).json({ message: "startAt must be before endAt" });
 
+      const nextEngineerId = parsed.data.engineerIds?.[0] ?? parsed.data.engineerId;
       await db
         .update(scheduleAssignments)
         .set({
           startsAt: startAt,
           endsAt: endAt,
           updatedAt: new Date(),
+          ...(nextEngineerId ? { engineerUserId: nextEngineerId } : {}),
         })
         .where(and(eq(scheduleAssignments.organizationId, organizationId), eq(scheduleAssignments.id, req.params.id)));
 
@@ -281,7 +285,7 @@ function buildDbRouter(): Router {
       const updatedAssignment = mapped.find((a) => a.id === req.params.id)!;
       const warnings = buildWarnings(mapped, updatedAssignment, req.params.id);
       const { jobs, conflicts } = aggregateJobs(mapped);
-      res.json({ jobs, conflicts, warnings });
+      res.json({ jobs, conflicts, warnings, assignments: mapped });
     }),
   );
 
@@ -662,7 +666,7 @@ function buildInMemoryRouter(): Router {
     asyncHandler(async (_req, res) => {
       const state = getScheduleState();
       const { jobs, conflicts } = aggregateJobs(state.assignments, state.jobs as any);
-      res.json({ jobs, conflicts, warnings: [] });
+      res.json({ jobs, conflicts, warnings: [], assignments: state.assignments });
     }),
   );
 
@@ -698,8 +702,9 @@ function buildInMemoryRouter(): Router {
         created.push(createAssignment(candidate));
       });
 
-      const { jobs, conflicts } = aggregateJobs(getScheduleState().assignments, state.jobs as any);
-      res.status(201).json({ jobs, conflicts, warnings });
+      const { assignments } = getScheduleState();
+      const { jobs, conflicts } = aggregateJobs(assignments, state.jobs as any);
+      res.status(201).json({ jobs, conflicts, warnings, assignments });
     }),
   );
 
@@ -713,18 +718,21 @@ function buildInMemoryRouter(): Router {
       const endAt = new Date(parsed.data.endAt);
       if (!(startAt < endAt)) return res.status(400).json({ message: "startAt must be before endAt" });
 
+      const engineerId = parsed.data.engineerIds?.[0] ?? parsed.data.engineerId;
       const updated = updateAssignment(req.params.id, {
         startsAt: startAt.toISOString(),
         endsAt: endAt.toISOString(),
         start: startAt.toISOString(),
         end: endAt.toISOString(),
+        engineerId,
+        engineerUserId: engineerId,
       });
 
       if (!updated) return res.status(404).json({ message: "Assignment not found" });
       const state = getScheduleState();
       const warnings = buildWarnings(state.assignments, updated, req.params.id);
       const { jobs, conflicts } = aggregateJobs(state.assignments, state.jobs as any);
-      res.json({ jobs, conflicts, warnings });
+      res.json({ jobs, conflicts, warnings, assignments: state.assignments });
     }),
   );
 

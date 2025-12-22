@@ -1,4 +1,5 @@
 import React from "react";
+import { nanoid } from "nanoid";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -6,10 +7,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { ScheduleJobConflict, ScheduleJobSlot } from "@shared/schedule";
+import type { ScheduleAssignment, ScheduleJobConflict, ScheduleJobSlot } from "@shared/schedule";
 import { useScheduleRange } from "@/modules/scheduling";
 
-const SNAP_MINUTES = 30;
+const SNAP_MINUTES = 15;
 const DAY_START_HOUR = 6;
 const DAY_END_HOUR = 20;
 
@@ -62,9 +63,11 @@ export default function SchedulePage() {
     d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [activeJobId, setActiveJobId] = React.useState<string | null>(null);
+  const [activeAssignmentId, setActiveAssignmentId] = React.useState<string | null>(null);
   const [shiftDown, setShiftDown] = React.useState(false);
   const [view, setView] = React.useState<"calendar" | "gantt">("calendar");
+  const snapshotRef = React.useRef<ScheduleAssignment[] | null>(null);
+  const [draftAssignments, setDraftAssignments] = React.useState<ScheduleAssignment[] | null>(null);
 
   const fromISO = new Date(day);
   const toISO = new Date(day);
@@ -73,11 +76,20 @@ export default function SchedulePage() {
   const schedule = useScheduleRange(day);
 
   React.useEffect(() => {
+    setDraftAssignments(null);
+  }, [schedule.assignments]);
+
+  React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Shift") setShiftDown(true);
       if (e.key === "Escape") {
-        setActiveJobId(null);
-        schedule.refetch();
+        setActiveAssignmentId(null);
+        if (snapshotRef.current) {
+          setDraftAssignments(snapshotRef.current);
+          snapshotRef.current = null;
+        } else {
+          schedule.refetch();
+        }
         toast({ title: "Cancelled", description: "Drag cancelled." });
       }
     };
@@ -93,11 +105,12 @@ export default function SchedulePage() {
   }, [day, schedule, toast]);
 
   const jobs = schedule.jobs;
+  const assignments = draftAssignments ?? schedule.assignments;
   const conflicts = schedule.conflicts ?? [];
 
   const conflictMap = React.useMemo(() => {
     const map = new Map<string, ScheduleJobConflict>();
-    conflicts.forEach((c) => {
+    conflicts.forEach((c: ScheduleJobConflict) => {
       map.set(`${c.jobId}:${c.engineerId}`, c);
     });
     return map;
@@ -105,62 +118,119 @@ export default function SchedulePage() {
 
   const engineers: Engineer[] = React.useMemo(() => {
     const seen = new Map<string, Engineer>();
-    jobs.forEach((job) => {
-      if (!job.assignedEngineerIds.length) {
-        seen.set("unassigned", { id: "unassigned", name: "Unassigned" });
-      }
-      job.assignedEngineerIds.forEach((id) => {
-        if (!seen.has(id)) seen.set(id, { id, name: id });
-      });
+    assignments.forEach((a: ScheduleAssignment) => {
+      const eng = a.engineerUserId ?? a.engineerId ?? "unassigned";
+      if (!seen.has(eng)) seen.set(eng, { id: eng, name: eng });
     });
     if (seen.size === 0) seen.set("unassigned", { id: "unassigned", name: "Unassigned" });
     return Array.from(seen.values());
-  }, [jobs]);
+  }, [assignments]);
 
-  const placements = React.useMemo(() => {
-    return jobs.flatMap((job) => {
-      const ids = job.assignedEngineerIds.length ? job.assignedEngineerIds : ["unassigned"];
-      return ids.map((engineerId) => ({ job, engineerId }));
-    });
-  }, [jobs]);
+  const placements: Placement[] = React.useMemo(() => {
+    return assignments.map((assignment: ScheduleAssignment) => ({
+      assignment,
+      engineerId: assignment.engineerUserId ?? assignment.engineerId ?? "unassigned",
+      job: jobs.find((j: ScheduleJobSlot) => j.id === assignment.jobId),
+    }));
+  }, [assignments, jobs]);
 
   const columnHeight = 720;
 
-  const performMove = async (jobId: string, newStart: Date, shiftHeld: boolean) => {
-    const job = jobs.find((j) => j.id === jobId);
-    if (!job) return;
-    const durationMs = new Date(job.endAt).getTime() - new Date(job.startAt).getTime();
-    const payload = {
-      jobId,
-      startAt: newStart.toISOString(),
-      endAt: new Date(newStart.getTime() + durationMs).toISOString(),
+  const performMove = async (
+    assignment: ScheduleAssignment,
+    targetEngineerId: string,
+    newStart: Date,
+    shiftHeld: boolean,
+  ) => {
+    const job = jobs.find((j) => j.id === assignment.jobId);
+    const startValue = assignment.startsAt ?? assignment.start ?? newStart.toISOString();
+    const endValue = assignment.endsAt ?? assignment.end ?? new Date(newStart.getTime() + 60 * 60 * 1000).toISOString();
+    const durationMs = new Date(endValue).getTime() - new Date(startValue).getTime();
+    const startAt = newStart.toISOString();
+    const endAt = new Date(newStart.getTime() + durationMs).toISOString();
+
+    const applyOptimistic = (updater: (prev: ScheduleAssignment[]) => ScheduleAssignment[]) => {
+      setDraftAssignments((prev) => {
+        const base = prev ?? schedule.assignments;
+        const next = updater(base);
+        return next;
+      });
     };
-    try {
-      const result = shiftHeld
-        ? await schedule.duplicateJob(payload)
-        : await schedule.moveJob(payload);
-      if (result.warnings && result.warnings.length) {
-        toast({ title: "Scheduling warning", description: "Engineer already has an overlapping job." });
+
+    snapshotRef.current = schedule.assignments;
+    if (shiftHeld) {
+      const newJobId = `${assignment.jobId}-dup-${nanoid(6)}`;
+      applyOptimistic((prev) => [
+        ...prev,
+        {
+          ...assignment,
+          id: `draft-${nanoid(4)}`,
+          jobId: newJobId,
+          startsAt: startAt,
+          endsAt: endAt,
+          start: startAt,
+          end: endAt,
+          engineerUserId: targetEngineerId,
+          engineerId: targetEngineerId,
+        },
+      ]);
+      try {
+        await schedule.duplicateJob({
+          jobId: newJobId,
+          startAt,
+          endAt,
+          engineerIds: [targetEngineerId],
+          title: job?.title,
+        });
+      } catch (err: any) {
+        if (snapshotRef.current) setDraftAssignments(snapshotRef.current);
+        toast({ title: "Schedule duplication failed", description: err?.message ?? "Unknown error", variant: "destructive" });
       }
+      return;
+    }
+
+    applyOptimistic((prev) =>
+      prev.map((a) =>
+        a.id === assignment.id
+          ? {
+              ...a,
+              startsAt: startAt,
+              endsAt: endAt,
+              start: startAt,
+              end: endAt,
+              engineerUserId: targetEngineerId,
+              engineerId: targetEngineerId,
+            }
+          : a,
+      ),
+    );
+    try {
+      await schedule.moveAssignment({
+        assignmentId: assignment.id,
+        startAt,
+        endAt,
+        engineerId: targetEngineerId,
+      });
     } catch (err: any) {
+      if (snapshotRef.current) setDraftAssignments(snapshotRef.current);
       toast({ title: "Schedule update failed", description: err?.message ?? "Unknown error", variant: "destructive" });
     }
   };
 
-  const handleDrop = async (jobId: string, minutesFromTop: number) => {
-    const job = jobs.find((j) => j.id === jobId);
-    if (!job) return;
-    const jobStart = new Date(job.startAt);
-    const jobEnd = new Date(job.endAt);
-    const durMin = minutesBetween(jobStart, jobEnd);
-
+  const handleDrop = async (placement: Placement, minutesFromTop: number, targetEngineerId: string) => {
     const nextStartBase = addMinutes(startOfDay(day), minutesFromTop);
+    const startValue = placement.assignment.startsAt ?? placement.assignment.start;
+    const endValue = placement.assignment.endsAt ?? placement.assignment.end;
+    const fallbackEnd = new Date(nextStartBase.getTime() + 60 * 60 * 1000);
+    const durMin = startValue && endValue
+      ? minutesBetween(new Date(startValue), new Date(endValue))
+      : minutesBetween(nextStartBase, fallbackEnd);
     const snappedStart = roundToSnap(nextStartBase);
     const clampedStart = addMinutes(
       startOfDay(day),
       clamp(minutesBetween(startOfDay(day), snappedStart), 0, dayColumnMinutes() - durMin),
     );
-    await performMove(jobId, clampedStart, shiftDown);
+    await performMove(placement.assignment, targetEngineerId, clampedStart, shiftDown);
   };
 
   const nextDay = () =>
@@ -211,24 +281,24 @@ export default function SchedulePage() {
                 placements={placements.filter((p) => p.engineerId === eng.id)}
                 day={day}
                 columnHeight={columnHeight}
-                activeJobId={activeJobId}
+                activeJobId={activeAssignmentId}
                 conflicts={conflictMap}
-                onDrop={(minutes, jobId) => handleDrop(jobId, minutes)}
-                onDragStart={(id) => setActiveJobId(id)}
-                onDragEnd={() => setActiveJobId(null)}
+                onDrop={(minutes, placement) => handleDrop(placement, minutes, eng.id)}
+                onDragStart={(id) => setActiveAssignmentId(id)}
+                onDragEnd={() => setActiveAssignmentId(null)}
               />
             ))}
           </div>
         </TooltipProvider>
       ) : (
-        <GanttView jobs={jobs} conflicts={conflictMap} />
+        <GanttView jobs={jobs} assignments={placements} onMove={performMove} day={day} />
       )}
 
       {conflicts.length > 0 && (
         <Card className="p-3">
           <div className="font-medium mb-2">Conflicts detected</div>
           <div className="space-y-1 text-sm text-amber-700">
-            {conflicts.map((c, idx) => (
+            {conflicts.map((c: ScheduleJobConflict, idx: number) => (
               <div key={`${c.jobId}-${idx}`}>
                 Engineer {c.engineerId} overlaps with jobs {c.overlappingJobIds.join(", ")}
               </div>
@@ -237,12 +307,12 @@ export default function SchedulePage() {
         </Card>
       )}
 
-      {jobsQuery.isLoading && <div className="text-sm text-muted-foreground">Loading schedule…</div>}
+      {schedule.isLoading && <div className="text-sm text-muted-foreground">Loading schedule…</div>}
     </div>
   );
 }
 
-type Placement = { job: ScheduleJobSlot; engineerId: string };
+type Placement = { assignment: ScheduleAssignment; job?: ScheduleJobSlot; engineerId: string };
 
 type EngineerColumnProps = {
   engineer: Engineer;
@@ -251,7 +321,7 @@ type EngineerColumnProps = {
   columnHeight: number;
   activeJobId: string | null;
   conflicts: Map<string, ScheduleJobConflict>;
-  onDrop: (minutes: number, jobId: string) => void;
+  onDrop: (minutes: number, placement: Placement) => void;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
 };
@@ -286,31 +356,36 @@ function EngineerColumn({ engineer, placements, day, columnHeight, activeJobId, 
           const rect = containerRef.current?.getBoundingClientRect();
           const y = rect ? e.clientY - rect.top : 0;
           const minutes = yToMinutes(y, columnHeight);
-          onDrop(minutes, id);
+          const placement = placements.find((p) => p.assignment.id === id);
+          if (!placement) return;
+          onDrop(minutes, placement);
           onDragEnd();
         }}
       >
         {placements.map((placement) => {
-          const s = new Date(placement.job.startAt);
-          const e = new Date(placement.job.endAt);
+          const startAt = placement.assignment.startsAt ?? placement.assignment.start;
+          const endAt = placement.assignment.endsAt ?? placement.assignment.end;
+          if (!startAt || !endAt) return null;
+          const s = new Date(startAt);
+          const e = new Date(endAt);
           if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null;
 
           const topMin = minutesBetween(dayStart, s);
           const durMin = minutesBetween(s, e);
           const top = minutesToY(topMin, columnHeight);
           const height = minutesToY(durMin, columnHeight);
-          const conflictKey = `${placement.job.id}:${placement.engineerId}`;
+          const conflictKey = `${placement.assignment.jobId}:${placement.engineerId}`;
           const hasConflict = conflicts.has(conflictKey);
 
           return (
-            <DraggableJob
-              key={`${placement.job.id}-${placement.engineerId}`}
-              job={placement.job}
+            <DraggableAssignment
+              key={`${placement.assignment.id}-${placement.engineerId}`}
+              placement={placement}
               top={top}
               height={Math.max(32, height)}
-              isActive={activeJobId === placement.job.id}
+              isActive={activeJobId === placement.assignment.id}
               hasConflict={hasConflict}
-              onDragStart={() => onDragStart(placement.job.id)}
+              onDragStart={() => onDragStart(placement.assignment.id)}
               onDragEnd={onDragEnd}
             />
           );
@@ -321,7 +396,7 @@ function EngineerColumn({ engineer, placements, day, columnHeight, activeJobId, 
 }
 
 type DraggableJobProps = {
-  job: ScheduleJobSlot;
+  placement: Placement;
   top: number;
   height: number;
   isActive: boolean;
@@ -330,7 +405,11 @@ type DraggableJobProps = {
   onDragEnd: () => void;
 };
 
-function DraggableJob({ job, top, height, isActive, hasConflict, onDragStart, onDragEnd }: DraggableJobProps) {
+function DraggableAssignment({ placement, top, height, isActive, hasConflict, onDragStart, onDragEnd }: DraggableJobProps) {
+  const job = placement.job;
+  const title = job?.title ?? placement.assignment.jobTitle ?? `Job ${placement.assignment.jobId.slice(0, 6)}`;
+  const start = placement.assignment.startsAt ?? placement.assignment.start;
+  const end = placement.assignment.endsAt ?? placement.assignment.end;
   return (
     <TooltipProvider>
       <Tooltip>
@@ -338,7 +417,7 @@ function DraggableJob({ job, top, height, isActive, hasConflict, onDragStart, on
           <div
             draggable
             onDragStart={(e) => {
-              e.dataTransfer.setData("text/plain", job.id);
+              e.dataTransfer.setData("text/plain", placement.assignment.id);
               onDragStart();
             }}
             onDragEnd={onDragEnd}
@@ -348,24 +427,35 @@ function DraggableJob({ job, top, height, isActive, hasConflict, onDragStart, on
               hasConflict && "border-amber-500",
             )}
             style={{ top, height }}
-            title={job.title ? `Job ${job.title}` : "Job"}
+            title={title}
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="font-medium truncate">{job.title || "Job"}</div>
+              <div className="font-medium truncate">{title}</div>
               {hasConflict && <Badge variant="destructive">Conflict</Badge>}
             </div>
             <div className="opacity-70">
-              {new Date(job.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –
-              {new Date(job.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {start ? new Date(start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null} –
+              {end ? new Date(end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null}
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {placement.assignment.engineerUserId ? (
+                <Badge variant="outline" className="text-[10px]">
+                  {placement.assignment.engineerUserId}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px]">
+                  Unassigned
+                </Badge>
+              )}
             </div>
           </div>
         </TooltipTrigger>
         <TooltipContent>
           <div className="text-xs space-y-1">
-            <div className="font-semibold">{job.title || "Job"}</div>
-            <div>Engineers: {job.assignedEngineerIds.join(", ") || "Unassigned"}</div>
+            <div className="font-semibold">{title}</div>
+            <div>Engineers: {job?.assignedEngineerIds.join(", ") || placement.assignment.engineerUserId || "Unassigned"}</div>
             <div>
-              {new Date(job.startAt).toLocaleString()} – {new Date(job.endAt).toLocaleString()}
+              {start ? new Date(start).toLocaleString() : ""} – {end ? new Date(end).toLocaleString() : ""}
             </div>
           </div>
         </TooltipContent>
@@ -376,10 +466,12 @@ function DraggableJob({ job, top, height, isActive, hasConflict, onDragStart, on
 
 type GanttProps = {
   jobs: ScheduleJobSlot[];
-  conflicts: Map<string, ScheduleJobConflict>;
+  assignments: Placement[];
+  day: Date;
+  onMove: (assignment: ScheduleAssignment, engineerId: string, start: Date, duplicate: boolean) => Promise<void>;
 };
 
-function GanttView({ jobs, conflicts }: GanttProps) {
+function GanttView({ jobs, assignments, day, onMove }: GanttProps) {
   if (!jobs.length) {
     return <div className="text-sm text-muted-foreground">No scheduled jobs.</div>;
   }
@@ -387,29 +479,50 @@ function GanttView({ jobs, conflicts }: GanttProps) {
   const minStart = Math.min(...jobs.map((j) => new Date(j.startAt).getTime()));
   const maxEnd = Math.max(...jobs.map((j) => new Date(j.endAt).getTime()));
   const totalMs = Math.max(maxEnd - minStart, 1);
+  const trackRef = React.useRef<HTMLDivElement | null>(null);
+
+  const handleDragEnd = async (event: React.DragEvent<HTMLDivElement>, placement: Placement) => {
+    event.preventDefault();
+    const rect = trackRef.current?.getBoundingClientRect();
+    const width = rect?.width ?? 1;
+    const deltaX = event.clientX - (rect?.left ?? 0);
+    const ratio = Math.max(0, Math.min(deltaX / width, 1));
+    const nextStart = new Date(minStart + ratio * totalMs);
+    const snapped = roundToSnap(nextStart);
+    const clampedStart = addMinutes(
+      startOfDay(day),
+      clamp(minutesBetween(startOfDay(day), snapped), 0, dayColumnMinutes()),
+    );
+    await onMove(placement.assignment, placement.engineerId, clampedStart, event.shiftKey);
+  };
 
   return (
     <Card className="p-4 space-y-3">
       <div className="font-medium">Gantt view</div>
-      <div className="space-y-2">
-        {jobs.map((job) => {
+      <div className="space-y-2" ref={trackRef}>
+        {assignments.map((placement) => {
+          const job = placement.job ?? jobs.find((j) => j.id === placement.assignment.jobId);
+          if (!job) return null;
           const startMs = new Date(job.startAt).getTime() - minStart;
           const endMs = new Date(job.endAt).getTime() - minStart;
           const leftPct = (startMs / totalMs) * 100;
           const widthPct = Math.max(((endMs - startMs) / totalMs) * 100, 2);
-          const hasConflict = job.assignedEngineerIds.some((eng) => conflicts.has(`${job.id}:${eng}`));
+          const engineerLabel = placement.assignment.engineerUserId ?? placement.engineerId ?? "Unassigned";
           return (
-            <div key={job.id} className="space-y-1">
+            <div key={`${placement.assignment.id}-${placement.engineerId}`} className="space-y-1">
               <div className="flex items-center justify-between text-sm">
                 <div className="font-medium truncate">{job.title}</div>
-                {hasConflict && <Badge variant="destructive">Conflict</Badge>}
+                <Badge variant="outline">{engineerLabel}</Badge>
               </div>
               <div className="relative h-8 rounded-md bg-muted/50">
                 <div
-                  className={cn("absolute h-8 rounded-md bg-primary/70 text-[10px] text-white px-2 flex items-center", hasConflict && "bg-amber-500")}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData("text/plain", placement.assignment.id)}
+                  onDragEnd={(e) => handleDragEnd(e, placement)}
+                  className="absolute h-8 rounded-md bg-primary/70 text-[10px] text-white px-2 flex items-center cursor-grab active:cursor-grabbing"
                   style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
                 >
-                  {job.assignedEngineerIds.join(", ") || "Unassigned"}
+                  {engineerLabel}
                 </div>
               </div>
             </div>
