@@ -300,8 +300,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/dev/seed-demo",
-    asyncHandler(async (_req, res) => {
-      if (process.env.NODE_ENV !== "development") {
+    asyncHandler(async (req, res) => {
+      const devMode = process.env.NODE_ENV === "development";
+      const devAccess = devBypass || devReviewMode;
+      if (!devMode || !devAccess) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -318,7 +320,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await seedDatabase();
-      res.json({ ok: true, result });
+      res.json({
+        ok: true,
+        seeded: result.counts ?? {},
+        organizationId: (req as any).user?.claims?.organization_id,
+        userId: (req as any).user?.claims?.sub,
+      });
     }),
   );
 

@@ -126,6 +126,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   >(null);
   const [moduleBannerDismissed, setModuleBannerDismissed] = useState(false);
   const [moduleOverrides, setModuleOverrides] = useState<ModuleOverrideMap>(loadModuleOverrides());
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const { modules: enabledModules } = useModules();
   const hasNotifiedNoDb = useRef(false);
   const devReviewModeEnv =
@@ -144,6 +145,49 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
       enterCompanionMode(ROUTES.FIELD_COMPANION_HOME);
     } else {
       enterOfficeMode(ROUTES.DASHBOARD);
+    }
+  };
+
+  const handleSeedDemo = async () => {
+    if (seedingDemo) return;
+    setSeedingDemo(true);
+    try {
+      const response = await fetch("/api/dev/seed-demo", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        toast({
+          title: "Not authorised",
+          description: "Auth/CSRF missing — refresh page.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        toast({
+          title: "Demo seed failed",
+          description: payload?.message || response.statusText,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Demo data loaded",
+        description: payload?.message || "Sample jobs, templates, and reports are ready.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Demo seed failed",
+        description: err?.message ?? "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setSeedingDemo(false);
     }
   };
 
@@ -534,6 +578,15 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 {devStatus?.limitedMode && (
                   <span className="font-semibold">Some actions are stubbed while the database is unavailable.</span>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSeedDemo}
+                  disabled={seedingDemo}
+                  data-testid="button-seed-demo"
+                >
+                  {seedingDemo ? "Seeding…" : "Load demo data"}
+                </Button>
               </div>
             )}
             {showReviewSection && !moduleBannerDismissed && (
