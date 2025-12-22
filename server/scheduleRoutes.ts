@@ -26,16 +26,23 @@ export function buildScheduleRouter() {
     "/assignments",
     asyncHandler(async (req, res) => {
       const body = req.body as Partial<ScheduleAssignment>;
-      if (!body.jobId || !body.jobTitle || !body.engineerId || !body.engineerName || !body.start || !body.end) {
+      const start = body.start ?? body.startsAt;
+      const end = body.end ?? body.endsAt;
+      const engineerId = body.engineerId ?? body.engineerUserId;
+      if (!body.jobId || !body.jobTitle || !engineerId || !body.engineerName || !start || !end) {
         return res.status(400).json({ message: "Missing required fields" });
       }
       const assignment = createAssignment({
         jobId: body.jobId,
         jobTitle: body.jobTitle,
-        engineerId: body.engineerId,
+        engineerId,
+        engineerUserId: body.engineerUserId ?? body.engineerId ?? engineerId,
         engineerName: body.engineerName,
-        start: body.start,
-        end: body.end,
+        start,
+        end,
+        startsAt: body.startsAt ?? body.start ?? start,
+        endsAt: body.endsAt ?? body.end ?? end,
+        requiredEngineers: body.requiredEngineers ?? 1,
         status: body.status || "scheduled",
       });
       const conflicts = findConflicts(getScheduleState().assignments);
@@ -47,7 +54,13 @@ export function buildScheduleRouter() {
     "/assignments/:id",
     asyncHandler(async (req, res) => {
       const updates = req.body as Partial<ScheduleAssignment>;
-      const updated = updateAssignment(req.params.id, updates);
+      const updated = updateAssignment(req.params.id, {
+        ...updates,
+        startsAt: updates.startsAt ?? updates.start,
+        endsAt: updates.endsAt ?? updates.end,
+        engineerId: updates.engineerId ?? updates.engineerUserId,
+        engineerUserId: updates.engineerUserId ?? updates.engineerId,
+      });
       if (!updated) {
         return res.status(404).json({ message: "Assignment not found" });
       }
@@ -62,6 +75,10 @@ export function buildScheduleRouter() {
       const overrides = req.body as Partial<ScheduleAssignment>;
       const duplicate = duplicateAssignment(req.params.id, {
         ...overrides,
+        startsAt: overrides.startsAt ?? overrides.start,
+        endsAt: overrides.endsAt ?? overrides.end,
+        engineerId: overrides.engineerId ?? overrides.engineerUserId,
+        engineerUserId: overrides.engineerUserId ?? overrides.engineerId,
         id: nanoid(),
       });
       if (!duplicate) {
