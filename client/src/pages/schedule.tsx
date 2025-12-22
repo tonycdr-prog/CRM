@@ -1,391 +1,384 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, startOfWeek, endOfWeek, setHours, setMinutes, parseISO } from "date-fns";
+import React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { assignmentsOverlap, ScheduleAssignment, ScheduleEngineer } from "@shared/schedule";
 import { cn } from "@/lib/utils";
-import { Loader2, Move, Copy, AlertTriangle, Undo2, Users } from "lucide-react";
+import type { ScheduleAssignment, ScheduleConflict } from "@shared/schedule";
 
-const SNAP_MINUTES = 15;
+const SNAP_MINUTES = 30;
+const DAY_START_HOUR = 6;
+const DAY_END_HOUR = 20;
 
-function snapToMinutes(date: Date, minutes: number) {
-  const ms = minutes * 60 * 1000;
-  return new Date(Math.round(date.getTime() / ms) * ms);
+function roundToSnap(date: Date) {
+  const ms = date.getTime();
+  const snap = SNAP_MINUTES * 60 * 1000;
+  return new Date(Math.round(ms / snap) * snap);
 }
 
-function useScheduleData() {
-  return useQuery({
-    queryKey: ["schedule"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/schedule/assignments");
-      return res.json();
-    },
-  });
+function minutesBetween(a: Date, b: Date) {
+  return Math.round((b.getTime() - a.getTime()) / 60000);
 }
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function dayColumnMinutes() {
+  return (DAY_END_HOUR - DAY_START_HOUR) * 60;
+}
+
+function minutesToY(min: number, columnHeightPx: number) {
+  const totalMin = dayColumnMinutes();
+  return (min / totalMin) * columnHeightPx;
+}
+
+function yToMinutes(y: number, columnHeightPx: number) {
+  const totalMin = dayColumnMinutes();
+  const ratio = clamp(y / columnHeightPx, 0, 1);
+  return Math.round(ratio * totalMin);
+}
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(DAY_START_HOUR, 0, 0, 0);
+  return x;
+}
+
+function addMinutes(d: Date, min: number) {
+  return new Date(d.getTime() + min * 60000);
+}
+
+type Engineer = { id: string; name: string };
+
+type AssignmentsResponse =
+  | ScheduleAssignment[]
+  | {
+      assignments: ScheduleAssignment[];
+      engineers?: Engineer[];
+      conflicts?: ScheduleConflict[];
+    };
 
 export default function SchedulePage() {
-  const { data, refetch, isLoading } = useScheduleData();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [pendingEngineerFor, setPendingEngineerFor] = useState<ScheduleAssignment | null>(null);
-  const [activeView, setActiveView] = useState<"calendar" | "gantt">("calendar");
+  const qc = useQueryClient();
+  const { toast: showToast } = useToast();
 
-  const assignments: ScheduleAssignment[] = data?.assignments || [];
-  const engineers: ScheduleEngineer[] = data?.engineers || [];
-  const conflicts = useMemo(() => assignments.filter((a, idx) => assignments.some((b, jdx) => jdx !== idx && assignmentsOverlap(a, b))), [assignments]);
+  const [day, setDay] = React.useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const [shiftDown, setShiftDown] = React.useState(false);
+  const [overColumn, setOverColumn] = React.useState<string | null>(null);
 
-  useEffect(() => {
-    const onKeyDown = (evt: KeyboardEvent) => {
-      if (evt.key === "Escape") {
-        refetch();
+  const fromISO = new Date(day);
+  const toISO = new Date(day);
+  toISO.setDate(toISO.getDate() + 1);
+
+  const assignmentsQuery = useQuery({
+    queryKey: ["schedule-assignments", day.toISOString()],
+    queryFn: async (): Promise<{ assignments: ScheduleAssignment[]; engineers: Engineer[]; conflicts?: ScheduleConflict[] }> => {
+      const res = await apiRequest(
+        "GET",
+        `/api/schedule/assignments?from=${encodeURIComponent(fromISO.toISOString())}&to=${encodeURIComponent(toISO.toISOString())}`,
+      );
+      if (res.status === 401 || res.status === 403) {
+        showToast({
+          title: "Not authorised",
+          description: "Auth/CSRF missing — refresh page",
+          variant: "destructive",
+        });
+        throw new Error("Unauthorised");
+      }
+      const data = (await res.json()) as AssignmentsResponse;
+      if (Array.isArray(data)) {
+        return { assignments: data, engineers: [], conflicts: [] };
+      }
+      return {
+        assignments: data.assignments ?? [],
+        engineers: data.engineers ?? [],
+        conflicts: data.conflicts ?? [],
+      };
+    },
+  });
+
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftDown(true);
+      if (e.key === "Escape") {
+        setActiveId(null);
+        showToast({ title: "Cancelled", description: "Drag cancelled." });
       }
     };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftDown(false);
+    };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [refetch]);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [showToast]);
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<ScheduleAssignment> }) => {
-      const res = await apiRequest("PUT", `/api/schedule/assignments/${id}`, updates);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["schedule"] });
-      toast({ title: "Schedule updated" });
-    },
-    onError: () => {
-      toast({ title: "Update failed", description: "Auth/CSRF missing — refresh page", variant: "destructive" });
-    },
-  });
+  const engineersFromAssignments = React.useMemo(() => {
+    const seen = new Map<string, Engineer>();
+    (assignmentsQuery.data?.assignments ?? []).forEach((a) => {
+      const id = a.engineerUserId || a.engineerId;
+      if (id && !seen.has(id)) {
+        seen.set(id, { id, name: a.engineerName || id });
+      }
+    });
+    return Array.from(seen.values());
+  }, [assignmentsQuery.data]);
 
-  const duplicateMutation = useMutation({
-    mutationFn: async ({ id, overrides }: { id: string; overrides?: Partial<ScheduleAssignment> }) => {
-      const res = await apiRequest("POST", `/api/schedule/assignments/${id}/duplicate`, overrides || {});
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setPendingEngineerFor(data.assignment);
-      queryClient.invalidateQueries({ queryKey: ["schedule"] });
-      toast({ title: "Duplicated assignment" });
-    },
-    onError: () => {
-      toast({ title: "Duplicate failed", description: "Auth/CSRF missing — refresh page", variant: "destructive" });
-    },
-  });
+  const engineers = (assignmentsQuery.data?.engineers?.length ?? 0) > 0
+    ? assignmentsQuery.data?.engineers ?? []
+    : engineersFromAssignments.length > 0
+      ? engineersFromAssignments
+      : [{ id: "unassigned", name: "Unassigned" }];
 
-  const handleDropOnDay = (day: Date, assignment: ScheduleAssignment, shift: boolean) => {
-    const start = snapToMinutes(setMinutes(setHours(day, new Date(assignment.start).getHours()), new Date(assignment.start).getMinutes()), SNAP_MINUTES);
-    const durationMs = new Date(assignment.end).getTime() - new Date(assignment.start).getTime();
-    const end = new Date(start.getTime() + durationMs);
-    if (shift) {
-      duplicateMutation.mutate({ id: assignment.id, overrides: { start: start.toISOString(), end: end.toISOString() } });
-    } else {
-      updateMutation.mutate({ id: assignment.id, updates: { start: start.toISOString(), end: end.toISOString() } });
+  const assignments = assignmentsQuery.data?.assignments ?? [];
+  const conflicts = assignmentsQuery.data?.conflicts ?? [];
+
+  const columnHeight = 720; // px
+
+  const handleDrop = async (engineerId: string, minutesFromTop: number, assignmentId: string, shiftHeld: boolean) => {
+    const current = assignments.find((a) => a.id === assignmentId);
+    if (!current) return;
+
+    const currentStart = new Date(current.startsAt ?? current.start ?? "");
+    const currentEnd = new Date(current.endsAt ?? current.end ?? "");
+    if (Number.isNaN(currentStart.getTime()) || Number.isNaN(currentEnd.getTime())) return;
+
+    const durMin = minutesBetween(currentStart, currentEnd);
+    const nextStartBase = addMinutes(startOfDay(day), minutesFromTop);
+    const snappedStart = roundToSnap(nextStartBase);
+    const clampedStart = addMinutes(startOfDay(day), clamp(minutesBetween(startOfDay(day), snappedStart), 0, dayColumnMinutes() - durMin));
+    const nextEnd = addMinutes(clampedStart, durMin);
+
+    try {
+      if (shiftHeld || shiftDown) {
+        const createRes = await apiRequest("POST", `/api/schedule/assignments`, {
+          jobId: current.jobId,
+          engineerUserId: engineerId,
+          startsAt: clampedStart.toISOString(),
+          endsAt: nextEnd.toISOString(),
+          requiredEngineers: current.requiredEngineers ?? 1,
+        });
+        if (createRes.status === 409) {
+          const conflict = (await createRes.json()) as ScheduleConflict & { message?: string };
+          showToast({
+            title: conflict.message || "Conflict detected",
+            description: "Engineer already has an overlapping job. Retry with override if needed.",
+          });
+          return;
+        }
+        if (createRes.status === 401 || createRes.status === 403) {
+          showToast({
+            title: "Not authorised",
+            description: "Auth/CSRF missing — refresh page",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!createRes.ok) throw new Error(await createRes.text());
+      } else {
+        const patchRes = await apiRequest("PATCH", `/api/schedule/assignments/${assignmentId}`, {
+          engineerUserId: engineerId,
+          startsAt: clampedStart.toISOString(),
+          endsAt: nextEnd.toISOString(),
+        });
+        if (patchRes.status === 409) {
+          showToast({
+            title: "Conflict detected",
+            description: "Engineer already has an overlapping job. Hold Shift to duplicate elsewhere or override.",
+          });
+          return;
+        }
+        if (patchRes.status === 401 || patchRes.status === 403) {
+          showToast({
+            title: "Not authorised",
+            description: "Auth/CSRF missing — refresh page",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!patchRes.ok) throw new Error(await patchRes.text());
+      }
+
+      await qc.invalidateQueries({ queryKey: ["schedule-assignments", day.toISOString()] });
+    } catch (err: any) {
+      showToast({ title: "Failed to reschedule", description: err?.message ?? "Unknown error" });
     }
   };
 
-  const handleEngineerChange = (engId: string) => {
-    if (!pendingEngineerFor) return;
-    const engineer = engineers.find((e) => e.id === engId) || engineers[0];
-    if (engineer) {
-      updateMutation.mutate({
-        id: pendingEngineerFor.id,
-        updates: { engineerId: engineer.id, engineerName: engineer.name },
-      });
-    }
-    setPendingEngineerFor(null);
-  };
-
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const days = Array.from({ length: 7 }).map((_, idx) => addDays(weekStart, idx));
+  const nextDay = () =>
+    setDay((d) => {
+      const x = new Date(d);
+      x.setDate(x.getDate() + 1);
+      return x;
+    });
+  const prevDay = () =>
+    setDay((d) => {
+      const x = new Date(d);
+      x.setDate(x.getDate() - 1);
+      return x;
+    });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Schedule</h1>
-          <p className="text-sm text-muted-foreground">Drag to move; Shift+Drag duplicates; conflicts warn but allow override.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          Refresh
+    <div className="p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Button variant="outline" onClick={prevDay} size="sm">
+          Prev
         </Button>
+        <Button variant="outline" onClick={nextDay} size="sm">
+          Next
+        </Button>
+        <div className="ml-2 text-sm opacity-80">{day.toDateString()}</div>
+        <div className="ml-auto text-xs opacity-70">Drag to move • <b>Shift</b>+drag duplicates • <b>Esc</b> cancels</div>
       </div>
 
-      <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)}>
-        <TabsList>
-          <TabsTrigger value="calendar">Calendar</TabsTrigger>
-          <TabsTrigger value="gantt">Gantt</TabsTrigger>
-        </TabsList>
-        <TabsContent value="calendar">
-          <CalendarView
-            days={days}
-            assignments={assignments}
-            conflicts={conflicts}
-            onDrop={handleDropOnDay}
+      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(engineers.length, 1)}, minmax(220px, 1fr))` }}>
+        {engineers.map((eng) => (
+          <EngineerColumn
+            key={eng.id}
+            engineer={eng}
+            assignments={assignments.filter((a) => (a.engineerUserId || a.engineerId || "unassigned") === eng.id)}
+            day={day}
+            columnHeight={columnHeight}
+            activeId={activeId}
+            overColumn={overColumn === eng.id}
+            setOverColumn={setOverColumn}
+            onDrop={(minutes, assignmentId, shiftHeld) => handleDrop(eng.id, minutes, assignmentId, shiftHeld)}
+            onDragStart={(id) => setActiveId(id)}
+            onDragEnd={() => setActiveId(null)}
           />
-        </TabsContent>
-        <TabsContent value="gantt">
-          <GanttView
-            assignments={assignments}
-            engineers={engineers}
-            conflicts={conflicts}
-            onMove={(assignment, start) => {
-              const duration = new Date(assignment.end).getTime() - new Date(assignment.start).getTime();
-              updateMutation.mutate({ id: assignment.id, updates: { start: start.toISOString(), end: new Date(start.getTime() + duration).toISOString() } });
-            }}
-            onResize={(assignment, end) => updateMutation.mutate({ id: assignment.id, updates: { end: end.toISOString() } })}
-            onDuplicate={(assignment) => duplicateMutation.mutate({ id: assignment.id })}
-          />
-        </TabsContent>
-      </Tabs>
+        ))}
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Conflicts</CardTitle>
-          <CardDescription>Warnings when engineers are double-booked.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {conflicts.length === 0 && <p className="text-sm text-muted-foreground">No conflicts detected.</p>}
-          <div className="space-y-2">
-            {conflicts.map((conflict) => (
-              <div key={conflict.id} className="flex items-center gap-2 text-amber-700">
-                <AlertTriangle className="h-4 w-4" />
-                <span>
-                  {conflict.engineerName} overlaps on {conflict.jobTitle} starting {format(parseISO(conflict.start), "PPpp")}
-                </span>
+      {conflicts.length > 0 && (
+        <Card className="p-3">
+          <div className="font-medium mb-2">Conflicts detected</div>
+          <div className="space-y-1 text-sm text-amber-700">
+            {conflicts.map((c, idx) => (
+              <div key={`${c.engineerUserId}-${idx}`}>
+                Engineer {c.engineerUserId} overlaps between {new Date(c.startsAt).toLocaleTimeString()} and {new Date(c.endsAt).toLocaleTimeString()}
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      <Dialog open={!!pendingEngineerFor} onOpenChange={(open) => !open && setPendingEngineerFor(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select engineer for duplicate</DialogTitle>
-          </DialogHeader>
-          <Select onValueChange={(val) => handleEngineerChange(val)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Choose engineer" />
-            </SelectTrigger>
-            <SelectContent>
-              {engineers.map((eng) => (
-                <SelectItem key={eng.id} value={eng.id}>
-                  {eng.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setPendingEngineerFor(null)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading schedule...
-        </div>
+        </Card>
       )}
+
+      {assignmentsQuery.isLoading && <div className="text-sm text-muted-foreground">Loading schedule…</div>}
     </div>
   );
 }
 
-function CalendarView({
-  days,
-  assignments,
-  conflicts,
-  onDrop,
-}: {
-  days: Date[];
+function EngineerColumn(props: {
+  engineer: Engineer;
   assignments: ScheduleAssignment[];
-  conflicts: ScheduleAssignment[];
-  onDrop: (day: Date, assignment: ScheduleAssignment, shift: boolean) => void;
+  day: Date;
+  columnHeight: number;
+  activeId: string | null;
+  overColumn: boolean;
+  setOverColumn: (id: string | null) => void;
+  onDrop: (minutes: number, assignmentId: string, shiftHeld: boolean) => void;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
 }) {
-  const conflictIds = new Set(conflicts.map((c) => c.id));
+  const { engineer, assignments, day, columnHeight, activeId, overColumn, setOverColumn, onDrop, onDragEnd, onDragStart } = props;
+  const dayStart = startOfDay(day);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-7">
-      {days.map((day) => {
-        const dayAssignments = assignments.filter((a) => format(parseISO(a.start), "yyyy-MM-dd") === format(day, "yyyy-MM-dd"));
-        return (
-          <div
-            key={day.toISOString()}
-            className="rounded-lg border border-dashed p-2"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              const id = e.dataTransfer.getData("text/plain");
-              const shift = e.shiftKey;
-              const assignment = assignments.find((a) => a.id === id);
-              if (assignment) onDrop(day, assignment, shift);
-            }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-xs text-muted-foreground">{format(day, "EEEE")}</p>
-                <p className="font-semibold">{format(day, "MMM d")}</p>
-              </div>
-              <Badge variant="outline">{dayAssignments.length} jobs</Badge>
-            </div>
-            <div className="space-y-2 min-h-[120px]">
-              {dayAssignments.map((assignment) => (
-                <div
-                  key={assignment.id}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData("text/plain", assignment.id);
-                  }}
-                  className={cn(
-                    "rounded-md border bg-white p-2 shadow-sm cursor-move",
-                    conflictIds.has(assignment.id) && "border-amber-400 bg-amber-50",
-                  )}
-                >
-                  <div className="flex items-center justify-between text-sm font-medium">
-                    <span>{assignment.jobTitle}</span>
-                    <Move className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Users className="h-3 w-3" />
-                    {assignment.engineerName}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {format(parseISO(assignment.start), "HH:mm")} – {format(parseISO(assignment.end), "HH:mm")}
-                  </p>
-                  {conflictIds.has(assignment.id) && (
-                    <div className="mt-1 flex items-center gap-1 text-amber-700 text-xs">
-                      <AlertTriangle className="h-3 w-3" /> Conflict detected
-                    </div>
-                  )}
-                </div>
-              ))}
-              {dayAssignments.length === 0 && (
-                <p className="text-xs text-muted-foreground">Drop a job here to schedule.</p>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+    <Card className="p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="font-medium">{engineer.name}</div>
+        <Badge variant="outline">{assignments.length} jobs</Badge>
+      </div>
+      <div
+        ref={containerRef}
+        className={cn("relative rounded-md border bg-background", overColumn && "ring-2 ring-primary/50")}
+        style={{ height: columnHeight }}
+        onDragOver={(e) => e.preventDefault()}
+        onDragEnter={() => setOverColumn(engineer.id)}
+        onDragLeave={() => setOverColumn(null)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setOverColumn(null);
+          const id = e.dataTransfer.getData("text/plain");
+          if (!id) return;
+          const rect = containerRef.current?.getBoundingClientRect();
+          const y = rect ? e.clientY - rect.top : 0;
+          const minutes = yToMinutes(y, columnHeight);
+          onDrop(minutes, id, e.shiftKey);
+          onDragEnd();
+        }}
+      >
+        {assignments.map((a) => {
+          const s = new Date(a.startsAt ?? a.start ?? "");
+          const e = new Date(a.endsAt ?? a.end ?? "");
+          if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null;
 
-function GanttView({
-  assignments,
-  engineers,
-  conflicts,
-  onMove,
-  onResize,
-  onDuplicate,
-}: {
-  assignments: ScheduleAssignment[];
-  engineers: ScheduleEngineer[];
-  conflicts: ScheduleAssignment[];
-  onMove: (assignment: ScheduleAssignment, newStart: Date) => void;
-  onResize: (assignment: ScheduleAssignment, newEnd: Date) => void;
-  onDuplicate: (assignment: ScheduleAssignment) => void;
-}) {
-  const [resizingId, setResizingId] = useState<string | null>(null);
+          const topMin = minutesBetween(dayStart, s);
+          const durMin = minutesBetween(s, e);
 
-  const conflictIds = new Set(conflicts.map((c) => c.id));
+          const top = minutesToY(topMin, columnHeight);
+          const height = minutesToY(durMin, columnHeight);
 
-  const startDay = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const endDay = endOfWeek(new Date(), { weekStartsOn: 1 });
-
-  const durationDays = (endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24) + 1;
-
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-1 gap-2">
-        {engineers.map((eng) => {
-          const engAssignments = assignments.filter((a) => a.engineerId === eng.id);
           return (
-            <Card key={eng.id} className="overflow-hidden">
-              <CardHeader className="py-3">
-                <CardTitle className="text-sm">{eng.name}</CardTitle>
-                <CardDescription>Drag to shift; drag handle to resize.</CardDescription>
-              </CardHeader>
-              <CardContent className="relative h-[200px] bg-muted/40">
-                <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${durationDays}, minmax(0, 1fr))` }}>
-                  {Array.from({ length: durationDays }).map((_, idx) => (
-                    <div key={idx} className="border-r border-muted" />
-                  ))}
-                </div>
-                {engAssignments.map((assignment) => {
-                  const start = parseISO(assignment.start);
-                  const end = parseISO(assignment.end);
-                  const offsetDays = Math.max(0, Math.floor((start.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)));
-                  const spanDays = Math.max(1 / durationDays, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <div
-                      key={assignment.id}
-                      className={cn(
-                        "absolute top-6 rounded-md bg-primary/80 text-white shadow cursor-move",
-                        conflictIds.has(assignment.id) && "bg-amber-500",
-                      )}
-                      style={{
-                        left: `${(offsetDays / durationDays) * 100}%`,
-                        width: `${(spanDays / durationDays) * 100}%`,
-                        minWidth: "8%",
-                        height: 64,
-                      }}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("text/plain", assignment.id);
-                        setResizingId(null);
-                      }}
-                      onDragEnd={(e) => {
-                        e.preventDefault();
-                        const deltaDays = Math.round((e.clientX / (e.currentTarget.parentElement?.clientWidth || 1)) * durationDays) - offsetDays;
-                        if (Number.isNaN(deltaDays)) return;
-                        const newStart = addDays(start, deltaDays);
-                        onMove(assignment, newStart);
-                      }}
-                    >
-                      <div className="flex items-center justify-between px-3 py-2 text-sm">
-                        <span>{assignment.jobTitle}</span>
-                        <div className="flex items-center gap-2 text-xs">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onDuplicate(assignment)}>
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onMove(assignment, start)}>
-                            <Undo2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div
-                        className="absolute bottom-0 right-0 h-full w-2 cursor-ew-resize bg-black/10"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setResizingId(assignment.id);
-                        }}
-                        onMouseMove={(e) => {
-                          if (resizingId !== assignment.id) return;
-                          const parentWidth = e.currentTarget.parentElement?.parentElement?.clientWidth || 1;
-                          const deltaPx = e.movementX;
-                          const pxPerDay = parentWidth / durationDays;
-                          const deltaDays = deltaPx / pxPerDay;
-                          const newEnd = addDays(end, deltaDays);
-                          const snapped = snapToMinutes(newEnd, SNAP_MINUTES);
-                          onResize(assignment, snapped);
-                        }}
-                        onMouseUp={() => setResizingId(null)}
-                      />
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
+            <DraggableAssignment
+              key={a.id}
+              assignment={a}
+              top={top}
+              height={Math.max(28, height)}
+              isActive={activeId === a.id}
+              onDragStart={() => onDragStart(a.id)}
+              onDragEnd={() => onDragEnd()}
+            />
           );
         })}
+      </div>
+    </Card>
+  );
+}
+
+function DraggableAssignment(props: {
+  assignment: ScheduleAssignment;
+  top: number;
+  height: number;
+  isActive: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const { assignment, top, height, isActive, onDragStart, onDragEnd } = props;
+
+  const startLabel = assignment.startsAt ?? assignment.start;
+  const endLabel = assignment.endsAt ?? assignment.end;
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", assignment.id);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "absolute left-2 right-2 rounded-md border bg-muted p-2 text-xs cursor-grab active:cursor-grabbing",
+        isActive && "ring-2 ring-primary/60",
+      )}
+      style={{ top, height }}
+      title={assignment.jobTitle ? `Job ${assignment.jobTitle}` : "Job"}
+    >
+      <div className="font-medium">{assignment.jobTitle || "Job"}</div>
+      <div className="opacity-70">
+        {startLabel && new Date(startLabel).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – {endLabel &&
+          new Date(endLabel).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       </div>
     </div>
   );

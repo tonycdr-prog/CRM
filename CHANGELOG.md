@@ -30,6 +30,7 @@
 - Introduced a reusable widget chrome with expand/new-tab controls and a standalone widget view route.
 - Added a schedule service with in-memory assignments, duplication, and conflict detection plus API tests for create/update/duplicate flows.
 - Rebuilt the schedule page with calendar and gantt drag/drop, shift-duplicate, resize, conflict warnings, and engineer selection for duplicates.
+- Refreshed the schedule board with per-engineer drag-and-drop swimlanes, shift-duplicate support, and friendlier auth/conflict handling for preview.
 - Added a scheduling assignments migration to persist job-to-engineer windows with indexed lookups for conflict detection.
 - Updated the shared schedule assignment table mapping to use UUID columns and indexed builders consistent with the migration schema.
 - Reworked schedule routes to persist assignments against the database when available while retaining the in-memory dev fallback and refreshed API tests.
