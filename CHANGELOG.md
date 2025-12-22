@@ -39,6 +39,7 @@
 - Expanded module placeholders (reporting, asset management, compliance, forms engine) and added module gating with a friendly disabled state.
 - Declared @dnd-kit dependencies to support dashboard and scheduling drag-and-drop interactions.
 - Ensured module sidebar sub-links navigate directly to their pages with clearer "Open page" affordances for review flows.
+- Rendered module sub-links as widget-style previews with expand/pop-out/send controls so reviewers can launch destinations directly from the sidebar.
 - Added dev-only module switches to preview ModuleGate disabled states and expanded widget registry with schedule today, finance summary, and reports queue components.
 - Pinned npm installs to the public registry via `.npmrc` for consistent dependency resolution in dev environments.
 - Registered an upcoming-schedule dashboard widget with standard chrome actions to align with new widget key constants.

@@ -22,6 +22,17 @@ type WidgetFrameProps = PropsWithChildren<{
   supportsNewTab?: boolean;
   supportsSendToScreen?: boolean;
   supportsRefreshAction?: boolean;
+  /**
+   * Override the default widget route when opening in a new tab. Useful for
+   * module navigation previews that should link to real pages instead of the
+   * dashboard widget route.
+   */
+  newTabHref?: string;
+  /**
+   * Optional override for the send-to-screen target. Falls back to newTabHref
+   * when provided.
+   */
+  sendToScreenHref?: string;
   params?: Record<string, unknown>;
   headerExtras?: ReactNode;
   footer?: ReactNode;
@@ -37,6 +48,8 @@ export function WidgetFrame({
   supportsNewTab = true,
   supportsSendToScreen = false,
   supportsRefreshAction = false,
+  newTabHref: newTabHrefOverride,
+  sendToScreenHref,
   params,
   headerExtras,
   footer,
@@ -47,11 +60,12 @@ export function WidgetFrame({
   const [expanded, setExpanded] = useState(false);
 
   const newTabHref = useMemo(() => {
+    if (newTabHrefOverride) return newTabHrefOverride;
     const search = params && Object.keys(params).length
       ? `?params=${encodeURIComponent(JSON.stringify(params))}`
       : "";
     return `/dashboard/widget/${encodeURIComponent(widgetId)}${search}`;
-  }, [params, widgetId]);
+  }, [newTabHrefOverride, params, widgetId]);
 
   return (
     <>
@@ -113,7 +127,7 @@ export function WidgetFrame({
                         key={screenId}
                         onSelect={() =>
                           window.open(
-                            newTabHref,
+                            sendToScreenHref ?? newTabHref,
                             `lso-screen-${screenId}`,
                             "noopener,noreferrer,width=1200,height=800",
                           )
