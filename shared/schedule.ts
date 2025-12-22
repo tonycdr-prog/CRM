@@ -25,6 +25,13 @@ export const ScheduleJobSlotSchema = z.object({
 
 export type ScheduleJobSlot = z.infer<typeof ScheduleJobSlotSchema>;
 
+export type ScheduleRangeResponse = {
+  jobs: ScheduleJobSlot[];
+  assignments: ScheduleAssignment[];
+  conflicts?: ScheduleJobConflict[];
+  warnings?: any[];
+};
+
 export const ScheduleAssignmentSchema = z.object({
   id: z.string(),
   organizationId: z.string().uuid().optional(),

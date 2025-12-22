@@ -1,9 +1,7 @@
 import { apiRequest } from "@/lib/queryClient";
-import type { ScheduleJobConflict, ScheduleJobSlot } from "@shared/schedule";
+import type { ScheduleRangeResponse } from "@shared/schedule";
 
-export type ScheduleResponse = { jobs: ScheduleJobSlot[]; conflicts?: ScheduleJobConflict[]; warnings?: any[] };
-
-export async function fetchScheduleRange(from: string, to: string): Promise<ScheduleResponse> {
+export async function fetchScheduleRange(from: string, to: string): Promise<ScheduleRangeResponse> {
   const res = await apiRequest("GET", `/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
   if (!res.ok) {
     const message = await res.text();
@@ -12,8 +10,11 @@ export async function fetchScheduleRange(from: string, to: string): Promise<Sche
   return res.json();
 }
 
-export async function moveJob(jobId: string, startAt: string, endAt: string): Promise<ScheduleResponse> {
-  const res = await apiRequest("POST", "/api/schedule/move-job", { jobId, startAt, endAt });
+export async function updateAssignment(
+  assignmentId: string,
+  payload: { startAt: string; endAt: string; engineerId?: string },
+): Promise<ScheduleRangeResponse> {
+  const res = await apiRequest("PATCH", `/api/schedule/${assignmentId}`, payload);
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || "Failed to move job");
@@ -21,8 +22,14 @@ export async function moveJob(jobId: string, startAt: string, endAt: string): Pr
   return res.json();
 }
 
-export async function duplicateJob(jobId: string, startAt: string, endAt: string): Promise<ScheduleResponse> {
-  const res = await apiRequest("POST", "/api/schedule/duplicate-job", { jobId, startAt, endAt });
+export async function createScheduledJob(payload: {
+  jobId: string;
+  startAt: string;
+  endAt: string;
+  engineerIds: string[];
+  title?: string;
+}): Promise<ScheduleRangeResponse> {
+  const res = await apiRequest("POST", "/api/schedule", payload);
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || "Failed to duplicate job");
