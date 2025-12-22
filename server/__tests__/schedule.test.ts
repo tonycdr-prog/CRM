@@ -37,9 +37,9 @@ test("can create and update schedule assignments", async (t) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jobId: "22222222-2222-2222-2222-222222222222",
-      engineerId: "eng-1",
-      startsAt: new Date().toISOString(),
-      endsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      engineerId: "eng-new",
+      startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
     }),
   });
   const createBody = await createRes.json();

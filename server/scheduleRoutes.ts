@@ -9,7 +9,7 @@ import {
   getScheduleState,
   updateAssignment,
 } from "./lib/scheduleAssignments";
-import { CreateScheduleAssignmentSchema, UpdateScheduleAssignmentSchema } from "@shared/schedule";
+import { assignmentsOverlap, CreateScheduleAssignmentSchema, UpdateScheduleAssignmentSchema } from "@shared/schedule";
 import { db, isDatabaseAvailable } from "./db";
 import { scheduleAssignments } from "@shared/schema";
 
@@ -277,7 +277,7 @@ function buildInMemoryRouter(): Router {
       if (!body.jobId || !engineerId || !start || !end) {
         return res.status(400).json({ message: "Missing required fields" });
       }
-      const assignment = createAssignment({
+      const candidate: any = {
         jobId: body.jobId,
         jobTitle: (body as any).jobTitle,
         engineerId,
@@ -289,7 +289,25 @@ function buildInMemoryRouter(): Router {
         endsAt: (body as any).endsAt ?? (body as any).end ?? end,
         requiredEngineers: (body as any).requiredEngineers ?? 1,
         status: (body as any).status || "scheduled",
-      } as any);
+      } as any;
+
+      const overlaps = getScheduleState().assignments.filter((a) => assignmentsOverlap(a, candidate));
+      if (overlaps.length && req.query.allowConflict !== "true") {
+        return res.status(409).json({
+          message: "Scheduling conflict",
+          engineerUserId: candidate.engineerUserId ?? candidate.engineerId,
+          startsAt: candidate.startsAt ?? candidate.start,
+          endsAt: candidate.endsAt ?? candidate.end,
+          overlapping: overlaps.map((o) => ({
+            id: o.id,
+            jobId: o.jobId,
+            startsAt: o.startsAt ?? o.start,
+            endsAt: o.endsAt ?? o.end,
+          })),
+        });
+      }
+
+      const assignment = createAssignment(candidate);
       const conflicts = findConflicts(getScheduleState().assignments);
       res.status(201).json({ assignment, conflicts });
     }),
@@ -299,15 +317,33 @@ function buildInMemoryRouter(): Router {
     "/assignments/:id",
     asyncHandler(async (req, res) => {
       const updates = req.body as any;
-      const updated = updateAssignment(req.params.id, {
+      const candidate = {
         ...updates,
         startsAt: updates.startsAt ?? updates.start,
         endsAt: updates.endsAt ?? updates.end,
         engineerId: updates.engineerId ?? updates.engineerUserId,
         engineerUserId: updates.engineerUserId ?? updates.engineerId,
-      });
+      };
+      const updated = updateAssignment(req.params.id, candidate);
       if (!updated) {
         return res.status(404).json({ message: "Assignment not found" });
+      }
+      const overlaps = getScheduleState().assignments.filter(
+        (a) => a.id !== updated.id && assignmentsOverlap(a, updated),
+      );
+      if (overlaps.length && req.query.allowConflict !== "true") {
+        return res.status(409).json({
+          message: "Scheduling conflict",
+          engineerUserId: updated.engineerUserId ?? updated.engineerId,
+          startsAt: updated.startsAt ?? updated.start,
+          endsAt: updated.endsAt ?? updated.end,
+          overlapping: overlaps.map((o) => ({
+            id: o.id,
+            jobId: o.jobId,
+            startsAt: o.startsAt ?? o.start,
+            endsAt: o.endsAt ?? o.end,
+          })),
+        });
       }
       const conflicts = findConflicts(getScheduleState().assignments);
       res.json({ assignment: updated, conflicts });
