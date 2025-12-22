@@ -259,7 +259,7 @@ export default function Jobs() {
   const [completeFaultHistory, setCompleteFaultHistory] = useState<FaultHistoryEntry[]>([]);
   const [completeRecommendations, setCompleteRecommendations] = useState("");
   const [completeBackOfficeNotes, setCompleteBackOfficeNotes] = useState("");
-  const [completeServiceStatement, setCompleteServiceStatement] = useState(SERVICE_STATEMENTS.operational);
+  const [completeServiceStatement, setCompleteServiceStatement] = useState<string>(SERVICE_STATEMENTS.operational);
   const [completeCompletionNotes, setCompleteCompletionNotes] = useState("");
   const [completeActualDuration, setCompleteActualDuration] = useState("");
   const [completeSystems, setCompleteSystems] = useState<SystemEntry[]>([]);

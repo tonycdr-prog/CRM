@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request } from "express";
 import fs from "fs";
 import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
@@ -41,7 +41,9 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use(async (req, res, next) => {
+    if (!shouldServeSpaRoute(req)) return next();
+
     const url = req.originalUrl;
 
     try {
@@ -79,7 +81,29 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use((req, res, next) => {
+    if (!shouldServeSpaRoute(req)) return next();
+
     res.sendFile(path.resolve(distPath, "index.html"));
   });
+}
+
+export function shouldServeSpaRoute(
+  req: Pick<Request, "originalUrl" | "headers"> | string,
+) {
+  const url = typeof req === "string" ? req : req.originalUrl;
+  const pathname = url.split("?")[0];
+  const acceptsHtml =
+    typeof req === "string" ||
+    !req.headers?.accept ||
+    req.headers.accept.includes("text/html");
+
+  if (pathname.startsWith("/api")) return false;
+  if (pathname.startsWith("/uploads")) return false;
+  if (pathname.startsWith("/@")) return false; // Vite internals
+  if (pathname.includes("/assets/")) return false;
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) return false; // static files & service workers
+  if (!acceptsHtml) return false;
+
+  return true;
 }

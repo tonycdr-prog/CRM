@@ -1,0 +1,31 @@
+# Changelog
+
+## [Unreleased]
+- Relaxed CSP to support hosted font assets while keeping stricter defaults.
+- Made session cookies use secure flag only in production to keep local development login working.
+- Added Phase 0 guardrails (AGENTS.md), planning docs, and documented commands for dev/test/lint/db flows.
+- Seeded a reusable health-check stub and added a passing `/api/health` happy-path test.
+- Defined a dashboard widget contract with a shared registry and default widgets for health and team notes.
+- Added per-user dashboard layout persistence with create/update/default APIs and a basic dashboard builder UI.
+- Introduced Phase 1 planning docs and tests for widget registry validation and dashboard layout CRUD.
+- Added Phase 2 planning docs, sidebar-to-widget mapping with navigation shortcuts, add-to-dashboard actions, and mapping/persistence tests.
+- Added Phase 3 planning docs plus forms core migration, APIs, builder/runner UI, and automated coverage for templates, versions, and submissions.
+- Added Phase 4 planning docs, repeat-per-asset schema/instantiation, runner asset navigation with warnings, and tests for per-asset coverage.
+- Added Phase 5 planning docs, instrumentation/calibration schema and migration, meter + reading APIs, runner meter selection UI, and calibration enforcement tests.
+- Added Phase 6 planning docs, smoke control library schema/migration, generator endpoints/UI, and catalog + generator tests.
+- Added Phase 7 planning docs, reporting/defect migrations, report/signature and defect/remedial APIs with UI, and automated reporting workflow tests.
+- Added a development-only auth bypass flag to run the app locally without OIDC discovery.
+- Added a database-optional dev preview path that boots with in-memory sessions/layouts when DEV_AUTH_BYPASS is enabled without a database.
+- Added SPA fallback routing and a dev-only Review sidebar section to preview new pages together.
+- Loosened CSP directives in development to allow Vite/react-refresh while keeping production directives strict.
+- Added dashboard widget chrome actions (expand, pop-out, send-to-screen, refresh) and an edit mode with drag, resize, duplicate, and save for per-user layouts.
+ - Expanded the dev preview path to surface review-mode status (including DB availability) via `/api/dev/status` and sidebar
+   flags while keeping production auth/CSP unchanged.
+ - Ensured production CSP keeps strict connect-src while development explicitly allows websocket/inlined scripts for Vite.
+- Refined the development preview path with memory-backed dev auth, environment-aware CSP helpers, SPA accept-header checks, and a dev flag banner plus tests.
+- Added a guarded `/api/dev/seed-demo` endpoint to seed demo data when a database is available under `SEED_DEMO=true`.
+- Grouped the defects UI by job with friendlier unauthorized messaging to aid review of defect workflows in preview mode.
+- Added a global dev review banner to surface auth/review/database flags during preview sessions.
+- Introduced a reusable widget chrome with expand/new-tab controls and a standalone widget view route.
+- Added a schedule service with in-memory assignments, duplication, and conflict detection plus API tests for create/update/duplicate flows.
+- Rebuilt the schedule page with calendar and gantt drag/drop, shift-duplicate, resize, conflict warnings, and engineer selection for duplicates.

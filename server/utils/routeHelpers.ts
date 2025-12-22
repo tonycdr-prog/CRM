@@ -69,16 +69,18 @@ export function apiSuccess<T>(res: Response, data: T, status = 200): void {
   res.status(status).json(data);
 }
 
-const SENSITIVE_KEYS = new Set([
-  "password",
-  "token",
-  "portalToken",
-  "access_token",
-  "refresh_token",
-  "secret",
-  "apiKey",
-  "api_key",
-]);
+const SENSITIVE_KEYS = new Set(
+  [
+    "password",
+    "token",
+    "portalToken",
+    "access_token",
+    "refresh_token",
+    "secret",
+    "apiKey",
+    "api_key",
+  ].map((key) => key.toLowerCase())
+);
 
 export function redactSensitiveData(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;

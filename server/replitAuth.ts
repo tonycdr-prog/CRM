@@ -6,7 +6,14 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
+let cachedStorage: typeof import("./storage").storage | null = null;
+
+async function getStorage(): Promise<typeof import("./storage").storage> {
+  if (!cachedStorage) {
+    ({ storage: cachedStorage } = await import("./storage"));
+  }
+  return cachedStorage!;
+}
 
 const getOidcConfig = memoize(
   async () => {
@@ -20,6 +27,7 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
+  const isProduction = process.env.NODE_ENV === "production";
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -34,7 +42,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
+      sameSite: "lax",
       maxAge: sessionTtl,
     },
   });
@@ -51,6 +60,7 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
+  const storage = await getStorage();
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -60,11 +70,55 @@ async function upsertUser(claims: any) {
   });
 }
 
+export function isDevAuthBypassEnabled() {
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.DEV_AUTH_BYPASS?.toLowerCase() === "true"
+  );
+}
+
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
+  const devAuthBypass = isDevAuthBypassEnabled();
+  if (devAuthBypass) {
+    const devSessionTtl = 7 * 24 * 60 * 60 * 1000;
+    const devSession = session({
+      secret: process.env.SESSION_SECRET || "dev",
+      store: new session.MemoryStore(),
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: devSessionTtl,
+      },
+    });
+
+    app.use(devSession);
+    app.use((req, _res, next) => {
+      if (!req.user) {
+        req.user = {
+          claims: {
+            sub: "dev-user",
+            email: "dev@local",
+          },
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+        } as Express.User & { claims: any; expires_at: number };
+      }
+      (req as any).isAuthenticated = () => true;
+      next();
+    });
+    app.get("/api/logout", (_req, res) => res.redirect("/"));
+    return;
+  }
+
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   const config = await getOidcConfig();
 
@@ -97,9 +151,6 @@ export async function setupAuth(app: Express) {
     }
   };
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
@@ -129,6 +180,18 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  if (isDevAuthBypassEnabled()) {
+    req.user = {
+      claims: {
+        sub: "dev-user",
+        email: "dev@local",
+      },
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    } as Express.User & { claims: any; expires_at: number };
+    (req as any).isAuthenticated = () => true;
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

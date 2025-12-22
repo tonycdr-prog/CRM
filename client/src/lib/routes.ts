@@ -8,6 +8,9 @@ export const ROUTES = {
   HUB_CUSTOMERS: "/hub/customers",
   HUB_REPORTS: "/hub/reports",
   HUB_MANAGE: "/hub/manage",
+  FORMS_BUILDER: "/forms/builder",
+  FORMS_RUNNER: "/forms/runner",
+  WIDGET_VIEW: "/dashboard/widget/:widgetId",
   FIELD_COMPANION_JOB: "/field-companion/:id",
   FIELD_COMPANION_JOB_FORMS: "/field-companion/:id/forms",
   FIELD_TESTING: "/test",
@@ -62,6 +65,7 @@ export const ROUTES = {
   ADMIN_TEMPLATES: "/admin/templates",
   ADMIN_TEMPLATE_EDIT: "/admin/templates/:id",
   ADMIN_USAGE: "/admin/usage",
+  SMOKE_CONTROL_LIBRARY: "/admin/smoke-control",
 } as const;
 
 /** Build a wouter-compatible path from a pattern like "/field-companion/:id/forms". */

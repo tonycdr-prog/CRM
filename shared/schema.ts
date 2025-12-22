@@ -2,6 +2,7 @@ import { sql, relations } from "drizzle-orm";
 import { pgTable, text, varchar, integer, boolean, real, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { dashboardLayoutItemSchema, type DashboardLayoutItem } from "./dashboard";
 
 // ============================================
 // DATABASE TABLES
@@ -1797,6 +1798,7 @@ export const auditLogs = pgTable("audit_logs", {
   changes: jsonb("changes").$type<{ field: string; oldValue: any; newValue: any }[]>(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2207,6 +2209,9 @@ export const defects = pgTable("defects", {
   actualCost: real("actual_cost"),
   quoteId: varchar("quote_id").references(() => quotes.id),
   remedialJobId: varchar("remedial_job_id").references(() => jobs.id),
+  assetId: varchar("asset_id").references(() => jobSiteAssets.id),
+  entityInstanceId: varchar("entity_instance_id").references(() => formsCoreInstances.id),
+  createdBy: varchar("created_by").references(() => users.id),
   photos: jsonb("photos").$type<{
     url: string;
     caption: string;
@@ -2216,9 +2221,51 @@ export const defects = pgTable("defects", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertDefectSchema = createInsertSchema(defects).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDefectSchema = createInsertSchema(defects).omit({ id: true, createdAt: true, updatedAt: true, createdBy: true });
 export type InsertDefect = z.infer<typeof insertDefectSchema>;
 export type DbDefect = typeof defects.$inferSelect;
+
+export const remedials = pgTable("remedials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  defectId: varchar("defect_id").references(() => defects.id).notNull(),
+  status: text("status").default("open"), // open, in_progress, resolved
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertRemedialSchema = createInsertSchema(remedials).omit({ id: true, createdAt: true, createdBy: true });
+export type InsertRemedial = z.infer<typeof insertRemedialSchema>;
+export type DbRemedial = typeof remedials.$inferSelect;
+
+export const reports = pgTable("reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  submissionId: varchar("submission_id").references(() => formsCoreSubmissions.id).notNull(),
+  reportType: text("report_type").notNull(), // client, internal, etc
+  payloadJson: jsonb("payload_json").$type<Record<string, unknown>>().default({}).notNull(),
+  status: text("status").default("draft").notNull(),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertOpsReportSchema = createInsertSchema(reports).omit({ id: true, createdAt: true });
+export type InsertOpsReport = z.infer<typeof insertOpsReportSchema>;
+export type DbOpsReport = typeof reports.$inferSelect;
+
+export const reportSignatures = pgTable("report_signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reportId: varchar("report_id").references(() => reports.id, { onDelete: "cascade" }).notNull(),
+  signedBy: varchar("signed_by").references(() => users.id).notNull(),
+  role: text("role").notNull(),
+  payloadHash: text("payload_hash").notNull(),
+  signedAt: timestamp("signed_at").defaultNow().notNull(),
+});
+
+export const insertReportSignatureSchema = createInsertSchema(reportSignatures).omit({ id: true, signedAt: true });
+export type InsertReportSignature = z.infer<typeof insertReportSignatureSchema>;
+export type DbReportSignature = typeof reportSignatures.$inferSelect;
 
 // Document Register (controlled documents)
 export const documentRegister = pgTable("document_register", {
@@ -3432,6 +3479,7 @@ export const systemTypes = pgTable("system_types", {
   organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
   code: text("code").notNull(),
   name: text("name").notNull(),
+  standard: text("standard"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => [
@@ -3445,6 +3493,48 @@ export const insertSystemTypeSchema = createInsertSchema(systemTypes).omit({
 });
 export type InsertSystemType = z.infer<typeof insertSystemTypeSchema>;
 export type SystemType = typeof systemTypes.$inferSelect;
+
+export const entityLibrary = pgTable("entity_library", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  standard: text("standard"),
+  description: text("description"),
+  definition: jsonb("definition").$type<EntityTemplateDefinition>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("entity_library_org_code_idx").on(t.organizationId, t.code),
+]);
+
+export const insertEntityLibrarySchema = createInsertSchema(entityLibrary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertEntityLibrary = z.infer<typeof insertEntityLibrarySchema>;
+export type EntityLibrary = typeof entityLibrary.$inferSelect;
+
+export const systemTypeRequiredEntities = pgTable("system_type_required_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  systemTypeId: varchar("system_type_id").references(() => systemTypes.id).notNull(),
+  entityLibraryId: varchar("entity_library_id").references(() => entityLibrary.id).notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("system_type_required_entities_system_idx").on(t.systemTypeId),
+  index("system_type_required_entities_entity_idx").on(t.entityLibraryId),
+  index("system_type_required_entities_org_idx").on(t.organizationId),
+]);
+
+export const insertSystemTypeRequiredEntitySchema = createInsertSchema(systemTypeRequiredEntities).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSystemTypeRequiredEntity = z.infer<typeof insertSystemTypeRequiredEntitySchema>;
+export type SystemTypeRequiredEntity = typeof systemTypeRequiredEntities.$inferSelect;
 
 export const formEntities = pgTable("form_entities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -3641,3 +3731,236 @@ export const insertInspectionRowAttachmentSchema = createInsertSchema(inspection
 });
 export type InsertInspectionRowAttachment = z.infer<typeof insertInspectionRowAttachmentSchema>;
 export type InspectionRowAttachment = typeof inspectionRowAttachments.$inferSelect;
+
+// Dashboard layouts
+export const dashboardLayouts = pgTable("dashboard_layouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull().default("My dashboard"),
+  layout: jsonb("layout").$type<DashboardLayoutItem[]>().notNull().default(sql`'[]'::jsonb`),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("dashboard_layout_user_idx").on(t.userId),
+]);
+
+export const insertDashboardLayoutSchema = createInsertSchema(dashboardLayouts, {
+  layout: z.array(dashboardLayoutItemSchema),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDashboardLayout = z.infer<typeof insertDashboardLayoutSchema>;
+export type DashboardLayout = typeof dashboardLayouts.$inferSelect;
+
+// Forms core
+export const formFieldTypeSchema = z.enum(["text", "number", "boolean", "choice"]);
+
+export const formFieldSchema = z.object({
+  id: z.string(),
+  label: z.string().min(1),
+  type: formFieldTypeSchema,
+  required: z.boolean().default(false),
+  options: z.array(z.string().min(1)).optional(),
+  placeholder: z.string().optional(),
+  helperText: z.string().optional(),
+});
+
+export type FormFieldDefinition = z.infer<typeof formFieldSchema>;
+
+export const entityTemplateDefinitionSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  fields: z.array(formFieldSchema),
+  sortOrder: z.number().int().min(0).default(0),
+  repeatPerAsset: z.boolean().default(false),
+});
+
+export type EntityTemplateDefinition = z.infer<typeof entityTemplateDefinitionSchema>;
+
+export const formVersionStatusSchema = z.enum(["draft", "published"]);
+export const formSubmissionStatusSchema = z.enum(["draft", "in_progress", "submitted"]);
+
+export const formsCoreTemplates = pgTable("form_templates_core", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("form_templates_core_org_idx").on(t.organizationId),
+]);
+
+export const insertFormsCoreTemplateSchema = createInsertSchema(formsCoreTemplates).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertFormsCoreTemplate = z.infer<typeof insertFormsCoreTemplateSchema>;
+export type FormsCoreTemplate = typeof formsCoreTemplates.$inferSelect;
+
+export const formsCoreVersions = pgTable("form_versions_core", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").references(() => formsCoreTemplates.id).notNull(),
+  versionNumber: integer("version_number").notNull(),
+  status: text("status").notNull().default("draft").$type<z.infer<typeof formVersionStatusSchema>>(),
+  title: text("title"),
+  notes: text("notes"),
+  definition: jsonb("definition").$type<{ entities: EntityTemplateDefinition[]; systemTypeCode?: string }>().notNull().default(sql`'{}'::jsonb`),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  publishedAt: timestamp("published_at"),
+}, (t) => [
+  index("form_versions_core_template_idx").on(t.templateId),
+]);
+
+export const insertFormsCoreVersionSchema = createInsertSchema(formsCoreVersions, {
+  definition: z
+    .object({ entities: z.array(entityTemplateDefinitionSchema), systemTypeCode: z.string().optional() })
+    .default({ entities: [] }),
+}).omit({
+  id: true,
+  createdAt: true,
+  publishedAt: true,
+  status: true,
+  versionNumber: true,
+}).extend({
+  versionNumber: z.number().optional(),
+});
+export type InsertFormsCoreVersion = z.infer<typeof insertFormsCoreVersionSchema>;
+export type FormsCoreVersion = typeof formsCoreVersions.$inferSelect;
+
+export const formsCoreEntities = pgTable("entity_templates_core", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  formVersionId: varchar("form_version_id").references(() => formsCoreVersions.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  definition: jsonb("definition").$type<EntityTemplateDefinition>().notNull(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("entity_templates_core_version_idx").on(t.formVersionId),
+]);
+
+export const insertFormsCoreEntitySchema = createInsertSchema(formsCoreEntities, {
+  definition: entityTemplateDefinitionSchema,
+}).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertFormsCoreEntity = z.infer<typeof insertFormsCoreEntitySchema>;
+export type FormsCoreEntity = typeof formsCoreEntities.$inferSelect;
+
+export const formsCoreSubmissions = pgTable("form_submissions_core", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  formVersionId: varchar("form_version_id").references(() => formsCoreVersions.id).notNull(),
+  jobId: varchar("job_id").references(() => jobs.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  status: text("status").notNull().default("in_progress").$type<z.infer<typeof formSubmissionStatusSchema>>(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  submittedAt: timestamp("submitted_at"),
+}, (t) => [
+  index("form_submissions_core_version_idx").on(t.formVersionId),
+  index("form_submissions_core_job_idx").on(t.jobId),
+  index("form_submissions_core_org_idx").on(t.organizationId),
+]);
+
+export const insertFormsCoreSubmissionSchema = createInsertSchema(formsCoreSubmissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  submittedAt: true,
+  status: true,
+});
+export type InsertFormsCoreSubmission = z.infer<typeof insertFormsCoreSubmissionSchema>;
+export type FormsCoreSubmission = typeof formsCoreSubmissions.$inferSelect;
+
+export const formsCoreInstances = pgTable("entity_instances_core", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").references(() => formsCoreSubmissions.id).notNull(),
+  entityTemplateId: varchar("entity_template_id").references(() => formsCoreEntities.id).notNull(),
+  assetId: varchar("asset_id").references(() => jobSiteAssets.id),
+  location: text("location"),
+  answers: jsonb("answers").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  status: text("status").notNull().default("in_progress").$type<z.infer<typeof formSubmissionStatusSchema>>(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("entity_instances_core_submission_idx").on(t.submissionId),
+  index("entity_instances_core_template_idx").on(t.entityTemplateId),
+  index("entity_instances_core_asset_idx").on(t.assetId),
+]);
+
+export const insertFormsCoreInstanceSchema = createInsertSchema(formsCoreInstances).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+}).extend({
+  assetId: z.string().optional(),
+  location: z.string().optional(),
+});
+export type InsertFormsCoreInstance = z.infer<typeof insertFormsCoreInstanceSchema>;
+export type FormsCoreInstance = typeof formsCoreInstances.$inferSelect;
+
+export const meters = pgTable("meters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  name: text("name").notNull(),
+  serialNumber: text("serial_number"),
+  model: text("model"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMeterSchema = createInsertSchema(meters).omit({ id: true, createdAt: true });
+export type InsertMeter = z.infer<typeof insertMeterSchema>;
+export type Meter = typeof meters.$inferSelect;
+
+export const meterCalibrations = pgTable("meter_calibrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meterId: varchar("meter_id").references(() => meters.id).notNull(),
+  calibratedAt: timestamp("calibrated_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  certificateUrl: text("certificate_url"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMeterCalibrationSchema = createInsertSchema(meterCalibrations).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertMeterCalibration = z.infer<typeof insertMeterCalibrationSchema>;
+export type MeterCalibration = typeof meterCalibrations.$inferSelect;
+
+export const entityInstanceReadings = pgTable("entity_instance_readings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityInstanceId: varchar("entity_instance_id").references(() => formsCoreInstances.id).notNull(),
+  meterId: varchar("meter_id").references(() => meters.id).notNull(),
+  calibrationId: varchar("calibration_id").references(() => meterCalibrations.id).notNull(),
+  recordedByUserId: varchar("recorded_by_user_id").references(() => users.id).notNull(),
+  reading: jsonb("reading").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("entity_instance_readings_instance_idx").on(t.entityInstanceId),
+]);
+
+export const insertEntityInstanceReadingSchema = createInsertSchema(entityInstanceReadings, {
+  reading: z.record(z.unknown()).default({}),
+}).omit({
+  id: true,
+  createdAt: true,
+  recordedByUserId: true,
+  entityInstanceId: true,
+}).extend({
+  entityInstanceId: z.string().optional(),
+});
+export type InsertEntityInstanceReading = z.infer<typeof insertEntityInstanceReadingSchema>;
+export type EntityInstanceReading = typeof entityInstanceReadings.$inferSelect;

@@ -5,14 +5,14 @@ import { redactSensitiveData } from "./utils/routeHelpers";
 import {
   requestId,
   requestLogger,
-  securityHeaders,
+  buildSecurityHeaders,
   generalLimiter,
   authLimiter,
   uploadLimiter,
   pdfLimiter,
 } from "./security";
 import { slowRequestLogger, createErrorHandler } from "./observability";
-import { db } from "./db";
+import { db, isDatabaseAvailable } from "./db";
 import { startJobsWorker } from "./lib/jobsQueue";
 import { ZodError } from "zod";
 
@@ -22,7 +22,7 @@ const isProduction = process.env.NODE_ENV === "production";
 app.set("trust proxy", 1);
 app.use(requestId);
 app.use(requestLogger);
-app.use(securityHeaders);
+app.use(buildSecurityHeaders({ isDev: !isProduction }));
 app.use(generalLimiter);
 app.use(slowRequestLogger(1500));
 
@@ -79,7 +79,11 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  startJobsWorker(db);
+  if (isDatabaseAvailable) {
+    startJobsWorker(db);
+  } else {
+    log("Database unavailable; skipping jobs worker startup in dev bypass mode");
+  }
 
   app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     const requestIdVal = (req as any).requestId;
@@ -96,6 +100,14 @@ app.use((req, res, next) => {
       });
     }
 
+    const errMessage = (err as Error)?.message;
+    if (errMessage === "Session not initialized") {
+      return res.status(401).json({ message: "Session missing", requestId: requestIdVal });
+    }
+    if (errMessage === "Invalid CSRF token") {
+      return res.status(403).json({ message: "Invalid CSRF token", requestId: requestIdVal });
+    }
+
     const errMsg = (err as Error)?.message || "";
     const errCode = (err as any)?.code || "";
 
@@ -109,7 +121,14 @@ app.use((req, res, next) => {
     return next(err);
   });
 
-  app.use(createErrorHandler(db));
+  if (isDatabaseAvailable) {
+    app.use(createErrorHandler(db));
+  } else {
+    app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+      const message = (err as Error)?.message || "Database unavailable";
+      res.status(503).json({ message });
+    });
+  }
 
   if (app.get("env") === "development") {
     await setupVite(app, server);

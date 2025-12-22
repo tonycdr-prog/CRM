@@ -1,19 +1,19 @@
-import type { Express } from "express";
-import { Router } from "express";
+import { Router, type Express, type Request, type RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, isDevAuthBypassEnabled } from "./replitAuth";
 import { asyncHandler, AuthenticatedRequest, getUserId } from "./utils/routeHelpers";
 import { hashPassword, verifyPassword } from "./auth";
-import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses, files, inspectionRowAttachments, auditEvents, serverErrors } from "@shared/schema";
+import { insertCheckSheetTemplateSchema, insertCheckSheetReadingSchema, DEFAULT_TEMPLATE_FIELDS, users, jobs, formTemplates, formTemplateSystemTypes, systemTypes, inspectionInstances, formTemplateEntities, formEntities, formEntityRows, inspectionResponses, files, inspectionRowAttachments, auditEvents, serverErrors, type DbStaffDirectory, type InsertCheckSheetTemplate, type InsertCheckSheetReading, type CheckSheetFieldDefinition, type CheckSheetReadingValue } from "@shared/schema";
 import { logAudit } from "./lib/audit";
 import multer from "multer";
 import { buildInspectionPdf } from "./pdf/inspectionPdf";
 import { seedDatabase } from "./seed";
 import fs from "fs";
 import path from "path";
-import { db } from "./db";
+import crypto from "crypto";
+import { db, isDatabaseAvailable } from "./db";
 import { eq, and, sql, isNull, desc, inArray } from "drizzle-orm";
 import { uploadLimiter, pdfLimiter } from "./security";
 import { getOrgPlanAndUsage, enforce } from "./lib/usage";
@@ -22,6 +22,12 @@ import { streamOrgExportZip } from "./lib/zipExport";
 import { JOB_OUTPUT_ROOT } from "./lib/jobsQueue";
 import { dryRunImport, applyImport, ImportPayloadSchema } from "./lib/importOrg";
 import { importRuns } from "@shared/schema";
+import { buildHealthHandler } from "./health";
+import { createDashboardRouter } from "./dashboardRoutes";
+import { createFormsRouter, createMetersRouter } from "./formsRoutes";
+import { createSmokeControlRouter } from "./smokeControlRoutes";
+import { createReportingRouter } from "./reportingRoutes";
+import { buildScheduleRouter } from "./scheduleRoutes";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -124,6 +130,105 @@ const ALLOWED_MIME = new Set([
   "application/pdf",
 ]);
 
+function detectMimeFromMagic(filePath: string): string | null {
+  const fd = fs.openSync(filePath, "r");
+  try {
+    const buffer = Buffer.alloc(12);
+    const bytesRead = fs.readSync(fd, buffer, 0, buffer.length, 0);
+    const sig = buffer.subarray(0, bytesRead);
+
+    if (sig.length >= 3 && sig[0] === 0xff && sig[1] === 0xd8 && sig[2] === 0xff) {
+      return "image/jpeg";
+    }
+    if (
+      sig.length >= 8 &&
+      sig[0] === 0x89 &&
+      sig[1] === 0x50 &&
+      sig[2] === 0x4e &&
+      sig[3] === 0x47 &&
+      sig[4] === 0x0d &&
+      sig[5] === 0x0a &&
+      sig[6] === 0x1a &&
+      sig[7] === 0x0a
+    ) {
+      return "image/png";
+    }
+    if (sig.length >= 12 && sig.toString("ascii", 0, 4) === "RIFF" && sig.toString("ascii", 8, 12) === "WEBP") {
+      return "image/webp";
+    }
+    if (sig.length >= 4 && sig.toString("ascii", 0, 4) === "%PDF") {
+      return "application/pdf";
+    }
+    return null;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function safeUnlink(filePath: string) {
+  try {
+    fs.unlinkSync(filePath);
+  } catch (_err) {
+    // no-op
+  }
+}
+
+function assertSafeUpload(filePath: string, declaredMime: string) {
+  const detected = detectMimeFromMagic(filePath);
+  if (!detected) {
+    safeUnlink(filePath);
+    throw new Error("Unsupported or unknown file type");
+  }
+
+  if (!ALLOWED_MIME.has(detected)) {
+    safeUnlink(filePath);
+    throw new Error("Unsupported file type. Only JPG/PNG/WebP/PDF allowed.");
+  }
+
+  if (detected !== declaredMime) {
+    safeUnlink(filePath);
+    throw new Error("File content does not match declared type");
+  }
+}
+
+const CSRF_HEADER_NAME = "x-csrf-token";
+
+function ensureCsrfToken(req: Request): string {
+  const session = (req as any).session as { csrfToken?: string } | undefined;
+  if (!session) {
+    throw new Error("Session not initialized");
+  }
+
+  if (!session.csrfToken) {
+    session.csrfToken = crypto.randomBytes(32).toString("hex");
+  }
+
+  return session.csrfToken;
+}
+
+const csrfProtection: RequestHandler = (req, res, next) => {
+  try {
+    const token = ensureCsrfToken(req);
+
+    if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+      res.setHeader(CSRF_HEADER_NAME, token);
+      return next();
+    }
+
+    const incomingToken =
+      (req.headers[CSRF_HEADER_NAME] as string | undefined) ||
+      (req.body as any)?.["_csrf"];
+
+    if (!incomingToken || incomingToken !== token) {
+      return res.status(403).json({ message: "Invalid CSRF token" });
+    }
+
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+};
+
 function sanitizeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
@@ -172,6 +277,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AUTH SETUP (Replit Auth)
   // ============================================
   await setupAuth(app);
+
+  const devBypass = isDevAuthBypassEnabled();
+  const devReviewMode =
+    process.env.DEV_REVIEW_MODE?.toLowerCase() === "true" ||
+    process.env.VITE_DEV_REVIEW_MODE?.toLowerCase() === "true";
+  const limitedMode = devBypass && !isDatabaseAvailable;
+
+  app.get("/api/dev/status", (_req, res) => {
+    res.json({
+      isDev: process.env.NODE_ENV === "development",
+      devAuthBypass: devBypass,
+      devReviewMode,
+      hasDbConnection: isDatabaseAvailable,
+      limitedMode,
+    });
+  });
+
+  app.post(
+    "/api/dev/seed-demo",
+    asyncHandler(async (_req, res) => {
+      if (process.env.NODE_ENV !== "development") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      if (process.env.SEED_DEMO?.toLowerCase() !== "true") {
+        return res
+          .status(400)
+          .json({ message: "Set SEED_DEMO=true to seed demo data" });
+      }
+
+      if (!isDatabaseAvailable) {
+        return res.status(503).json({
+          message: "Database unavailable; cannot seed in limited mode",
+        });
+      }
+
+      const result = await seedDatabase();
+      res.json({ ok: true, result });
+    }),
+  );
+
+  if (limitedMode) {
+    let inMemoryLayout: any = null;
+    app.get("/api/health", (_req, res) =>
+      res.json({ ok: true, limitedMode: true }),
+    );
+
+    const apiRouter = Router();
+    apiRouter.use(csrfProtection);
+
+    apiRouter.get("/csrf-token", (req, res) => {
+      const token = ensureCsrfToken(req);
+      res.json({ csrfToken: token });
+    });
+
+    apiRouter.get("/auth/user", asyncHandler(async (_req, res) => {
+      res.json({
+        id: "dev-user",
+        email: "dev@local",
+        firstName: "Dev",
+        lastName: "User",
+        profileImageUrl: null,
+        username: null,
+        password: null,
+        displayName: "Dev User",
+        companyName: "Dev Preview",
+        role: "admin",
+        organizationId: null,
+        organizationRole: "owner",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }));
+
+    apiRouter.get("/me", asyncHandler(async (_req, res) => {
+      res.json({
+        userId: "dev-user",
+        organizationId: null,
+        organizationRole: "owner",
+        role: "admin",
+        email: "dev@local",
+        firstName: "Dev",
+        lastName: "User",
+      });
+    }));
+
+    apiRouter.get("/dashboard/layout", (_req, res) => {
+      if (!inMemoryLayout) {
+        inMemoryLayout = {
+          id: "dev-layout",
+          name: "Dev Preview Layout",
+          items: [],
+          isDefault: true,
+        };
+      }
+      res.json({ layout: inMemoryLayout });
+    });
+
+    apiRouter.post("/dashboard/layouts", (req, res) => {
+      const payload = req.body || {};
+      inMemoryLayout = {
+        id: "dev-layout",
+        name: payload.name || "Dev Preview Layout",
+        isDefault: true,
+        items: payload.items || [],
+      };
+      res.json({ layout: inMemoryLayout });
+    });
+
+    apiRouter.put("/dashboard/layouts/:id", (req, res) => {
+      const payload = req.body || {};
+      inMemoryLayout = {
+        id: req.params.id || "dev-layout",
+        name: payload.name || "Dev Preview Layout",
+        isDefault: true,
+        items: payload.items || [],
+      };
+      res.json({ layout: inMemoryLayout });
+    });
+
+    apiRouter.use("/schedule", buildScheduleRouter());
+
+    apiRouter.all("*", (_req, res) =>
+      res.status(503).json({
+        message: "Database unavailable in dev auth bypass mode",
+        limitedMode: true,
+      }),
+    );
+
+    app.use("/api", isAuthenticated, apiRouter);
+    const httpServer = createServer(app);
+    return httpServer;
+  }
 
   // ============================================
   // SEED TEST USER (for TEST_MODE in frontend)
@@ -234,6 +472,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AUTHENTICATED API ROUTER
   // ============================================
   const apiRouter = Router();
+
+  apiRouter.use(csrfProtection);
+
+  apiRouter.get("/csrf-token", (req, res) => {
+    const token = ensureCsrfToken(req);
+    res.json({ csrfToken: token });
+  });
+
+  // Dashboard layout + widgets
+  apiRouter.use("/dashboard", createDashboardRouter());
+  // Forms core + meters
+  apiRouter.use("/forms", createFormsRouter());
+  apiRouter.use("/meters", createMetersRouter());
+  apiRouter.use("/schedule", buildScheduleRouter());
+  apiRouter.use("/smoke-control", createSmokeControlRouter());
+  apiRouter.use(createReportingRouter());
 
   // Get current authenticated user
   apiRouter.get("/auth/user", asyncHandler(async (req, res) => {
@@ -3163,9 +3417,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     // Filter active staff
-    const activeStaff = preferredStaffId 
-      ? staffMembers.filter(s => s.id === preferredStaffId && s.status !== "inactive")
-      : staffMembers.filter(s => s.status !== "inactive");
+    const isActiveStaff = (member: DbStaffDirectory) => member.isActive !== false;
+    const activeStaff = preferredStaffId
+      ? staffMembers.filter(s => s.id === preferredStaffId && isActiveStaff(s))
+      : staffMembers.filter(isActiveStaff);
 
     if (activeStaff.length === 0) {
       res.json({ slots: [], message: "No active staff available" });
@@ -3201,7 +3456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return jobs.filter(job => {
         if (job.scheduledDate !== date) return false;
         if (job.status === "cancelled" || job.status === "completed") return false;
-        const isAssigned = staffJobIds.includes(job.id) || job.assignedTo === staffId;
+        const isAssigned = staffJobIds.includes(job.id) || job.assignedTechnicianId === staffId;
         return isAssigned;
       });
     };
@@ -3361,7 +3616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       dailyBreakdown: Record<string, { hours: number; jobs: number }>;
     }
 
-    const activeStaff = staffMembers.filter(s => s.status !== "inactive");
+    const activeStaff = staffMembers.filter(s => s.isActive !== false);
     const staffCapacities: StaffCapacity[] = [];
 
     // Filter jobs in date range
@@ -3377,8 +3632,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter(a => a.staffId === staff.id)
         .map(a => a.jobId);
 
-      const staffJobs = rangeJobs.filter(job => 
-        staffJobIds.includes(job.id) || job.assignedTo === staff.id
+      const staffJobs = rangeJobs.filter(job =>
+        staffJobIds.includes(job.id) || job.assignedTechnicianId === staff.id
       );
 
       // Calculate scheduled hours
@@ -3406,7 +3661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       staffCapacities.push({
         staffId: staff.id,
         staffName: `${staff.firstName} ${staff.lastName}`,
-        role: staff.role || "Technician",
+        role: staff.jobTitle || "Technician",
         scheduledHours,
         availableHours,
         utilizationPercent,
@@ -3495,11 +3750,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
     }
     // Apply default fields if not provided but systemType is given
-    const data = validation.data;
+    const data: InsertCheckSheetTemplate = validation.data;
     if (data.systemType && (!data.fields || (Array.isArray(data.fields) && data.fields.length === 0))) {
       data.fields = DEFAULT_TEMPLATE_FIELDS[data.systemType] || [];
     }
-    const template = await storage.createCheckSheetTemplate(data);
+    const templatePayload: InsertCheckSheetTemplate = {
+      ...data,
+      fields: data.fields ? [...data.fields] as CheckSheetFieldDefinition[] : undefined,
+    };
+    const template = await storage.createCheckSheetTemplate(templatePayload as Parameters<typeof storage.createCheckSheetTemplate>[0]);
     res.json(template);
   }));
 
@@ -3550,7 +3809,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!validation.success) {
       return res.status(400).json({ error: "Invalid data", details: validation.error.errors });
     }
-    const reading = await storage.createCheckSheetReading(validation.data);
+    const readingData: InsertCheckSheetReading = validation.data;
+    const readingPayload: InsertCheckSheetReading = {
+      ...readingData,
+      readings: readingData.readings ? [...readingData.readings] as CheckSheetReadingValue[] : undefined,
+    };
+    const reading = await storage.createCheckSheetReading(readingPayload as Parameters<typeof storage.createCheckSheetReading>[0]);
     res.json(reading);
   }));
 
@@ -4885,6 +5149,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const f = (req as any).file;
         if (!f) return res.status(400).json({ message: "No file uploaded (field name must be 'file')" });
 
+        const savedPath = (f as any).path || path.join(UPLOAD_ROOT, f.filename);
+        assertSafeUpload(savedPath, f.mimetype);
+
         // Enforce storage quota
         const { limits, usage } = await getOrgPlanAndUsage(db, organizationId);
         enforce(
@@ -5245,6 +5512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const abs = path.join(UPLOAD_ROOT, f[0].path);
       if (!fs.existsSync(abs)) return res.status(404).json({ message: "File missing on disk" });
 
+      res.setHeader("X-Content-Type-Options", "nosniff");
       if (f[0].mimeType) res.setHeader("Content-Type", f[0].mimeType);
       res.setHeader("Content-Disposition", `inline; filename="${sanitizeName(f[0].originalName).replace(/"/g, "")}"`);
       fs.createReadStream(abs).pipe(res);
@@ -5700,25 +5968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
   // HEALTHCHECK (NO AUTH)
   // ============================================
-  app.get("/api/health", async (req, res) => {
-    const started = Date.now();
-    let dbOk = false;
-
-    try {
-      await db.execute(sql`select 1`);
-      dbOk = true;
-    } catch {
-      dbOk = false;
-    }
-
-    res.status(dbOk ? 200 : 503).json({
-      ok: dbOk,
-      dbOk,
-      uptimeSeconds: Math.floor(process.uptime()),
-      time: new Date().toISOString(),
-      durationMs: Date.now() - started,
-    });
-  });
+  app.get("/api/health", buildHealthHandler(db));
 
   // ============================================
   // MOUNT AUTHENTICATED API ROUTER

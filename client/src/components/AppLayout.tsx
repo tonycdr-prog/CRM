@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -7,6 +8,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -20,11 +22,13 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useToast } from "@/hooks/use-toast";
 import { ROUTES } from "@/lib/routes";
-import { 
-  LayoutDashboard, 
-  Wind, 
-  Briefcase, 
+import { buildLayoutWithSidebarWidget } from "@shared/sidebarWidgets";
+import {
+  LayoutDashboard,
+  Wind,
+  Briefcase,
   BarChart3,
   LogOut,
   Building2,
@@ -32,8 +36,11 @@ import {
   Settings,
   HardDrive,
   Smartphone,
+  Plus,
+  Eye,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -89,8 +96,33 @@ const journeyMenuItems: JourneyMenuItem[] = [
 export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { isEngineerMode, enterCompanionMode, enterOfficeMode } = useViewMode();
   const { role, roleLabel } = usePermissions();
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const [pendingRoute, setPendingRoute] = useState<string | null>(null);
+  const [devStatus, setDevStatus] = useState<
+    | {
+        isDev: boolean;
+        devAuthBypass: boolean;
+        devReviewMode: boolean;
+        hasDbConnection: boolean;
+        limitedMode: boolean;
+      }
+    | null
+  >(null);
+  const hasNotifiedNoDb = useRef(false);
+  const devReviewModeEnv =
+    (import.meta.env as any).DEV_REVIEW_MODE ??
+    (import.meta.env as any).VITE_DEV_REVIEW_MODE ??
+    "";
+  const devReviewFlag = devReviewModeEnv === "true";
+  const devAuthBypassFlag =
+    (import.meta.env as any).DEV_AUTH_BYPASS ??
+    (import.meta.env as any).VITE_DEV_AUTH_BYPASS ??
+    "";
+  const showReviewSection = import.meta.env.DEV || import.meta.env.MODE === "development" || devReviewFlag;
 
   const handleToggleChange = () => {
     if (!isEngineerMode) {
@@ -104,6 +136,83 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch("/api/csrf-token", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setCsrfToken(data?.csrfToken ?? null))
+      .catch(() => setCsrfToken(null));
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetch("/api/dev/status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setDevStatus(data))
+      .catch(() => setDevStatus(null));
+  }, []);
+
+  useEffect(() => {
+    if (
+      devStatus?.devAuthBypass &&
+      devStatus.limitedMode &&
+      !hasNotifiedNoDb.current
+    ) {
+      hasNotifiedNoDb.current = true;
+      toast({
+        title: "DEV_AUTH_BYPASS enabled — database unavailable — limited mode",
+        description: "Preview UI is running without backend data; some actions are stubbed.",
+      });
+    }
+  }, [devStatus, toast]);
+
+  const addToDashboard = useMutation({
+    mutationFn: async ({ route }: { route: string }) => {
+      const layoutResponse = await fetch("/api/dashboard/layout", { credentials: "include" });
+      if (!layoutResponse.ok) throw new Error("Failed to load dashboard layout");
+      const layoutBody = await layoutResponse.json();
+      const existingLayout = layoutBody.layout as
+        | { id: string; name: string; items: any[]; isDefault: boolean }
+        | null;
+
+      const payload = buildLayoutWithSidebarWidget(route, {
+        name: existingLayout?.name,
+        items: existingLayout?.items,
+      });
+
+      if (!payload) throw new Error("No widget mapping found for this route");
+
+      const method = existingLayout?.id ? "PUT" : "POST";
+      const url = existingLayout?.id
+        ? `/api/dashboard/layouts/${existingLayout.id}`
+        : "/api/dashboard/layouts";
+
+      const res = await fetch(url, {
+        method,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to add widget to dashboard");
+      return res.json();
+    },
+    onMutate: ({ route }) => setPendingRoute(route),
+    onError: (error) =>
+      toast({
+        title: "Could not add to dashboard",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      }),
+    onSuccess: () => {
+      toast({ title: "Added to dashboard", description: "Widget saved to your layout." });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] });
+    },
+    onSettled: () => setPendingRoute(null),
+  });
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
@@ -131,32 +240,123 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                       location.startsWith(item.url + "/") || 
                       (item.url === ROUTES.DASHBOARD && location === "/");
                     
-                    return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          isActive={isActive}
-                          className="h-auto py-2"
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        className="h-auto py-2"
+                      >
+                        <Link
+                          href={item.url}
+                          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                         >
-                          <Link 
-                            href={item.url} 
-                            data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                          >
-                            <item.icon className="h-4 w-4 shrink-0" />
-                            <div className="flex flex-col">
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="leading-tight">{item.title}</span>
+                            <span className="text-xs text-muted-foreground leading-snug">
+                              {item.description}
+                            </span>
+                          </div>
+                        </Link>
+                      </SidebarMenuButton>
+                      <SidebarMenuAction>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Add ${item.title} to dashboard`}
+                          data-testid={`add-${item.title.toLowerCase().replace(/\s+/g, '-')}-to-dashboard`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            addToDashboard.mutate({ route: item.url });
+                          }}
+                          disabled={pendingRoute === item.url && addToDashboard.isPending}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </SidebarMenuAction>
+                    </SidebarMenuItem>
+                  );
+                })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            {showReviewSection && (
+              <SidebarGroup>
+                <SidebarGroupLabel>Review (Dev Only)</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {[
+                      {
+                        title: "Dashboard",
+                        url: ROUTES.DASHBOARD,
+                      },
+                      {
+                        title: "Forms Builder",
+                        url: "/forms-builder",
+                      },
+                      {
+                        title: "Forms Runner",
+                        url: "/forms-runner",
+                      },
+                      {
+                        title: "Forms Hub",
+                        url: ROUTES.HUB_FORMS,
+                      },
+                      {
+                        title: "Reports",
+                        url: "/reports",
+                      },
+                      {
+                        title: "Defects",
+                        url: "/defects",
+                      },
+                      {
+                        title: "Smoke Control Library",
+                        url: "/smoke-control-library",
+                      },
+                      {
+                        title: "Schedule",
+                        url: "/schedule",
+                      },
+                      {
+                        title: "Finance",
+                        url: "/finance",
+                      },
+                    ].map((item) => (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton asChild className="h-auto py-2">
+                          <Link href={item.url}>
+                            <Eye className="h-4 w-4 shrink-0" />
+                            <div className="flex flex-col text-left">
                               <span className="leading-tight">{item.title}</span>
-                              <span className="text-xs text-muted-foreground leading-snug">
-                                {item.description}
-                              </span>
+                              <span className="text-xs text-muted-foreground leading-snug">Direct preview</span>
                             </div>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+              {showReviewSection && (
+                <div className="m-4 rounded-md border bg-muted/40 p-3 text-xs space-y-1" data-testid="dev-flags-banner">
+                  <div className="font-semibold text-sm">Dev Flags</div>
+                  <div>NODE_ENV: {devStatus?.isDev ? "development" : import.meta.env.MODE || "development"}</div>
+                  <div>DEV_AUTH_BYPASS: {String(devStatus?.devAuthBypass ?? !!devAuthBypassFlag)}</div>
+                  <div>DEV_REVIEW_MODE: {String(devStatus?.devReviewMode ?? showReviewSection)}</div>
+                  <div>DB available: {devStatus?.hasDbConnection === false ? "false" : "true"}</div>
+                  <div>Limited mode: {String(devStatus?.limitedMode ?? false)}</div>
+                  {devStatus?.limitedMode && (
+                    <div className="text-amber-600 font-semibold">
+                      DEV_AUTH_BYPASS enabled — database unavailable — limited mode
+                    </div>
+                  )}
+                </div>
+              )}
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t">
@@ -228,6 +428,24 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
             </div>
           </header>
           <main className="flex-1 overflow-auto">
+            {showReviewSection && (
+              <div
+                className="flex flex-wrap items-center gap-3 border-b bg-amber-50 px-4 py-2 text-xs sm:text-sm text-amber-900"
+                data-testid="dev-review-banner"
+              >
+                <span className="font-semibold">Review mode</span>
+                <span>DEV_AUTH_BYPASS: {String(devStatus?.devAuthBypass ?? !!devAuthBypassFlag)}</span>
+                <span>DEV_REVIEW_MODE: {String(devStatus?.devReviewMode ?? showReviewSection)}</span>
+                <span>
+                  DB mode:
+                  {" "}
+                  {devStatus?.limitedMode ? "No-DB Limited" : devStatus?.hasDbConnection === false ? "Unavailable" : "Connected"}
+                </span>
+                {devStatus?.limitedMode && (
+                  <span className="font-semibold">Some actions are stubbed while the database is unavailable.</span>
+                )}
+              </div>
+            )}
             {children}
           </main>
         </div>

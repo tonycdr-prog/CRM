@@ -557,7 +557,7 @@ export default function JobDetail() {
       preferred: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
       optional: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100",
     };
-    return <Badge className={colors[level] || ""} variant={colors[level] ? undefined : "outline"} size="sm">{level}</Badge>;
+    return <Badge className={colors[level] || ""} variant={colors[level] ? undefined : "outline"}>{level}</Badge>;
   };
 
   const getRoleBadge = (role: string) => {
@@ -567,7 +567,7 @@ export default function JobDetail() {
       technician: "",
       helper: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100",
     };
-    return <Badge className={colors[role] || ""} variant={colors[role] ? undefined : "outline"} size="sm">{getRoleLabel(role)}</Badge>;
+    return <Badge className={colors[role] || ""} variant={colors[role] ? undefined : "outline"}>{getRoleLabel(role)}</Badge>;
   };
 
   const getEquipmentStatusBadge = (status: string) => {
@@ -577,7 +577,7 @@ export default function JobDetail() {
       returned: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
       cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
     };
-    return <Badge className={colors[status] || ""} variant={colors[status] ? undefined : "outline"} size="sm">{status.replace(/_/g, " ")}</Badge>;
+    return <Badge className={colors[status] || ""} variant={colors[status] ? undefined : "outline"}>{status.replace(/_/g, " ")}</Badge>;
   };
 
   if (jobLoading) {
