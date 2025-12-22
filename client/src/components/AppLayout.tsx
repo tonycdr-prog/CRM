@@ -52,6 +52,7 @@ import {
   type ModuleOverrideMap,
 } from "@/lib/module-overrides";
 import { Label } from "@/components/ui/label";
+import { WidgetFrame } from "@/components/widgets/WidgetFrame";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -270,37 +271,53 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
             <SidebarGroup data-testid="modules-nav-section">
               <SidebarGroupLabel>Modules</SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu className="space-y-1">
-                  {moduleNavEntries.map((module) => (
-                    <SidebarMenuItem key={module.id}>
-                      <SidebarMenuButton
-                        asChild
-                        className="h-auto py-2"
-                        isActive={location === module.links[0]?.path}
-                      >
-                        <Link href={module.links[0]?.path || ROUTES.DASHBOARD}>
-                          <div className="flex flex-col text-left">
-                            <span className="leading-tight font-medium">{module.label}</span>
-                            <span className="text-[11px] text-muted-foreground leading-snug">
-                              {module.tagline}
-                            </span>
+                <SidebarMenu className="space-y-3">
+                  {moduleNavEntries.map((module) => {
+                    const primaryPath = module.links[0]?.path || ROUTES.DASHBOARD;
+                    return (
+                      <SidebarMenuItem key={module.id} className="p-0">
+                        <WidgetFrame
+                          widgetId={`module-links-${module.id}`}
+                          title={module.label}
+                          description={module.tagline}
+                          supportsExpand
+                          supportsNewTab
+                          supportsSendToScreen
+                          supportsRefreshAction={false}
+                          newTabHref={primaryPath}
+                          sendToScreenHref={primaryPath}
+                          className="shadow-none border-muted bg-muted/40"
+                        >
+                          <div className="space-y-2" data-testid={`module-links-${module.id}`}>
+                            {module.links.map((link) => {
+                              const isActive = location === link.path;
+                              return (
+                                <div
+                                  key={`${module.id}-${link.path}`}
+                                  className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 hover:border-primary/70"
+                                >
+                                  <Link
+                                    href={link.path}
+                                    className="flex-1 flex flex-col text-left"
+                                  >
+                                    <span className="font-medium leading-tight">
+                                      {link.title}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground leading-snug">
+                                      {isActive ? "Currently viewing" : "Open destination"}
+                                    </span>
+                                  </Link>
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link href={link.path}>Open</Link>
+                                  </Button>
+                                </div>
+                              );
+                            })}
                           </div>
-                        </Link>
-                      </SidebarMenuButton>
-                      <SidebarMenu className="ml-3 mt-1 space-y-1" data-testid={`module-links-${module.id}`}>
-                        {module.links.map((link) => (
-                          <SidebarMenuItem key={`${module.id}-${link.path}`}>
-                            <SidebarMenuButton asChild isActive={location === link.path}>
-                              <Link href={link.path} className="flex flex-col text-left">
-                                <span>{link.title}</span>
-                                <span className="text-xs text-muted-foreground leading-snug">Open page</span>
-                              </Link>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        ))}
-                      </SidebarMenu>
-                    </SidebarMenuItem>
-                  ))}
+                        </WidgetFrame>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
