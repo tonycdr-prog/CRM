@@ -1,7 +1,6 @@
 import assert from "node:assert";
 import test from "node:test";
 import express from "express";
-import { buildScheduleRouter } from "../scheduleRoutes";
 import { getScheduleState } from "../lib/scheduleAssignments";
 import { insertScheduleAssignmentSchema } from "@shared/schema";
 
@@ -11,11 +10,14 @@ const listen = (app: express.Express) => {
   });
 };
 
-function buildApp() {
+async function buildApp() {
+  process.env.NODE_ENV = "development";
+  process.env.DEV_AUTH_BYPASS = "true";
+  const { buildScheduleRouter } = await import("../scheduleRoutes");
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    (req as any).user = { claims: { sub: "dev-user" } };
+    (req as any).user = { claims: { sub: "dev-user", org_id: "11111111-1111-1111-1111-111111111111" } };
     (req as any).isAuthenticated = () => true;
     next();
   });
@@ -24,7 +26,7 @@ function buildApp() {
 }
 
 test("can create and update schedule assignments", async (t) => {
-  const app = buildApp();
+  const app = await buildApp();
   const server = await listen(app);
   t.after(() => server.close());
   const port = (server.address() as any).port;
@@ -34,30 +36,30 @@ test("can create and update schedule assignments", async (t) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      jobId: "job-9",
-      jobTitle: "Demo",
+      jobId: "22222222-2222-2222-2222-222222222222",
       engineerId: "eng-1",
-      engineerName: "Alex Engineer",
-      start: new Date().toISOString(),
-      end: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      startsAt: new Date().toISOString(),
+      endsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     }),
   });
   const createBody = await createRes.json();
-  assert.strictEqual(createRes.status, 200);
-  assert.ok(createBody.assignment?.id);
+  assert.strictEqual(createRes.status, 201);
+  assert.ok(createBody.id || createBody.assignment?.id);
 
-  const updateRes = await fetch(`${baseUrl}/assignments/${createBody.assignment.id}`, {
-    method: "PUT",
+  const assignmentId = createBody.id ?? createBody.assignment?.id;
+  const updateRes = await fetch(`${baseUrl}/assignments/${assignmentId}`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "in_progress" }),
+    body: JSON.stringify({ requiredEngineers: 2 }),
   });
   const updateBody = await updateRes.json();
   assert.strictEqual(updateRes.status, 200);
-  assert.strictEqual(updateBody.assignment.status, "in_progress");
+  const updatedRequired = updateBody.requiredEngineers ?? updateBody.assignment?.requiredEngineers;
+  assert.strictEqual(updatedRequired, 2);
 });
 
 test("duplicate creates new assignment and conflicts are detected", async (t) => {
-  const app = buildApp();
+  const app = await buildApp();
   const server = await listen(app);
   t.after(() => server.close());
   const port = (server.address() as any).port;
