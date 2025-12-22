@@ -1,0 +1,95 @@
+import React, { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { assignmentTimes, type ScheduleAssignment } from "@shared/schedule";
+
+type ScheduleUpcomingWidgetProps = {
+  days?: number;
+};
+
+export function ScheduleUpcomingWidget({ days = 7 }: ScheduleUpcomingWidgetProps) {
+  const { toast } = useToast();
+  const now = useMemo(() => new Date(), []);
+  const to = useMemo(() => {
+    const next = new Date(now);
+    next.setDate(next.getDate() + days);
+    return next;
+  }, [days, now]);
+
+  const query = useQuery<ScheduleAssignment[]>({
+    queryKey: ["schedule-upcoming", days],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/schedule/assignments?from=${encodeURIComponent(now.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+        { credentials: "include" },
+      );
+      if (res.status === 401 || res.status === 403) {
+        toast({
+          title: "Not authorised",
+          description: "Auth/CSRF missing — refresh page",
+          variant: "destructive",
+        });
+        throw new Error("Auth/CSRF missing");
+      }
+      if (!res.ok) {
+        const message = await res.text();
+        throw new Error(message || "Failed to load schedule");
+      }
+      return res.json();
+    },
+  });
+
+  const items = query.data ?? [];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span>Next {days} day{days === 1 ? "" : "s"}</span>
+        {query.isFetching ? <span className="text-xs">Refreshing…</span> : null}
+      </div>
+
+      {query.isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading schedule…</p>
+      ) : query.isError ? (
+        <p className="text-sm text-destructive">Unable to load upcoming schedule.</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No scheduled assignments.</p>
+      ) : (
+        <ul className="space-y-1 text-sm">
+          {items.slice(0, 6).map((assignment) => {
+            const { start } = assignmentTimes(assignment);
+            const displayStart = start || assignment.startsAt;
+            return (
+              <li key={assignment.id} className="flex items-center justify-between gap-2">
+                <span className="truncate">Job {String(assignment.jobId).slice(0, 8)}</span>
+                <span className="whitespace-nowrap text-muted-foreground">
+                  {displayStart
+                    ? new Date(displayStart).toLocaleString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : ""}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            window.location.href = "/schedule";
+          }}
+        >
+          Open schedule
+        </Button>
+      </div>
+    </div>
+  );
+}

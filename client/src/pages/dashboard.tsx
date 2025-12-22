@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { WidgetFrame } from "@/components/widgets/WidgetFrame";
+import { ScheduleUpcomingWidget } from "@/components/widgets/ScheduleUpcomingWidget";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -22,6 +23,7 @@ import {
   listWidgets,
   type DashboardLayoutItem,
   type DashboardWidgetDefinition,
+  WIDGET_KEYS,
 } from "@shared/dashboard";
 
 const GRID_COLUMNS = 12;
@@ -259,6 +261,11 @@ export default function Dashboard() {
   const renderWidgetControls = (item: DashboardLayoutItemWithId, index: number) => {
     const widget = getWidget(item.widgetId) as DashboardWidgetDefinition<any> | undefined;
     if (!widget) return null;
+    if (widget.widgetId === WIDGET_KEYS.SCHEDULE_UPCOMING) {
+      const parsedDays = Number((item.params as any).days ?? widget.defaultParams.days ?? 7);
+      const safeDays = Number.isFinite(parsedDays) ? Math.max(1, Math.min(30, parsedDays)) : 7;
+      return <ScheduleUpcomingWidget days={safeDays} />;
+    }
     if (widget.widgetId === "team-note") {
       return (
         <div className="space-y-2">
