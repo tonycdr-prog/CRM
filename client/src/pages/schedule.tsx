@@ -1,14 +1,13 @@
 import React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import type { ScheduleJobConflict, ScheduleJobSlot } from "@shared/schedule";
+import { useScheduleRange } from "@/modules/scheduling";
 
 const SNAP_MINUTES = 30;
 const DAY_START_HOUR = 6;
@@ -55,13 +54,7 @@ function addMinutes(d: Date, min: number) {
 
 type Engineer = { id: string; name: string };
 
-type JobsResponse = {
-  jobs: ScheduleJobSlot[];
-  conflicts?: ScheduleJobConflict[];
-};
-
 export default function SchedulePage() {
-  const qc = useQueryClient();
   const { toast } = useToast();
 
   const [day, setDay] = React.useState(() => {
@@ -77,31 +70,14 @@ export default function SchedulePage() {
   const toISO = new Date(day);
   toISO.setDate(toISO.getDate() + 1);
 
-  const jobsQuery = useQuery({
-    queryKey: ["schedule-jobs", day.toISOString()],
-    queryFn: async (): Promise<JobsResponse> => {
-      const res = await apiRequest(
-        "GET",
-        `/api/schedule/jobs?from=${encodeURIComponent(fromISO.toISOString())}&to=${encodeURIComponent(toISO.toISOString())}`,
-      );
-      if (res.status === 401 || res.status === 403) {
-        toast({
-          title: "Not authorised",
-          description: "Auth/CSRF missing — refresh page",
-          variant: "destructive",
-        });
-        throw new Error("Unauthorised");
-      }
-      return res.json();
-    },
-  });
+  const schedule = useScheduleRange(day);
 
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Shift") setShiftDown(true);
       if (e.key === "Escape") {
         setActiveJobId(null);
-        qc.invalidateQueries({ queryKey: ["schedule-jobs", day.toISOString()] });
+        schedule.refetch();
         toast({ title: "Cancelled", description: "Drag cancelled." });
       }
     };
@@ -114,10 +90,10 @@ export default function SchedulePage() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [day, qc, toast]);
+  }, [day, schedule, toast]);
 
-  const jobs = jobsQuery.data?.jobs ?? [];
-  const conflicts = jobsQuery.data?.conflicts ?? [];
+  const jobs = schedule.jobs;
+  const conflicts = schedule.conflicts ?? [];
 
   const conflictMap = React.useMemo(() => {
     const map = new Map<string, ScheduleJobConflict>();
@@ -159,29 +135,16 @@ export default function SchedulePage() {
       startAt: newStart.toISOString(),
       endAt: new Date(newStart.getTime() + durationMs).toISOString(),
     };
-    const endpoint = shiftHeld ? "/api/schedule/duplicate-job" : "/api/schedule/move-job";
-
-    const res = await apiRequest("POST", endpoint, payload);
-    if (res.status === 401 || res.status === 403) {
-      toast({
-        title: "Not authorised",
-        description: "Auth/CSRF missing — refresh page",
-        variant: "destructive",
-      });
-      return;
+    try {
+      const result = shiftHeld
+        ? await schedule.duplicateJob(payload)
+        : await schedule.moveJob(payload);
+      if (result.warnings && result.warnings.length) {
+        toast({ title: "Scheduling warning", description: "Engineer already has an overlapping job." });
+      }
+    } catch (err: any) {
+      toast({ title: "Schedule update failed", description: err?.message ?? "Unknown error", variant: "destructive" });
     }
-    if (!res.ok) {
-      toast({ title: "Schedule update failed", description: await res.text(), variant: "destructive" });
-      return;
-    }
-    const body = (await res.json()) as { conflicts?: ScheduleJobConflict[] };
-    if (body.conflicts && body.conflicts.length) {
-      toast({
-        title: "Conflicts detected",
-        description: "Engineer already has an overlapping job.",
-      });
-    }
-    await qc.invalidateQueries({ queryKey: ["schedule-jobs", day.toISOString()] });
   };
 
   const handleDrop = async (jobId: string, minutesFromTop: number) => {

@@ -24,7 +24,7 @@ async function buildApp() {
   return app;
 }
 
-test("conflicts are reported for overlapping jobs and cleared when moved", async (t) => {
+test("warnings are returned for overlapping schedule items and non-overlapping succeed", async (t) => {
   const app = await buildApp();
   const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
     const listener = app.listen(0, () => resolve(listener));
@@ -42,45 +42,47 @@ test("conflicts are reported for overlapping jobs and cleared when moved", async
   const port = typeof address === "object" && address ? address.port : 0;
   const baseUrl = `http://127.0.0.1:${port}/api/schedule`;
 
-  // ensure starting state with overlapping assignments from demo seed
-  const initialRes = await fetch(`${baseUrl}/jobs`);
-  const initialBody = await initialRes.json();
-  assert.ok(Array.isArray(initialBody.conflicts));
-  assert.ok(initialBody.conflicts.length > 0, "expected an overlapping conflict in seed data");
+  const basePayload = {
+    jobId: "job-seed-1",
+    startAt: new Date("2025-01-01T10:00:00.000Z").toISOString(),
+    endAt: new Date("2025-01-01T11:00:00.000Z").toISOString(),
+    engineerIds: ["eng-a"],
+  };
 
-  const firstJob = initialBody.jobs[0];
-  assert.ok(firstJob);
+  const first = await fetch(baseUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(basePayload),
+  });
+  assert.strictEqual(first.status, 201);
 
-  // move job out of overlap window
-  const moveRes = await fetch(`${baseUrl}/move-job`, {
+  const overlap = await fetch(baseUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      jobId: firstJob.id,
+      ...basePayload,
+      jobId: "job-seed-2",
+      startAt: new Date("2025-01-01T10:30:00.000Z").toISOString(),
+      endAt: new Date("2025-01-01T11:30:00.000Z").toISOString(),
+    }),
+  });
+  const overlapBody = await overlap.json();
+  assert.strictEqual(overlap.status, 201);
+  assert.ok(Array.isArray(overlapBody.warnings));
+  assert.ok(overlapBody.warnings.length > 0, "expected warning for overlapping schedule");
+
+  const nonOverlap = await fetch(baseUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...basePayload,
+      jobId: "job-seed-3",
       startAt: new Date("2025-01-02T08:00:00.000Z").toISOString(),
       endAt: new Date("2025-01-02T09:00:00.000Z").toISOString(),
     }),
   });
-  assert.strictEqual(moveRes.status, 200);
-  const moveBody = await moveRes.json();
-  assert.ok(Array.isArray(moveBody.conflicts));
-
-  // when checking again, conflicts should still be an array (possibly empty)
-  const afterMove = await fetch(`${baseUrl}/jobs`);
-  const afterBody = await afterMove.json();
-  assert.ok(Array.isArray(afterBody.conflicts));
-
-  // duplicate overlapping to trigger warning but not an error
-  const dupRes = await fetch(`${baseUrl}/duplicate-job`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jobId: firstJob.id,
-      startAt: new Date("2025-01-02T08:30:00.000Z").toISOString(),
-      endAt: new Date("2025-01-02T09:30:00.000Z").toISOString(),
-    }),
-  });
-  assert.strictEqual(dupRes.status, 200);
-  const dupBody = await dupRes.json();
-  assert.ok(Array.isArray(dupBody.conflicts));
+  const nonOverlapBody = await nonOverlap.json();
+  assert.strictEqual(nonOverlap.status, 201);
+  assert.ok(Array.isArray(nonOverlapBody.warnings));
+  assert.strictEqual(nonOverlapBody.warnings.length, 0);
 });

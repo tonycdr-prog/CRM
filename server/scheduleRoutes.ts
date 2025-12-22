@@ -20,9 +20,11 @@ import {
   ScheduleJobConflict,
   ScheduleJob,
   UpdateScheduleAssignmentSchema,
+  ScheduleJobSlot,
 } from "@shared/schedule";
 import { db, isDatabaseAvailable } from "./db";
 import { scheduleAssignments } from "@shared/schema";
+import { isDevAuthBypassEnabled } from "./replitAuth";
 
 const toISO = (d: Date) => d.toISOString();
 
@@ -32,6 +34,18 @@ const overlapWhere = (startsAt: Date, endsAt: Date) =>
 
 function requireOrgId(req: any): string | null {
   return req.user?.organizationId || req.user?.claims?.organizationId || req.user?.claims?.org_id || null;
+}
+
+function mapDbRow(row: any): ScheduleAssignment {
+  return {
+    ...row,
+    startsAt: (row.startsAt as Date).toISOString(),
+    endsAt: (row.endsAt as Date).toISOString(),
+    start: ((row as any).start as Date | undefined)?.toISOString() ?? (row.startsAt as Date).toISOString(),
+    end: ((row as any).end as Date | undefined)?.toISOString() ?? (row.endsAt as Date).toISOString(),
+    createdAt: (row.createdAt as Date | undefined)?.toISOString(),
+    updatedAt: (row.updatedAt as Date | undefined)?.toISOString(),
+  } as ScheduleAssignment;
 }
 
 const MoveJobSchema = z.object({
@@ -47,10 +61,97 @@ const DuplicateJobSchema = z.object({
   newJobId: z.string().optional(),
 });
 
+const ScheduleUpsertSchema = z.object({
+  jobId: z.string(),
+  startAt: z.string(),
+  endAt: z.string(),
+  engineerIds: z.array(z.string()).default([]),
+  title: z.string().optional(),
+});
+
+type ScheduleWarning = {
+  type: "conflict";
+  engineerId: string;
+  overlappingIds: string[];
+};
+
+const DEMO_ENGINEERS = [
+  { id: "eng-a", name: "Avery Demo" },
+  { id: "eng-b", name: "Blake Demo" },
+];
+
+const DEMO_JOBS: ScheduleJobSlot[] = [
+  {
+    id: "job-demo-1",
+    title: "Atrium inspection",
+    startAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    endAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    assignedEngineerIds: ["eng-a"],
+    site: "City HQ",
+  },
+  {
+    id: "job-demo-2",
+    title: "Garage ventilation",
+    startAt: new Date(Date.now() + 2.5 * 60 * 60 * 1000).toISOString(),
+    endAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    assignedEngineerIds: ["eng-a", "eng-b"],
+    site: "Lot 12",
+  },
+];
+
 function aggregateJobs(assignments: ScheduleAssignment[], jobs: ScheduleJob[] = []) {
   const jobsList = jobsFromAssignments(assignments, jobs as any);
   const conflicts: ScheduleJobConflict[] = jobConflicts(assignments);
   return { jobs: jobsList, conflicts };
+}
+
+function buildWarnings(assignments: ScheduleAssignment[], candidate: ScheduleAssignment, ignoreId?: string): ScheduleWarning[] {
+  const overlaps = assignments.filter((a) => {
+    if (ignoreId && a.id === ignoreId) return false;
+    if (!a.engineerUserId || !candidate.engineerUserId) return false;
+    if (a.engineerUserId !== candidate.engineerUserId) return false;
+    return assignmentsOverlap(a, candidate);
+  });
+  if (!overlaps.length) return [];
+  return [
+    {
+      type: "conflict" as const,
+      engineerId: candidate.engineerUserId ?? candidate.engineerId ?? "",
+      overlappingIds: overlaps.map((o) => o.id),
+    },
+  ];
+}
+
+async function maybeSeedScheduleDemo(organizationId: string) {
+  if (!isDevAuthBypassEnabled() || process.env.SEED_DEMO?.toLowerCase() !== "true") return;
+  const existing = await db
+    .select({ id: scheduleAssignments.id })
+    .from(scheduleAssignments)
+    .where(eq(scheduleAssignments.organizationId, organizationId))
+    .limit(1);
+  if (existing.length > 0) return;
+
+  const now = new Date();
+  const start = new Date(now.getTime() + 45 * 60 * 1000);
+  const end = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  await db.insert(scheduleAssignments).values([
+    {
+      organizationId,
+      jobId: "job-demo-1",
+      engineerUserId: DEMO_ENGINEERS[0]!.id,
+      startsAt: start,
+      endsAt: end,
+      requiredEngineers: 1,
+    },
+    {
+      organizationId,
+      jobId: "job-demo-2",
+      engineerUserId: DEMO_ENGINEERS[1]!.id,
+      startsAt: new Date(end.getTime() + 30 * 60 * 1000),
+      endsAt: new Date(end.getTime() + 2 * 60 * 60 * 1000),
+      requiredEngineers: 1,
+    },
+  ]);
 }
 
 function buildDbRouter(): Router {
@@ -62,6 +163,139 @@ function buildDbRouter(): Router {
     (req as any).organizationId = orgId;
     next();
   };
+
+  router.get(
+    "/",
+    ensureOrg,
+    asyncHandler(async (req, res) => {
+      const { organizationId } = req as any;
+      const from = req.query.from ? new Date(String(req.query.from)) : new Date(Date.now() - 7 * 86400000);
+      const to = req.query.to ? new Date(String(req.query.to)) : new Date(Date.now() + 14 * 86400000);
+
+      await maybeSeedScheduleDemo(organizationId);
+
+      const rows = await db
+        .select()
+        .from(scheduleAssignments)
+        .where(
+          and(
+            eq(scheduleAssignments.organizationId, organizationId),
+            sql`${scheduleAssignments.startsAt} < ${to} AND ${scheduleAssignments.endsAt} > ${from}`,
+          ),
+        );
+
+      const assignments = rows.map(mapDbRow);
+      const { jobs, conflicts } = aggregateJobs(assignments);
+      res.json({ jobs, conflicts, warnings: [] });
+    }),
+  );
+
+  router.post(
+    "/",
+    ensureOrg,
+    asyncHandler(async (req, res) => {
+      const { organizationId } = req as any;
+      const parsed = ScheduleUpsertSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+
+      const startAt = new Date(parsed.data.startAt);
+      const endAt = new Date(parsed.data.endAt);
+      if (!(startAt < endAt)) return res.status(400).json({ message: "startAt must be before endAt" });
+
+      const existingRows = await db
+        .select()
+        .from(scheduleAssignments)
+        .where(eq(scheduleAssignments.organizationId, organizationId));
+      const existing = existingRows.map(mapDbRow);
+
+      const engineerIds = parsed.data.engineerIds.length ? parsed.data.engineerIds : ["unassigned"];
+      const warnings: ScheduleWarning[] = [];
+      const createdAssignments: ScheduleAssignment[] = [];
+
+      for (const engId of engineerIds) {
+        const candidate: ScheduleAssignment = {
+          id: nanoid(),
+          jobId: parsed.data.jobId,
+          engineerUserId: engId,
+          engineerId: engId,
+          startsAt: startAt.toISOString(),
+          endsAt: endAt.toISOString(),
+          start: startAt.toISOString(),
+          end: endAt.toISOString(),
+          requiredEngineers: 1,
+          jobTitle: parsed.data.title,
+        } as ScheduleAssignment;
+        warnings.push(...buildWarnings(existing, candidate));
+        const [inserted] = await db
+          .insert(scheduleAssignments)
+          .values({
+            organizationId,
+            jobId: parsed.data.jobId,
+            engineerUserId: engId,
+            startsAt: startAt,
+            endsAt: endAt,
+            requiredEngineers: 1,
+          })
+          .returning();
+        createdAssignments.push(mapDbRow(inserted));
+      }
+
+      const { jobs, conflicts } = aggregateJobs([...existing, ...createdAssignments]);
+      res.status(201).json({ jobs, conflicts, warnings });
+    }),
+  );
+
+  router.patch(
+    "/:id",
+    ensureOrg,
+    asyncHandler(async (req, res) => {
+      const { organizationId } = req as any;
+      const parsed = ScheduleUpsertSchema.partial().required({ startAt: true, endAt: true }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+
+      const existing = await db
+        .select()
+        .from(scheduleAssignments)
+        .where(and(eq(scheduleAssignments.organizationId, organizationId), eq(scheduleAssignments.id, req.params.id)))
+        .then((r) => r[0]);
+      if (!existing) return res.status(404).json({ message: "Not found" });
+
+      const startAt = new Date(parsed.data.startAt);
+      const endAt = new Date(parsed.data.endAt);
+      if (!(startAt < endAt)) return res.status(400).json({ message: "startAt must be before endAt" });
+
+      await db
+        .update(scheduleAssignments)
+        .set({
+          startsAt: startAt,
+          endsAt: endAt,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(scheduleAssignments.organizationId, organizationId), eq(scheduleAssignments.id, req.params.id)));
+
+      const allRows = await db
+        .select()
+        .from(scheduleAssignments)
+        .where(eq(scheduleAssignments.organizationId, organizationId));
+      const mapped = allRows.map(mapDbRow);
+      const updatedAssignment = mapped.find((a) => a.id === req.params.id)!;
+      const warnings = buildWarnings(mapped, updatedAssignment, req.params.id);
+      const { jobs, conflicts } = aggregateJobs(mapped);
+      res.json({ jobs, conflicts, warnings });
+    }),
+  );
+
+  router.delete(
+    "/:id",
+    ensureOrg,
+    asyncHandler(async (req, res) => {
+      const { organizationId } = req as any;
+      await db
+        .delete(scheduleAssignments)
+        .where(and(eq(scheduleAssignments.organizationId, organizationId), eq(scheduleAssignments.id, req.params.id)));
+      res.status(204).end();
+    }),
+  );
 
   router.get(
     "/jobs",
@@ -422,6 +656,88 @@ function buildDbRouter(): Router {
 
 function buildInMemoryRouter(): Router {
   const router = Router();
+
+  router.get(
+    "/",
+    asyncHandler(async (_req, res) => {
+      const state = getScheduleState();
+      const { jobs, conflicts } = aggregateJobs(state.assignments, state.jobs as any);
+      res.json({ jobs, conflicts, warnings: [] });
+    }),
+  );
+
+  router.post(
+    "/",
+    asyncHandler(async (req, res) => {
+      const parsed = ScheduleUpsertSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+
+      const startAt = new Date(parsed.data.startAt);
+      const endAt = new Date(parsed.data.endAt);
+      if (!(startAt < endAt)) return res.status(400).json({ message: "startAt must be before endAt" });
+
+      const state = getScheduleState();
+      const engineerIds = parsed.data.engineerIds.length ? parsed.data.engineerIds : ["unassigned"];
+      const created: ScheduleAssignment[] = [];
+      let warnings: ScheduleWarning[] = [];
+
+      engineerIds.forEach((engId) => {
+        const candidate: ScheduleAssignment = {
+          id: nanoid(),
+          jobId: parsed.data.jobId,
+          engineerId: engId,
+          engineerUserId: engId,
+          startsAt: startAt.toISOString(),
+          endsAt: endAt.toISOString(),
+          start: startAt.toISOString(),
+          end: endAt.toISOString(),
+          requiredEngineers: 1,
+          jobTitle: parsed.data.title,
+        } as ScheduleAssignment;
+        warnings = warnings.concat(buildWarnings(state.assignments, candidate));
+        created.push(createAssignment(candidate));
+      });
+
+      const { jobs, conflicts } = aggregateJobs(getScheduleState().assignments, state.jobs as any);
+      res.status(201).json({ jobs, conflicts, warnings });
+    }),
+  );
+
+  router.patch(
+    "/:id",
+    asyncHandler(async (req, res) => {
+      const parsed = ScheduleUpsertSchema.partial().required({ startAt: true, endAt: true }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+
+      const startAt = new Date(parsed.data.startAt);
+      const endAt = new Date(parsed.data.endAt);
+      if (!(startAt < endAt)) return res.status(400).json({ message: "startAt must be before endAt" });
+
+      const updated = updateAssignment(req.params.id, {
+        startsAt: startAt.toISOString(),
+        endsAt: endAt.toISOString(),
+        start: startAt.toISOString(),
+        end: endAt.toISOString(),
+      });
+
+      if (!updated) return res.status(404).json({ message: "Assignment not found" });
+      const state = getScheduleState();
+      const warnings = buildWarnings(state.assignments, updated, req.params.id);
+      const { jobs, conflicts } = aggregateJobs(state.assignments, state.jobs as any);
+      res.json({ jobs, conflicts, warnings });
+    }),
+  );
+
+  router.delete(
+    "/:id",
+    asyncHandler(async (req, res) => {
+      updateScheduleState({
+        ...getScheduleState(),
+        assignments: getScheduleState().assignments.filter((a) => a.id !== req.params.id),
+      });
+      res.status(204).end();
+    }),
+  );
 
   router.get(
     "/jobs",
