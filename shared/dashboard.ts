@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const WIDGET_KEYS = {
+  HEALTH_STATUS: "health-status",
+  TEAM_NOTE: "team-note",
+  NAVIGATION_SHORTCUT: "navigation-shortcut",
+  SCHEDULE_UPCOMING: "schedule.upcoming",
+} as const;
+
+export type WidgetKey = typeof WIDGET_KEYS[keyof typeof WIDGET_KEYS];
+
 export type WidgetRefreshPolicy =
   | { mode: "manual" }
   | { mode: "interval"; intervalMs: number };
