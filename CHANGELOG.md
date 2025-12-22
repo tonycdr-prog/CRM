@@ -46,3 +46,5 @@
 - Registered an upcoming-schedule dashboard widget with standard chrome actions to align with new widget key constants.
 - Added an upcoming schedule widget component that surfaces the next assignments with friendly auth/CSRF messaging and quick
   navigation into the schedule page.
+- Added job-centric schedule endpoints (list/move/duplicate) with conflict warnings instead of hard failures plus in-memory/demo seeds for two engineers and three jobs, including an intentional overlap.
+- Rebuilt the schedule page to consume the new job model across calendar and gantt views with shift-duplicate, escape-to-cancel drag, pop-out widget support, and inline conflict badges.
