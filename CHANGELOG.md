@@ -18,6 +18,7 @@
 - Added a database-optional dev preview path that boots with in-memory sessions/layouts when DEV_AUTH_BYPASS is enabled without a database.
 - Added SPA fallback routing and a dev-only Review sidebar section to preview new pages together.
 - Loosened CSP directives in development to allow Vite/react-refresh while keeping production directives strict.
+- Added shared schedule schemas (Zod) to mirror the scheduling migration and ensure assignments carry aligned start/ends metadata.
 - Added dashboard widget chrome actions (expand, pop-out, send-to-screen, refresh) and an edit mode with drag, resize, duplicate, and save for per-user layouts.
  - Expanded the dev preview path to surface review-mode status (including DB availability) via `/api/dev/status` and sidebar
    flags while keeping production auth/CSP unchanged.

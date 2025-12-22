@@ -27,9 +27,13 @@ let scheduleState: ScheduleState = {
       jobId: "job-1",
       jobTitle: "Smoke Extract Fan Test",
       engineerId: "eng-1",
+      engineerUserId: "eng-1",
       engineerName: "Alex Engineer",
       start: todayStart,
       end: overlapStart,
+      startsAt: todayStart,
+      endsAt: overlapStart,
+      requiredEngineers: 1,
       status: "scheduled",
     },
     {
@@ -37,9 +41,13 @@ let scheduleState: ScheduleState = {
       jobId: "job-1",
       jobTitle: "Smoke Extract Fan Test",
       engineerId: "eng-1",
+      engineerUserId: "eng-1",
       engineerName: "Alex Engineer",
       start: overlapStart,
       end: afternoonEnd,
+      startsAt: overlapStart,
+      endsAt: afternoonEnd,
+      requiredEngineers: 1,
       status: "scheduled",
     },
     {
@@ -47,9 +55,13 @@ let scheduleState: ScheduleState = {
       jobId: "job-1",
       jobTitle: "Smoke Extract Fan Test",
       engineerId: "eng-2",
+      engineerUserId: "eng-2",
       engineerName: "Bailey Tech",
       start: afternoonStart,
       end: afternoonEnd,
+      startsAt: afternoonStart,
+      endsAt: afternoonEnd,
+      requiredEngineers: 1,
       status: "scheduled",
     },
     {
@@ -57,9 +69,13 @@ let scheduleState: ScheduleState = {
       jobId: "job-2",
       jobTitle: "Atrium Smoke Control",
       engineerId: "eng-2",
+      engineerUserId: "eng-2",
       engineerName: "Bailey Tech",
       start: todayEnd,
       end: afternoonStart,
+      startsAt: todayEnd,
+      endsAt: afternoonStart,
+      requiredEngineers: 1,
       status: "scheduled",
     },
   ],
@@ -78,7 +94,17 @@ export function updateScheduleState(next: ScheduleState): void {
 }
 
 export function createAssignment(payload: Omit<ScheduleAssignment, "id">): ScheduleAssignment {
-  const assignment: ScheduleAssignment = { ...payload, id: nanoid() };
+  const assignment: ScheduleAssignment = {
+    ...payload,
+    start: payload.startsAt ?? payload.start,
+    end: payload.endsAt ?? payload.end,
+    startsAt: payload.startsAt ?? payload.start!,
+    endsAt: payload.endsAt ?? payload.end!,
+    engineerId: payload.engineerId ?? payload.engineerUserId,
+    engineerUserId: payload.engineerUserId ?? payload.engineerId,
+    requiredEngineers: payload.requiredEngineers ?? 1,
+    id: nanoid(),
+  };
   scheduleState = {
     ...scheduleState,
     assignments: [...scheduleState.assignments, assignment],
@@ -89,7 +115,18 @@ export function createAssignment(payload: Omit<ScheduleAssignment, "id">): Sched
 export function updateAssignment(id: string, updates: Partial<ScheduleAssignment>): ScheduleAssignment | undefined {
   const existing = scheduleState.assignments.find((a) => a.id === id);
   if (!existing) return undefined;
-  const next: ScheduleAssignment = { ...existing, ...updates, id: existing.id };
+  const next: ScheduleAssignment = {
+    ...existing,
+    ...updates,
+    start: updates.startsAt ?? updates.start ?? existing.start ?? existing.startsAt,
+    end: updates.endsAt ?? updates.end ?? existing.end ?? existing.endsAt,
+    startsAt: updates.startsAt ?? updates.start ?? existing.startsAt ?? existing.start!,
+    endsAt: updates.endsAt ?? updates.end ?? existing.endsAt ?? existing.end!,
+    engineerId: updates.engineerId ?? updates.engineerUserId ?? existing.engineerId ?? existing.engineerUserId,
+    engineerUserId: updates.engineerUserId ?? updates.engineerId ?? existing.engineerUserId ?? existing.engineerId,
+    requiredEngineers: updates.requiredEngineers ?? existing.requiredEngineers ?? 1,
+    id: existing.id,
+  };
   scheduleState = {
     ...scheduleState,
     assignments: scheduleState.assignments.map((a) => (a.id === id ? next : a)),
@@ -103,6 +140,13 @@ export function duplicateAssignment(sourceId: string, overrides?: Partial<Schedu
   const duplicate: ScheduleAssignment = {
     ...existing,
     ...overrides,
+    start: overrides?.startsAt ?? overrides?.start ?? existing.start ?? existing.startsAt,
+    end: overrides?.endsAt ?? overrides?.end ?? existing.end ?? existing.endsAt,
+    startsAt: overrides?.startsAt ?? overrides?.start ?? existing.startsAt ?? existing.start!,
+    endsAt: overrides?.endsAt ?? overrides?.end ?? existing.endsAt ?? existing.end!,
+    engineerId: overrides?.engineerId ?? overrides?.engineerUserId ?? existing.engineerId ?? existing.engineerUserId,
+    engineerUserId: overrides?.engineerUserId ?? overrides?.engineerId ?? existing.engineerUserId ?? existing.engineerId,
+    requiredEngineers: overrides?.requiredEngineers ?? existing.requiredEngineers ?? 1,
     id: nanoid(),
   };
   scheduleState = {
