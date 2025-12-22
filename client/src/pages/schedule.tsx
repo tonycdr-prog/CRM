@@ -5,11 +5,10 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
-import type { ScheduleAssignment, ScheduleConflict } from "@shared/schedule";
+import type { ScheduleJobConflict, ScheduleJobSlot } from "@shared/schedule";
 
 const SNAP_MINUTES = 30;
 const DAY_START_HOUR = 6;
@@ -56,55 +55,44 @@ function addMinutes(d: Date, min: number) {
 
 type Engineer = { id: string; name: string };
 
-type AssignmentsResponse =
-  | ScheduleAssignment[]
-  | {
-      assignments: ScheduleAssignment[];
-      engineers?: Engineer[];
-      conflicts?: ScheduleConflict[];
-    };
+type JobsResponse = {
+  jobs: ScheduleJobSlot[];
+  conflicts?: ScheduleJobConflict[];
+};
 
 export default function SchedulePage() {
   const qc = useQueryClient();
-  const { toast: showToast } = useToast();
+  const { toast } = useToast();
 
   const [day, setDay] = React.useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const [activeJobId, setActiveJobId] = React.useState<string | null>(null);
   const [shiftDown, setShiftDown] = React.useState(false);
-  const [overColumn, setOverColumn] = React.useState<string | null>(null);
+  const [view, setView] = React.useState<"calendar" | "gantt">("calendar");
 
   const fromISO = new Date(day);
   const toISO = new Date(day);
   toISO.setDate(toISO.getDate() + 1);
 
-  const assignmentsQuery = useQuery({
-    queryKey: ["schedule-assignments", day.toISOString()],
-    queryFn: async (): Promise<{ assignments: ScheduleAssignment[]; engineers: Engineer[]; conflicts?: ScheduleConflict[] }> => {
+  const jobsQuery = useQuery({
+    queryKey: ["schedule-jobs", day.toISOString()],
+    queryFn: async (): Promise<JobsResponse> => {
       const res = await apiRequest(
         "GET",
-        `/api/schedule/assignments?from=${encodeURIComponent(fromISO.toISOString())}&to=${encodeURIComponent(toISO.toISOString())}`,
+        `/api/schedule/jobs?from=${encodeURIComponent(fromISO.toISOString())}&to=${encodeURIComponent(toISO.toISOString())}`,
       );
       if (res.status === 401 || res.status === 403) {
-        showToast({
+        toast({
           title: "Not authorised",
           description: "Auth/CSRF missing — refresh page",
           variant: "destructive",
         });
         throw new Error("Unauthorised");
       }
-      const data = (await res.json()) as AssignmentsResponse;
-      if (Array.isArray(data)) {
-        return { assignments: data, engineers: [], conflicts: [] };
-      }
-      return {
-        assignments: data.assignments ?? [],
-        engineers: data.engineers ?? [],
-        conflicts: data.conflicts ?? [],
-      };
+      return res.json();
     },
   });
 
@@ -112,8 +100,9 @@ export default function SchedulePage() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Shift") setShiftDown(true);
       if (e.key === "Escape") {
-        setActiveId(null);
-        showToast({ title: "Cancelled", description: "Drag cancelled." });
+        setActiveJobId(null);
+        qc.invalidateQueries({ queryKey: ["schedule-jobs", day.toISOString()] });
+        toast({ title: "Cancelled", description: "Drag cancelled." });
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -125,158 +114,90 @@ export default function SchedulePage() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [showToast]);
+  }, [day, qc, toast]);
 
-  const engineersFromAssignments = React.useMemo(() => {
-    const seen = new Map<string, Engineer>();
-    (assignmentsQuery.data?.assignments ?? []).forEach((a) => {
-      const id = a.engineerUserId || a.engineerId;
-      if (id && !seen.has(id)) {
-        seen.set(id, { id, name: a.engineerName || id });
-      }
+  const jobs = jobsQuery.data?.jobs ?? [];
+  const conflicts = jobsQuery.data?.conflicts ?? [];
+
+  const conflictMap = React.useMemo(() => {
+    const map = new Map<string, ScheduleJobConflict>();
+    conflicts.forEach((c) => {
+      map.set(`${c.jobId}:${c.engineerId}`, c);
     });
-    return Array.from(seen.values());
-  }, [assignmentsQuery.data]);
+    return map;
+  }, [conflicts]);
 
-  const engineers = (assignmentsQuery.data?.engineers?.length ?? 0) > 0
-    ? assignmentsQuery.data?.engineers ?? []
-    : engineersFromAssignments.length > 0
-      ? engineersFromAssignments
-      : [{ id: "unassigned", name: "Unassigned" }];
-
-  const assignments = assignmentsQuery.data?.assignments ?? [];
-  const conflicts = assignmentsQuery.data?.conflicts ?? [];
-
-  const columnHeight = 720; // px
-
-  const showOverrideToast = React.useCallback(
-    (
-      message: string,
-      endpoint: string,
-      method: "POST" | "PATCH",
-      payload: Record<string, unknown>
-    ) => {
-      let dismissToast: (() => void) | undefined;
-      const action = (
-        <ToastAction
-          altText="Override & place anyway"
-          onClick={async () => {
-            try {
-              const res = await apiRequest(
-                method,
-                `${endpoint}${endpoint.includes("?") ? "&" : "?"}allowConflict=true`,
-                payload
-              );
-              if (!res.ok) {
-                throw new Error(await res.text());
-              }
-              dismissToast?.();
-              await qc.invalidateQueries({ queryKey: ["schedule-assignments", day.toISOString()] });
-              showToast({ title: "Placed with override", description: "Saved despite conflict." });
-            } catch (err: any) {
-              showToast({
-                title: "Override failed",
-                description: err?.message ?? "Unknown error",
-                variant: "destructive",
-              });
-            }
-          }}
-        >
-          Override & place anyway
-        </ToastAction>
-      );
-
-      const toastHandle = showToast({
-        title: message,
-        description: "Engineer already has an overlapping job.",
-        action,
+  const engineers: Engineer[] = React.useMemo(() => {
+    const seen = new Map<string, Engineer>();
+    jobs.forEach((job) => {
+      if (!job.assignedEngineerIds.length) {
+        seen.set("unassigned", { id: "unassigned", name: "Unassigned" });
+      }
+      job.assignedEngineerIds.forEach((id) => {
+        if (!seen.has(id)) seen.set(id, { id, name: id });
       });
-      dismissToast = toastHandle.dismiss;
-    },
-    [day, qc, showToast]
-  );
+    });
+    if (seen.size === 0) seen.set("unassigned", { id: "unassigned", name: "Unassigned" });
+    return Array.from(seen.values());
+  }, [jobs]);
 
-  const handleDrop = async (engineerId: string, minutesFromTop: number, assignmentId: string, shiftHeld: boolean) => {
-    const current = assignments.find((a) => a.id === assignmentId);
-    if (!current) return;
+  const placements = React.useMemo(() => {
+    return jobs.flatMap((job) => {
+      const ids = job.assignedEngineerIds.length ? job.assignedEngineerIds : ["unassigned"];
+      return ids.map((engineerId) => ({ job, engineerId }));
+    });
+  }, [jobs]);
 
-    const currentStart = new Date(current.startsAt ?? current.start ?? "");
-    const currentEnd = new Date(current.endsAt ?? current.end ?? "");
-    if (Number.isNaN(currentStart.getTime()) || Number.isNaN(currentEnd.getTime())) return;
+  const columnHeight = 720;
 
-    const durMin = minutesBetween(currentStart, currentEnd);
+  const performMove = async (jobId: string, newStart: Date, shiftHeld: boolean) => {
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) return;
+    const durationMs = new Date(job.endAt).getTime() - new Date(job.startAt).getTime();
+    const payload = {
+      jobId,
+      startAt: newStart.toISOString(),
+      endAt: new Date(newStart.getTime() + durationMs).toISOString(),
+    };
+    const endpoint = shiftHeld ? "/api/schedule/duplicate-job" : "/api/schedule/move-job";
+
+    const res = await apiRequest("POST", endpoint, payload);
+    if (res.status === 401 || res.status === 403) {
+      toast({
+        title: "Not authorised",
+        description: "Auth/CSRF missing — refresh page",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!res.ok) {
+      toast({ title: "Schedule update failed", description: await res.text(), variant: "destructive" });
+      return;
+    }
+    const body = (await res.json()) as { conflicts?: ScheduleJobConflict[] };
+    if (body.conflicts && body.conflicts.length) {
+      toast({
+        title: "Conflicts detected",
+        description: "Engineer already has an overlapping job.",
+      });
+    }
+    await qc.invalidateQueries({ queryKey: ["schedule-jobs", day.toISOString()] });
+  };
+
+  const handleDrop = async (jobId: string, minutesFromTop: number) => {
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) return;
+    const jobStart = new Date(job.startAt);
+    const jobEnd = new Date(job.endAt);
+    const durMin = minutesBetween(jobStart, jobEnd);
+
     const nextStartBase = addMinutes(startOfDay(day), minutesFromTop);
     const snappedStart = roundToSnap(nextStartBase);
-    const clampedStart = addMinutes(startOfDay(day), clamp(minutesBetween(startOfDay(day), snappedStart), 0, dayColumnMinutes() - durMin));
-    const nextEnd = addMinutes(clampedStart, durMin);
-
-    try {
-      if (shiftHeld || shiftDown) {
-        const createRes = await apiRequest("POST", `/api/schedule/assignments`, {
-          jobId: current.jobId,
-          engineerUserId: engineerId,
-          startsAt: clampedStart.toISOString(),
-          endsAt: nextEnd.toISOString(),
-          requiredEngineers: current.requiredEngineers ?? 1,
-        });
-        if (createRes.status === 409) {
-          showOverrideToast(
-            "Conflict detected",
-            `/api/schedule/assignments`,
-            "POST",
-            {
-              jobId: current.jobId,
-              engineerUserId: engineerId,
-              startsAt: clampedStart.toISOString(),
-              endsAt: nextEnd.toISOString(),
-              requiredEngineers: current.requiredEngineers ?? 1,
-            }
-          );
-          return;
-        }
-        if (createRes.status === 401 || createRes.status === 403) {
-          showToast({
-            title: "Not authorised",
-            description: "Auth/CSRF missing — refresh page",
-            variant: "destructive",
-          });
-          return;
-        }
-        if (!createRes.ok) throw new Error(await createRes.text());
-      } else {
-        const patchRes = await apiRequest("PATCH", `/api/schedule/assignments/${assignmentId}`, {
-          engineerUserId: engineerId,
-          startsAt: clampedStart.toISOString(),
-          endsAt: nextEnd.toISOString(),
-        });
-        if (patchRes.status === 409) {
-          showOverrideToast(
-            "Conflict detected",
-            `/api/schedule/assignments/${assignmentId}`,
-            "PATCH",
-            {
-              engineerUserId: engineerId,
-              startsAt: clampedStart.toISOString(),
-              endsAt: nextEnd.toISOString(),
-            }
-          );
-          return;
-        }
-        if (patchRes.status === 401 || patchRes.status === 403) {
-          showToast({
-            title: "Not authorised",
-            description: "Auth/CSRF missing — refresh page",
-            variant: "destructive",
-          });
-          return;
-        }
-        if (!patchRes.ok) throw new Error(await patchRes.text());
-      }
-
-      await qc.invalidateQueries({ queryKey: ["schedule-assignments", day.toISOString()] });
-    } catch (err: any) {
-      showToast({ title: "Failed to reschedule", description: err?.message ?? "Unknown error" });
-    }
+    const clampedStart = addMinutes(
+      startOfDay(day),
+      clamp(minutesBetween(startOfDay(day), snappedStart), 0, dayColumnMinutes() - durMin),
+    );
+    await performMove(jobId, clampedStart, shiftDown);
   };
 
   const nextDay = () =>
@@ -302,58 +223,77 @@ export default function SchedulePage() {
           Next
         </Button>
         <div className="ml-2 text-sm opacity-80">{day.toDateString()}</div>
-        <div className="ml-auto text-xs opacity-70">Drag to move • <b>Shift</b>+drag duplicates • <b>Esc</b> cancels</div>
+        <div className="ml-auto flex items-center gap-2 text-xs opacity-80">
+          <Button
+            size="sm"
+            variant={view === "calendar" ? "default" : "outline"}
+            onClick={() => setView("calendar")}
+          >
+            Calendar
+          </Button>
+          <Button size="sm" variant={view === "gantt" ? "default" : "outline"} onClick={() => setView("gantt")}>
+            Gantt
+          </Button>
+          <span className="hidden sm:inline">Drag to move • Shift+drag duplicates • Esc cancels</span>
+        </div>
       </div>
 
-      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(engineers.length, 1)}, minmax(220px, 1fr))` }}>
-        {engineers.map((eng) => (
-          <EngineerColumn
-            key={eng.id}
-            engineer={eng}
-            assignments={assignments.filter((a) => (a.engineerUserId || a.engineerId || "unassigned") === eng.id)}
-            day={day}
-            columnHeight={columnHeight}
-            activeId={activeId}
-            overColumn={overColumn === eng.id}
-            setOverColumn={setOverColumn}
-            onDrop={(minutes, assignmentId, shiftHeld) => handleDrop(eng.id, minutes, assignmentId, shiftHeld)}
-            onDragStart={(id) => setActiveId(id)}
-            onDragEnd={() => setActiveId(null)}
-          />
-        ))}
-      </div>
+      {view === "calendar" ? (
+        <TooltipProvider>
+          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(engineers.length, 1)}, minmax(220px, 1fr))` }}>
+            {engineers.map((eng) => (
+              <EngineerColumn
+                key={eng.id}
+                engineer={eng}
+                placements={placements.filter((p) => p.engineerId === eng.id)}
+                day={day}
+                columnHeight={columnHeight}
+                activeJobId={activeJobId}
+                conflicts={conflictMap}
+                onDrop={(minutes, jobId) => handleDrop(jobId, minutes)}
+                onDragStart={(id) => setActiveJobId(id)}
+                onDragEnd={() => setActiveJobId(null)}
+              />
+            ))}
+          </div>
+        </TooltipProvider>
+      ) : (
+        <GanttView jobs={jobs} conflicts={conflictMap} />
+      )}
 
       {conflicts.length > 0 && (
         <Card className="p-3">
           <div className="font-medium mb-2">Conflicts detected</div>
           <div className="space-y-1 text-sm text-amber-700">
             {conflicts.map((c, idx) => (
-              <div key={`${c.engineerUserId}-${idx}`}>
-                Engineer {c.engineerUserId} overlaps between {new Date(c.startsAt).toLocaleTimeString()} and {new Date(c.endsAt).toLocaleTimeString()}
+              <div key={`${c.jobId}-${idx}`}>
+                Engineer {c.engineerId} overlaps with jobs {c.overlappingJobIds.join(", ")}
               </div>
             ))}
           </div>
         </Card>
       )}
 
-      {assignmentsQuery.isLoading && <div className="text-sm text-muted-foreground">Loading schedule…</div>}
+      {jobsQuery.isLoading && <div className="text-sm text-muted-foreground">Loading schedule…</div>}
     </div>
   );
 }
 
-function EngineerColumn(props: {
+type Placement = { job: ScheduleJobSlot; engineerId: string };
+
+type EngineerColumnProps = {
   engineer: Engineer;
-  assignments: ScheduleAssignment[];
+  placements: Placement[];
   day: Date;
   columnHeight: number;
-  activeId: string | null;
-  overColumn: boolean;
-  setOverColumn: (id: string | null) => void;
-  onDrop: (minutes: number, assignmentId: string, shiftHeld: boolean) => void;
+  activeJobId: string | null;
+  conflicts: Map<string, ScheduleJobConflict>;
+  onDrop: (minutes: number, jobId: string) => void;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
-}) {
-  const { engineer, assignments, day, columnHeight, activeId, overColumn, setOverColumn, onDrop, onDragEnd, onDragStart } = props;
+};
+
+function EngineerColumn({ engineer, placements, day, columnHeight, activeJobId, conflicts, onDrop, onDragEnd, onDragStart }: EngineerColumnProps) {
   const dayStart = startOfDay(day);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -369,47 +309,46 @@ function EngineerColumn(props: {
             <div className="text-xs text-muted-foreground">{engineer.id}</div>
           </div>
         </div>
-        <Badge variant="outline">{assignments.length} jobs</Badge>
+        <Badge variant="outline">{placements.length} jobs</Badge>
       </div>
       <div
         ref={containerRef}
-        className={cn("relative rounded-md border bg-background", overColumn && "ring-2 ring-primary/50")}
+        className="relative rounded-md border bg-background"
         style={{ height: columnHeight }}
         onDragOver={(e) => e.preventDefault()}
-        onDragEnter={() => setOverColumn(engineer.id)}
-        onDragLeave={() => setOverColumn(null)}
         onDrop={(e) => {
           e.preventDefault();
-          setOverColumn(null);
           const id = e.dataTransfer.getData("text/plain");
           if (!id) return;
           const rect = containerRef.current?.getBoundingClientRect();
           const y = rect ? e.clientY - rect.top : 0;
           const minutes = yToMinutes(y, columnHeight);
-          onDrop(minutes, id, e.shiftKey);
+          onDrop(minutes, id);
           onDragEnd();
         }}
       >
-        {assignments.map((a) => {
-          const s = new Date(a.startsAt ?? a.start ?? "");
-          const e = new Date(a.endsAt ?? a.end ?? "");
+        {placements.map((placement) => {
+          const s = new Date(placement.job.startAt);
+          const e = new Date(placement.job.endAt);
           if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null;
 
           const topMin = minutesBetween(dayStart, s);
           const durMin = minutesBetween(s, e);
-
           const top = minutesToY(topMin, columnHeight);
           const height = minutesToY(durMin, columnHeight);
+          const conflictKey = `${placement.job.id}:${placement.engineerId}`;
+          const hasConflict = conflicts.has(conflictKey);
 
           return (
-            <DraggableAssignment
-              key={a.id}
-              assignment={a}
+            <DraggableJob
+              key={`${placement.job.id}-${placement.engineerId}`}
+              job={placement.job}
               top={top}
-              height={Math.max(28, height)}
-              isActive={activeId === a.id}
-              onDragStart={() => onDragStart(a.id)}
-              onDragEnd={() => onDragEnd()}
+              height={Math.max(32, height)}
+              isActive={activeJobId === placement.job.id}
+              hasConflict={hasConflict}
+              onDragStart={() => onDragStart(placement.job.id)}
+              onDragEnd={onDragEnd}
             />
           );
         })}
@@ -418,19 +357,17 @@ function EngineerColumn(props: {
   );
 }
 
-function DraggableAssignment(props: {
-  assignment: ScheduleAssignment;
+type DraggableJobProps = {
+  job: ScheduleJobSlot;
   top: number;
   height: number;
   isActive: boolean;
+  hasConflict: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
-}) {
-  const { assignment, top, height, isActive, onDragStart, onDragEnd } = props;
+};
 
-  const startLabel = assignment.startsAt ?? assignment.start;
-  const endLabel = assignment.endsAt ?? assignment.end;
-
+function DraggableJob({ job, top, height, isActive, hasConflict, onDragStart, onDragEnd }: DraggableJobProps) {
   return (
     <TooltipProvider>
       <Tooltip>
@@ -438,34 +375,84 @@ function DraggableAssignment(props: {
           <div
             draggable
             onDragStart={(e) => {
-              e.dataTransfer.setData("text/plain", assignment.id);
+              e.dataTransfer.setData("text/plain", job.id);
               onDragStart();
             }}
             onDragEnd={onDragEnd}
             className={cn(
               "absolute left-2 right-2 rounded-md border bg-muted p-2 text-xs cursor-grab active:cursor-grabbing",
               isActive && "ring-2 ring-primary/60",
+              hasConflict && "border-amber-500",
             )}
             style={{ top, height }}
-            title={assignment.jobTitle ? `Job ${assignment.jobTitle}` : "Job"}
+            title={job.title ? `Job ${job.title}` : "Job"}
           >
-            <div className="font-medium">{assignment.jobTitle || "Job"}</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-medium truncate">{job.title || "Job"}</div>
+              {hasConflict && <Badge variant="destructive">Conflict</Badge>}
+            </div>
             <div className="opacity-70">
-              {startLabel && new Date(startLabel).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –
-              {endLabel && new Date(endLabel).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {new Date(job.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –
+              {new Date(job.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </div>
           </div>
         </TooltipTrigger>
         <TooltipContent>
           <div className="text-xs space-y-1">
-            <div className="font-semibold">{assignment.jobTitle || "Job"}</div>
-            <div>Engineer: {assignment.engineerName || assignment.engineerUserId || "Unassigned"}</div>
+            <div className="font-semibold">{job.title || "Job"}</div>
+            <div>Engineers: {job.assignedEngineerIds.join(", ") || "Unassigned"}</div>
             <div>
-              {startLabel ? new Date(startLabel).toLocaleString() : ""} – {endLabel ? new Date(endLabel).toLocaleString() : ""}
+              {new Date(job.startAt).toLocaleString()} – {new Date(job.endAt).toLocaleString()}
             </div>
           </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+type GanttProps = {
+  jobs: ScheduleJobSlot[];
+  conflicts: Map<string, ScheduleJobConflict>;
+};
+
+function GanttView({ jobs, conflicts }: GanttProps) {
+  if (!jobs.length) {
+    return <div className="text-sm text-muted-foreground">No scheduled jobs.</div>;
+  }
+
+  const minStart = Math.min(...jobs.map((j) => new Date(j.startAt).getTime()));
+  const maxEnd = Math.max(...jobs.map((j) => new Date(j.endAt).getTime()));
+  const totalMs = Math.max(maxEnd - minStart, 1);
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="font-medium">Gantt view</div>
+      <div className="space-y-2">
+        {jobs.map((job) => {
+          const startMs = new Date(job.startAt).getTime() - minStart;
+          const endMs = new Date(job.endAt).getTime() - minStart;
+          const leftPct = (startMs / totalMs) * 100;
+          const widthPct = Math.max(((endMs - startMs) / totalMs) * 100, 2);
+          const hasConflict = job.assignedEngineerIds.some((eng) => conflicts.has(`${job.id}:${eng}`));
+          return (
+            <div key={job.id} className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <div className="font-medium truncate">{job.title}</div>
+                {hasConflict && <Badge variant="destructive">Conflict</Badge>}
+              </div>
+              <div className="relative h-8 rounded-md bg-muted/50">
+                <div
+                  className={cn("absolute h-8 rounded-md bg-primary/70 text-[10px] text-white px-2 flex items-center", hasConflict && "bg-amber-500")}
+                  style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                >
+                  {job.assignedEngineerIds.join(", ") || "Unassigned"}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }

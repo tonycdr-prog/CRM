@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { assignmentTimes, type ScheduleAssignment } from "@shared/schedule";
+import type { ScheduleJobSlot } from "@shared/schedule";
 
 type ScheduleUpcomingWidgetProps = {
   days?: number;
@@ -19,11 +19,11 @@ export function ScheduleUpcomingWidget({ days = 7, limit = 6, title }: ScheduleU
     return next;
   }, [days, now]);
 
-  const query = useQuery<ScheduleAssignment[]>({
+  const query = useQuery<{ jobs: ScheduleJobSlot[] }>({
     queryKey: ["schedule-upcoming", days],
     queryFn: async () => {
       const res = await fetch(
-        `/api/schedule/assignments?from=${encodeURIComponent(now.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+        `/api/schedule/jobs?from=${encodeURIComponent(now.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
         { credentials: "include" },
       );
       if (res.status === 401 || res.status === 403) {
@@ -42,7 +42,7 @@ export function ScheduleUpcomingWidget({ days = 7, limit = 6, title }: ScheduleU
     },
   });
 
-  const items = query.data ?? [];
+  const items = query.data?.jobs ?? [];
 
   const heading = title ?? `Next ${days} day${days === 1 ? "" : "s"}`;
 
@@ -61,12 +61,11 @@ export function ScheduleUpcomingWidget({ days = 7, limit = 6, title }: ScheduleU
         <p className="text-sm text-muted-foreground">No scheduled assignments.</p>
       ) : (
         <ul className="space-y-1 text-sm">
-          {items.slice(0, limit).map((assignment) => {
-            const { start } = assignmentTimes(assignment);
-            const displayStart = start || assignment.startsAt;
+          {items.slice(0, limit).map((job) => {
+            const displayStart = job.startAt;
             return (
-              <li key={assignment.id} className="flex items-center justify-between gap-2">
-                <span className="truncate">Job {String(assignment.jobId).slice(0, 8)}</span>
+              <li key={job.id} className="flex items-center justify-between gap-2">
+                <span className="truncate">{job.title || `Job ${String(job.id).slice(0, 8)}`}</span>
                 <span className="whitespace-nowrap text-muted-foreground">
                   {displayStart
                     ? new Date(displayStart).toLocaleString([], {

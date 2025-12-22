@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const isoString = z.string();
+
 export type ScheduleEngineer = {
   id: string;
   name: string;
@@ -12,7 +14,16 @@ export type ScheduleJob = {
   site?: string | null;
 };
 
-const isoString = z.string();
+export const ScheduleJobSlotSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  startAt: isoString,
+  endAt: isoString,
+  assignedEngineerIds: z.array(z.string()).default([]),
+  site: z.string().optional().nullable(),
+});
+
+export type ScheduleJobSlot = z.infer<typeof ScheduleJobSlotSchema>;
 
 export const ScheduleAssignmentSchema = z.object({
   id: z.string(),
@@ -87,4 +98,34 @@ export function assignmentsOverlap(a: ScheduleAssignment, b: ScheduleAssignment)
   const { start: startB, end: endB } = assignmentTimes(b);
   if (!startA || !startB || !endA || !endB) return false;
   return new Date(startA).getTime() < new Date(endB).getTime() && new Date(startB).getTime() < new Date(endA).getTime();
+}
+
+export type ScheduleJobConflict = {
+  jobId: string;
+  engineerId: string;
+  overlappingJobIds: string[];
+};
+
+export function detectJobConflicts(assignments: ScheduleAssignment[]): ScheduleJobConflict[] {
+  const conflicts: Map<string, ScheduleJobConflict> = new Map();
+  for (let i = 0; i < assignments.length; i++) {
+    for (let j = i + 1; j < assignments.length; j++) {
+      const a = assignments[i];
+      const b = assignments[j];
+      if (!a || !b) continue;
+      const engineerA = a.engineerUserId ?? a.engineerId;
+      const engineerB = b.engineerUserId ?? b.engineerId;
+      if (!engineerA || !engineerB || engineerA !== engineerB) continue;
+      if (!assignmentsOverlap(a, b)) continue;
+      const keyA = `${a.jobId}:${engineerA}`;
+      const keyB = `${b.jobId}:${engineerB}`;
+      const currentA = conflicts.get(keyA) ?? { jobId: a.jobId, engineerId: engineerA, overlappingJobIds: [] };
+      const currentB = conflicts.get(keyB) ?? { jobId: b.jobId, engineerId: engineerB, overlappingJobIds: [] };
+      if (!currentA.overlappingJobIds.includes(b.jobId)) currentA.overlappingJobIds.push(b.jobId);
+      if (!currentB.overlappingJobIds.includes(a.jobId)) currentB.overlappingJobIds.push(a.jobId);
+      conflicts.set(keyA, currentA);
+      conflicts.set(keyB, currentB);
+    }
+  }
+  return Array.from(conflicts.values());
 }
