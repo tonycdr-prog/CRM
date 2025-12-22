@@ -24,7 +24,7 @@ async function buildApp() {
   return app;
 }
 
-test("warnings are returned for overlapping schedule items and non-overlapping succeed", async (t) => {
+test("409 returned for overlapping schedule items and non-overlapping succeed", async (t) => {
   const app = await buildApp();
   const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
     const listener = app.listen(0, () => resolve(listener));
@@ -67,9 +67,24 @@ test("warnings are returned for overlapping schedule items and non-overlapping s
     }),
   });
   const overlapBody = await overlap.json();
-  assert.strictEqual(overlap.status, 201);
-  assert.ok(Array.isArray(overlapBody.warnings));
-  assert.ok(overlapBody.warnings.length > 0, "expected warning for overlapping schedule");
+  assert.strictEqual(overlap.status, 409);
+  assert.ok(Array.isArray(overlapBody.conflicts));
+  assert.ok(overlapBody.conflicts.length > 0, "expected conflict payload for overlap");
+
+  const allowedOverlap = await fetch(`${baseUrl}?allowConflict=true`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...basePayload,
+      jobId: "job-seed-override",
+      startAt: new Date("2025-01-01T10:15:00.000Z").toISOString(),
+      endAt: new Date("2025-01-01T11:15:00.000Z").toISOString(),
+    }),
+  });
+  const allowedBody = await allowedOverlap.json();
+  assert.strictEqual(allowedOverlap.status, 201);
+  assert.ok(Array.isArray(allowedBody.conflicts));
+  assert.ok(allowedBody.conflicts.length > 0, "expected conflict metadata when override is allowed");
 
   const nonOverlap = await fetch(baseUrl, {
     method: "POST",
@@ -83,6 +98,12 @@ test("warnings are returned for overlapping schedule items and non-overlapping s
   });
   const nonOverlapBody = await nonOverlap.json();
   assert.strictEqual(nonOverlap.status, 201);
-  assert.ok(Array.isArray(nonOverlapBody.warnings));
-  assert.strictEqual(nonOverlapBody.warnings.length, 0);
+  assert.ok(Array.isArray(nonOverlapBody.conflicts));
+  assert.strictEqual(nonOverlapBody.conflicts.length, 0);
+
+  const conflictsRes = await fetch(`${baseUrl}/conflicts`);
+  assert.strictEqual(conflictsRes.status, 200);
+  const conflictsBody = await conflictsRes.json();
+  assert.ok(Array.isArray(conflictsBody.conflicts));
+  assert.ok(conflictsBody.conflicts.length > 0, "conflicts endpoint should surface overlaps");
 });

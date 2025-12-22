@@ -94,7 +94,7 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     ],
     widgets: ["schedule"],
     ownsRoutes: ["/schedule", "/dashboard"],
-    ownsWidgets: ["schedule", "schedule.today", "schedule.upcoming"],
+    ownsWidgets: ["schedule", "schedule.today", "schedule.upcoming", "schedule.conflicts"],
     ownsSidebarSections: [],
   },
   [MODULES.FINANCE]: {

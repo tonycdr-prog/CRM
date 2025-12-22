@@ -28,7 +28,7 @@ export type ScheduleJobSlot = z.infer<typeof ScheduleJobSlotSchema>;
 export type ScheduleRangeResponse = {
   jobs: ScheduleJobSlot[];
   assignments: ScheduleAssignment[];
-  conflicts?: ScheduleJobConflict[];
+  conflicts?: ScheduleConflictDetail[];
   warnings?: any[];
 };
 
@@ -70,21 +70,22 @@ export const UpdateScheduleAssignmentSchema = z.object({
   status: z.string().optional(),
 });
 
-export const ScheduleConflictSchema = z.object({
-  engineerUserId: z.string(),
-  startsAt: isoString,
-  endsAt: isoString,
-  overlapping: z.array(
-    z.object({
-      id: z.string(),
-      jobId: z.string(),
-      startsAt: isoString,
-      endsAt: isoString,
-    }),
-  ),
+export const ScheduleConflictDetailSchema = z.object({
+  engineerId: z.string(),
+  itemId: z.string(),
+  itemJobId: z.string(),
+  overlapsWithId: z.string(),
+  overlapsWithJobId: z.string(),
+  overlapRange: z.object({ start: isoString, end: isoString }),
 });
 
-export type ScheduleConflict = z.infer<typeof ScheduleConflictSchema>;
+export type ScheduleConflictDetail = z.infer<typeof ScheduleConflictDetailSchema>;
+
+export const ScheduleConflictsResponseSchema = z.object({
+  conflicts: z.array(ScheduleConflictDetailSchema),
+});
+
+export type ScheduleConflictsResponse = z.infer<typeof ScheduleConflictsResponseSchema>;
 
 export type ScheduleState = {
   engineers: ScheduleEngineer[];
@@ -105,6 +106,49 @@ export function assignmentsOverlap(a: ScheduleAssignment, b: ScheduleAssignment)
   const { start: startB, end: endB } = assignmentTimes(b);
   if (!startA || !startB || !endA || !endB) return false;
   return new Date(startA).getTime() < new Date(endB).getTime() && new Date(startB).getTime() < new Date(endA).getTime();
+}
+
+function toRange(assignment: ScheduleAssignment): { start?: string; end?: string } {
+  const start = assignment.startsAt ?? assignment.start;
+  const end = assignment.endsAt ?? assignment.end;
+  return { start, end };
+}
+
+export function listScheduleConflicts(assignments: ScheduleAssignment[]): ScheduleConflictDetail[] {
+  const conflicts: ScheduleConflictDetail[] = [];
+  for (let i = 0; i < assignments.length; i++) {
+    for (let j = i + 1; j < assignments.length; j++) {
+      const a = assignments[i];
+      const b = assignments[j];
+      if (!a || !b) continue;
+      const engineerA = a.engineerUserId ?? a.engineerId;
+      const engineerB = b.engineerUserId ?? b.engineerId;
+      if (!engineerA || !engineerB || engineerA !== engineerB) continue;
+      const { start: startA, end: endA } = toRange(a);
+      const { start: startB, end: endB } = toRange(b);
+      if (!startA || !startB || !endA || !endB) continue;
+      const overlapStart = new Date(Math.max(new Date(startA).getTime(), new Date(startB).getTime()));
+      const overlapEnd = new Date(Math.min(new Date(endA).getTime(), new Date(endB).getTime()));
+      if (overlapStart.getTime() >= overlapEnd.getTime()) continue;
+      conflicts.push({
+        engineerId: engineerA,
+        itemId: a.id,
+        itemJobId: a.jobId,
+        overlapsWithId: b.id,
+        overlapsWithJobId: b.jobId,
+        overlapRange: { start: overlapStart.toISOString(), end: overlapEnd.toISOString() },
+      });
+      conflicts.push({
+        engineerId: engineerB,
+        itemId: b.id,
+        itemJobId: b.jobId,
+        overlapsWithId: a.id,
+        overlapsWithJobId: a.jobId,
+        overlapRange: { start: overlapStart.toISOString(), end: overlapEnd.toISOString() },
+      });
+    }
+  }
+  return conflicts;
 }
 
 export type ScheduleJobConflict = {

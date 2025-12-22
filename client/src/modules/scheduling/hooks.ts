@@ -1,11 +1,11 @@
 import React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type {
   ScheduleAssignment,
-  ScheduleJobConflict,
   ScheduleJobSlot,
   ScheduleRangeResponse,
+  ScheduleConflictDetail,
 } from "@shared/schedule";
 import { createScheduledJob, fetchScheduleRange, updateAssignment } from "./api";
 
@@ -46,6 +46,7 @@ function deriveJobsFromAssignments(assignments: ScheduleAssignment[]): ScheduleJ
 export function useScheduleRange(day: Date) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [conflictDetails, setConflictDetails] = React.useState<ScheduleConflictDetail[]>([]);
 
   const from = React.useMemo(() => {
     const d = new Date(day);
@@ -60,7 +61,7 @@ export function useScheduleRange(day: Date) {
 
   const queryKey = ["schedule-range", from, to];
 
-  const query = useQuery<ScheduleRangeResponse>({
+  const queryOptions: UseQueryOptions<ScheduleRangeResponse, Error> = {
     queryKey: ["schedule-range", from, to],
     queryFn: async () => {
       try {
@@ -76,7 +77,15 @@ export function useScheduleRange(day: Date) {
         throw err;
       }
     },
-  });
+  };
+
+  const query = useQuery(queryOptions);
+
+  React.useEffect(() => {
+    if (query.data?.conflicts) {
+      setConflictDetails(query.data.conflicts);
+    }
+  }, [query.data?.conflicts]);
 
   const moveMutation = useMutation({
     mutationFn: ({
@@ -117,6 +126,7 @@ export function useScheduleRange(day: Date) {
     },
     onError: (err: any, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(queryKey, ctx.prev);
+      if (err?.conflicts) setConflictDetails(err.conflicts as ScheduleConflictDetail[]);
       toast({
         title: "Schedule update failed",
         description: err?.message ?? "Unknown error",
@@ -124,7 +134,8 @@ export function useScheduleRange(day: Date) {
       });
     },
     onSuccess: (data) => {
-      if (data.warnings?.length) {
+      setConflictDetails(data.conflicts ?? []);
+      if (data.conflicts?.length) {
         toast({ title: "Scheduling warning", description: "Engineer already has an overlapping job." });
       }
     },
@@ -175,6 +186,7 @@ export function useScheduleRange(day: Date) {
     },
     onError: (err: any, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(queryKey, ctx.prev);
+      if (err?.conflicts) setConflictDetails(err.conflicts as ScheduleConflictDetail[]);
       toast({
         title: "Schedule duplication failed",
         description: err?.message ?? "Unknown error",
@@ -187,7 +199,7 @@ export function useScheduleRange(day: Date) {
   return {
     jobs: query.data?.jobs ?? [],
     assignments: query.data?.assignments ?? [],
-    conflicts: query.data?.conflicts ?? ([] as ScheduleJobConflict[]),
+    conflicts: conflictDetails,
     isLoading: query.isLoading,
     refetch: () => qc.invalidateQueries({ queryKey }),
     moveAssignment: moveMutation.mutateAsync,
@@ -197,6 +209,6 @@ export function useScheduleRange(day: Date) {
 
 export type ScheduleData = {
   jobs: ScheduleJobSlot[];
-  conflicts: ScheduleJobConflict[];
+  conflicts: ScheduleConflictDetail[];
 };
 

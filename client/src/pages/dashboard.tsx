@@ -15,6 +15,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { WidgetFrame } from "@/components/widgets/WidgetFrame";
 import { ScheduleUpcomingWidget } from "@/components/widgets/ScheduleUpcomingWidget";
+import { ScheduleConflictsWidget } from "@/components/widgets/ScheduleConflictsWidget";
 import { FinanceSummaryWidget } from "@/components/widgets/FinanceSummaryWidget";
 import { ReportsQueueWidget } from "@/components/widgets/ReportsQueueWidget";
 import { useToast } from "@/hooks/use-toast";
@@ -271,6 +272,10 @@ export default function Dashboard() {
     if (widget.widgetId === WIDGET_KEYS.SCHEDULE_TODAY) {
       const limit = Number((item.params as any).limit ?? 5);
       return <ScheduleUpcomingWidget days={1} limit={Math.max(1, Math.min(10, limit))} title="Today" />;
+    }
+    if (widget.widgetId === WIDGET_KEYS.SCHEDULE_CONFLICTS) {
+      const days = Number((item.params as any).days ?? widget.defaultParams.days ?? 7);
+      return <ScheduleConflictsWidget days={Math.max(1, Math.min(30, days))} />;
     }
     if (widget.widgetId === WIDGET_KEYS.FINANCE_SUMMARY) {
       const period = Number((item.params as any).periodDays ?? widget.defaultParams.periodDays ?? 30);
