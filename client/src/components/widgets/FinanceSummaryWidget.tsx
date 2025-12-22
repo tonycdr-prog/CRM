@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 type FinanceSnapshot = {
@@ -16,7 +15,9 @@ export function FinanceSummaryWidget({ periodDays = 30 }: { periodDays?: number 
   const query = useQuery<FinanceSnapshot>({
     queryKey: ["finance-summary", periodDays],
     queryFn: async () => {
-      const res = await api.get(`/api/finance/summary?periodDays=${periodDays}`);
+      const res = await fetch(`/api/finance/summary?periodDays=${periodDays}`, {
+        credentials: "include",
+      });
       if (res.status === 401 || res.status === 403) {
         toast({
           title: "Auth or session missing — refresh page",

@@ -49,6 +49,7 @@ import {
   loadModuleOverrides,
   onModuleOverridesChanged,
   setModuleOverride,
+  type ModuleOverrideMap,
 } from "@/lib/module-overrides";
 import { Label } from "@/components/ui/label";
 
@@ -123,7 +124,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     | null
   >(null);
   const [moduleBannerDismissed, setModuleBannerDismissed] = useState(false);
-  const [moduleOverrides, setModuleOverrides] = useState(loadModuleOverrides());
+  const [moduleOverrides, setModuleOverrides] = useState<ModuleOverrideMap>(loadModuleOverrides());
   const { modules: enabledModules } = useModules();
   const hasNotifiedNoDb = useRef(false);
   const devReviewModeEnv =
@@ -156,7 +157,9 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     id: module.id,
     label: module.label,
     tagline: module.tagline,
-    links: MODULE_NAV[module.id]?.links ?? module.routes,
+    links: (MODULE_NAV[module.id]?.links ?? module.routes).filter(
+      (link) => !!link.path,
+    ),
   }));
 
   useEffect(() => {
@@ -284,11 +287,14 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                           </div>
                         </Link>
                       </SidebarMenuButton>
-                      <SidebarMenu className="ml-3 mt-1 space-y-1">
+                      <SidebarMenu className="ml-3 mt-1 space-y-1" data-testid={`module-links-${module.id}`}>
                         {module.links.map((link) => (
                           <SidebarMenuItem key={`${module.id}-${link.path}`}>
                             <SidebarMenuButton asChild isActive={location === link.path}>
-                              <Link href={link.path}>{link.title}</Link>
+                              <Link href={link.path} className="flex flex-col text-left">
+                                <span>{link.title}</span>
+                                <span className="text-xs text-muted-foreground leading-snug">Open page</span>
+                              </Link>
                             </SidebarMenuButton>
                           </SidebarMenuItem>
                         ))}
@@ -548,7 +554,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {allModules.map((module) => {
-                    const derivedEnabled = moduleOverrides[module.id];
+                    const derivedEnabled = moduleOverrides[module.id as keyof ModuleOverrideMap];
                     const enabledFallback = enabledModules.some((m) => m.id === module.id);
                     const isEnabled = derivedEnabled ?? enabledFallback;
                     return (
@@ -573,7 +579,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                             }}
                             aria-label={`Toggle ${module.label}`}
                           />
-                          {moduleOverrides[module.id] !== undefined ? (
+                          {moduleOverrides[module.id as keyof ModuleOverrideMap] !== undefined ? (
                             <Button
                               variant="ghost"
                               size="icon"
