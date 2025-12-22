@@ -37,6 +37,7 @@
 - Verify pages: `/dashboard`, `/forms-builder`, `/forms-runner`, `/hub/forms`, `/reports`, `/defects`, `/smoke-control-library`, `/schedule`, `/finance`
 - If no `DATABASE_URL` is available, the dev server will still start in limited mode with in-memory auth/layouts and show a dev banner noting the database is unavailable.
 - Dashboard edit mode: toggle "Edit layout" on `/dashboard` to drag, resize, duplicate (Shift+drag), and save widgets; header controls support expand, pop-out, send to screen, and refresh.
+- Use the dev-only module switches banner to toggle modules on/off and preview ModuleGate disabled states during review.
 
 ## D) Conventions
 - TypeScript strict across client/server/shared.

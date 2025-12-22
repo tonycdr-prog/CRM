@@ -15,6 +15,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { WidgetFrame } from "@/components/widgets/WidgetFrame";
 import { ScheduleUpcomingWidget } from "@/components/widgets/ScheduleUpcomingWidget";
+import { FinanceSummaryWidget } from "@/components/widgets/FinanceSummaryWidget";
+import { ReportsQueueWidget } from "@/components/widgets/ReportsQueueWidget";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -265,6 +267,18 @@ export default function Dashboard() {
       const parsedDays = Number((item.params as any).days ?? widget.defaultParams.days ?? 7);
       const safeDays = Number.isFinite(parsedDays) ? Math.max(1, Math.min(30, parsedDays)) : 7;
       return <ScheduleUpcomingWidget days={safeDays} />;
+    }
+    if (widget.widgetId === WIDGET_KEYS.SCHEDULE_TODAY) {
+      const limit = Number((item.params as any).limit ?? 5);
+      return <ScheduleUpcomingWidget days={1} limit={Math.max(1, Math.min(10, limit))} title="Today" />;
+    }
+    if (widget.widgetId === WIDGET_KEYS.FINANCE_SUMMARY) {
+      const period = Number((item.params as any).periodDays ?? widget.defaultParams.periodDays ?? 30);
+      return <FinanceSummaryWidget periodDays={Math.max(7, Math.min(90, period))} />;
+    }
+    if (widget.widgetId === WIDGET_KEYS.REPORTS_QUEUE) {
+      const limit = Number((item.params as any).limit ?? widget.defaultParams.limit ?? 5);
+      return <ReportsQueueWidget limit={Math.max(3, Math.min(20, limit))} />;
     }
     if (widget.widgetId === "team-note") {
       return (

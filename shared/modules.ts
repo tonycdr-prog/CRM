@@ -57,6 +57,8 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       "forms",
       "finance",
       "schedule",
+      "finance.summary",
+      "reports.queue",
     ],
     ownsRoutes: [
       "/dashboard",
@@ -92,7 +94,7 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     ],
     widgets: ["schedule"],
     ownsRoutes: ["/schedule", "/dashboard"],
-    ownsWidgets: ["schedule"],
+    ownsWidgets: ["schedule", "schedule.today", "schedule.upcoming"],
     ownsSidebarSections: [],
   },
   [MODULES.FINANCE]: {
@@ -106,9 +108,9 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Finance", path: "/finance" },
       { title: "Reports", path: "/reports" },
     ],
-    widgets: ["finance", "reports"],
+    widgets: ["finance", "reports", "finance.summary"],
     ownsRoutes: ["/finance", "/reports"],
-    ownsWidgets: ["finance", "reports"],
+    ownsWidgets: ["finance", "reports", "finance.summary"],
     ownsSidebarSections: [],
   },
   [MODULES.REPORTING]: {
@@ -122,9 +124,9 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       { title: "Reports", path: "/reports" },
       { title: "Dashboard", path: "/dashboard" },
     ],
-    widgets: ["reports"],
+    widgets: ["reports", "reports.queue"],
     ownsRoutes: ["/reports", "/dashboard"],
-    ownsWidgets: ["reports"],
+    ownsWidgets: ["reports", "reports.queue"],
     ownsSidebarSections: [],
   },
   [MODULES.ASSET_MANAGEMENT]: {

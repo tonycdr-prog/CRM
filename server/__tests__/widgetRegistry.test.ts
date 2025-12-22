@@ -53,3 +53,10 @@ test("default schedule widget is registered", () => {
   assert.strictEqual(widget?.supportsExpand, true);
   assert.strictEqual(widget?.supportsSendToScreen, true);
 });
+
+test("finance and reporting widgets are registered", () => {
+  const finance = getWidget(WIDGET_KEYS.FINANCE_SUMMARY);
+  const reports = getWidget(WIDGET_KEYS.REPORTS_QUEUE);
+  assert.ok(finance, "finance summary widget should exist");
+  assert.ok(reports, "reports queue widget should exist");
+});

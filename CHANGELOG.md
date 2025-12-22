@@ -38,6 +38,7 @@
 - Added a module registry with env-driven enablement, dev status surfacing, and client hooks so modules can be toggled without impacting CRM core routes.
 - Expanded module placeholders (reporting, asset management, compliance, forms engine) and added module gating with a friendly disabled state.
 - Declared @dnd-kit dependencies to support dashboard and scheduling drag-and-drop interactions.
+- Added dev-only module switches to preview ModuleGate disabled states and expanded widget registry with schedule today, finance summary, and reports queue components.
 - Pinned npm installs to the public registry via `.npmrc` for consistent dependency resolution in dev environments.
 - Registered an upcoming-schedule dashboard widget with standard chrome actions to align with new widget key constants.
 - Added an upcoming schedule widget component that surfaces the next assignments with friendly auth/CSRF messaging and quick

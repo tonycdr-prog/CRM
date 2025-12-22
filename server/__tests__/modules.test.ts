@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { MODULES, MODULE_LABELS, MODULE_TAGLINES, getModuleList } from "@shared/modules";
 import { MODULE_NAV, getModulesList } from "../../client/src/lib/modules.ts";
 import { getEnabledModuleIds } from "../lib/modules";
+import { resolveEnabledModules } from "../../client/src/lib/module-overrides.ts";
 
 test("life safety module constants are defined", () => {
   assert.strictEqual(MODULES.LIFE_SAFETY, "life-safety");
@@ -59,4 +60,17 @@ test("module definitions include ownership metadata", () => {
   assert.ok(lifeSafety?.ownsRoutes.length);
   assert.ok(Array.isArray(lifeSafety?.ownsWidgets));
   assert.ok(Array.isArray(lifeSafety?.ownsSidebarSections));
+});
+
+test("module overrides can toggle modules in dev", () => {
+  const resolved = resolveEnabledModules({
+    status: { isDev: true, devReviewMode: true },
+    overrides: { [MODULES.SCHEDULING]: false },
+  });
+  assert.ok(!resolved.find((m) => m.id === MODULES.SCHEDULING));
+  const reenabled = resolveEnabledModules({
+    status: { isDev: true, devReviewMode: true },
+    overrides: { [MODULES.SCHEDULING]: true },
+  });
+  assert.ok(reenabled.find((m) => m.id === MODULES.SCHEDULING));
 });
