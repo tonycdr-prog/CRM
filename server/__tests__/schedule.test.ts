@@ -83,8 +83,8 @@ test("duplicate creates new assignment and conflicts are detected", async (t) =>
 test("schedule assignment insert schema validates required fields", () => {
   const now = new Date();
   const payload = {
-    organizationId: "org-1",
-    jobId: "job-1",
+    organizationId: "11111111-1111-1111-1111-111111111111",
+    jobId: "22222222-2222-2222-2222-222222222222",
     engineerUserId: "eng-1",
     startsAt: now,
     endsAt: new Date(now.getTime() + 60 * 60 * 1000),
