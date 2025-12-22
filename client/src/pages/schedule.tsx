@@ -2,6 +2,8 @@ import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
@@ -358,7 +360,15 @@ function EngineerColumn(props: {
   return (
     <Card className="p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="font-medium">{engineer.name}</div>
+        <div className="flex items-center gap-2">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback>{engineer.name?.charAt(0)?.toUpperCase() ?? "E"}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium">{engineer.name}</div>
+            <div className="text-xs text-muted-foreground">{engineer.id}</div>
+          </div>
+        </div>
         <Badge variant="outline">{assignments.length} jobs</Badge>
       </div>
       <div
@@ -422,25 +432,40 @@ function DraggableAssignment(props: {
   const endLabel = assignment.endsAt ?? assignment.end;
 
   return (
-    <div
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData("text/plain", assignment.id);
-        onDragStart();
-      }}
-      onDragEnd={onDragEnd}
-      className={cn(
-        "absolute left-2 right-2 rounded-md border bg-muted p-2 text-xs cursor-grab active:cursor-grabbing",
-        isActive && "ring-2 ring-primary/60",
-      )}
-      style={{ top, height }}
-      title={assignment.jobTitle ? `Job ${assignment.jobTitle}` : "Job"}
-    >
-      <div className="font-medium">{assignment.jobTitle || "Job"}</div>
-      <div className="opacity-70">
-        {startLabel && new Date(startLabel).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – {endLabel &&
-          new Date(endLabel).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-      </div>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("text/plain", assignment.id);
+              onDragStart();
+            }}
+            onDragEnd={onDragEnd}
+            className={cn(
+              "absolute left-2 right-2 rounded-md border bg-muted p-2 text-xs cursor-grab active:cursor-grabbing",
+              isActive && "ring-2 ring-primary/60",
+            )}
+            style={{ top, height }}
+            title={assignment.jobTitle ? `Job ${assignment.jobTitle}` : "Job"}
+          >
+            <div className="font-medium">{assignment.jobTitle || "Job"}</div>
+            <div className="opacity-70">
+              {startLabel && new Date(startLabel).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –
+              {endLabel && new Date(endLabel).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="text-xs space-y-1">
+            <div className="font-semibold">{assignment.jobTitle || "Job"}</div>
+            <div>Engineer: {assignment.engineerName || assignment.engineerUserId || "Unassigned"}</div>
+            <div>
+              {startLabel ? new Date(startLabel).toLocaleString() : ""} – {endLabel ? new Date(endLabel).toLocaleString() : ""}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

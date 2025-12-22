@@ -6,9 +6,11 @@ import { assignmentTimes, type ScheduleAssignment } from "@shared/schedule";
 
 type ScheduleUpcomingWidgetProps = {
   days?: number;
+  limit?: number;
+  title?: string;
 };
 
-export function ScheduleUpcomingWidget({ days = 7 }: ScheduleUpcomingWidgetProps) {
+export function ScheduleUpcomingWidget({ days = 7, limit = 6, title }: ScheduleUpcomingWidgetProps) {
   const { toast } = useToast();
   const now = useMemo(() => new Date(), []);
   const to = useMemo(() => {
@@ -42,10 +44,12 @@ export function ScheduleUpcomingWidget({ days = 7 }: ScheduleUpcomingWidgetProps
 
   const items = query.data ?? [];
 
+  const heading = title ?? `Next ${days} day${days === 1 ? "" : "s"}`;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>Next {days} day{days === 1 ? "" : "s"}</span>
+        <span>{heading}</span>
         {query.isFetching ? <span className="text-xs">Refreshing…</span> : null}
       </div>
 
@@ -57,7 +61,7 @@ export function ScheduleUpcomingWidget({ days = 7 }: ScheduleUpcomingWidgetProps
         <p className="text-sm text-muted-foreground">No scheduled assignments.</p>
       ) : (
         <ul className="space-y-1 text-sm">
-          {items.slice(0, 6).map((assignment) => {
+          {items.slice(0, limit).map((assignment) => {
             const { start } = assignmentTimes(assignment);
             const displayStart = start || assignment.startsAt;
             return (

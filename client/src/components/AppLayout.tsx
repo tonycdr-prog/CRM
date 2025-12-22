@@ -44,6 +44,13 @@ import {
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useModules } from "@/hooks/use-modules";
+import {
+  clearModuleOverride,
+  loadModuleOverrides,
+  onModuleOverridesChanged,
+  setModuleOverride,
+} from "@/lib/module-overrides";
+import { Label } from "@/components/ui/label";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -116,6 +123,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     | null
   >(null);
   const [moduleBannerDismissed, setModuleBannerDismissed] = useState(false);
+  const [moduleOverrides, setModuleOverrides] = useState(loadModuleOverrides());
   const { modules: enabledModules } = useModules();
   const hasNotifiedNoDb = useRef(false);
   const devReviewModeEnv =
@@ -142,6 +150,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     "--sidebar-width-icon": "3rem",
   };
 
+  const allModules = getModulesList();
   const bannerModule = enabledModules[0];
   const moduleNavEntries = enabledModules.map((module) => ({
     id: module.id,
@@ -163,6 +172,11 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setDevStatus(data))
       .catch(() => setDevStatus(null));
+  }, []);
+
+  useEffect(() => {
+    const off = onModuleOverridesChanged(() => setModuleOverrides(loadModuleOverrides()));
+    return off;
   }, []);
 
   useEffect(() => {
@@ -526,6 +540,59 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 </Button>
               </div>
             )}
+            {showReviewSection ? (
+              <div className="border-b bg-muted/30 px-4 py-3">
+                <div className="flex items-center justify-between gap-2 text-sm font-medium mb-2">
+                  <span>Module switches (dev-only)</span>
+                  <span className="text-xs text-muted-foreground">Toggle modules to preview ModuleGate behavior</span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {allModules.map((module) => {
+                    const derivedEnabled = moduleOverrides[module.id];
+                    const enabledFallback = enabledModules.some((m) => m.id === module.id);
+                    const isEnabled = derivedEnabled ?? enabledFallback;
+                    return (
+                      <div key={module.id} className="flex items-center justify-between rounded border bg-background px-3 py-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{module.label}</span>
+                            <Badge variant={isEnabled ? "default" : "secondary"}>{isEnabled ? "On" : "Off"}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{module.tagline}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={(checked) => {
+                              setModuleOverride(module.id as any, checked);
+                              setModuleOverrides(loadModuleOverrides());
+                              toast({
+                                title: `${module.label} ${checked ? "enabled" : "disabled"}`,
+                                description: "ModuleGate will reflect this override in dev preview.",
+                              });
+                            }}
+                            aria-label={`Toggle ${module.label}`}
+                          />
+                          {moduleOverrides[module.id] !== undefined ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Reset ${module.label} toggle`}
+                              onClick={() => {
+                                clearModuleOverride(module.id as any);
+                                setModuleOverrides(loadModuleOverrides());
+                              }}
+                            >
+                              <span className="text-xs">Reset</span>
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             {children}
           </main>
         </div>
