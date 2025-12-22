@@ -39,3 +39,4 @@
 - Expanded module placeholders (reporting, asset management, compliance, forms engine) and added module gating with a friendly disabled state.
 - Declared @dnd-kit dependencies to support dashboard and scheduling drag-and-drop interactions.
 - Pinned npm installs to the public registry via `.npmrc` for consistent dependency resolution in dev environments.
+- Registered an upcoming-schedule dashboard widget with standard chrome actions to align with new widget key constants.

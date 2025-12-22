@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import test from "node:test";
 import { z } from "zod";
-import { getWidget, listWidgets, registerWidget } from "@shared/dashboard";
+import { WIDGET_KEYS, getWidget, listWidgets, registerWidget } from "@shared/dashboard";
 
 test("widgets can be registered and retrieved", () => {
   const startingCount = listWidgets().length;
@@ -45,4 +45,11 @@ test("duplicate widget ids are rejected", () => {
       refresh: { mode: "manual" },
     }),
   );
+});
+
+test("default schedule widget is registered", () => {
+  const widget = getWidget(WIDGET_KEYS.SCHEDULE_UPCOMING);
+  assert.ok(widget, "schedule widget should exist in registry");
+  assert.strictEqual(widget?.supportsExpand, true);
+  assert.strictEqual(widget?.supportsSendToScreen, true);
 });
