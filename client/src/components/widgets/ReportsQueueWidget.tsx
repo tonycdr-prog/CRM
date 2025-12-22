@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 type ReportListItem = {
@@ -14,7 +13,7 @@ export function ReportsQueueWidget({ limit = 5 }: { limit?: number }) {
   const query = useQuery<ReportListItem[]>({
     queryKey: ["reports-queue", limit],
     queryFn: async () => {
-      const res = await api.get("/api/reports");
+      const res = await fetch("/api/reports", { credentials: "include" });
       if (res.status === 401 || res.status === 403) {
         toast({
           title: "Auth or session missing — refresh page",
