@@ -1,0 +1,18 @@
+{
+  "id": "tpl-nshev-001",
+  "title": "nSHEV Test",
+  "items": [
+    { "id": "dimensions.w", "type": "number", "label": "Width (mm)" },
+    { "id": "dimensions.h", "type": "number", "label": "Height (mm)" },
+    { "id": "openingTime", "type": "number", "label": "Opening time (s)", "max": 60 },
+    { "id": "openingAngle", "type": "number", "label": "Opening angle (°)" },
+    { "id": "aerodynamicFreeArea", "type": "calc", "label": "Aerodynamic Free Area (m²)" }
+  ],
+  "formulas": [
+    { "out": "aerodynamicFreeArea", "expr": "0.65*(dimensions.w*dimensions.h)/1000000", "deps": ["dimensions.w", "dimensions.h"] }
+  ],
+  "rules": [
+    { "when": "openingTime > 60", "severity": "block", "ref": "EN12101-2:2017" }
+  ],
+  "refs": ["EN12101-2:2017"]
+}

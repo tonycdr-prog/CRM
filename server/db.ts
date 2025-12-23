@@ -5,9 +5,14 @@ import * as schema from "@shared/schema";
 
 const { Pool } = pg;
 
-const devBypassEnabled =
-  process.env.NODE_ENV === "development" &&
-  process.env.DEV_AUTH_BYPASS?.toLowerCase() === "true";
+const devBypassRequested = process.env.DEV_AUTH_BYPASS?.toLowerCase() === "true";
+const isDev = process.env.NODE_ENV === "development";
+
+if (devBypassRequested && !isDev) {
+  throw new Error("DEV_AUTH_BYPASS is only allowed in development.");
+}
+
+const devBypassEnabled = isDev && devBypassRequested;
 
 const databaseUrl = process.env.DATABASE_URL;
 

@@ -1,9 +1,8 @@
 import assert from "node:assert";
 import test from "node:test";
 import express from "express";
-import { createReportingRouter } from "../reportingRoutes";
-import { InMemoryFormsRepository } from "../lib/forms";
-import { InMemoryReportingRepository } from "../lib/reporting";
+process.env.NODE_ENV = "development";
+process.env.DEV_AUTH_BYPASS = "true";
 
 type ServerInstance = ReturnType<express.Express["listen"]>;
 
@@ -12,7 +11,10 @@ const listen = (app: express.Express) =>
     const server = app.listen(0, () => resolve(server));
   });
 
-async function seedSubmission(formsRepo: InMemoryFormsRepository, opts?: { systemTypeCode?: string }) {
+async function seedSubmission(
+  formsRepo: import("../lib/forms").InMemoryFormsRepository,
+  opts?: { systemTypeCode?: string },
+) {
   const template = await formsRepo.createTemplate({
     name: "Report Template",
     description: "For reporting",
@@ -50,6 +52,9 @@ async function seedSubmission(formsRepo: InMemoryFormsRepository, opts?: { syste
 }
 
 test("creates a report and stores signature hash", async (t) => {
+  const { createReportingRouter } = await import("../reportingRoutes");
+  const { InMemoryFormsRepository } = await import("../lib/forms");
+  const { InMemoryReportingRepository } = await import("../lib/reporting");
   const formsRepo = new InMemoryFormsRepository();
   const reportingRepo = new InMemoryReportingRepository(formsRepo);
   const submission = await seedSubmission(formsRepo);
@@ -57,7 +62,14 @@ test("creates a report and stores signature hash", async (t) => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    (req as any).user = { claims: { sub: "user-1", exp: Date.now() + 1000, organizationId: "org-1" } };
+    (req as any).user = {
+      claims: {
+        sub: "user-1",
+        exp: Date.now() + 1000,
+        organizationId: "org-1",
+        organizationRole: "admin",
+      },
+    };
     next();
   });
   app.use("/api", createReportingRouter({ repository: reportingRepo, formsRepository: formsRepo }));
@@ -87,6 +99,9 @@ test("creates a report and stores signature hash", async (t) => {
 });
 
 test("flags missing required entities for system type", async (t) => {
+  const { createReportingRouter } = await import("../reportingRoutes");
+  const { InMemoryFormsRepository } = await import("../lib/forms");
+  const { InMemoryReportingRepository } = await import("../lib/reporting");
   const formsRepo = new InMemoryFormsRepository();
   const reportingRepo = new InMemoryReportingRepository(formsRepo);
   const submission = await seedSubmission(formsRepo, { systemTypeCode: "PSS" });
@@ -95,7 +110,14 @@ test("flags missing required entities for system type", async (t) => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    (req as any).user = { claims: { sub: "user-1", exp: Date.now() + 1000, organizationId: "org-1" } };
+    (req as any).user = {
+      claims: {
+        sub: "user-1",
+        exp: Date.now() + 1000,
+        organizationId: "org-1",
+        organizationRole: "admin",
+      },
+    };
     next();
   });
   app.use("/api", createReportingRouter({ repository: reportingRepo, formsRepository: formsRepo }));
@@ -120,12 +142,22 @@ test("flags missing required entities for system type", async (t) => {
 });
 
 test("defect CRUD and remedials", async (t) => {
+  const { createReportingRouter } = await import("../reportingRoutes");
+  const { InMemoryFormsRepository } = await import("../lib/forms");
+  const { InMemoryReportingRepository } = await import("../lib/reporting");
   const formsRepo = new InMemoryFormsRepository();
   const reportingRepo = new InMemoryReportingRepository(formsRepo);
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    (req as any).user = { claims: { sub: "user-1", exp: Date.now() + 1000, organizationId: "org-1" } };
+    (req as any).user = {
+      claims: {
+        sub: "user-1",
+        exp: Date.now() + 1000,
+        organizationId: "org-1",
+        organizationRole: "admin",
+      },
+    };
     next();
   });
   app.use("/api", createReportingRouter({ repository: reportingRepo, formsRepository: formsRepo }));

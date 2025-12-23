@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { apiRequest } from "@/lib/queryClient";
 
 type Entity = { id: string; title: string; description?: string | null };
 
@@ -59,8 +60,7 @@ export default function AdminEntityEditPage() {
     setLoading(true);
     setError("");
     try {
-      const listRes = await fetch("/api/admin/entities", { credentials: "include" });
-      if (!listRes.ok) throw new Error(`Failed to load entities (${listRes.status})`);
+      const listRes = await apiRequest("GET", "/api/admin/entities");
       const listData = await listRes.json();
       const found: Entity | undefined = (listData.entities ?? []).find((e: Entity) => e.id === entityId);
       if (!found) throw new Error("Entity not found");
@@ -68,10 +68,10 @@ export default function AdminEntityEditPage() {
       setTitle(found.title ?? "");
       setDescription(found.description ?? "");
 
-      const rowsRes = await fetch(`/api/admin/entities/${encodeURIComponent(entityId)}/rows`, {
-        credentials: "include",
-      });
-      if (!rowsRes.ok) throw new Error(`Failed to load rows (${rowsRes.status})`);
+      const rowsRes = await apiRequest(
+        "GET",
+        `/api/admin/entities/${encodeURIComponent(entityId)}/rows`,
+      );
       const rowsData = await rowsRes.json();
       setRows(Array.isArray(rowsData.rows) ? rowsData.rows : []);
     } catch (e: any) {
@@ -90,13 +90,10 @@ export default function AdminEntityEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/entities/${encodeURIComponent(entityId)}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description }),
+      await apiRequest("PATCH", `/api/admin/entities/${encodeURIComponent(entityId)}`, {
+        title,
+        description,
       });
-      if (!res.ok) throw new Error(`Save failed (${res.status})`);
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Save failed");
@@ -125,14 +122,7 @@ export default function AdminEntityEditPage() {
           .filter(Boolean);
       }
 
-      const res = await fetch(`/api/admin/entities/${encodeURIComponent(entityId)}/rows`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error(`Add row failed (${res.status})`);
+      await apiRequest("POST", `/api/admin/entities/${encodeURIComponent(entityId)}/rows`, payload);
       setRComponent("");
       setRActivity("");
       setRUnits("");
@@ -152,11 +142,7 @@ export default function AdminEntityEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/entity-rows/${encodeURIComponent(rowId)}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Archive failed (${res.status})`);
+      await apiRequest("DELETE", `/api/admin/entity-rows/${encodeURIComponent(rowId)}`);
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Archive failed");
@@ -180,13 +166,11 @@ export default function AdminEntityEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/entities/${encodeURIComponent(entityId!)}/rows/reorder`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderedRowIds }),
-      });
-      if (!res.ok) throw new Error(`Reorder failed (${res.status})`);
+      await apiRequest(
+        "POST",
+        `/api/admin/entities/${encodeURIComponent(entityId!)}/rows/reorder`,
+        { orderedRowIds },
+      );
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Reorder failed");
@@ -202,11 +186,7 @@ export default function AdminEntityEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/entities/${encodeURIComponent(entityId)}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Archive failed (${res.status})`);
+      await apiRequest("DELETE", `/api/admin/entities/${encodeURIComponent(entityId)}`);
       setLocation(ROUTES.ADMIN_ENTITIES);
     } catch (e: any) {
       setError(e?.message ?? "Archive failed");

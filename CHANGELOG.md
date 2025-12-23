@@ -1,6 +1,16 @@
-# Changelog
+﻿# Changelog
 
 ## [Unreleased]
+- Renamed the core module to Smoke Control and added placeholder module definitions for upcoming services.
+- Rebuilt the landing page with a widget-style hero grid, Golden Thread scroll demo, and module terminology tiles.
+- Added SPEC-2 scaffolding (shared contracts/forms engine, Deucalion API stubs, kernel widgets, and infra compose/env).
+- Added a shared API client wrapper with consistent error mapping, auth/CSRF toast prompting, and request-id surfacing plus tests.
+- Swapped admin pages to the shared API client wrapper for consistent auth/error handling on templates, entities, and usage.
+- Enforced DEV_AUTH_BYPASS guardrails in non-dev, tightened API auth gating, and locked lead/report access via RBAC checks.
+- Added SPEC-2 Deucalion roadmap: widget-first CRM, smoke-control domain model, widget kernel/boards, and starter widgets.
+- Documented v1 engines (forms, schedule, widget) with repo mapping, contracts, and acceptance criteria.
+- Added companion linkage plan: delta sync endpoints, bulk job-asset linking, defect capture, and PWA-to-RN path.
+- Security hardening: env guardrails, global auth, RBAC, rate limits, RFC7807 errors, CSP/HSTS, upload scanning hook, structured logs, WebSocket checks, and security tests.
 - Relaxed CSP to support hosted font assets while keeping stricter defaults.
 - Made session cookies use secure flag only in production to keep local development login working.
 - Added Phase 0 guardrails (AGENTS.md), planning docs, and documented commands for dev/test/lint/db flows.

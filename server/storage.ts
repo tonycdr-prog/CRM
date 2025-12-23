@@ -426,7 +426,9 @@ export interface IStorage {
   getLeads(userId: string): Promise<DbLead[]>;
   createLead(lead: NewLead): Promise<DbLead>;
   updateLead(id: string, lead: Partial<NewLead>): Promise<DbLead | undefined>;
+  updateLeadForUser(id: string, userId: string, lead: Partial<NewLead>): Promise<DbLead | undefined>;
   deleteLead(id: string): Promise<boolean>;
+  deleteLeadForUser(id: string, userId: string): Promise<boolean>;
   
   // Tenders
   getTenders(userId: string): Promise<DbTender[]>;
@@ -1553,9 +1555,26 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async updateLeadForUser(id: string, userId: string, lead: Partial<NewLead>): Promise<DbLead | undefined> {
+    const [updated] = await db
+      .update(leads)
+      .set({ ...lead, updatedAt: new Date() })
+      .where(and(eq(leads.id, id), eq(leads.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
   async deleteLead(id: string): Promise<boolean> {
     await db.delete(leads).where(eq(leads.id, id));
     return true;
+  }
+
+  async deleteLeadForUser(id: string, userId: string): Promise<boolean> {
+    const deleted = await db
+      .delete(leads)
+      .where(and(eq(leads.id, id), eq(leads.userId, userId)))
+      .returning({ id: leads.id });
+    return deleted.length > 0;
   }
 
   // Tenders

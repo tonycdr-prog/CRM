@@ -28,6 +28,12 @@ import { createFormsRouter, createMetersRouter } from "./formsRoutes";
 import { createSmokeControlRouter } from "./smokeControlRoutes";
 import { createReportingRouter } from "./reportingRoutes";
 import { buildScheduleRouter } from "./scheduleRoutes";
+import { getEnabledModules } from "./lib/modules";
+import deucalionFormsRouter from "./routes/forms.routes";
+import deucalionScheduleRouter from "./routes/schedule.routes";
+import deucalionBoardsRouter from "./routes/boards.routes";
+import deucalionEmailRouter from "./routes/email.routes";
+import deucalionSyncRouter from "./routes/sync.routes";
 
 // ============================================
 // HELPER FUNCTIONS (DB-backed)
@@ -279,18 +285,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   const devBypass = isDevAuthBypassEnabled();
+  const isDev = process.env.NODE_ENV === "development";
   const devReviewMode =
     process.env.DEV_REVIEW_MODE?.toLowerCase() === "true" ||
     process.env.VITE_DEV_REVIEW_MODE?.toLowerCase() === "true";
   const limitedMode = devBypass && !isDatabaseAvailable;
+  const enabledModules = getEnabledModules(isDev);
+
+  const apiAuthExempt = new Set(["/health", "/login", "/callback", "/logout"]);
+  const apiAuthPrefixExempt = ["/auth/"];
+  const enforceApiAuth: RequestHandler = (req, res, next) => {
+    if (apiAuthExempt.has(req.path)) return next();
+    if (apiAuthPrefixExempt.some((prefix) => req.path.startsWith(prefix))) {
+      return next();
+    }
+    return isAuthenticated(req, res, next);
+  };
+
+  app.use("/api", enforceApiAuth);
+  app.use("/downloads", isAuthenticated);
 
   app.get("/api/dev/status", (_req, res) => {
     res.json({
-      isDev: process.env.NODE_ENV === "development",
+      isDev,
       devAuthBypass: devBypass,
       devReviewMode,
       hasDbConnection: isDatabaseAvailable,
       limitedMode,
+      modules: enabledModules,
     });
   });
 
@@ -398,6 +420,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     apiRouter.use("/schedule", buildScheduleRouter());
+    apiRouter.use("/deucalion/forms", deucalionFormsRouter);
+    apiRouter.use("/deucalion/schedule", deucalionScheduleRouter);
+    apiRouter.use("/deucalion/boards", deucalionBoardsRouter);
+    apiRouter.use("/deucalion/email", deucalionEmailRouter);
+    apiRouter.use("/deucalion/sync", deucalionSyncRouter);
 
     apiRouter.all("*", (_req, res) =>
       res.status(503).json({
@@ -488,6 +515,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.use("/schedule", buildScheduleRouter());
   apiRouter.use("/smoke-control", createSmokeControlRouter());
   apiRouter.use(createReportingRouter());
+  apiRouter.use("/deucalion/forms", deucalionFormsRouter);
+  apiRouter.use("/deucalion/schedule", deucalionScheduleRouter);
+  apiRouter.use("/deucalion/boards", deucalionBoardsRouter);
+  apiRouter.use("/deucalion/email", deucalionEmailRouter);
+  apiRouter.use("/deucalion/sync", deucalionSyncRouter);
 
   // Get current authenticated user
   apiRouter.get("/auth/user", asyncHandler(async (req, res) => {
@@ -1920,12 +1952,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   apiRouter.patch("/leads/:id", asyncHandler(async (req, res) => {
-    const lead = await storage.updateLead(req.params.id, req.body);
+    const userId = getUserId(req as AuthenticatedRequest);
+    const { userId: _ignoredUserId, ...patch } = (req.body ?? {}) as Record<string, unknown>;
+    const lead = await storage.updateLeadForUser(req.params.id, userId, patch);
+    if (!lead) return res.status(404).json({ message: "Lead not found" });
     res.json(lead);
   }));
 
   apiRouter.delete("/leads/:id", asyncHandler(async (req, res) => {
-    await storage.deleteLead(req.params.id);
+    const userId = getUserId(req as AuthenticatedRequest);
+    const deleted = await storage.deleteLeadForUser(req.params.id, userId);
+    if (!deleted) return res.status(404).json({ message: "Lead not found" });
     res.json({ success: true });
   }));
 

@@ -1,1323 +1,1021 @@
-import { useState, useEffect, useRef } from "react";
+﻿
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { 
-  ClipboardCheck, 
-  Cloud, 
-  FileText, 
-  Gauge, 
-  Shield, 
-  Smartphone,
-  TrendingUp,
-  Building2,
-  Users,
-  Calendar,
-  FileSpreadsheet,
-  Truck,
-  Wrench,
-  Bell,
-  MapPin,
-  Clock,
-  BarChart3,
-  Briefcase,
-  Receipt,
-  UserCheck,
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Activity,
   ArrowRight,
-  ArrowUp,
-  CheckCircle2,
-  AlertTriangle,
-  Package,
-  GraduationCap,
-  Star,
-  Quote,
-  Calculator,
-  Check,
-  X,
-  ChevronDown,
-  Moon,
-  Sun,
-  Lock,
-  Award,
-  Mail,
-  Phone,
-  BookOpen,
-  Play,
-  Download
+  CalendarDays,
+  ChevronRight,
+  ClipboardCheck,
+  ExternalLink,
+  FileCheck2,
+  Layers,
+  Maximize2,
+  RefreshCw,
+  ShieldCheck,
 } from "lucide-react";
-import { SiApple, SiGoogleplay } from "react-icons/si";
 
-function useCountUp(end: number, duration: number = 2000, start: number = 0) {
-  const [count, setCount] = useState(start);
-  const [isVisible, setIsVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+type WidgetMeta = {
+  key: string;
+  title: string;
+  subtitle: string;
+  className?: string;
+};
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
+type ModuleDemoTerms = {
+  label: string;
+  jobLabel: string;
+  assets: string[];
+  forms: string[];
+  instruments: string[];
+  defects: string[];
+  complianceNote: string;
+};
+
+const WIDGETS: WidgetMeta[] = [
+  {
+    key: "timeline",
+    title: "Golden Thread Timeline",
+    subtitle: "Linked evidence trail",
+    className: "md:col-span-2 md:row-span-2",
+  },
+  {
+    key: "schedule",
+    title: "Schedule Snapshot",
+    subtitle: "Next 7 days",
+  },
+  {
+    key: "compliance",
+    title: "Compliance Snapshot",
+    subtitle: "Risks + gaps",
+  },
+  {
+    key: "assets",
+    title: "Assets by Site",
+    subtitle: "Top locations",
+  },
+  {
+    key: "pipeline",
+    title: "Defects to Remedials",
+    subtitle: "Pipeline health",
+    className: "md:col-span-2",
+  },
+  {
+    key: "forms",
+    title: "Forms and Evidence",
+    subtitle: "Test packs + meters",
+  },
+  {
+    key: "finance",
+    title: "Finance Mini",
+    subtitle: "Overdue + uninvoiced",
+  },
+  {
+    key: "modules",
+    title: "Module Selector",
+    subtitle: "Turn on what matters",
+  },
+  {
+    key: "activity",
+    title: "Activity Feed",
+    subtitle: "Live ops updates",
+  },
+];
+
+const MODULE_DEMO_OPTIONS: ModuleDemoTerms[] = [
+  {
+    label: "Smoke Control",
+    jobLabel: "Smoke Control Callout",
+    assets: ["AOV bank - Atrium", "SHEV fan set", "Pressure staircase"],
+    forms: ["nSHEV inspection pack", "PDS pressure test", "Power supply checks"],
+    instruments: ["Differential meter 8824", "Anemometer A10", "Battery tester BT-7"],
+    defects: ["Opening time exceeds 60s", "Fan current drift", "Control response delay"],
+    complianceNote: "Audit export ready for EN 12101 review.",
+  },
+  {
+    label: "Fire Alarms",
+    jobLabel: "Fire Alarm Service",
+    assets: ["Panel zones 1-8", "Sounders + beacons", "MCP loop A"],
+    forms: ["Weekly test logs", "Cause and effect check", "Battery capacity test"],
+    instruments: ["Loop tester LT-4", "Sound meter DB-20", "Battery analyzer B-5"],
+    defects: ["Zone 5 device fault", "Sounder output below target", "Battery nearing expiry"],
+    complianceNote: "Cause and effect record ready for review.",
+  },
+  {
+    label: "HVAC / Air Quality",
+    jobLabel: "Air Quality Audit",
+    assets: ["AHU-2 filters", "Duct extract fans", "CO2 sensors"],
+    forms: ["Airflow verification", "Filter condition log", "Thermal comfort survey"],
+    instruments: ["Airflow meter AF-9", "CO2 meter C200", "Temp probe TP-3"],
+    defects: ["Filter pressure drop high", "CO2 sensor drift", "AHU fan belt wear"],
+    complianceNote: "Indoor air quality summary compiled.",
+  },
+  {
+    label: "Water Quality",
+    jobLabel: "Water Quality Sampling",
+    assets: ["Hot water riser 3", "Cooling tower loop", "TMV cluster"],
+    forms: ["Temperature log", "Legionella sample record", "Flushing evidence pack"],
+    instruments: ["Digital thermometer DT-6", "Flow meter FM-2", "Sample kit LK-1"],
+    defects: ["Temp below threshold", "Sample overdue", "Valve leakage noted"],
+    complianceNote: "Water safety file updated and ready.",
+  },
+  {
+    label: "Passive Fire",
+    jobLabel: "Passive Fire Inspection",
+    assets: ["Fire doors - level 4", "Compartment seals", "Fire stopping locations"],
+    forms: ["Door inspection checklist", "Seal integrity survey", "Photo evidence pack"],
+    instruments: ["Gap gauge GG-2", "Moisture meter MM-1", "Thermal camera TC-8"],
+    defects: ["Door closer misaligned", "Seal damage found", "Penetration unsealed"],
+    complianceNote: "Inspection bundle ready for approval.",
+  },
+];
+
+const MODULE_SECTIONS = [
+  {
+    title: "Core",
+    description: "Foundational CRM and audit spine.",
+    items: [
+      {
+        name: "CRM Core",
+        description: "Jobs, sites, assets, people, and history as first-class truths.",
+        examples: ["Job packs", "Asset registers", "Activity timelines"],
       },
-      { threshold: 0.1 }
-    );
+      {
+        name: "Timeline and Audit",
+        description: "Golden Thread evidence trail with linked context.",
+        examples: ["Evidence trails", "Compliance snapshots", "Export logs"],
+      },
+    ],
+  },
+  {
+    title: "Operations",
+    description: "Execution layers that adapt to each module.",
+    items: [
+      {
+        name: "Scheduling",
+        description: "Drag-drop planning with conflict warnings.",
+        examples: ["Capacity view", "Shift duplication", "Travel heuristics"],
+      },
+      {
+        name: "Forms and Entities",
+        description: "Structured templates with repeat-per-asset packs.",
+        examples: ["Inspection packs", "Auto-calcs", "Rules engine"],
+      },
+      {
+        name: "Reporting",
+        description: "Structured outputs with linked evidence.",
+        examples: ["Executive summary", "Defects register", "PDF exports"],
+      },
+      {
+        name: "Defects and Remedials",
+        description: "Track issues through quotes and remediation.",
+        examples: ["Defect chain", "Quote tracking", "Remedial jobs"],
+      },
+      {
+        name: "Finance",
+        description: "Quotes, invoices, and outstanding balances.",
+        examples: ["Uninvoiced value", "Overdue alerts", "Pipeline status"],
+      },
+    ],
+  },
+  {
+    title: "Industry Modules",
+    description: "Turn on specialist domains without changing the core.",
+    items: [
+      {
+        name: "Smoke Control",
+        description: "Smoke ventilation testing and compliance packs.",
+        examples: ["nSHEV opening time", "PDS pressure test", "EN 12101 refs"],
+      },
+      {
+        name: "Passive Fire",
+        description: "Inspections for doors, seals, and compartmentation.",
+        examples: ["Door inspections", "Seal integrity", "Photo evidence"],
+      },
+      {
+        name: "Fire Alarms",
+        description: "Cause and effect checks with zone tracking.",
+        examples: ["Zone tests", "Sounder coverage", "Panel logs"],
+      },
+      {
+        name: "HVAC / Air Quality",
+        description: "Service records with air quality evidence.",
+        examples: ["CO2 readings", "Airflow checks", "Filter condition"],
+      },
+      {
+        name: "Water Quality",
+        description: "Sampling and compliance workflows.",
+        examples: ["Legionella samples", "Temperature logs", "TMV checks"],
+      },
+      {
+        name: "BMS",
+        description: "Integrations, alarms, and trend monitoring.",
+        examples: ["Alarm histories", "Trend snapshots", "Control notes"],
+      },
+    ],
+  },
+];
 
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
+const MOCK_WIDGET_DATA = {
+  timeline: [
+    { label: "Job created", meta: "Central Plaza - 09:12" },
+    { label: "Form pack generated", meta: "AOV + PDS" },
+    { label: "Meter linked", meta: "Cal valid until 2025-06-01" },
+    { label: "Defect raised", meta: "Opening time 68s" },
+    { label: "Quote issued", meta: "Awaiting approval" },
+  ],
+  schedule: [
+    { day: "Mon", slots: 3 },
+    { day: "Tue", slots: 5 },
+    { day: "Wed", slots: 4 },
+    { day: "Thu", slots: 2 },
+    { day: "Fri", slots: 6 },
+    { day: "Sat", slots: 1 },
+    { day: "Sun", slots: 0 },
+  ],
+  compliance: [
+    { label: "Assets overdue", value: 12, tone: "text-amber-600" },
+    { label: "Open defects", value: 8, tone: "text-rose-600" },
+    { label: "Calibrations due", value: 5, tone: "text-amber-600" },
+    { label: "Audit packs ready", value: 14, tone: "text-emerald-600" },
+  ],
+  assets: [
+    { site: "Central Plaza", count: 42 },
+    { site: "North Hospital", count: 33 },
+    { site: "Riverfront Tower", count: 27 },
+    { site: "City Station", count: 21 },
+  ],
+  pipeline: {
+    defects: 12,
+    quotes: 6,
+    remedials: 4,
+    reports: 18,
+  },
+  forms: {
+    packs: 7,
+    assets: 24,
+    meter: "DP-8824",
+    calibration: "Valid to 2025-06-01",
+  },
+  finance: {
+    uninvoiced: "24.8k",
+    overdue: "8.1k",
+    dueThisWeek: 6,
+  },
+  activity: [
+    { label: "Engineer check-in", meta: "Site 11 - 6 mins ago" },
+    { label: "Report signed", meta: "Central Plaza" },
+    { label: "New defect flagged", meta: "Pressure loss warning" },
+  ],
+};
 
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!isVisible) return;
-
-    let startTime: number;
-    const animate = (currentTime: number) => {
-      if (!startTime) startTime = currentTime;
-      const progress = Math.min((currentTime - startTime) / duration, 1);
-      setCount(Math.floor(progress * (end - start) + start));
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-    requestAnimationFrame(animate);
-  }, [isVisible, end, duration, start]);
-
-  return { count, ref };
+function formatTime(date: Date) {
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-const UK_STANDARDS = [
-  { code: "BS EN 12101-1", title: "Smoke barriers" },
-  { code: "BS EN 12101-2", title: "Natural smoke and heat exhaust ventilators" },
-  { code: "BS EN 12101-3", title: "Powered smoke and heat control ventilators" },
-  { code: "BS EN 12101-4", title: "Smoke and heat exhaust ventilation systems" },
-  { code: "BS EN 12101-5", title: "Guidelines on functional recommendations" },
-  { code: "BS EN 12101-6", title: "Pressure differential systems" },
-  { code: "BS EN 12101-7", title: "Smoke duct sections" },
-  { code: "BS EN 12101-8", title: "Smoke control dampers" },
-  { code: "BS EN 12101-10", title: "Power supplies" },
-  { code: "BS EN 12101-13", title: "Pressure differential systems kits" },
-  { code: "BS ISO 21927-9", title: "Smoke/heat exhaust ventilators control panels" },
-  { code: "BS 7346-8", title: "Smoke control systems" },
-  { code: "BS 9999", title: "Fire safety in buildings - Code of practice" },
-  { code: "BS 9991", title: "Fire safety in residential buildings" },
-  { code: "RRFSO 2005", title: "Regulatory Reform (Fire Safety) Order" },
-  { code: "BSRIA BG 49/2024", title: "Commissioning air systems" },
-];
-
-const TESTIMONIALS = [
-  {
-    name: "James Mitchell",
-    role: "Operations Director",
-    company: "SafeVent Solutions Ltd",
-    quote: "This platform has transformed how we manage smoke control testing. What used to take days of paperwork now happens automatically. Our compliance rate is at 100%.",
-    rating: 5
-  },
-  {
-    name: "Sarah Thompson",
-    role: "Fire Safety Consultant",
-    company: "BuildSafe Consulting",
-    quote: "The automatic grid calculations and professional PDF reports have saved us countless hours. Our clients love the QR-verified certificates.",
-    rating: 5
-  },
-  {
-    name: "David Chen",
-    role: "Managing Director",
-    company: "AirFlow Testing UK",
-    quote: "From job scheduling to invoicing, everything is integrated. We've reduced admin time by 60% and can now focus on what matters - keeping buildings safe.",
-    rating: 5
-  }
-];
-
-const PRICING_TIERS = [
-  {
-    name: "Starter",
-    price: 49,
-    description: "Perfect for small teams getting started",
-    features: [
-      "Up to 50 tests per month",
-      "2 user accounts",
-      "Basic PDF reports",
-      "Email support",
-      "Mobile app access",
-      "Cloud sync"
-    ],
-    notIncluded: [
-      "CRM features",
-      "Custom branding",
-      "API access",
-      "Priority support"
-    ]
-  },
-  {
-    name: "Professional",
-    price: 149,
-    description: "For growing smoke control businesses",
-    popular: true,
-    features: [
-      "Unlimited tests",
-      "10 user accounts",
-      "Professional PDF reports with branding",
-      "Full CRM & job scheduling",
-      "Trend analysis & predictions",
-      "Priority email & phone support",
-      "Offline mode with sync",
-      "Equipment tracking"
-    ],
-    notIncluded: [
-      "API access",
-      "White-label reports"
-    ]
-  },
-  {
-    name: "Enterprise",
-    price: 399,
-    description: "Complete solution for large organisations",
-    features: [
-      "Everything in Professional",
-      "Unlimited users",
-      "API access & integrations",
-      "White-label PDF reports",
-      "Dedicated account manager",
-      "Custom training sessions",
-      "SLA with guaranteed uptime",
-      "Multi-site management",
-      "Advanced analytics dashboard",
-      "Custom compliance checklists"
-    ],
-    notIncluded: []
-  }
-];
-
-const FAQ_ITEMS = [
-  {
-    question: "Which UK standards does the platform support?",
-    answer: "We support the complete BS EN 12101 series (Parts 1-13), BS ISO 21927-9, BS 7346-8, BS 9999, BS 9991, and the Regulatory Reform (Fire Safety) Order 2005. Our system automatically applies the correct testing parameters based on your selected standard."
-  },
-  {
-    question: "How does the automatic grid calculation work?",
-    answer: "Based on your damper dimensions, the system automatically calculates whether a 5x5, 6x6, or 7x7 grid is required per BS EN 12101-8 guidelines. This ensures consistent, compliant measurements every time."
-  },
-  {
-    question: "Can I use the app offline in the field?",
-    answer: "Yes! The mobile apps (iOS and Android) work fully offline. All your tests are saved locally and automatically sync to the cloud when you regain connectivity. You'll never lose data due to poor site connectivity."
-  },
-  {
-    question: "What's included in the PDF reports?",
-    answer: "Reports include cover pages with company branding, executive summaries, grid visualisations, trend charts, individual test details, pass/fail statistics, digital signatures, and QR codes linking to online verification."
-  },
-  {
-    question: "How does the CRM integrate with testing?",
-    answer: "Client information, site details, and contract data flow seamlessly into test reports. Schedule recurring annual tests, track contract renewals, and invoice directly from completed jobs - all in one platform."
-  },
-  {
-    question: "Is my data secure and GDPR compliant?",
-    answer: "Absolutely. All data is encrypted in transit and at rest. We're fully GDPR compliant with data processing agreements available. Our servers are UK-based with enterprise-grade security."
-  },
-  {
-    question: "Can I import existing test data?",
-    answer: "Yes, we support JSON and CSV import for migrating historical data. Our team can also assist with bulk data migration during onboarding."
-  },
-  {
-    question: "What training and support is available?",
-    answer: "All plans include documentation and video tutorials. Professional and Enterprise plans include onboarding calls, and Enterprise customers get dedicated account managers and custom training sessions."
-  }
-];
-
-const COMPARISON_FEATURES = [
-  { feature: "Automatic grid size calculation", platform: true, manual: false },
-  { feature: "Real-time compliance checking", platform: true, manual: false },
-  { feature: "Professional PDF reports", platform: true, manual: false },
-  { feature: "Multi-standard support", platform: true, manual: false },
-  { feature: "Trend analysis & predictions", platform: true, manual: false },
-  { feature: "Offline field testing", platform: true, manual: true },
-  { feature: "Cloud backup & sync", platform: true, manual: false },
-  { feature: "Digital signatures", platform: true, manual: false },
-  { feature: "QR code verification", platform: true, manual: false },
-  { feature: "Integrated CRM", platform: true, manual: false },
-  { feature: "Job scheduling", platform: true, manual: false },
-  { feature: "Automatic invoicing", platform: true, manual: false },
-];
-
+function WidgetShell({
+  title,
+  subtitle,
+  updatedAt,
+  onRefresh,
+  onExpand,
+  onPopout,
+  className,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  updatedAt: Date;
+  onRefresh: () => void;
+  onExpand: () => void;
+  onPopout: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className={`border-border/60 shadow-sm ${className ?? ""}`}>
+      <CardHeader className="space-y-3 pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <button
+              type="button"
+              className="rounded-md border border-border/70 p-1 transition hover:text-foreground"
+              onClick={onRefresh}
+              aria-label={`Refresh ${title}`}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-border/70 p-1 transition hover:text-foreground"
+              onClick={onExpand}
+              aria-label={`Expand ${title}`}
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-border/70 p-1 transition hover:text-foreground"
+              onClick={onPopout}
+              aria-label={`Pop out ${title}`}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+        <div className="text-[11px] text-muted-foreground">
+          Updated {formatTime(updatedAt)}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">{children}</CardContent>
+    </Card>
+  );
+}
 export default function Landing() {
-  const [isDark, setIsDark] = useState(false);
-  const [showBackToTop, setShowBackToTop] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [roiInputs, setRoiInputs] = useState({ testsPerMonth: 50, hoursPerTest: 2, hourlyRate: 45 });
-
-  const stat1 = useCountUp(500, 2000);
-  const stat2 = useCountUp(98, 2000);
-  const stat3 = useCountUp(15, 2000);
-  const stat4 = useCountUp(60, 2000);
-
-  useEffect(() => {
-    const storedTheme = localStorage.getItem("landing-theme");
-    if (storedTheme === "dark") {
-      setIsDark(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
+  const [expandedWidget, setExpandedWidget] = useState<string | null>(null);
+  const [refreshTimes, setRefreshTimes] = useState<Record<string, Date>>(() =>
+    Object.fromEntries(WIDGETS.map((widget) => [widget.key, new Date()])),
+  );
+  const [selectedModule, setSelectedModule] = useState(MODULE_DEMO_OPTIONS[0].label);
+  const [activeStoryStep, setActiveStoryStep] = useState(0);
+  const [popoutKey, setPopoutKey] = useState<string | null>(null);
+  const storyRef = useRef<HTMLDivElement | null>(null);
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      setScrollProgress((scrollTop / docHeight) * 100);
-      setShowBackToTop(scrollTop > 500);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setPopoutKey(params.get("widget"));
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = !isDark;
-    setIsDark(newTheme);
-    if (newTheme) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("landing-theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("landing-theme", "light");
+  const selectedModuleTerms = useMemo(
+    () => MODULE_DEMO_OPTIONS.find((option) => option.label === selectedModule) ?? MODULE_DEMO_OPTIONS[0],
+    [selectedModule],
+  );
+
+  const storySteps = useMemo(() => {
+    return [
+      {
+        title: "Job request arrives",
+        description: "Inbound request captured and staged as a draft job.",
+        panel: (
+          <div className="space-y-4">
+            <Card className="border-dashed">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Inbound email</span>
+                  <span>09:12</span>
+                </div>
+                <div className="mt-3 text-sm font-medium">
+                  {selectedModuleTerms.jobLabel}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Request logged, draft job created, awaiting triage.
+                </p>
+              </CardContent>
+            </Card>
+            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs">
+              New job created - SLA clock started.
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: "Assets pulled into job pack",
+        description: "Assets linked automatically based on site + system type.",
+        panel: (
+          <div className="space-y-3">
+            {selectedModuleTerms.assets.map((asset) => (
+              <div key={asset} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                <span>{asset}</span>
+                <Badge variant="outline">linked</Badge>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "Forms auto-prepared",
+        description: "Repeat-per-asset packs ready with rules preloaded.",
+        panel: (
+          <div className="space-y-3">
+            {selectedModuleTerms.forms.map((form) => (
+              <div key={form} className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
+                <span>{form}</span>
+                <span className="text-xs text-muted-foreground">draft</span>
+              </div>
+            ))}
+            <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              Rules loaded - compliance checks ready.
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: "Instruments linked",
+        description: "Meters, calibration dates, and engineer assignments locked in.",
+        panel: (
+          <div className="space-y-3">
+            {selectedModuleTerms.instruments.map((meter) => (
+              <div key={meter} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                <span>{meter}</span>
+                <span className="text-xs text-emerald-700">cal valid</span>
+              </div>
+            ))}
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              Calibration verified before submission.
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: "Report and defect chain",
+        description: "Findings flow into quotes and remedial jobs.",
+        panel: (
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border bg-card p-3 text-xs">
+              <div className="font-semibold text-muted-foreground">Defects</div>
+              <ul className="mt-2 space-y-1 text-sm">
+                {selectedModuleTerms.defects.map((defect) => (
+                  <li key={defect}>{defect}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-lg border bg-card p-3 text-xs">
+              <div className="font-semibold text-muted-foreground">Quotes</div>
+              <div className="mt-3 text-sm">2 open proposals</div>
+            </div>
+            <div className="rounded-lg border bg-card p-3 text-xs">
+              <div className="font-semibold text-muted-foreground">Remedials</div>
+              <div className="mt-3 text-sm">1 job scheduled</div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: "Compliance snapshot updated",
+        description: "Evidence compiled and ready for audit review.",
+        panel: (
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-card p-4">
+              <div className="text-xs text-muted-foreground">Status</div>
+              <div className="mt-2 text-lg font-semibold">Audit export ready</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {selectedModuleTerms.complianceNote}
+              </p>
+            </div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              Evidence chain complete for this cycle.
+            </div>
+          </div>
+        ),
+      },
+    ];
+  }, [selectedModuleTerms]);
+
+  useEffect(() => {
+    if (!stepRefs.current.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const index = Number(entry.target.getAttribute("data-step"));
+          if (!Number.isNaN(index)) {
+            setActiveStoryStep(index);
+          }
+        });
+      },
+      { rootMargin: "-45% 0px -45% 0px", threshold: 0.1 },
+    );
+
+    stepRefs.current.forEach((node) => node && observer.observe(node));
+    return () => observer.disconnect();
+  }, [storySteps.length]);
+
+  const widgetContent = (key: string, expanded = false) => {
+    switch (key) {
+      case "timeline":
+        return (
+          <div className="space-y-3">
+            {MOCK_WIDGET_DATA.timeline.map((item) => (
+              <div key={item.label} className="flex items-start justify-between gap-4 text-sm">
+                <div>
+                  <div className="font-medium">{item.label}</div>
+                  <div className="text-xs text-muted-foreground">{item.meta}</div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            ))}
+            {expanded && (
+              <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs">
+                Linked evidence maintained across jobs, defects, and reports.
+              </div>
+            )}
+          </div>
+        );
+      case "schedule":
+        return (
+          <div className="flex items-end gap-3">
+            {MOCK_WIDGET_DATA.schedule.map((slot) => (
+              <div key={slot.day} className="text-center text-xs">
+                <div className="h-16 w-6 rounded-full bg-muted/70 relative overflow-hidden">
+                  <div
+                    className="absolute bottom-0 w-full rounded-full bg-primary/70"
+                    style={{ height: `${slot.slots * 12}px` }}
+                  />
+                </div>
+                <div className="mt-2 text-muted-foreground">{slot.day}</div>
+              </div>
+            ))}
+          </div>
+        );
+      case "compliance":
+        return (
+          <div className="grid grid-cols-2 gap-3">
+            {MOCK_WIDGET_DATA.compliance.map((item) => (
+              <div key={item.label} className="rounded-lg border bg-card p-3">
+                <div className="text-xs text-muted-foreground">{item.label}</div>
+                <div className={`text-xl font-semibold ${item.tone}`}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+        );
+      case "assets":
+        return (
+          <div className="space-y-2">
+            {MOCK_WIDGET_DATA.assets.map((item) => (
+              <div key={item.site} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                <span>{item.site}</span>
+                <Badge variant="outline">{item.count}</Badge>
+              </div>
+            ))}
+          </div>
+        );
+      case "pipeline":
+        return (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[
+              { label: "Defects", value: MOCK_WIDGET_DATA.pipeline.defects },
+              { label: "Quotes", value: MOCK_WIDGET_DATA.pipeline.quotes },
+              { label: "Remedials", value: MOCK_WIDGET_DATA.pipeline.remedials },
+              { label: "Reports", value: MOCK_WIDGET_DATA.pipeline.reports },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border bg-card p-3 text-center">
+                <div className="text-xs text-muted-foreground">{item.label}</div>
+                <div className="text-xl font-semibold">{item.value}</div>
+              </div>
+            ))}
+          </div>
+        );
+      case "forms":
+        return (
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+              <span>Active packs</span>
+              <span className="font-semibold">{MOCK_WIDGET_DATA.forms.packs}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+              <span>Assets covered</span>
+              <span className="font-semibold">{MOCK_WIDGET_DATA.forms.assets}</span>
+            </div>
+            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs">
+              Meter {MOCK_WIDGET_DATA.forms.meter} - {MOCK_WIDGET_DATA.forms.calibration}
+            </div>
+          </div>
+        );
+      case "finance":
+        return (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg border bg-card px-3 py-2">
+              <div className="text-xs text-muted-foreground">Uninvoiced</div>
+              <div className="text-xl font-semibold">£{MOCK_WIDGET_DATA.finance.uninvoiced}</div>
+            </div>
+            <div className="rounded-lg border bg-card px-3 py-2">
+              <div className="text-xs text-muted-foreground">Overdue</div>
+              <div className="text-xl font-semibold text-rose-600">£{MOCK_WIDGET_DATA.finance.overdue}</div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {MOCK_WIDGET_DATA.finance.dueThisWeek} invoices due this week.
+            </div>
+          </div>
+        );
+      case "modules":
+        return <ModuleSelectorWidget />;
+      case "activity":
+        return (
+          <div className="space-y-2">
+            {MOCK_WIDGET_DATA.activity.map((item) => (
+              <div key={item.label} className="rounded-lg border px-3 py-2 text-sm">
+                <div className="font-medium">{item.label}</div>
+                <div className="text-xs text-muted-foreground">{item.meta}</div>
+              </div>
+            ))}
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  const activeWidgetMeta = WIDGETS.find((widget) => widget.key === expandedWidget);
+  const activeWidgetContent = expandedWidget ? widgetContent(expandedWidget, true) : null;
 
-  const calculateROI = () => {
-    const monthlyHoursSaved = roiInputs.testsPerMonth * roiInputs.hoursPerTest * 0.6;
-    const monthlySavings = monthlyHoursSaved * roiInputs.hourlyRate;
-    const yearlySavings = monthlySavings * 12;
-    return { monthlyHoursSaved, monthlySavings, yearlySavings };
-  };
-
-  const roi = calculateROI();
+  if (popoutKey) {
+    const widgetMeta = WIDGETS.find((widget) => widget.key === popoutKey);
+    if (!widgetMeta) {
+      return null;
+    }
+    return (
+      <div className="min-h-screen bg-background px-6 py-10">
+        <div className="mx-auto max-w-4xl space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pop-out widget</p>
+              <h1 className="font-serif text-2xl font-semibold">{widgetMeta.title}</h1>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.close();
+                }
+              }}
+            >
+              Close
+            </Button>
+          </div>
+          <Card className="border-border/60">
+            <CardContent className="pt-6">{widgetContent(popoutKey, true)}</CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Minimal progress indicator */}
-      <div 
-        className="fixed top-0 left-0 h-0.5 bg-primary/60 z-50 transition-all duration-150"
-        style={{ width: `${scrollProgress}%` }}
-        data-testid="scroll-progress"
-      />
-
-      {/* Clean header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Shield className="h-5 w-5 text-primary-foreground" />
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-sm uppercase tracking-[0.2em] text-muted-foreground">
+                Deucalion
               </div>
-              <span className="text-lg font-semibold tracking-tight">Life Safety Ops</span>
+              <div className="font-serif text-lg font-semibold">Widget-first CRM</div>
             </div>
-            <nav className="hidden md:flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-features">
-                <a href="#features">Features</a>
-              </Button>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-standards">
-                <a href="#standards">Standards</a>
-              </Button>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-pricing">
-                <a href="#pricing">Pricing</a>
-              </Button>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-crm">
-                <a href="#crm">Business</a>
-              </Button>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild data-testid="button-faq">
-                <a href="#faq">FAQ</a>
-              </Button>
-            </nav>
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={toggleTheme}
-                className="text-muted-foreground"
-                data-testid="button-theme-toggle"
-              >
-                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button size="sm" asChild data-testid="button-login">
-                <a href="/api/login">Sign In</a>
-              </Button>
-            </div>
+          </div>
+          <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
+            <a href="#hero" className="hover:text-foreground">Overview</a>
+            <a href="#story" className="hover:text-foreground">Golden Thread</a>
+            <a href="#modules" className="hover:text-foreground">Modules</a>
+            <a href="#cta" className="hover:text-foreground">Access</a>
+          </nav>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" asChild>
+              <a href="/api/login">Sign in</a>
+            </Button>
+            <Button asChild>
+              <a href="#cta">Request access</a>
+            </Button>
           </div>
         </div>
       </header>
 
       <main>
-        {/* Hero - clean and confident */}
-        <section className="container mx-auto px-6 py-20 md:py-32">
-          <div className="max-w-3xl mx-auto text-center mb-20">
-            <p className="text-sm font-medium text-primary mb-4 tracking-wide uppercase">
-              UK Regulation Compliant
-            </p>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-6 leading-tight">
-              Life Safety Operations & Compliance
-            </h1>
-            <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed">
-              Professional smoke control testing, Building Safety Act compliance, and complete business management. One platform for everything.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button size="lg" asChild data-testid="button-get-started">
-                <a href="/api/login">
-                  Get Started
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
-              <Button size="lg" variant="outline" asChild data-testid="button-demo">
-                <a href="#demo">
-                  Watch Demo
-                </a>
-              </Button>
-            </div>
-          </div>
-
-          {/* Stats - subtle presentation */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
-            <div ref={stat1.ref} className="text-center">
-              <div className="text-3xl font-semibold mb-1" data-testid="stat-companies">{stat1.count}+</div>
-              <div className="text-sm text-muted-foreground">Companies</div>
-            </div>
-            <div ref={stat2.ref} className="text-center">
-              <div className="text-3xl font-semibold mb-1" data-testid="stat-compliance">{stat2.count}%</div>
-              <div className="text-sm text-muted-foreground">Compliance</div>
-            </div>
-            <div ref={stat3.ref} className="text-center">
-              <div className="text-3xl font-semibold mb-1" data-testid="stat-standards">{stat3.count}+</div>
-              <div className="text-sm text-muted-foreground">UK Standards</div>
-            </div>
-            <div ref={stat4.ref} className="text-center">
-              <div className="text-3xl font-semibold mb-1" data-testid="stat-time-saved">{stat4.count}%</div>
-              <div className="text-sm text-muted-foreground">Time Saved</div>
-            </div>
-          </div>
-        </section>
-
-        {/* Standards - clean grid */}
-        <section id="standards" className="border-t py-20 md:py-28">
-          <div className="container mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-2xl md:text-3xl font-semibold mb-4">UK Standards Coverage</h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Complete support for UK smoke control regulations and building safety standards.
-              </p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
-              {UK_STANDARDS.map((standard, index) => (
-                <div 
-                  key={index}
-                  className="p-4 rounded-lg border border-border/50 hover:border-border transition-colors"
-                  data-testid={`standard-${index}`}
-                >
-                  <div className="font-medium text-sm">{standard.code}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{standard.title}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Features - simplified */}
-        <section id="features" className="py-20 md:py-28 bg-muted/30">
-          <div className="container mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-2xl md:text-3xl font-semibold mb-4">Testing & Compliance</h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Professional tools for smoke control testing and compliance documentation.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 max-w-5xl mx-auto">
-              <div className="p-6 rounded-lg bg-card border">
-                <Shield className="h-8 w-8 text-primary mb-4" />
-                <h3 className="font-medium mb-2">Automatic Grid Calculation</h3>
-                <p className="text-sm text-muted-foreground">
-                  5x5, 6x6, or 7x7 grids based on damper dimensions per BS EN 12101-8
-                </p>
-              </div>
-
-              <div className="p-6 rounded-lg bg-card border">
-                <FileText className="h-8 w-8 text-primary mb-4" />
-                <h3 className="font-medium mb-2">Professional Reports</h3>
-                <p className="text-sm text-muted-foreground">
-                  PDF exports with visualisations, trend charts, and QR verification
-                </p>
-              </div>
-
-              <div className="p-6 rounded-lg bg-card border">
-                <Gauge className="h-8 w-8 text-primary mb-4" />
-                <h3 className="font-medium mb-2">Pressure Testing</h3>
-                <p className="text-sm text-muted-foreground">
-                  BS EN 12101-6 compliant differential pressure testing
-                </p>
-              </div>
-
-              <div className="p-6 rounded-lg bg-card border">
-                <TrendingUp className="h-8 w-8 text-primary mb-4" />
-                <h3 className="font-medium mb-2">Trend Analysis</h3>
-                <p className="text-sm text-muted-foreground">
-                  Year-over-year trends with predictive maintenance alerts
-                </p>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="flex gap-4 items-start">
-                <ClipboardCheck className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Compliance Checklists</h3>
-                  <p className="text-muted-foreground text-sm">
-                    BS EN 12101-8 verification with categorized items, progress tracking, and inspection types
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start">
-                <Building2 className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Project Management</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Organise tests by building and project with floor sequencing mode for efficient testing
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start">
-                <AlertTriangle className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Anomaly Detection</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Intelligent MAD algorithm detects unusual readings and statistical outliers
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start">
-                <Cloud className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Offline Support</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Full offline functionality with delta sync for field work without internet
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start">
-                <Smartphone className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Mobile Apps</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Native iOS and Android apps with camera integration for damper documentation
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start">
-                <FileSpreadsheet className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Data Export</h3>
-                  <p className="text-muted-foreground text-sm">
-                    CSV and JSON export with backup/restore for data portability and analysis
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="comparison" className="bg-muted/30 py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Platform vs Manual Methods</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                See how our digital solution compares to traditional spreadsheet and paper-based testing.
-              </p>
-            </div>
-
-            <div className="max-w-3xl mx-auto">
-              <Card>
-                <CardContent className="p-0">
-                  <div className="grid grid-cols-3 gap-4 p-4 border-b font-semibold">
-                    <div>Feature</div>
-                    <div className="text-center text-primary">Our Platform</div>
-                    <div className="text-center text-muted-foreground">Manual/Spreadsheets</div>
-                  </div>
-                  {COMPARISON_FEATURES.map((item, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-4 p-4 border-b last:border-b-0 items-center" data-testid={`comparison-row-${index}`}>
-                      <div className="text-sm">{item.feature}</div>
-                      <div className="text-center">
-                        {item.platform ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
-                        ) : (
-                          <X className="h-5 w-5 text-muted-foreground mx-auto" />
-                        )}
-                      </div>
-                      <div className="text-center">
-                        {item.manual ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
-                        ) : (
-                          <X className="h-5 w-5 text-muted-foreground mx-auto" />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section id="roi" className="py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <Badge variant="outline" className="mb-4">
-                <Calculator className="h-3 w-3 mr-1" />
-                ROI Calculator
+        <section
+          id="hero"
+          className="relative overflow-hidden border-b border-border/60 bg-[radial-gradient(circle_at_top,_rgba(20,94,117,0.18),_transparent_55%)]"
+        >
+          <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[1.1fr_1.4fr] lg:py-24">
+            <div className="space-y-6">
+              <Badge variant="outline" className="text-xs uppercase tracking-[0.3em]">
+                Calm systems for critical work
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Calculate Your Savings</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                See how much time and money you could save by switching to our platform.
+              <h1 className="font-serif text-4xl font-semibold leading-tight md:text-5xl">
+                A live dashboard for compliance, not a pile of reports.
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Deucalion keeps the CRM core stable while modules handle scheduling,
+                forms, reporting, and compliance. Evidence stays connected, work stays calm.
               </p>
-            </div>
-
-            <div className="max-w-4xl mx-auto">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                      <div>
-                        <Label className="mb-2 block">Tests per month: {roiInputs.testsPerMonth}</Label>
-                        <Slider
-                          value={[roiInputs.testsPerMonth]}
-                          onValueChange={(v) => setRoiInputs(prev => ({ ...prev, testsPerMonth: v[0] }))}
-                          min={10}
-                          max={500}
-                          step={10}
-                          data-testid="slider-tests"
-                        />
-                      </div>
-                      <div>
-                        <Label className="mb-2 block">Hours per test (current): {roiInputs.hoursPerTest}</Label>
-                        <Slider
-                          value={[roiInputs.hoursPerTest]}
-                          onValueChange={(v) => setRoiInputs(prev => ({ ...prev, hoursPerTest: v[0] }))}
-                          min={0.5}
-                          max={8}
-                          step={0.5}
-                          data-testid="slider-hours"
-                        />
-                      </div>
-                      <div>
-                        <Label className="mb-2 block">Hourly rate (GBP): {roiInputs.hourlyRate}</Label>
-                        <Slider
-                          value={[roiInputs.hourlyRate]}
-                          onValueChange={(v) => setRoiInputs(prev => ({ ...prev, hourlyRate: v[0] }))}
-                          min={20}
-                          max={100}
-                          step={5}
-                          data-testid="slider-rate"
-                        />
-                      </div>
+              <div className="flex flex-wrap gap-3">
+                <Button size="lg" asChild>
+                  <a href="#cta">
+                    Request early access
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+                <Button size="lg" variant="outline" asChild>
+                  <a href="#story">Watch the Golden Thread</a>
+                </Button>
+              </div>
+              <div className="grid gap-4 pt-6 sm:grid-cols-2">
+                {[
+                  { label: "Evidence-first compliance", icon: FileCheck2 },
+                  { label: "Modules you can toggle", icon: Layers },
+                  { label: "CRM core always stable", icon: ClipboardCheck },
+                  { label: "Human judgment stays in control", icon: ShieldCheck },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-3 text-sm">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <item.icon className="h-4 w-4" />
                     </div>
-
-                    <div className="space-y-4">
-                      <div className="p-4 rounded-lg bg-muted">
-                        <div className="text-sm text-muted-foreground mb-1">Monthly Hours Saved</div>
-                        <div className="text-3xl font-bold text-primary" data-testid="roi-hours-saved">{roi.monthlyHoursSaved.toFixed(0)} hours</div>
-                      </div>
-                      <div className="p-4 rounded-lg bg-muted">
-                        <div className="text-sm text-muted-foreground mb-1">Monthly Cost Savings</div>
-                        <div className="text-3xl font-bold text-primary" data-testid="roi-monthly-savings">£{roi.monthlySavings.toLocaleString()}</div>
-                      </div>
-                      <div className="p-4 rounded-lg bg-primary text-primary-foreground">
-                        <div className="text-sm opacity-90 mb-1">Annual Cost Savings</div>
-                        <div className="text-4xl font-bold" data-testid="roi-annual-savings">£{roi.yearlySavings.toLocaleString()}</div>
-                      </div>
-                    </div>
+                    <span>{item.label}</span>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section id="testimonials" className="bg-muted/30 py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Trusted by Industry Leaders</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                See what smoke control professionals are saying about our platform.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              {TESTIMONIALS.map((testimonial, index) => (
-                <Card key={index} className="hover-elevate" data-testid={`testimonial-${index}`}>
-                  <CardHeader>
-                    <div className="flex gap-1 mb-3">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      ))}
-                    </div>
-                    <Quote className="h-8 w-8 text-muted-foreground/30" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground mb-4 italic">"{testimonial.quote}"</p>
-                    <div>
-                      <div className="font-semibold">{testimonial.name}</div>
-                      <div className="text-sm text-muted-foreground">{testimonial.role}</div>
-                      <div className="text-sm text-primary">{testimonial.company}</div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="crm" className="py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <Badge variant="outline" className="mb-4">Business Management</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Complete CRM for Service Companies</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Manage your entire smoke control service business from one platform. Clients, contracts, jobs, invoicing, and more.
-              </p>
-            </div>
-
-            <div className="grid lg:grid-cols-3 gap-8 mb-12">
-              <Card className="hover-elevate">
-                <CardHeader>
-                  <Users className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Client Management</CardTitle>
-                  <CardDescription>
-                    Full CRM with company and contact details, communication logs, status tracking, and client type categorisation
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      Contact database with full details
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      Commercial, residential, public sector
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      Status tracking and notes
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader>
-                  <Briefcase className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Contract Management</CardTitle>
-                  <CardDescription>
-                    Service agreements with SLA tracking, auto-renewal alerts, contract value tracking, and renewal warning badges
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      SLA response and resolution times
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      Auto-renewal management
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      Color-coded renewal urgency badges
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader>
-                  <Calendar className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Job Scheduling</CardTitle>
-                  <CardDescription>
-                    Work order management with scheduling, priority levels, multi-engineer assignment, and recurring job automation
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      Gantt timeline and calendar views
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      Map view with job locations
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      Conflict detection and travel time
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <Receipt className="h-6 w-6 text-primary mb-2" />
-                  <CardTitle className="text-base">Quotes &amp; Invoices</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    Financial document management with VAT calculations, status tracking, and overdue alerts
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <Clock className="h-6 w-6 text-primary mb-2" />
-                  <CardTitle className="text-base">Timesheets</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    Working hours tracking with job assignment, hourly rates, and weekly summaries
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <Truck className="h-6 w-6 text-primary mb-2" />
-                  <CardTitle className="text-base">Vehicle Fleet</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    Fleet management with MOT, tax, insurance expiry tracking and maintenance schedules
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <UserCheck className="h-6 w-6 text-primary mb-2" />
-                  <CardTitle className="text-base">Subcontractors</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    Approved subcontractor database with insurance and accreditation expiry alerts
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <Wrench className="h-6 w-6 text-primary mb-2" />
-                  <CardTitle className="text-base">Equipment Tracking</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    Asset register with calibration due dates and maintenance schedules
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <GraduationCap className="h-6 w-6 text-primary mb-2" />
-                  <CardTitle className="text-base">Certifications</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    Staff qualifications tracking (CSCS, IPAF, PASMA) with expiry monitoring
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <BarChart3 className="h-6 w-6 text-primary mb-2" />
-                  <CardTitle className="text-base">Sales Pipeline</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    Kanban-style lead tracking with stages, values, and win probability
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader className="pb-2">
-                  <Package className="h-6 w-6 text-primary mb-2" />
-                  <CardTitle className="text-base">Purchase Orders</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    Full PO workflow with supplier linking and automatic calculations
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section id="pricing" className="bg-muted/30 py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Choose the plan that fits your business. All plans include a 14-day free trial.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              {PRICING_TIERS.map((tier, index) => (
-                <Card 
-                  key={index} 
-                  className={`hover-elevate relative ${tier.popular ? 'border-primary border-2' : ''}`}
-                  data-testid={`pricing-tier-${index}`}
-                >
-                  {tier.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-primary">Most Popular</Badge>
-                    </div>
-                  )}
-                  <CardHeader>
-                    <CardTitle>{tier.name}</CardTitle>
-                    <CardDescription>{tier.description}</CardDescription>
-                    <div className="mt-4">
-                      <span className="text-4xl font-bold">£{tier.price}</span>
-                      <span className="text-muted-foreground">/month</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-3">
-                      {tier.features.map((feature, fIndex) => (
-                        <li key={fIndex} className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                          {feature}
-                        </li>
-                      ))}
-                      {tier.notIncluded.map((feature, fIndex) => (
-                        <li key={fIndex} className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <X className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Button className="w-full" variant={tier.popular ? "default" : "outline"} asChild>
-                      <a href="/api/login">Start Free Trial</a>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Additional Capabilities</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                A comprehensive suite of tools designed specifically for smoke control service companies.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              <div className="flex gap-4 items-start p-4 rounded-lg bg-card border">
-                <Bell className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Notifications Center</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Internal notification system with category filtering and bulk operations
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start p-4 rounded-lg bg-card border">
-                <MapPin className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Site Access Notes</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Parking instructions, access codes, key safe locations per site
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start p-4 rounded-lg bg-card border">
-                <AlertTriangle className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Incident Reporting</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Accident and near-miss logging with RIDDOR flags and corrective actions
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start p-4 rounded-lg bg-card border">
-                <FileText className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Risk Assessments</h3>
-                  <p className="text-muted-foreground text-sm">
-                    RAMS creation with method statements and approval workflow
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start p-4 rounded-lg bg-card border">
-                <Calendar className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Holiday Management</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Leave requests with approval workflow and annual allowance tracking
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start p-4 rounded-lg bg-card border">
-                <Briefcase className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Tender Management</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Full tender register with submission deadlines and win rate tracking
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="trust" className="bg-muted/30 py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Security &amp; Trust</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Your data security is our priority. Built with enterprise-grade security and full UK compliance.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-              <div className="text-center p-6 rounded-lg bg-background border">
-                <Lock className="h-10 w-10 text-primary mx-auto mb-3" />
-                <h3 className="font-semibold mb-1">256-bit SSL</h3>
-                <p className="text-sm text-muted-foreground">End-to-end encryption</p>
-              </div>
-              <div className="text-center p-6 rounded-lg bg-background border">
-                <Shield className="h-10 w-10 text-primary mx-auto mb-3" />
-                <h3 className="font-semibold mb-1">GDPR Compliant</h3>
-                <p className="text-sm text-muted-foreground">Full UK data protection</p>
-              </div>
-              <div className="text-center p-6 rounded-lg bg-background border">
-                <Award className="h-10 w-10 text-primary mx-auto mb-3" />
-                <h3 className="font-semibold mb-1">ISO 27001</h3>
-                <p className="text-sm text-muted-foreground">Security certified</p>
-              </div>
-              <div className="text-center p-6 rounded-lg bg-background border">
-                <Cloud className="h-10 w-10 text-primary mx-auto mb-3" />
-                <h3 className="font-semibold mb-1">UK Data Centers</h3>
-                <p className="text-sm text-muted-foreground">Data stays in UK</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="faq" className="py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Got questions? We've got answers.
-              </p>
-            </div>
-
-            <div className="max-w-3xl mx-auto">
-              <Accordion type="single" collapsible className="space-y-4">
-                {FAQ_ITEMS.map((item, index) => (
-                  <AccordionItem key={index} value={`item-${index}`} className="border rounded-lg px-4" data-testid={`faq-item-${index}`}>
-                    <AccordionTrigger className="text-left hover:no-underline">
-                      {item.question}
-                    </AccordionTrigger>
-                    <AccordionContent className="text-muted-foreground">
-                      {item.answer}
-                    </AccordionContent>
-                  </AccordionItem>
                 ))}
-              </Accordion>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {WIDGETS.map((widget) => (
+                <WidgetShell
+                  key={widget.key}
+                  title={widget.title}
+                  subtitle={widget.subtitle}
+                  updatedAt={refreshTimes[widget.key] ?? new Date()}
+                  className={widget.className}
+                  onRefresh={() =>
+                    setRefreshTimes((prev) => ({ ...prev, [widget.key]: new Date() }))
+                  }
+                  onExpand={() => setExpandedWidget(widget.key)}
+                  onPopout={() => {
+                    if (typeof window === "undefined") return;
+                    const path = window.location.pathname || "/landing";
+                    const nextUrl = `${path}?widget=${widget.key}`;
+                    window.open(nextUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  {widgetContent(widget.key)}
+                </WidgetShell>
+              ))}
             </div>
           </div>
         </section>
 
-        <section id="resources" className="bg-muted/30 py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Resources &amp; Guides</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Learn more about smoke control testing and best practices.
-              </p>
+        <section id="story" ref={storyRef} className="border-b border-border/60 bg-muted/30 py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-3">
+                <Badge variant="outline" className="text-xs uppercase tracking-[0.3em]">
+                  Story mode
+                </Badge>
+                <h2 className="font-serif text-3xl font-semibold md:text-4xl">
+                  Watch the Golden Thread build itself
+                </h2>
+                <p className="text-muted-foreground">
+                  Scroll to see how evidence connects from request to audit-ready output.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-full border bg-background px-3 py-2 text-xs">
+                  Module demo
+                </div>
+                <select
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={selectedModule}
+                  onChange={(event) => setSelectedModule(event.target.value)}
+                >
+                  {MODULE_DEMO_OPTIONS.map((option) => (
+                    <option key={option.label} value={option.label}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant="outline"
+                  onClick={() => storyRef.current?.scrollIntoView({ behavior: "smooth" })}
+                >
+                  Replay
+                </Button>
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              <Card className="hover-elevate">
-                <CardHeader>
-                  <BookOpen className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">BS EN 12101 Guide</CardTitle>
-                  <CardDescription>
-                    Comprehensive guide to the BS EN 12101 standard series for smoke control systems.
-                  </CardDescription>
-                </CardHeader>
-                <CardFooter>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Download className="mr-2 h-4 w-4" />
-                    Download PDF
-                  </Button>
-                </CardFooter>
-              </Card>
+            <div className="mt-12 grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="rounded-3xl border border-border/70 bg-background shadow-lg">
+                <div className="flex items-center justify-between border-b px-4 py-3 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-rose-400" />
+                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  </div>
+                  <div>Deucalion preview</div>
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-3.5 w-3.5" />
+                    Live
+                  </div>
+                </div>
+                <div className="p-6">
+                  {storySteps[activeStoryStep]?.panel}
+                </div>
+              </div>
 
-              <Card className="hover-elevate">
-                <CardHeader>
-                  <Play className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">Video Tutorials</CardTitle>
-                  <CardDescription>
-                    Step-by-step video guides for using the platform and conducting compliant tests.
-                  </CardDescription>
-                </CardHeader>
-                <CardFooter>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Watch Now
-                  </Button>
-                </CardFooter>
-              </Card>
-
-              <Card className="hover-elevate">
-                <CardHeader>
-                  <FileText className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">Case Studies</CardTitle>
-                  <CardDescription>
-                    Real-world examples of how companies improved their testing efficiency.
-                  </CardDescription>
-                </CardHeader>
-                <CardFooter>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Read More
-                  </Button>
-                </CardFooter>
-              </Card>
+              <div className="space-y-6">
+                {storySteps.map((step, index) => (
+                  <div
+                    key={step.title}
+                    ref={(el) => {
+                      stepRefs.current[index] = el;
+                    }}
+                    data-step={index}
+                    className={`rounded-2xl border p-5 transition ${
+                      activeStoryStep === index
+                        ? "border-primary/60 bg-background shadow-md"
+                        : "border-border/60 bg-background/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-muted/40 text-sm font-semibold">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <div className="text-base font-semibold">{step.title}</div>
+                        <p className="text-sm text-muted-foreground">{step.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
-        <section id="downloads" className="py-16 md:py-24 bg-muted/30">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <Badge variant="outline" className="mb-4">
-                <Download className="h-3 w-3 mr-1" />
-                Resources
+        <section id="modules" className="border-b border-border/60 py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="space-y-4 text-center">
+              <Badge variant="outline" className="text-xs uppercase tracking-[0.3em]">
+                Modules
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Download Our Operations Guide</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Get the comprehensive guide to using Life Safety Ops, including detailed how-to instructions, 
-                feature documentation, and best practices.
+              <h2 className="font-serif text-3xl font-semibold md:text-4xl">
+                CRM core with industry modules
+              </h2>
+              <p className="text-muted-foreground">
+                Switch modules on without changing how the core operates.
               </p>
             </div>
 
-            <div className="max-w-3xl mx-auto">
-              <Card className="border-2 hover-elevate">
-                <CardContent className="p-8">
-                  <div className="grid md:grid-cols-2 gap-8 items-center">
-                    <div>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-3 bg-primary/10 rounded-lg">
-                          <BookOpen className="h-8 w-8 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold">Operations Guide</h3>
-                          <p className="text-sm text-muted-foreground">Complete How-To Manual</p>
-                        </div>
-                      </div>
-                      <p className="text-muted-foreground mb-6">
-                        Everything you need to know about Life Safety Ops, from initial setup to advanced features. 
-                        Over 50 pages of detailed documentation with step-by-step instructions.
-                      </p>
-                      <Button size="lg" className="w-full" asChild data-testid="button-download-guide">
-                        <a href="/downloads/capabilities-pdf">
-                          <Download className="mr-2 h-4 w-4" />
-                          Download PDF Guide
-                        </a>
-                      </Button>
-                    </div>
-                    <div className="space-y-3">
-                      <h4 className="font-semibold mb-3">What's included:</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span>Getting started & organisation setup</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span>Smoke control damper testing guide</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span>Stairwell pressure testing</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span>Full CRM documentation</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span>Field Companion mobile app</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span>Golden Thread compliance</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span>Team & certification management</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span>Reporting & analytics</span>
-                        </div>
-                      </div>
-                    </div>
+            <div className="mt-12 space-y-12">
+              {MODULE_SECTIONS.map((section) => (
+                <div key={section.title}>
+                  <div className="mb-6">
+                    <h3 className="text-xl font-semibold">{section.title}</h3>
+                    <p className="text-sm text-muted-foreground">{section.description}</p>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {section.items.map((item) => (
+                      <Card key={item.name} className="border-border/60">
+                        <CardHeader className="space-y-2">
+                          <CardTitle className="text-base">{item.name}</CardTitle>
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex flex-wrap gap-2">
+                            {item.examples.map((example) => (
+                              <Badge key={example} variant="secondary">
+                                {example}
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Task structures can align with SFG20-style schedules.
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        <section id="demo" className="py-16 md:py-24">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto">
-              <Card className="border-2">
-                <CardContent className="p-8 md:p-12">
-                  <div className="grid md:grid-cols-2 gap-8 items-center">
-                    <div>
-                      <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-                      <p className="text-muted-foreground mb-6">
-                        Book a demo with our team or start your free trial today. No credit card required.
-                      </p>
-                      <div className="space-y-4">
-                        <Button size="lg" className="w-full" asChild data-testid="button-book-demo">
-                          <a href="/api/login">
-                            Start Free Trial
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button size="lg" variant="outline" className="w-full" asChild data-testid="button-contact-sales">
-                          <a href="mailto:sales@example.com">
-                            <Phone className="mr-2 h-4 w-4" />
-                            Contact Sales
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h3 className="font-semibold mb-4">Stay Updated</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Subscribe to our newsletter for industry updates and product news.
-                      </p>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="email" 
-                          placeholder="Enter your email" 
-                          className="flex-1"
-                          data-testid="input-newsletter-email"
-                        />
-                        <Button data-testid="button-subscribe">
-                          <Mail className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        By subscribing, you agree to our privacy policy. Unsubscribe anytime.
-                      </p>
-                    </div>
+        <section id="cta" className="py-20">
+          <div className="mx-auto max-w-5xl px-6">
+            <Card className="border-border/70 bg-[radial-gradient(circle_at_top,_rgba(14,116,144,0.18),_transparent_60%)]">
+              <CardContent className="grid gap-8 px-6 py-10 md:grid-cols-[1.2fr_0.8fr] md:items-center">
+                <div>
+                  <h2 className="font-serif text-3xl font-semibold">
+                    Ready for calm, connected compliance?
+                  </h2>
+                  <p className="mt-3 text-muted-foreground">
+                    Join the early access group and help shape the modules that matter to your team.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Button size="lg" asChild>
+                      <a href="/api/login">
+                        Request early access
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button size="lg" variant="outline" asChild>
+                      <a href="#hero">View demo</a>
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+                <div className="space-y-4 rounded-2xl border border-border/70 bg-background/90 p-5 text-sm">
+                  <div className="flex items-center gap-3">
+                    <CalendarDays className="h-5 w-5 text-primary" />
+                    Book a walkthrough tailored to your module stack.
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <FileCheck2 className="h-5 w-5 text-primary" />
+                    See how evidence stays linked across reports and remedials.
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                    Keep judgment in the loop with transparent insights.
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </section>
       </main>
 
-      <footer className="border-t py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Shield className="h-6 w-6 text-primary" />
-                <span className="font-semibold">Life Safety Ops</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Life Safety Operations & Compliance Management Platform for UK fire safety professionals.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#features" className="hover:text-foreground">Features</a></li>
-                <li><a href="#pricing" className="hover:text-foreground">Pricing</a></li>
-                <li><a href="#crm" className="hover:text-foreground">CRM</a></li>
-                <li><a href="#" className="hover:text-foreground">Mobile Apps</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#resources" className="hover:text-foreground">Documentation</a></li>
-                <li><a href="#faq" className="hover:text-foreground">FAQ</a></li>
-                <li><a href="#" className="hover:text-foreground">Blog</a></li>
-                <li><a href="#" className="hover:text-foreground">Support</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-foreground">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-foreground">Cookie Policy</a></li>
-                <li><a href="#" className="hover:text-foreground">GDPR</a></li>
-              </ul>
-            </div>
+      <footer className="border-t border-border/60 py-10">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Deucalion</div>
+            <div className="font-serif text-lg font-semibold">Evidence-first operations</div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Modular operations platform for compliance-driven teams.
+            </p>
           </div>
-
-          <div className="border-t pt-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <p className="text-muted-foreground text-sm">
-                Compliant with BS EN 12101 (Parts 1-13), BS ISO 21927-9, BS 7346-8, BS 9999, BS 9991, RRFSO 2005, and BSRIA BG 49/2024
-              </p>
-              <p className="text-muted-foreground text-sm">
-                © 2024 Life Safety Ops. All rights reserved.
-              </p>
-            </div>
+          <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+            <a href="#modules" className="hover:text-foreground">Modules</a>
+            <a href="#story" className="hover:text-foreground">Golden Thread</a>
+            <a href="#cta" className="hover:text-foreground">Request access</a>
           </div>
         </div>
       </footer>
 
-      {showBackToTop && (
-        <Button
-          size="icon"
-          className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg"
-          onClick={scrollToTop}
-          data-testid="button-back-to-top"
-        >
-          <ArrowUp className="h-5 w-5" />
-        </Button>
-      )}
+      <Dialog open={!!expandedWidget} onOpenChange={(open) => !open && setExpandedWidget(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{activeWidgetMeta?.title}</DialogTitle>
+          </DialogHeader>
+          {activeWidgetContent}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ModuleSelectorWidget() {
+  const [activeModules, setActiveModules] = useState<string[]>([
+    "Smoke Control",
+    "Fire Alarms",
+  ]);
+
+  const modules = [
+    "Smoke Control",
+    "Passive Fire",
+    "Fire Alarms",
+    "HVAC / Air Quality",
+    "Water Quality",
+    "BMS",
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {modules.map((module) => {
+        const isActive = activeModules.includes(module);
+        return (
+          <button
+            key={module}
+            type="button"
+            onClick={() =>
+              setActiveModules((prev) =>
+                prev.includes(module)
+                  ? prev.filter((item) => item !== module)
+                  : [...prev, module],
+              )
+            }
+            className={`rounded-full border px-3 py-1 text-xs transition ${
+              isActive ? "border-primary bg-primary/10 text-primary" : "border-border/70 text-muted-foreground"
+            }`}
+          >
+            {module}
+          </button>
+        );
+      })}
     </div>
   );
 }

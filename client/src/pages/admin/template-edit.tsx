@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowUp, ArrowDown, Trash2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 type Template = { id: string; name: string; description?: string | null; isActive: boolean };
 
@@ -63,8 +64,7 @@ export default function AdminTemplateEditPage() {
     setError("");
 
     try {
-      const tplRes = await fetch("/api/admin/templates", { credentials: "include" });
-      if (!tplRes.ok) throw new Error(`Load templates failed (${tplRes.status})`);
+      const tplRes = await apiRequest("GET", "/api/admin/templates");
       const tplData = await tplRes.json();
       const found: Template | undefined = (tplData.templates ?? []).find((t: Template) => t.id === templateId);
       if (!found) throw new Error("Template not found");
@@ -73,23 +73,25 @@ export default function AdminTemplateEditPage() {
       setDescription(found.description ?? "");
       setIsActive(!!found.isActive);
 
-      const stRes = await fetch("/api/admin/system-types", { credentials: "include" });
-      if (!stRes.ok) throw new Error(`Load system types failed (${stRes.status})`);
+      const stRes = await apiRequest("GET", "/api/admin/system-types");
       const stData = await stRes.json();
       setSystemTypes(Array.isArray(stData.systemTypes) ? stData.systemTypes : []);
 
-      const selRes = await fetch(`/api/admin/templates/${encodeURIComponent(templateId)}/system-types`, { credentials: "include" });
-      if (!selRes.ok) throw new Error(`Load template system types failed (${selRes.status})`);
+      const selRes = await apiRequest(
+        "GET",
+        `/api/admin/templates/${encodeURIComponent(templateId)}/system-types`,
+      );
       const selData = await selRes.json();
       setSelectedSystemTypeIds(Array.isArray(selData.systemTypeIds) ? selData.systemTypeIds : []);
 
-      const entRes = await fetch("/api/admin/entities", { credentials: "include" });
-      if (!entRes.ok) throw new Error(`Load entities failed (${entRes.status})`);
+      const entRes = await apiRequest("GET", "/api/admin/entities");
       const entData = await entRes.json();
       setEntityLibrary(Array.isArray(entData.entities) ? entData.entities : []);
 
-      const teRes = await fetch(`/api/admin/templates/${encodeURIComponent(templateId)}/entities`, { credentials: "include" });
-      if (!teRes.ok) throw new Error(`Load template entities failed (${teRes.status})`);
+      const teRes = await apiRequest(
+        "GET",
+        `/api/admin/templates/${encodeURIComponent(templateId)}/entities`,
+      );
       const teData = await teRes.json();
       setTemplateEntities(Array.isArray(teData.entities) ? teData.entities : []);
     } catch (e: any) {
@@ -106,13 +108,11 @@ export default function AdminTemplateEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/templates/${encodeURIComponent(templateId)}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, isActive }),
+      await apiRequest("PATCH", `/api/admin/templates/${encodeURIComponent(templateId)}`, {
+        name,
+        description,
+        isActive,
       });
-      if (!res.ok) throw new Error(`Save failed (${res.status})`);
       await loadAll();
     } catch (e: any) {
       setError(e?.message ?? "Save failed");
@@ -130,13 +130,11 @@ export default function AdminTemplateEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/templates/${encodeURIComponent(templateId!)}/system-types`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ systemTypeIds: next }),
-      });
-      if (!res.ok) throw new Error(`Save system types failed (${res.status})`);
+      await apiRequest(
+        "POST",
+        `/api/admin/templates/${encodeURIComponent(templateId!)}/system-types`,
+        { systemTypeIds: next },
+      );
     } catch (e: any) {
       setError(e?.message ?? "Save system types failed");
     } finally {
@@ -149,13 +147,11 @@ export default function AdminTemplateEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/templates/${encodeURIComponent(templateId)}/entities`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entityId: addEntityId }),
-      });
-      if (!res.ok) throw new Error(`Add entity failed (${res.status})`);
+      await apiRequest(
+        "POST",
+        `/api/admin/templates/${encodeURIComponent(templateId)}/entities`,
+        { entityId: addEntityId },
+      );
       setAddEntityId("");
       await loadAll();
     } catch (e: any) {
@@ -170,11 +166,10 @@ export default function AdminTemplateEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/templates/${encodeURIComponent(templateId)}/entities/${encodeURIComponent(entityId)}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Remove failed (${res.status})`);
+      await apiRequest(
+        "DELETE",
+        `/api/admin/templates/${encodeURIComponent(templateId)}/entities/${encodeURIComponent(entityId)}`,
+      );
       await loadAll();
     } catch (e: any) {
       setError(e?.message ?? "Remove failed");
@@ -188,13 +183,11 @@ export default function AdminTemplateEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/templates/${encodeURIComponent(templateId)}/entities/${encodeURIComponent(entityId)}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) throw new Error(`Update flags failed (${res.status})`);
+      await apiRequest(
+        "PATCH",
+        `/api/admin/templates/${encodeURIComponent(templateId)}/entities/${encodeURIComponent(entityId)}`,
+        patch,
+      );
       await loadAll();
     } catch (e: any) {
       setError(e?.message ?? "Update flags failed");
@@ -218,13 +211,11 @@ export default function AdminTemplateEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/templates/${encodeURIComponent(templateId!)}/entities/reorder`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderedEntityIds }),
-      });
-      if (!res.ok) throw new Error(`Reorder failed (${res.status})`);
+      await apiRequest(
+        "POST",
+        `/api/admin/templates/${encodeURIComponent(templateId!)}/entities/reorder`,
+        { orderedEntityIds },
+      );
       await loadAll();
     } catch (e: any) {
       setError(e?.message ?? "Reorder failed");
@@ -240,11 +231,7 @@ export default function AdminTemplateEditPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/templates/${encodeURIComponent(templateId)}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Archive failed (${res.status})`);
+      await apiRequest("DELETE", `/api/admin/templates/${encodeURIComponent(templateId)}`);
       setLocation(ROUTES.ADMIN_TEMPLATES);
     } catch (e: any) {
       setError(e?.message ?? "Archive failed");

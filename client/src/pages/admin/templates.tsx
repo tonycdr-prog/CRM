@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { apiRequest } from "@/lib/queryClient";
 
 type Template = {
   id: string;
@@ -37,8 +38,7 @@ export default function AdminTemplatesPage() {
     setError("");
     try {
       const url = `/api/admin/templates${showArchived ? "?includeArchived=true" : ""}`;
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+      const res = await apiRequest("GET", url);
       const data = await res.json();
       setTemplates(Array.isArray(data.templates) ? data.templates : []);
     } catch (e: any) {
@@ -56,13 +56,10 @@ export default function AdminTemplatesPage() {
       const name = newName.trim();
       if (!name) return setError("Name is required");
 
-      const res = await fetch("/api/admin/templates", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description: newDesc }),
+      const res = await apiRequest("POST", "/api/admin/templates", {
+        name,
+        description: newDesc,
       });
-      if (!res.ok) throw new Error(`Create failed (${res.status})`);
       const data = await res.json();
       if (data?.template?.id) {
         setNewName(""); setNewDesc("");

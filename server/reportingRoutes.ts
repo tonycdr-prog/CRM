@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler, getUserId, type AuthenticatedRequest } from "./utils/routeHelpers";
+import { requireRole } from "./utils/rbac";
+import { Roles } from "@shared/roles";
 import {
   DbReportingRepository,
   InMemoryReportingRepository,
@@ -41,6 +43,8 @@ export function createReportingRouter(options?: {
   const formsRepository = options?.formsRepository ?? new DbFormsRepository();
   const repository = options?.repository ?? new DbReportingRepository(formsRepository);
   const router = Router();
+
+  router.use("/reports", requireRole([Roles.Admin, Roles.Manager]));
 
   router.post(
     "/reports",

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { apiRequest } from "@/lib/queryClient";
 
 type Entity = {
   id: string;
@@ -36,8 +37,7 @@ export default function AdminEntitiesPage() {
     setError("");
     try {
       const url = `/api/admin/entities${showArchived ? "?includeArchived=true" : ""}`;
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+      const res = await apiRequest("GET", url);
       const data = await res.json();
       setEntities(Array.isArray(data.entities) ? data.entities : []);
     } catch (e: any) {
@@ -60,14 +60,10 @@ export default function AdminEntitiesPage() {
         return;
       }
 
-      const res = await fetch("/api/admin/entities", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description: newDesc }),
+      const res = await apiRequest("POST", "/api/admin/entities", {
+        title,
+        description: newDesc,
       });
-
-      if (!res.ok) throw new Error(`Create failed (${res.status})`);
       const data = await res.json();
       if (data?.entity?.id) {
         setNewTitle("");

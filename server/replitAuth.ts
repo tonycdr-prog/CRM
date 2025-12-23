@@ -71,13 +71,23 @@ async function upsertUser(claims: any) {
 }
 
 export function isDevAuthBypassEnabled() {
+  assertDevAuthBypassAllowed();
   return (
     process.env.NODE_ENV === "development" &&
     process.env.DEV_AUTH_BYPASS?.toLowerCase() === "true"
   );
 }
 
+export function assertDevAuthBypassAllowed() {
+  const bypassEnabled = process.env.DEV_AUTH_BYPASS?.toLowerCase() === "true";
+  const isDev = process.env.NODE_ENV === "development";
+  if (bypassEnabled && !isDev) {
+    throw new Error("DEV_AUTH_BYPASS is only allowed in development.");
+  }
+}
+
 export async function setupAuth(app: Express) {
+  assertDevAuthBypassAllowed();
   app.set("trust proxy", 1);
   const devAuthBypass = isDevAuthBypassEnabled();
   if (devAuthBypass) {

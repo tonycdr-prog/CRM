@@ -224,8 +224,8 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 <Wind className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h2 className="font-semibold text-sm">Life Safety Ops</h2>
-                <p className="text-xs text-muted-foreground">Compliance Platform</p>
+                <h2 className="font-semibold text-sm">Smoke Control</h2>
+                <p className="text-xs text-muted-foreground">Operations Module</p>
               </div>
             </div>
           </SidebarHeader>

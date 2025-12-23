@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, RefreshCw } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 type UsageDTO = {
   plan: "free" | "pro" | "enterprise";
@@ -49,8 +50,7 @@ export default function AdminUsagePage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/usage", { credentials: "include" });
-      if (!res.ok) throw new Error(`Failed to load usage (${res.status})`);
+      const res = await apiRequest("GET", "/api/admin/usage");
       const json = (await res.json()) as UsageDTO;
       setData(json);
     } catch (e: any) {
