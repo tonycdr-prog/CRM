@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import CompanionShell from "@/features/field-companion/companion-shell";
 import {
   Select,
   SelectContent,
@@ -17,6 +19,8 @@ import {
   getPendingCount,
   getPendingAttachmentCountForRow,
 } from "@/lib/offlineQueue";
+import { loadRunnerProgress, saveRunnerProgress } from "@/features/field-companion/runner-progress";
+import { mapAuthErrorToToast } from "@/features/field-companion/errors";
 import DynamicFormRenderer, {
   FormTemplateDTO,
   ResponseDraft,
@@ -24,6 +28,9 @@ import DynamicFormRenderer, {
   TemplateListItemDTO,
   RowAttachmentDTO,
 } from "@/components/DynamicFormRenderer";
+import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 type JobFormsDTO = {
   systemTypes: SystemTypeDTO[];
@@ -37,494 +44,202 @@ type InspectionDTO = {
   responses: ResponseDraft[];
 };
 
+const instrumentOptions = [
+  {
+    id: "mano-a12",
+    name: "Manometer A12",
+    calibration: "Valid until Jan 2025",
+    status: "ok",
+  },
+  {
+    id: "anemo-x5",
+    name: "Anemometer X5",
+    calibration: "Expires in 12 days",
+    status: "warning",
+  },
+  {
+    id: "vibe-m3",
+    name: "Vibration analyser M3",
+    calibration: "Expired — request swap",
+    status: "expired",
+  },
+];
+
 function debounce<T extends (...args: any[]) => void>(fn: T, ms: number) {
   let t: ReturnType<typeof setTimeout> | undefined;
-  return (...args: Parameters<T>) => {
-    if (t) clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
-  };
-}
-
-export default function FieldJobForms() {
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute("/field-companion/:id/forms");
-  const jobId = params?.id;
-
-  const [loading, setLoading] = useState(true);
-  const [jobForms, setJobForms] = useState<JobFormsDTO | null>(null);
-
-  const [systemCode, setSystemCode] = useState<string>("");
-  const [templateId, setTemplateId] = useState<string>("");
-  const [inspection, setInspection] = useState<InspectionDTO | null>(null);
-
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [attachmentsByRowId, setAttachmentsByRowId] = useState<Record<string, RowAttachmentDTO[]>>({});
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [pendingUploadsByRowId, setPendingUploadsByRowId] = useState<Record<string, number>>({});
-
-  const storageKey = useMemo(() => {
-    if (!jobId) return "";
-    return `fieldFormsDraft:${jobId}:${systemCode}:${templateId}`;
-  }, [jobId, systemCode, templateId]);
-
-  useEffect(() => {
-    if (!jobId) return;
-    (async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/forms`, {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error(`Failed to load forms (${res.status})`);
-        const data: JobFormsDTO = await res.json();
-        setJobForms(data);
-
-        if (data.systemTypes.length && !systemCode) {
-          setSystemCode(data.systemTypes[0].code);
-        }
-      } catch (e: any) {
-        setError(e?.message ?? "Failed to load forms");
-      } finally {
-        setLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId]);
-
-  const templatesForSystem = useMemo(() => {
-    if (!jobForms) return [];
-    return jobForms.templates.filter((t) => t.systemTypeCode === systemCode);
-  }, [jobForms, systemCode]);
-
-  useEffect(() => {
-    setTemplateId("");
-    setInspection(null);
-  }, [systemCode]);
-
-  // Helper to refresh pending upload counts per row
-  const refreshPendingUploads = useCallback(async () => {
-    if (!inspection) return;
-    const next: Record<string, number> = {};
-    for (const entity of inspection.template.entities) {
-      for (const row of entity.rows) {
-        next[row.id] = await getPendingAttachmentCountForRow(inspection.id, row.id);
-      }
-    }
-    setPendingUploadsByRowId(next);
-  }, [inspection]);
-
-  // Offline queue: track online/offline + flush when back online
-  useEffect(() => {
-    async function refreshPending() {
-      const c = await getPendingCount(inspection?.id);
-      setPendingCount(c);
-      await refreshPendingUploads();
-    }
-
-    function onOnline() {
-      setIsOffline(false);
-      flushQueue({ onProgress: () => {} }).finally(refreshPending);
-    }
-    function onOffline() {
-      setIsOffline(true);
-    }
-
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-
-    refreshPending();
-
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, [inspection?.id, refreshPendingUploads]);
-
-  async function openTemplate(nextTemplateId: string) {
-    if (!jobId) return;
-    setError("");
-    setTemplateId(nextTemplateId);
-
-    const createRes = await fetch(`/api/inspections`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jobId,
-        systemTypeCode: systemCode,
-        templateId: nextTemplateId,
-      }),
-    });
-
-    if (!createRes.ok) {
-      setError(`Failed to start form (${createRes.status})`);
-      return;
-    }
-
-    const { inspectionId } = await createRes.json();
-
-    const getRes = await fetch(
-      `/api/inspections/${encodeURIComponent(inspectionId)}`,
-      { credentials: "include" }
-    );
-
-    if (!getRes.ok) {
-      setError(`Failed to load inspection (${getRes.status})`);
-      return;
-    }
-
-    const data: InspectionDTO = await getRes.json();
-    setInspection(data);
-
-    // load attachments for this inspection
-    try {
-      const aRes = await fetch(`/api/inspections/${encodeURIComponent(inspectionId)}/attachments`, {
-        credentials: "include",
-      });
-      if (aRes.ok) {
-        const aData = await aRes.json();
-        const by: Record<string, RowAttachmentDTO[]> = {};
-        for (const a of (aData.attachments ?? []) as any[]) {
-          const rowId = a.rowId;
-          if (!by[rowId]) by[rowId] = [];
-          by[rowId].push({
-            attachmentId: a.attachmentId,
-            rowId: a.rowId,
-            fileId: a.fileId,
-            originalName: a.originalName,
-            mimeType: a.mimeType,
-            sizeBytes: a.sizeBytes,
-            createdAt: a.createdAt,
-          });
-        }
-        setAttachmentsByRowId(by);
-      } else {
-        setAttachmentsByRowId({});
-      }
-    } catch {
-      setAttachmentsByRowId({});
-    }
-
-    // localStorage fallback draft merge (only if not completed)
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (!data.completedAt && raw) {
-        const drafts = JSON.parse(raw) as ResponseDraft[];
-        if (Array.isArray(drafts)) {
-          setInspection((prev) =>
-            prev ? { ...prev, responses: drafts } : prev
-          );
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  // Save responses to server (or queue if offline/fails)
-  const saveResponsesToServer = useCallback(async (inspectionId: string, responsesPayload: { responses: ResponseDraft[] }) => {
-    // Try online first if possible
-    if (navigator.onLine) {
-      try {
-        const res = await fetch(`/api/inspections/${encodeURIComponent(inspectionId)}/responses`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(responsesPayload),
-        });
-
-        if (res.ok) {
-          if (storageKey) localStorage.removeItem(storageKey);
-          return;
-        }
-
-        // Completed -> stop saving
-        if (res.status === 409) throw new Error("Inspection is completed");
-        // other errors fall through to queue
-      } catch (e: any) {
-        if (e?.message === "Inspection is completed") throw e;
-        // Network error - fall through to queue
-      }
-    }
-
-    // Queue offline
-    await enqueueResponses(inspectionId, responsesPayload);
-    const c = await getPendingCount(inspectionId);
-    setPendingCount(c);
-  }, [storageKey]);
-
-  const debouncedSave = useRef(
-    debounce(async (inspectionId: string, drafts: ResponseDraft[]) => {
-      setSaving(true);
-      setError("");
-      try {
-        await saveResponsesToServer(inspectionId, { responses: drafts });
-      } catch (e: any) {
-        try {
-          if (storageKey) localStorage.setItem(storageKey, JSON.stringify(drafts));
-        } catch {}
-        setError(e?.message ?? "Save failed");
-      } finally {
-        setSaving(false);
-      }
-    }, 800)
-  ).current;
-
-  function onChangeResponses(drafts: ResponseDraft[]) {
-    if (!inspection) return;
-    if (inspection.completedAt) return;
-    setInspection({ ...inspection, responses: drafts });
-    debouncedSave(inspection.id, drafts);
-  }
-
-  async function uploadEvidence(rowId: string, file: File) {
-    if (!inspection) return;
-    setError("");
-    setSaving(true);
-
-    // If offline, queue immediately
-    if (!navigator.onLine) {
-      await enqueueAttachment({ inspectionId: inspection.id, rowId, file });
-      await refreshPendingUploads();
-      const c = await getPendingCount(inspection.id);
-      setPendingCount(c);
-      setSaving(false);
-      return;
-    }
-
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-
-      const res = await fetch(
-        `/api/inspections/${encodeURIComponent(inspection.id)}/rows/${encodeURIComponent(rowId)}/attachments`,
-        { method: "POST", credentials: "include", body: fd }
-      );
-
-      // If it failed (network/server), queue as fallback
-      if (!res.ok) {
-        if (res.status === 409) throw new Error("Inspection is completed");
-        await enqueueAttachment({ inspectionId: inspection.id, rowId, file });
-        await refreshPendingUploads();
-        const c = await getPendingCount(inspection.id);
-        setPendingCount(c);
-        return;
-      }
-
-      const data = await res.json();
-      const a = data.attachment as any;
-
-      setAttachmentsByRowId((prev) => {
-        const next = { ...prev };
-        const list = next[rowId] ? [...next[rowId]] : [];
-        list.unshift({
-          attachmentId: a.id,
-          rowId,
-          fileId: a.fileId,
-          originalName: a.originalName,
-          mimeType: a.mimeType,
-          sizeBytes: a.sizeBytes,
-        });
-        next[rowId] = list;
-        return next;
-      });
-
-      await refreshPendingUploads();
-    } catch (e: any) {
-      // final fallback: queue
-      await enqueueAttachment({ inspectionId: inspection.id, rowId, file });
-      await refreshPendingUploads();
-      const c = await getPendingCount(inspection.id);
-      setPendingCount(c);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function completeForm() {
-    if (!inspection) return;
-    setSaving(true);
-    setError("");
-    try {
-      const res = await fetch(
-        `/api/inspections/${encodeURIComponent(inspection.id)}/complete`,
-        { method: "POST", credentials: "include" }
-      );
-      if (!res.ok) throw new Error(`Complete failed (${res.status})`);
-      const data: { completedAt: string } = await res.json();
-      setInspection({ ...inspection, completedAt: data.completedAt });
-    } catch (e: any) {
-      setError(e?.message ?? "Complete failed");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!jobId) {
-    return (
-      <div className="container mx-auto p-4">
-        <p className="text-muted-foreground">Missing job id.</p>
-        <Button onClick={() => setLocation(ROUTES.FIELD_COMPANION_HOME)}>
-          Back
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-[100dvh] flex flex-col">
-      {/* Header stays fixed */}
-      <div className="container mx-auto p-4 md:p-6">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() =>
-              setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: jobId }))
-            }
-          >
-            Back
-          </Button>
-          <h1 className="text-xl font-semibold">Forms</h1>
-          {saving && <span className="text-sm text-muted-foreground">Saving…</span>}
-          {error && <span className="text-sm text-destructive">{error}</span>}
-        </div>
-      </div>
-
-      {/* Scrollable content */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="container mx-auto p-4 md:p-6 space-y-4 pb-24">
-          {/* Offline / Sync banner */}
-          {(isOffline || pendingCount > 0) && (
-            <div className="border rounded-md p-3 text-sm" data-testid="banner-offline-sync">
-              {isOffline ? (
-                <div>
-                  <span className="font-medium">Offline.</span>{" "}
-                  Changes will sync automatically when you're back online.
-                </div>
-              ) : (
-                <div>
-                  <span className="font-medium">Syncing.</span>{" "}
-                  {pendingCount} pending change(s) waiting to upload.
-                </div>
-              )}
-              {!isOffline && pendingCount > 0 && (
-                <div className="mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    data-testid="button-sync-now"
-                    onClick={async () => {
-                      await flushQueue();
-                      const c = await getPendingCount(inspection?.id);
-                      setPendingCount(c);
-                    }}
-                  >
-                    Sync now
-                  </Button>
-                </div>
-              )}
+    <CompanionShell
+      title="Forms & tests"
+      subtitle="Evidence-first runner with calibration and offline guardrails"
+      status={<Badge variant="outline">{isOffline ? "Offline" : "Online"}</Badge>}
+      topAction={
+        <Button variant="ghost" size="sm" onClick={() => setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: jobId ?? "" }))}>
+          Back to job
+        </Button>
+      }
+    >
+      <div className="space-y-4 py-4">
+        <Card className="bg-muted/50">
+          <CardHeader className="pb-2">
+            <p className="text-xs uppercase text-muted-foreground">Run state</p>
+            <CardTitle className="text-lg">{templatesForSystem.length ? "Pick a template" : "Waiting for template"}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Progress</p>
+              <Progress value={progressValue} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-1">{progressValue}% captured</p>
             </div>
-          )}
+            <div>
+              <p className="text-xs text-muted-foreground">Pending uploads</p>
+              <p className="text-sm font-medium">{pendingCount}</p>
+              <p className="text-xs text-muted-foreground">Queued until connection returns</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-sm font-medium">{error ? "Attention" : isOffline ? "Offline" : "Ready"}</p>
+              {error && <p className="text-xs text-destructive">{error}</p>}
+            </div>
+          </CardContent>
+        </Card>
 
+        <Card>
+          <CardHeader className="pb-2">
+            <p className="text-xs uppercase text-muted-foreground">Instrumentation</p>
+            <CardTitle className="text-lg">Select calibrated meter</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {instrumentOptions.map((instrument) => (
+                <button
+                  key={instrument.id}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-left transition",
+                    instrumentId === instrument.id
+                      ? "border-primary bg-primary/5"
+                      : "hover:border-primary/50"
+                  )}
+                  onClick={() => setInstrumentId(instrument.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{instrument.name}</span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        instrument.status === "expired" && "text-destructive border-destructive",
+                        instrument.status === "warning" && "text-amber-600 border-amber-500"
+                      )}
+                    >
+                      {instrument.status === "ok" && "OK"}
+                      {instrument.status === "warning" && "Expiring"}
+                      {instrument.status === "expired" && "Expired"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{instrument.calibration}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Calibration metadata is stored with each submission.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/60">
+          <CardHeader>
+            <CardTitle>System selection</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loading && <div className="text-muted-foreground">Loading forms...</div>}
+            {!loading && jobForms && (
+              <Select value={systemCode} onValueChange={setSystemCode}>
+                <SelectTrigger className="w-full md:w-[420px]">
+                  <SelectValue placeholder="Choose a system" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobForms.systemTypes.map((s) => (
+                    <SelectItem key={s.id} value={s.code}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </CardContent>
+        </Card>
+
+        {!loading && jobForms && (
           <Card>
             <CardHeader>
-              <CardTitle>Select system</CardTitle>
+              <CardTitle>Templates</CardTitle>
             </CardHeader>
-            <CardContent>
-              {loading && <div className="text-muted-foreground">Loading…</div>}
-
-              {!loading && jobForms && (
-                <Select value={systemCode} onValueChange={setSystemCode}>
-                  <SelectTrigger className="w-full md:w-[420px]">
-                    <SelectValue placeholder="Choose a system" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {jobForms.systemTypes.map((s) => (
-                      <SelectItem key={s.id} value={s.code}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <CardContent className="space-y-2">
+              {templatesForSystem.length === 0 ? (
+                <div className="text-muted-foreground">No templates for this system.</div>
+              ) : (
+                templatesForSystem.map((t) => (
+                  <Button
+                    key={t.id}
+                    variant={templateId === t.id ? "default" : "outline"}
+                    onClick={() => openTemplate(t.id)}
+                    className="mr-2 mb-2"
+                  >
+                    {t.name}
+                  </Button>
+                ))
               )}
             </CardContent>
           </Card>
+        )}
 
-          {!loading && jobForms && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Templates</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {templatesForSystem.length === 0 ? (
-                  <div className="text-muted-foreground">
-                    No templates for this system.
-                  </div>
-                ) : (
-                  templatesForSystem.map((t) => (
-                    <Button
-                      key={t.id}
-                      variant={templateId === t.id ? "default" : "outline"}
-                      onClick={() => openTemplate(t.id)}
-                      className="mr-2 mb-2"
-                    >
-                      {t.name}
-                    </Button>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {inspection && (
-            <Card>
-              <CardHeader>
+        {inspection && (
+          <Card>
+            <CardHeader className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">Runner</p>
                 <CardTitle>{inspection.template.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <DynamicFormRenderer
-                  template={inspection.template}
-                  responses={inspection.responses}
-                  readOnly={!!inspection.completedAt}
-                  attachmentsByRowId={attachmentsByRowId}
-                  pendingUploadsByRowId={pendingUploadsByRowId}
-                  onUpload={uploadEvidence}
-                  onChange={onChangeResponses}
-                />
+              </div>
+              <div className="text-right text-xs text-muted-foreground">
+                <p>Pending uploads: {pendingCount}</p>
+                <p>Attachments waiting: {Object.values(pendingUploadsByRowId).reduce((a, b) => a + b, 0)}</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <DynamicFormRenderer
+                template={inspection.template}
+                responses={inspection.responses}
+                readOnly={!!inspection.completedAt}
+                attachmentsByRowId={attachmentsByRowId}
+                pendingUploadsByRowId={pendingUploadsByRowId}
+                onUpload={uploadEvidence}
+                onChange={onChangeResponses}
+              />
 
-                <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  onClick={completeForm}
+                  disabled={saving || !!inspection.completedAt}
+                  data-testid="button-complete-form"
+                >
+                  {inspection.completedAt ? "Completed" : "Complete Form"}
+                </Button>
+                {inspection.completedAt && (
+                  <span className="text-sm text-muted-foreground">Locked (completed)</span>
+                )}
+                {inspection.completedAt && (
                   <Button
-                    onClick={completeForm}
-                    disabled={saving || !!inspection.completedAt}
-                    data-testid="button-complete-form"
+                    variant="outline"
+                    onClick={() => {
+                      window.open(`/api/inspections/${encodeURIComponent(inspection.id)}/pdf`, "_blank");
+                    }}
+                    data-testid="button-download-pdf"
                   >
-                    {inspection.completedAt ? "Completed" : "Complete Form"}
+                    Download PDF
                   </Button>
-                  {inspection.completedAt && (
-                    <span className="text-sm text-muted-foreground">
-                      Locked (completed)
-                    </span>
-                  )}
-                  {inspection.completedAt && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        window.open(`/api/inspections/${encodeURIComponent(inspection.id)}/pdf`, "_blank");
-                      }}
-                      data-testid="button-download-pdf"
-                    >
-                      Download PDF
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
-    </div>
+    </CompanionShell>
   );
 }

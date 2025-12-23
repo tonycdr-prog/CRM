@@ -1,6 +1,10 @@
 export const ROUTES = {
   DASHBOARD: "/dashboard",
   FIELD_COMPANION_HOME: "/field-companion",
+  FIELD_COMPANION_JOBS: "/field-companion/jobs",
+  FIELD_COMPANION_CAPTURE: "/field-companion/capture",
+  FIELD_COMPANION_SYNC: "/field-companion/sync",
+  FIELD_COMPANION_MORE: "/field-companion/more",
   
   // Phase 1 journey hubs (prefixed to avoid collision with existing routes)
   HUB_WORK: "/hub/work",
@@ -83,6 +87,10 @@ export function buildPath(
 export function isCompanionPath(pathname: string) {
   return (
     pathname === ROUTES.FIELD_COMPANION_HOME ||
+    pathname.startsWith(ROUTES.FIELD_COMPANION_JOBS) ||
+    pathname.startsWith(ROUTES.FIELD_COMPANION_CAPTURE) ||
+    pathname.startsWith(ROUTES.FIELD_COMPANION_SYNC) ||
+    pathname.startsWith(ROUTES.FIELD_COMPANION_MORE) ||
     pathname.startsWith("/field-companion")
   );
 }
