@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
+import { ROUTES } from "@/lib/routes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { WorkspaceShell } from "@/features/workspaces/workspace-shell";
+import { RelatedEvidencePanel } from "@/features/workspaces/related-evidence-panel";
+import { EntitySummary } from "@/features/entities/entity-summary";
 import { 
   ArrowLeft,
   Building2, 
@@ -317,7 +321,7 @@ export default function SiteDetail() {
   };
 
   const getSystemLabel = (systemType: string | null) => {
-    if (!systemType) return null;
+    if (!systemType) return "Not set";
     const system = SMOKE_CONTROL_SYSTEM_TYPES.find(s => s.value === systemType);
     return system?.label || systemType;
   };
@@ -413,41 +417,61 @@ export default function SiteDetail() {
     );
   }
 
+  const rail = (
+    <>
+      <RelatedEvidencePanel />
+      <Card className="border-border/70 bg-card/70 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">Golden Thread</CardTitle>
+        </CardHeader>
+        <CardContent className="text-xs text-muted-foreground space-y-2">
+          <p>Review linked evidence, reports, and defect history.</p>
+          <Link href={ROUTES.GOLDEN_THREAD} className="text-primary hover:underline">
+            Open Golden Thread
+          </Link>
+        </CardContent>
+      </Card>
+    </>
+  );
+
   return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="mb-6">
+    <WorkspaceShell
+      title={site.name}
+      subtitle={getClientName(site.clientId)}
+      breadcrumbs={["Sites", site.name]}
+      meta={[
+        { label: "Status", value: site.status || "Unknown" },
+        { label: "System", value: site.systemType ? getSystemLabel(site.systemType) : "Not set" },
+        { label: "City", value: site.city || "Not set" },
+        { label: "Postcode", value: site.postcode || "Not set" },
+      ]}
+      rail={rail}
+    >
+      <EntitySummary
+        title={site.name}
+        subtitle={site.address || "No address on file"}
+        status={site.status || "Unknown"}
+        items={[
+          { label: "Client", value: getClientName(site.clientId) },
+          { label: "System type", value: site.systemType ? getSystemLabel(site.systemType) : "Not set" },
+          { label: "Contact", value: site.siteContactName || "Not set" },
+          { label: "Phone", value: site.siteContactPhone || "Not set" },
+        ]}
+      />
+      <div className="flex items-center justify-between gap-3">
         <Link href="/sites">
-          <Button variant="ghost" size="sm" className="mb-4" data-testid="button-back-to-sites">
+          <Button variant="ghost" size="sm" data-testid="button-back-to-sites">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Sites
           </Button>
         </Link>
-
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold" data-testid="text-site-name">{site.name}</h1>
-              {site.systemType && (
-                <Badge variant="outline">
-                  <Wrench className="h-3 w-3 mr-1" />
-                  {getSystemLabel(site.systemType)}
-                </Badge>
-              )}
-            </div>
-            <p className="text-muted-foreground">
-              <Link href={`/clients/${site.clientId}`} className="hover:underline">
-                {getClientName(site.clientId)}
-              </Link>
-            </p>
-          </div>
-          <Button onClick={handleCreateJob} data-testid="button-create-job">
-            <Briefcase className="h-4 w-4 mr-2" />
-            Create Job
-          </Button>
-        </div>
+        <Button onClick={handleCreateJob} data-testid="button-create-job">
+          <Briefcase className="h-4 w-4 mr-2" />
+          Create Job
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -966,6 +990,6 @@ export default function SiteDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </WorkspaceShell>
   );
 }

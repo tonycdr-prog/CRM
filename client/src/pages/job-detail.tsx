@@ -34,6 +34,10 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { WorkspaceShell } from "@/features/workspaces/workspace-shell";
+import { RelatedEvidencePanel } from "@/features/workspaces/related-evidence-panel";
+import { AuditTimeline } from "@/features/evidence/audit-timeline";
+import { EntitySummary } from "@/features/entities/entity-summary";
 import { 
   ArrowLeft,
   Building2,
@@ -604,57 +608,92 @@ export default function JobDetail() {
     );
   }
 
+  const jobMeta = [
+    { label: "Status", value: job.status.replace(/_/g, " ") },
+    { label: "Priority", value: job.priority.replace(/_/g, " ") },
+    {
+      label: "Scheduled",
+      value: job.scheduledDate ? format(parseISO(job.scheduledDate), "PP") : "Unscheduled",
+    },
+    { label: "Assigned", value: job.assignedTo || "Unassigned" },
+  ];
+
+  const rail = (
+    <>
+      <RelatedEvidencePanel />
+      <AuditTimeline jobId={job.id} />
+    </>
+  );
+
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6">
-      <div className="flex items-start gap-4">
-        <Link href="/jobs">
-          <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold" data-testid="text-job-title">{job.title}</h1>
-            {getStatusBadge(job.status)}
-            {getPriorityBadge(job.priority)}
-          </div>
-          <p className="text-muted-foreground">{job.jobNumber}</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href={buildPath(ROUTES.JOB_ACTIVITY, { jobId: job.id })}>
-            <Button variant="outline" data-testid="button-activity">
-              <Activity className="h-4 w-4 mr-2" />
-              Activity
+    <WorkspaceShell
+      title={job.title}
+      subtitle={job.jobNumber}
+      breadcrumbs={["Jobs", job.jobNumber]}
+      meta={jobMeta}
+      rail={rail}
+    >
+      <EntitySummary
+        title={job.title}
+        subtitle={job.siteAddress || "No site address on file"}
+        status={job.status}
+        items={[
+          { label: "Client", value: client?.companyName || "Unassigned" },
+          { label: "Contract", value: contract?.title || "No contract" },
+          { label: "Type", value: job.jobType.replace(/_/g, " ") },
+          { label: "Quote", value: job.quotedAmount ? `GBP ${job.quotedAmount}` : "No quote" },
+        ]}
+      />
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <Link href="/jobs">
+            <Button variant="ghost" size="icon" data-testid="button-back">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          {job.status === "pending" && (
-            <Button onClick={() => updateJobMutation.mutate({ status: "scheduled" })}>
-              <Calendar className="h-4 w-4 mr-2" />
-              Schedule
-            </Button>
-          )}
-          {job.status === "scheduled" && (
-            <Button onClick={() => updateJobMutation.mutate({ status: "in_progress" })}>
-              <Play className="h-4 w-4 mr-2" />
-              Start
-            </Button>
-          )}
-          {job.status === "in_progress" && (
-            <Button onClick={() => updateJobMutation.mutate({ status: "completed" })}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Complete
-            </Button>
-          )}
-          {job.status === "completed" && jobInvoices.length === 0 && (
-            <Link href={`/finance?createInvoice=true&jobId=${job.id}&clientId=${job.clientId}&amount=${totalCost > 0 ? Math.round(totalCost * 1.2) : job.quotedAmount || 0}&title=${encodeURIComponent(`Invoice for ${job.title}`)}`}>
-              <Button data-testid="button-create-invoice">
-                <Receipt className="h-4 w-4 mr-2" />
-                Create Invoice
+          <div className="flex-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold" data-testid="text-job-title">{job.title}</h1>
+              {getStatusBadge(job.status)}
+              {getPriorityBadge(job.priority)}
+            </div>
+            <p className="text-muted-foreground">{job.jobNumber}</p>
+          </div>
+          <div className="flex gap-2">
+            <Link href={buildPath(ROUTES.JOB_ACTIVITY, { jobId: job.id })}>
+              <Button variant="outline" data-testid="button-activity">
+                <Activity className="h-4 w-4 mr-2" />
+                Activity
               </Button>
             </Link>
-          )}
+            {job.status === "pending" && (
+              <Button onClick={() => updateJobMutation.mutate({ status: "scheduled" })}>
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule
+              </Button>
+            )}
+            {job.status === "scheduled" && (
+              <Button onClick={() => updateJobMutation.mutate({ status: "in_progress" })}>
+                <Play className="h-4 w-4 mr-2" />
+                Start
+              </Button>
+            )}
+            {job.status === "in_progress" && (
+              <Button onClick={() => updateJobMutation.mutate({ status: "completed" })}>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Complete
+              </Button>
+            )}
+            {job.status === "completed" && jobInvoices.length === 0 && (
+              <Link href={`/finance?createInvoice=true&jobId=${job.id}&clientId=${job.clientId}&amount=${totalCost > 0 ? Math.round(totalCost * 1.2) : job.quotedAmount || 0}&title=${encodeURIComponent(`Invoice for ${job.title}`)}`}>
+                <Button data-testid="button-create-invoice">
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Create Invoice
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
@@ -1463,5 +1502,6 @@ export default function JobDetail() {
         </Card>
       </div>
     </div>
+    </WorkspaceShell>
   );
 }

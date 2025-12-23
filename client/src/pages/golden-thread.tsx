@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { AuditTimeline } from "@/features/evidence/audit-timeline";
 import { format, parseISO } from "date-fns";
 import type { DbFormSubmission } from "@shared/schema";
 import { 
@@ -431,6 +432,10 @@ export default function GoldenThread() {
           <TabsTrigger value="submissions" className="gap-2" data-testid="tab-submissions">
             <History className="h-4 w-4" />
             Form Submissions
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="gap-2" data-testid="tab-audit">
+            <Link2 className="h-4 w-4" />
+            Audit Trail
           </TabsTrigger>
         </TabsList>
 
@@ -935,6 +940,9 @@ export default function GoldenThread() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="audit" className="space-y-4">
+          <AuditTimeline title="Organization audit trail" />
         </TabsContent>
       </Tabs>
     </div>
