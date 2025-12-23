@@ -9,7 +9,8 @@ import { UploadCloud, RotateCw, CheckCircle2, AlertCircle, WifiOff } from "lucid
 export default function FieldCompanionSync() {
   const { pending, syncing, progress, syncNow } = useSyncQueue();
 
-  const percent = progress?.percentage ?? (pending ? 30 : 100);
+  const total = progress.sent + progress.remaining;
+  const percent = total > 0 ? Math.round((progress.sent / total) * 100) : pending ? 30 : 100;
   const statusIcon = syncing ? RotateCw : pending > 0 ? AlertCircle : CheckCircle2;
   const statusLabel = syncing ? "Syncing" : pending > 0 ? `${pending} pending` : "All clear";
 

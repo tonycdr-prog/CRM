@@ -25,11 +25,10 @@ const defaultSteps: EvidenceStep[] = [
   { label: "Remedial Job", description: "Action scheduled", status: "pending" },
 ];
 
-const statusTone: Record<EvidenceStep["status"] | undefined, string> = {
+const statusTone: Record<NonNullable<EvidenceStep["status"]>, string> = {
   complete: "bg-emerald-100 text-emerald-700 border-emerald-200",
   current: "bg-primary/10 text-primary border-primary/30",
   pending: "bg-muted text-muted-foreground border-muted",
-  undefined: "bg-muted text-muted-foreground border-muted",
 };
 
 /**
@@ -47,7 +46,10 @@ export function RelatedEvidencePanel({ steps = defaultSteps, title = "Related ev
           <div key={`${step.label}-${idx}`} className="space-y-1">
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-medium leading-tight">{step.label}</div>
-              <Badge variant="outline" className={cn("text-[11px]", statusTone[step.status])}>
+              <Badge
+                variant="outline"
+                className={cn("text-[11px]", statusTone[step.status ?? "pending"])}
+              >
                 {step.status === "complete"
                   ? "Logged"
                   : step.status === "current"

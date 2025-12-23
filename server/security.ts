@@ -1,6 +1,6 @@
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import crypto from "crypto";
 
 export const requestId: RequestHandler = (req, res, next) => {
@@ -46,7 +46,7 @@ export const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Please slow down." },
-  skip: (req) => {
+  skip: (req: Request) => {
     // Skip rate limiting for Vite dev assets during development
     const url = req.originalUrl || req.url;
     return url.startsWith("/@") || url.startsWith("/node_modules") || url.endsWith(".ts") || url.endsWith(".tsx") || url.endsWith(".css");

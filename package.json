@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test server/__tests__/**/*.test.ts",
+    "postinstall": "node scripts/patch-node-modules.mjs",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:seed": "NODE_ENV=development tsx server/seed.ts"
