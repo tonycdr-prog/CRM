@@ -23,11 +23,12 @@ const TEST_USER: User = {
   updatedAt: new Date(),
 };
 
-export function useAuth() {
+export function useAuth(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? !TEST_MODE_ENABLED;
   const { data: user, isLoading } = useQuery<User>({
     queryKey: ["/api/auth/user"],
     retry: false,
-    enabled: !TEST_MODE_ENABLED,
+    enabled,
   });
 
   const logout = useCallback(() => {
@@ -50,7 +51,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading,
+    isLoading: enabled ? isLoading : false,
     isAuthenticated: !!user,
     logout,
   };

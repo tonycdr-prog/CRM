@@ -298,8 +298,9 @@ function ViewModeRouter() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
+  const isPublicRoute = location === "/" || location === "/landing";
+  const { isAuthenticated, isLoading } = useAuth({ enabled: !isPublicRoute });
 
   // Client Portal is a public route - check before auth
   if (location.startsWith("/client-portal/")) {
@@ -315,6 +316,16 @@ function Router() {
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (isPublicRoute) {
+    return (
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route path="/landing" component={Landing} />
+        <Route component={Landing} />
+      </Switch>
     );
   }
 
