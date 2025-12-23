@@ -10,9 +10,9 @@ export function ModulesShowcase() {
           Modules
         </Badge>
         <div className="space-y-2">
-          <h2 className="font-serif text-3xl font-semibold md:text-4xl">Industry-specific modules</h2>
+          <h2 className="font-serif text-3xl font-semibold md:text-4xl">Modules that attach to the core</h2>
           <p className="text-muted-foreground">
-            Pre-filled, read-only cards show how each domain keeps evidence and outcomes aligned.
+            Each module keeps evidence and outcomes aligned while sharing the same CRM foundation.
           </p>
         </div>
       </div>

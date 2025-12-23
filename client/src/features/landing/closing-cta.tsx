@@ -15,14 +15,12 @@ export function ClosingCta() {
               </Badge>
               <h2 className="font-serif text-3xl font-semibold">Calm systems for critical work</h2>
               <p className="text-muted-foreground">
-                Deucalion keeps human judgment in the loop while the Golden Thread maintains evidence across jobs, forms,
-                defects, and reports.
+                Deucalion keeps human judgment in the loop while the evidence spine maintains traceability across jobs,
+                forms, defects, and reports.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button size="lg">Create your workspace</Button>
-                <Button size="lg" variant="outline">
-                  Read the methodology
-                </Button>
+                <Button size="lg">Request a walkthrough</Button>
+                <Button size="lg" variant="outline">Read the methodology</Button>
               </div>
             </div>
 

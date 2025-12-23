@@ -11,7 +11,7 @@ export function WorkspacesShowcase() {
         </Badge>
         <h2 className="font-serif text-3xl font-semibold md:text-4xl">Build calm, modular dashboards</h2>
         <p className="text-muted-foreground">
-          Widgets pop out, expand, and send-to-screen while keeping the Golden Thread visible.
+          Widgets expand and pop out while the evidence spine stays in view.
         </p>
       </div>
 
@@ -43,7 +43,7 @@ export function WorkspacesShowcase() {
                 ))}
               </div>
               <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                {workspace.actions.join(" • ")}
+                {workspace.actions.join(" | ")}
               </div>
             </CardContent>
           </Card>

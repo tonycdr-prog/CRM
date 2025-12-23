@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { widgetSnapshots } from "./landing-data";
@@ -20,37 +20,15 @@ function usePrefersReducedMotion() {
 export function WidgetGrid() {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [mounted, setMounted] = useState(false);
-  const [order, setOrder] = useState(widgetSnapshots.map((snapshot) => snapshot.key));
 
   useEffect(() => {
-    if (prefersReducedMotion) {
-      setMounted(true);
-      return;
-    }
-
-    const mountTimer = setTimeout(() => setMounted(true), 80);
-    const shuffleTimer = setTimeout(() => {
-      setOrder((prev) => {
-        const shuffled = [...prev];
-        shuffled.sort(() => Math.random() - 0.5);
-        return shuffled;
-      });
-    }, 420);
-
-    return () => {
-      clearTimeout(mountTimer);
-      clearTimeout(shuffleTimer);
-    };
+    const mountTimer = setTimeout(() => setMounted(true), prefersReducedMotion ? 0 : 80);
+    return () => clearTimeout(mountTimer);
   }, [prefersReducedMotion]);
-
-  const orderedSnapshots = useMemo(
-    () => order.map((key) => widgetSnapshots.find((snapshot) => snapshot.key === key)!).filter(Boolean),
-    [order],
-  );
 
   return (
     <div className="grid gap-3 md:grid-cols-4" aria-label="Landing widgets demo">
-      {orderedSnapshots.map((snapshot, index) => (
+      {widgetSnapshots.map((snapshot, index) => (
         <Card
           key={snapshot.key}
           className={`relative overflow-hidden border-border/70 bg-gradient-to-b from-background via-background to-background/90 shadow-sm transition duration-700 ease-out ${
@@ -73,8 +51,15 @@ export function WidgetGrid() {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">{snapshot.detail}</p>
-            <div className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-              Composable widget — expand, pop-out, or send to screen without losing context.
+            <div className="space-y-1 text-[11px] text-muted-foreground">
+              {snapshot.items.map((item) => (
+                <div key={item} className="rounded-md border border-border/70 bg-muted/40 px-2 py-1">
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+              {snapshot.footer}
             </div>
           </div>
         </Card>

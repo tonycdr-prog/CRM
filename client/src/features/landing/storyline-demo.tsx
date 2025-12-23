@@ -26,9 +26,9 @@ export function StorylineDemo({ activeStep }: { activeStep: string | null }) {
             <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
             <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
           </div>
-          <div>Golden Thread preview</div>
+          <div>Evidence spine preview</div>
           <Badge variant="outline" className="text-[10px] uppercase tracking-[0.25em]">
-            Calm mode
+            Review mode
           </Badge>
         </div>
         <div className="p-6">
