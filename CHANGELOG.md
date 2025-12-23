@@ -9,6 +9,7 @@
 - Reimagined the landing with macOS-inspired widget demos, scroll-driven Golden Thread chain, module cards, and composable workspace previews.
 - Added SPEC-2 scaffolding (shared contracts/forms engine, Deucalion API stubs, kernel widgets, and infra compose/env).
 - Added a shared API client wrapper with consistent error mapping, auth/CSRF toast prompting, and request-id surfacing plus tests.
+- Redesigned the companion app spine with bottom nav tabs, today/jobs/sync flows, calibrated runner UI, and offline-aware capture cards.
 - Swapped admin pages to the shared API client wrapper for consistent auth/error handling on templates, entities, and usage.
 - Enforced DEV_AUTH_BYPASS guardrails in non-dev, tightened API auth gating, and locked lead/report access via RBAC checks.
 - Added SPEC-2 Deucalion roadmap: widget-first CRM, smoke-control domain model, widget kernel/boards, and starter widgets.

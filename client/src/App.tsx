@@ -13,6 +13,10 @@ import { ROUTES, isCompanionPath } from "@/lib/routes";
 import { AppLayout } from "@/components/AppLayout";
 import { withModuleGuard } from "@/components/ModuleGate";
 import FieldCompanion from "@/pages/field-companion";
+import FieldCompanionJobs from "@/pages/field-companion-jobs";
+import FieldCompanionCapture from "@/pages/field-companion-capture";
+import FieldCompanionSync from "@/pages/field-companion-sync";
+import FieldCompanionMore from "@/pages/field-companion-more";
 import FieldJobDetail from "@/pages/field-job-detail";
 import FieldJobForms from "@/pages/field-job-forms";
 import FieldTesting from "@/pages/field-testing";
@@ -256,6 +260,10 @@ function EngineerShell() {
         <Switch>
           <Route path={ROUTES.FIELD_COMPANION_JOB_FORMS} component={FieldJobForms} />
           <Route path={ROUTES.FIELD_COMPANION_JOB} component={FieldJobDetail} />
+          <Route path={ROUTES.FIELD_COMPANION_CAPTURE} component={FieldCompanionCapture} />
+          <Route path={ROUTES.FIELD_COMPANION_SYNC} component={FieldCompanionSync} />
+          <Route path={ROUTES.FIELD_COMPANION_MORE} component={FieldCompanionMore} />
+          <Route path={ROUTES.FIELD_COMPANION_JOBS} component={FieldCompanionJobs} />
           <Route path={ROUTES.FIELD_COMPANION_HOME} component={FieldCompanion} />
           <Route path={ROUTES.FIELD_TESTING} component={FieldTesting} />
           <Route component={FieldCompanion} />

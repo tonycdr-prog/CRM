@@ -1,43 +1,18 @@
-import { useState, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
-import { ROUTES, buildPath } from "@/lib/routes";
-import OfflineBanner from "@/components/OfflineBanner";
-import SyncStatusBar from "@/components/SyncStatusBar";
-import { useSyncQueue } from "@/hooks/useSyncQueue";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format, isToday, isPast, isTomorrow, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Search,
-  MapPin,
-  Phone,
-  Clock,
-  Calendar,
-  ChevronRight,
-  ChevronDown,
-  Navigation,
-  CheckCircle2,
-  PlayCircle,
-  AlertCircle,
-  User,
-  Building2,
-  Wrench,
-  Package,
-} from "lucide-react";
-import { SiGooglemaps, SiApple, SiWaze } from "react-icons/si";
-import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
-import type { DbJob } from "@shared/schema";
-import { SMOKE_CONTROL_SYSTEM_TYPES } from "@shared/schema";
+import CompanionShell from "@/features/field-companion/companion-shell";
+import { JobCard, type JobWithSite } from "@/features/field-companion/job-card";
+import { ROUTES, buildPath } from "@/lib/routes";
+import { useSyncQueue } from "@/hooks/useSyncQueue";
+import { useAuth } from "@/hooks/useAuth";
+import { MapPin, Wifi, WifiOff, AlertCircle, PlayCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Client {
   id: string;
@@ -48,31 +23,21 @@ interface Client {
   address: string | null;
 }
 
-interface SiteInfo {
-  id: string;
-  name: string;
-  address: string | null;
-  city: string | null;
-  postcode: string | null;
-  systemType: string | null;
-  accessNotes: string | null;
-  parkingInfo: string | null;
-  siteContactName: string | null;
-  siteContactPhone: string | null;
-}
-
-interface JobWithSite extends DbJob {
-  site: SiteInfo | null;
-  assetCount: number;
-  completedAssetCount: number;
+function StatusPill({ pending, syncing }: { pending: number; syncing: boolean }) {
+  const Icon = syncing ? WifiOff : pending > 0 ? AlertCircle : Wifi;
+  const label = syncing ? "Offline" : pending > 0 ? `${pending} pending` : "Synced";
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium">
+      <Icon className="h-4 w-4" />
+      {label}
+    </div>
+  );
 }
 
 export default function FieldCompanion() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSyncing, setIsSyncing] = useState(false);
-  const queryClient = useQueryClient();
+  const { pending, syncing } = useSyncQueue();
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<JobWithSite[]>({
     queryKey: ["/api/jobs-with-sites"],
@@ -84,414 +49,115 @@ export default function FieldCompanion() {
     enabled: !!user?.id,
   });
 
-  const { pending, syncing: queueSyncing, progress, syncNow } = useSyncQueue();
+  const todaysJobs = jobs.filter((j) => j.scheduledDate && isToday(parseISO(j.scheduledDate)) && j.status !== "completed");
+  const activeJob = jobs.find((j) => j.status === "in_progress") ?? todaysJobs[0];
+  const completedToday = jobs.filter((j) => j.scheduledDate && isToday(parseISO(j.scheduledDate)) && j.status === "completed");
+  const upcoming = jobs.filter((j) => j.scheduledDate && (isTomorrow(parseISO(j.scheduledDate)) || (!isPast(parseISO(j.scheduledDate)) && !isToday(parseISO(j.scheduledDate)))));
 
-  const handleManualSync = useCallback(async () => {
-    setIsSyncing(true);
-    try {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/jobs-with-sites"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/clients"] }),
-      ]);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [queryClient]);
-
-  const getClient = (clientId: string | null) => {
-    if (!clientId) return null;
-    return clients.find((c) => c.id === clientId);
-  };
-
-  const getSystemLabel = (systemType: string | null) => {
-    if (!systemType) return null;
-    const system = SMOKE_CONTROL_SYSTEM_TYPES.find(s => s.value === systemType);
-    return system?.label || systemType;
-  };
-
-  // Separate jobs by category
-  const todaysJobs = jobs.filter(
-    (j) => j.scheduledDate && isToday(parseISO(j.scheduledDate)) && j.status !== "completed"
-  );
-  const activeJob = jobs.find((j) => j.status === "in_progress");
-  const upcomingJobs = jobs.filter(
-    (j) => j.scheduledDate && !isToday(parseISO(j.scheduledDate)) && !isPast(parseISO(j.scheduledDate)) && j.status !== "completed"
-  );
-  const completedToday = jobs.filter(
-    (j) => j.scheduledDate && isToday(parseISO(j.scheduledDate)) && j.status === "completed"
-  );
-
-  // Filter by search
-  const filterJobs = (jobList: JobWithSite[]) => {
-    if (!searchQuery) return jobList;
-    const query = searchQuery.toLowerCase();
-    return jobList.filter((job) => {
-      const client = getClient(job.clientId);
-      return (
-        job.jobNumber?.toLowerCase().includes(query) ||
-        job.title?.toLowerCase().includes(query) ||
-        job.siteAddress?.toLowerCase().includes(query) ||
-        job.site?.name?.toLowerCase().includes(query) ||
-        client?.companyName?.toLowerCase().includes(query)
-      );
-    });
-  };
-
-  const getStatusColor = (status: string | null) => {
-    switch (status) {
-      case "in_progress":
-        return "bg-blue-500 dark:bg-blue-400";
-      case "completed":
-        return "bg-green-500 dark:bg-green-400";
-      case "scheduled":
-        return "bg-amber-500 dark:bg-amber-400";
-      default:
-        return "bg-gray-400 dark:bg-gray-500";
-    }
-  };
-
-  const getPriorityLabel = (priority: string | null) => {
-    switch (priority) {
-      case "urgent":
-        return { label: "Urgent", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" };
-      case "high":
-        return { label: "High", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" };
-      default:
-        return null;
-    }
-  };
-
-  const JobCard = ({ job, showDate = false }: { job: JobWithSite; showDate?: boolean }) => {
-    const client = getClient(job.clientId);
-    const priority = getPriorityLabel(job.priority);
-
-    return (
-      <Card
-        className="hover-elevate cursor-pointer transition-all"
-        onClick={() => setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: job.id }))}
-        data-testid={`card-job-${job.id}`}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            {/* Status indicator */}
-            <div className={`w-2 h-full min-h-[60px] rounded-full ${getStatusColor(job.status)}`} />
-            
-            <div className="flex-1 min-w-0 space-y-2">
-              {/* Header row */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm" data-testid={`text-job-number-${job.id}`}>
-                      {job.jobNumber}
-                    </span>
-                    {priority && (
-                      <Badge className={priority.className} variant="secondary">
-                        {priority.label}
-                      </Badge>
-                    )}
-                    {job.assetCount > 0 && (
-                      <Badge variant="outline" className="text-xs">
-                        <Package className="h-3 w-3 mr-1" />
-                        {job.completedAssetCount}/{job.assetCount}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="font-medium text-base" data-testid={`text-job-title-${job.id}`}>
-                    {job.title}
-                  </p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-              </div>
-
-              {/* Site info */}
-              {job.site && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="font-medium truncate" data-testid={`text-site-name-${job.id}`}>{job.site.name}</span>
-                  {job.site.systemType && (
-                    <Badge variant="secondary" className="text-xs shrink-0">
-                      <Wrench className="h-3 w-3 mr-1" />
-                      {getSystemLabel(job.site.systemType)}
-                    </Badge>
-                  )}
-                </div>
-              )}
-
-              {/* Client */}
-              {client && !job.site && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Building2 className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{client.companyName}</span>
-                </div>
-              )}
-
-              {/* Address */}
-              {(job.site?.address || job.siteAddress) && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
-                    {job.site?.address || job.siteAddress}
-                    {job.site?.city && `, ${job.site.city}`}
-                  </span>
-                </div>
-              )}
-
-              {/* Time info */}
-              <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                {showDate && job.scheduledDate && (
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      {isTomorrow(parseISO(job.scheduledDate))
-                        ? "Tomorrow"
-                        : format(parseISO(job.scheduledDate), "EEE, d MMM")}
-                    </span>
-                  </div>
-                )}
-                {job.scheduledTime && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{job.scheduledTime}</span>
-                  </div>
-                )}
-                {job.estimatedDuration && (
-                  <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                    {job.estimatedDuration}h
-                  </span>
-                )}
-                {job.estimatedTravelTime && (
-                  <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">
-                    +{job.estimatedTravelTime}h travel
-                  </span>
-                )}
-              </div>
-
-              {/* Quick actions */}
-              <div className="flex items-center gap-2 pt-1">
-                {job.siteAddress && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        data-testid={`button-navigate-${job.id}`}
-                      >
-                        <Navigation className="h-3 w-3 mr-1" />
-                        Navigate
-                        <ChevronDown className="h-3 w-3 ml-1" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(
-                            `https://maps.google.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
-                            "_blank"
-                          );
-                        }}
-                        data-testid={`menu-google-maps-${job.id}`}
-                      >
-                        <SiGooglemaps className="h-4 w-4 mr-2 text-[#4285F4]" />
-                        Google Maps
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(
-                            `https://maps.apple.com/?q=${encodeURIComponent(job.siteAddress || "")}`,
-                            "_blank"
-                          );
-                        }}
-                        data-testid={`menu-apple-maps-${job.id}`}
-                      >
-                        <SiApple className="h-4 w-4 mr-2" />
-                        Apple Maps
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(
-                            `https://waze.com/ul?q=${encodeURIComponent(job.siteAddress || "")}`,
-                            "_blank"
-                          );
-                        }}
-                        data-testid={`menu-waze-${job.id}`}
-                      >
-                        <SiWaze className="h-4 w-4 mr-2 text-[#33CCFF]" />
-                        Waze
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {client?.phone && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.location.href = `tel:${client.phone}`;
-                    }}
-                    data-testid={`button-call-${job.id}`}
-                  >
-                    <Phone className="h-3 w-3 mr-1" />
-                    Call
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
+  const nextJobLabel = useMemo(() => {
+    if (!activeJob) return "No job scheduled";
+    const client = clients.find((c) => c.id === activeJob.clientId);
+    return [client?.companyName, activeJob.site?.name].filter(Boolean).join(" · ");
+  }, [activeJob, clients]);
 
   return (
-    <div className="flex flex-col h-full bg-muted/30">
-      {/* Search bar */}
-      <div className="bg-background border-b p-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search jobs, clients, addresses..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-            data-testid="input-field-search"
-          />
-        </div>
-      </div>
-
-      <ScrollArea className="flex-1">
-        <div className="p-3 space-y-4">
-          {jobsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
-            </div>
-          ) : (
-            <>
-              {/* Active Job - Most prominent */}
-              {activeJob && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <PlayCircle className="h-5 w-5 text-blue-500 dark:text-blue-400" />
-                    <h2 className="font-semibold text-lg">Currently On Site</h2>
-                  </div>
-                  <div className="ring-2 ring-blue-500 dark:ring-blue-400 rounded-md">
-                    <JobCard job={activeJob} />
-                  </div>
-                </div>
-              )}
-
-              {/* Today's Schedule */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  <h2 className="font-semibold text-lg">Today's Jobs</h2>
-                  <Badge variant="secondary" className="ml-auto">
-                    {filterJobs(todaysJobs).length}
-                  </Badge>
-                </div>
-                
-                {filterJobs(todaysJobs).length === 0 ? (
-                  <Card className="bg-muted/50">
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-green-500 dark:text-green-400" />
-                      <p>No more jobs scheduled for today</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {filterJobs(todaysJobs)
-                      .sort((a, b) => (a.scheduledTime || "").localeCompare(b.scheduledTime || ""))
-                      .map((job) => (
-                        <JobCard key={job.id} job={job} />
-                      ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Completed Today */}
-              {completedToday.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
-                    <h2 className="font-semibold text-lg">Completed Today</h2>
-                    <Badge variant="secondary" className="ml-auto">
-                      {completedToday.length}
-                    </Badge>
-                  </div>
-                  <div className="space-y-3">
-                    {completedToday.map((job) => (
-                      <JobCard key={job.id} job={job} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Upcoming Jobs */}
-              {filterJobs(upcomingJobs).length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertCircle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
-                    <h2 className="font-semibold text-lg">Upcoming</h2>
-                    <Badge variant="secondary" className="ml-auto">
-                      {filterJobs(upcomingJobs).length}
-                    </Badge>
-                  </div>
-                  <div className="space-y-3">
-                    {filterJobs(upcomingJobs)
-                      .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""))
-                      .slice(0, 5)
-                      .map((job) => (
-                        <JobCard key={job.id} job={job} showDate />
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Empty state */}
-              {jobs.length === 0 && (
-                <Card className="bg-muted/50">
-                  <CardContent className="py-12 text-center text-muted-foreground">
-                    <Wrench className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p className="font-medium">No jobs assigned</p>
-                    <p className="text-sm mt-1">Jobs will appear here when scheduled</p>
-                  </CardContent>
-                </Card>
-              )}
-            </>
+    <CompanionShell
+      title={activeJob ? "Today" : "No jobs assigned"}
+      subtitle={activeJob ? nextJobLabel || "Ready when you are" : "Awaiting dispatch"}
+      status={<StatusPill pending={pending} syncing={syncing} />}
+    >
+      <section className="py-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">Next job</h2>
+          {activeJob && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: activeJob.id }))}
+            >
+              <PlayCircle className="h-4 w-4" />
+              Resume
+            </Button>
           )}
         </div>
-      </ScrollArea>
+        {jobsLoading && <p className="text-sm text-muted-foreground">Loading jobs…</p>}
+        {!jobsLoading && activeJob && (
+          <JobCard job={activeJob} onOpen={(id) => setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id }))} />
+        )}
+        {!jobsLoading && !activeJob && (
+          <Card>
+            <CardContent className="py-6 text-center text-muted-foreground">No work scheduled today.</CardContent>
+          </Card>
+        )}
+      </section>
 
-      {/* Bottom quick stats bar */}
-      <div className="bg-background border-t p-3 pb-16">
-        <div className="grid grid-cols-3 gap-2">
-          <div className="text-center p-2 bg-muted/50 rounded-lg">
-            <p className="text-2xl font-bold text-primary dark:text-primary">{todaysJobs.length}</p>
-            <p className="text-xs text-muted-foreground">Today</p>
-          </div>
-          <div className="text-center p-2 bg-muted/50 rounded-lg">
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{completedToday.length}</p>
-            <p className="text-xs text-muted-foreground">Done</p>
-          </div>
-          <div className="text-center p-2 bg-muted/50 rounded-lg">
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{upcomingJobs.length}</p>
-            <p className="text-xs text-muted-foreground">Upcoming</p>
-          </div>
+      <section className="py-2 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Timeline</h3>
+          <Badge variant="outline">Today</Badge>
         </div>
-      </div>
+        <ScrollArea className="h-52 rounded-md border bg-card/60">
+          <div className="p-3 space-y-2">
+            {todaysJobs.map((job) => (
+              <div
+                key={job.id}
+                className={cn(
+                  "rounded-lg border px-3 py-2 flex items-center justify-between",
+                  job.id === activeJob?.id && "border-primary/60 bg-primary/5"
+                )}
+              >
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">{job.title}</p>
+                  <p className="text-xs text-muted-foreground">{job.site?.name || job.siteAddress}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">{job.jobNumber}</p>
+                  <p className="text-xs capitalize text-muted-foreground">{job.status}</p>
+                </div>
+              </div>
+            ))}
+            {!todaysJobs.length && (
+              <p className="text-xs text-muted-foreground">No jobs scheduled today.</p>
+            )}
+          </div>
+        </ScrollArea>
+      </section>
 
-      <OfflineBanner onSync={handleManualSync} syncing={isSyncing} />
-      <SyncStatusBar
-        pending={pending}
-        syncing={queueSyncing}
-        progress={progress}
-        onSyncNow={syncNow}
-      />
-    </div>
+      <section className="py-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Upcoming</h3>
+          <Badge variant="outline">+{upcoming.length}</Badge>
+        </div>
+        <div className="grid gap-3">
+          {upcoming.slice(0, 3).map((job) => (
+            <JobCard key={job.id} job={job} onOpen={(id) => setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id }))} />
+          ))}
+          {!upcoming.length && <p className="text-xs text-muted-foreground">No future visits planned.</p>}
+        </div>
+      </section>
+
+      <section className="py-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Completed today</h3>
+          <Badge variant="outline">{completedToday.length}</Badge>
+        </div>
+        <div className="grid gap-3">
+          {completedToday.map((job) => (
+            <Card key={job.id} className="bg-muted/60">
+              <CardHeader className="pb-2">
+                <p className="text-xs text-muted-foreground">{job.jobNumber}</p>
+                <CardTitle className="text-base">{job.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-1">
+                <p>{job.site?.name || job.siteAddress}</p>
+                <p>Evidence captured: {job.completedAssetCount}/{job.assetCount}</p>
+              </CardContent>
+            </Card>
+          ))}
+          {!completedToday.length && <p className="text-xs text-muted-foreground">No completions yet.</p>}
+        </div>
+      </section>
+    </CompanionShell>
   );
 }
