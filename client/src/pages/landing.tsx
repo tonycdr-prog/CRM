@@ -36,7 +36,23 @@ export default function Landing() {
   return (
     <div className="landing-ios bg-gradient-to-b from-background via-background/95 to-background text-foreground">
       <header className="border-b border-border/60 bg-gradient-to-b from-background via-background to-background/90" id="hero">
-        <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-14 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              Deucalion
+            </div>
+            <span className="text-xs text-muted-foreground">Evidence-first CRM</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" asChild>
+              <a href="/api/login">Sign in</a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="#cta">Request access</a>
+            </Button>
+          </div>
+        </div>
+        <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-14 md:flex-row md:items-center md:justify-between">
           <div className="space-y-5 md:max-w-xl">
             <Badge variant="outline" className="text-[11px] uppercase tracking-[0.3em]">
               Deucalion
@@ -71,6 +87,28 @@ export default function Landing() {
           </div>
 
           <div className="w-full max-w-xl space-y-4 md:pt-6">
+            <Card className="border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Access options</div>
+              <div className="mt-3 grid gap-2">
+                <Button className="w-full justify-between" asChild>
+                  <a href="/api/login">
+                    <span>Replit SSO</span>
+                    <span className="text-xs text-muted-foreground">Default</span>
+                  </a>
+                </Button>
+                <Button className="w-full justify-between" variant="outline" disabled>
+                  <span>Apple ID</span>
+                  <span className="text-xs text-muted-foreground">Coming soon</span>
+                </Button>
+                <Button className="w-full justify-between" variant="outline" disabled>
+                  <span>Email + password</span>
+                  <span className="text-xs text-muted-foreground">Invite only</span>
+                </Button>
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">
+                Evidence access is provisioned per organization. Request access to onboard your team.
+              </div>
+            </Card>
             <Card className="border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Live snapshot</div>
               <div className="mt-3 space-y-2">

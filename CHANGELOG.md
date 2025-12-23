@@ -8,6 +8,7 @@
 - Refreshed Field Companion screens with readiness summaries, accessible job cards, and consistent mobile card styling.
 - Renamed the core module to Smoke Control and added placeholder module definitions for upcoming services.
 - Rebuilt the landing page with a widget-style hero grid, Golden Thread scroll demo, and module terminology tiles.
+- Added landing page access options with Replit SSO and placeholder Apple/email sign-in plus a request-access path.
 - Refreshed the landing page to foreground the ETHOS pillars, calm visual system, and Linear/Vercel/Stripe design cues.
 - Reimagined the landing with macOS-inspired widget demos, scroll-driven Golden Thread chain, module cards, and composable workspace previews.
 - Added SPEC-2 scaffolding (shared contracts/forms engine, Deucalion API stubs, kernel widgets, and infra compose/env).
