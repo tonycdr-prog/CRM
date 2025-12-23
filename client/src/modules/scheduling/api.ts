@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
-import type { ScheduleEngineerProfile, ScheduleRangeResponse } from "@shared/schedule";
+import type { ScheduleEngineerProfile, ScheduleJobTimeWindow, ScheduleRangeResponse } from "@shared/schedule";
 
 export async function fetchScheduleRange(from: string, to: string): Promise<ScheduleRangeResponse> {
   const res = await apiRequest("GET", `/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
@@ -66,6 +66,18 @@ export async function updateEngineerProfile(
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || "Failed to update engineer profile");
+  }
+  return res.json();
+}
+
+export async function saveJobTimeWindow(payload: ScheduleJobTimeWindow): Promise<ScheduleJobTimeWindow> {
+  const { id, ...body } = payload;
+  const res = id
+    ? await apiRequest("PATCH", `/api/job-time-windows/${encodeURIComponent(id)}`, body)
+    : await apiRequest("POST", "/api/job-time-windows", body);
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "Failed to save time window");
   }
   return res.json();
 }

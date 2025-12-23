@@ -37,6 +37,7 @@ export type ScheduleAvailabilitySlot = {
 };
 
 export type ScheduleJobTimeWindow = {
+  id?: string;
   jobId: string;
   preferredDate?: string | null;
   preferredTimeStart?: string | null;
@@ -46,6 +47,14 @@ export type ScheduleJobTimeWindow = {
   alternateTimeEnd?: string | null;
   accessRestrictions?: string | null;
   confirmationStatus?: string | null;
+};
+
+export type ScheduleWarning = {
+  type: "conflict" | "availability" | "capacity" | "time_window" | "skill" | "travel";
+  engineerId: string;
+  jobId: string;
+  message: string;
+  overlappingIds?: string[];
 };
 
 export const ScheduleJobSlotSchema = z.object({
@@ -67,7 +76,7 @@ export type ScheduleRangeResponse = {
   availability?: ScheduleAvailabilitySlot[];
   timeWindows?: ScheduleJobTimeWindow[];
   conflicts?: ScheduleConflictDetail[];
-  warnings?: any[];
+  warnings?: ScheduleWarning[];
 };
 
 export const ScheduleAssignmentSchema = z.object({

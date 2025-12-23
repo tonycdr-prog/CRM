@@ -26,10 +26,12 @@ import {
   type ScheduleAvailabilitySlot,
   type ScheduleEngineerProfile,
   type ScheduleJobTimeWindow,
+  type ScheduleWarning,
 } from "@shared/schedule";
 import { db, isDatabaseAvailable } from "./db";
-import { scheduleAssignments, scheduleEngineerProfiles, staffAvailability, staffDirectory, jobTimeWindows } from "@shared/schema";
+import { scheduleAssignments, scheduleEngineerProfiles, staffAvailability, staffDirectory, jobTimeWindows, jobSkillRequirements, jobs, sites } from "@shared/schema";
 import { isDevAuthBypassEnabled } from "./replitAuth";
+import { logAudit } from "./lib/audit";
 
 const toISO = (d: Date) => d.toISOString();
 
@@ -39,6 +41,20 @@ const overlapWhere = (startsAt: Date, endsAt: Date) =>
 
 function requireOrgId(req: any): string | null {
   return req.user?.organizationId || req.user?.claims?.organizationId || req.user?.claims?.org_id || null;
+}
+
+async function maybeLogScheduleAudit(req: any, event: { organizationId: string; action: string; entityId: string; jobId?: string; metadata?: Record<string, any> }) {
+  const actorUserId = req.user?.claims?.sub || req.user?.id;
+  if (!actorUserId) return;
+  await logAudit(db, {
+    organizationId: event.organizationId,
+    actorUserId,
+    action: event.action,
+    entityType: "schedule_assignment",
+    entityId: event.entityId,
+    jobId: event.jobId,
+    metadata: event.metadata ?? {},
+  });
 }
 
 function mapDbRow(row: any): ScheduleAssignment {
@@ -83,14 +99,6 @@ const EngineerProfileSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-type ScheduleWarning = {
-  type: "conflict" | "availability" | "capacity" | "time_window";
-  engineerId: string;
-  jobId: string;
-  message: string;
-  overlappingIds?: string[];
-};
-
 const DEFAULT_PROFILE: Omit<ScheduleEngineerProfile, "engineerUserId"> = {
   dailyCapacityMinutes: 480,
   workdayStart: "08:00",
@@ -111,6 +119,27 @@ function minutesBetween(a: Date, b: Date) {
 
 function toDateKey(value: Date) {
   return value.toISOString().split("T")[0] ?? "";
+}
+
+function extractPostcode(value: string | null | undefined) {
+  if (!value) return null;
+  const match = value.toUpperCase().match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}/);
+  return match ? match[0].replace(/\s+/g, "") : null;
+}
+
+function normaliseSkill(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function estimateTravelMinutes(staffPostcode: string | null, sitePostcode: string | null) {
+  if (!staffPostcode || !sitePostcode) return 30;
+  const staffOutward = staffPostcode.replace(/\s+/g, "").slice(0, -3);
+  const siteOutward = sitePostcode.replace(/\s+/g, "").slice(0, -3);
+  if (staffOutward === siteOutward) return 15;
+  const staffArea = staffPostcode.slice(0, 2);
+  const siteArea = sitePostcode.slice(0, 2);
+  if (staffArea === siteArea) return 30;
+  return 60;
 }
 
 function isWithinTimeWindow(start: Date, end: Date, startTime: string | null | undefined, endTime: string | null | undefined) {
@@ -155,6 +184,10 @@ function buildScheduleWarnings(params: {
   availabilityByStaffId: Map<string, ScheduleAvailabilitySlot[]>;
   timeWindowsByJobId: Map<string, ScheduleJobTimeWindow>;
   engineerToStaffId: Map<string, string>;
+  engineerSkillsById: Map<string, string[]>;
+  engineerPostcodeById: Map<string, string | null>;
+  jobSkillsByJobId: Map<string, { skillType: string; skillLevel?: string | null }[]>;
+  jobSiteByJobId: Map<string, { postcode: string | null }>;
 }): ScheduleWarning[] {
   const warnings: ScheduleWarning[] = [];
   const minutesByEngineer = new Map<string, number>();
@@ -246,6 +279,26 @@ function buildScheduleWarnings(params: {
         );
       }
     }
+
+    const skillRequirements = params.jobSkillsByJobId.get(assignment.jobId) ?? [];
+    if (skillRequirements.length) {
+      const engineerSkills = params.engineerSkillsById.get(engineerId) ?? [];
+      const normalisedSkills = new Set(engineerSkills.map(normaliseSkill));
+      const missing = skillRequirements
+        .filter((req) => req.skillLevel !== "optional")
+        .map((req) => req.skillType)
+        .filter((skill) => !normalisedSkills.has(normaliseSkill(skill)));
+      if (missing.length) {
+        warnings.push(
+          buildWarning(
+            "skill",
+            engineerId,
+            assignment.jobId,
+            `Missing required skills: ${missing.join(", ")}.`,
+          ),
+        );
+      }
+    }
   });
 
   minutesByEngineer.forEach((minutes, engineerId) => {
@@ -259,6 +312,56 @@ function buildScheduleWarnings(params: {
           "Daily capacity exceeded for this engineer.",
         ),
       );
+    }
+  });
+
+  const assignmentsByEngineer = params.assignments.reduce((acc, assignment) => {
+    const engineerId = assignment.engineerUserId ?? assignment.engineerId;
+    if (!engineerId || engineerId === "unassigned") return acc;
+    const list = acc.get(engineerId) ?? [];
+    list.push(assignment);
+    acc.set(engineerId, list);
+    return acc;
+  }, new Map<string, ScheduleAssignment[]>());
+
+  assignmentsByEngineer.forEach((items, engineerId) => {
+    const profile = params.profiles.get(engineerId) ?? { engineerUserId: engineerId, ...DEFAULT_PROFILE };
+    const staffPostcode = params.engineerPostcodeById.get(engineerId) ?? null;
+    const sorted = [...items].sort((a, b) => {
+      const aStart = new Date(a.startsAt ?? a.start ?? 0).getTime();
+      const bStart = new Date(b.startsAt ?? b.start ?? 0).getTime();
+      return aStart - bStart;
+    });
+
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1];
+      const next = sorted[i];
+      const prevEnd = prev.endsAt ?? prev.end;
+      const nextStart = next.startsAt ?? next.start;
+      if (!prevEnd || !nextStart) continue;
+      const prevEndDate = new Date(prevEnd);
+      const nextStartDate = new Date(nextStart);
+      if (Number.isNaN(prevEndDate.getTime()) || Number.isNaN(nextStartDate.getTime())) continue;
+      if (toDateKey(prevEndDate) !== toDateKey(nextStartDate)) continue;
+
+      const gapMinutes = minutesBetween(prevEndDate, nextStartDate);
+      const sitePrev = params.jobSiteByJobId.get(prev.jobId);
+      const siteNext = params.jobSiteByJobId.get(next.jobId);
+      const travelEstimate = estimateTravelMinutes(
+        staffPostcode,
+        siteNext?.postcode ?? sitePrev?.postcode ?? null,
+      );
+      const requiredGap = profile.travelBufferMinutes + travelEstimate;
+      if (gapMinutes < requiredGap) {
+        warnings.push(
+          buildWarning(
+            "travel",
+            engineerId,
+            next.jobId,
+            `Travel gap ${gapMinutes} min is below ${requiredGap} min buffer.`,
+          ),
+        );
+      }
     }
   });
 
@@ -281,15 +384,21 @@ async function loadScheduleMeta(organizationId: string, assignments: ScheduleAss
           userId: staffDirectory.userId,
           firstName: staffDirectory.firstName,
           lastName: staffDirectory.lastName,
+          postcode: staffDirectory.postcode,
+          skills: staffDirectory.skills,
         })
         .from(staffDirectory)
         .where(inArray(staffDirectory.userId, engineerIds))
     : [];
 
   const engineerToStaffId = new Map<string, string>();
+  const engineerSkillsById = new Map<string, string[]>();
+  const engineerPostcodeById = new Map<string, string | null>();
   const engineers = engineerIds.map((id) => {
     const staff = staffRows.find((row) => row.userId === id);
     if (staff?.id) engineerToStaffId.set(id, staff.id);
+    engineerSkillsById.set(id, staff?.skills ?? []);
+    engineerPostcodeById.set(id, staff?.postcode ?? null);
     return {
       id,
       name: staff ? `${staff.firstName} ${staff.lastName}`.trim() : id,
@@ -337,10 +446,46 @@ async function loadScheduleMeta(organizationId: string, assignments: ScheduleAss
   }));
 
   const jobIds = Array.from(new Set(assignments.map((a) => a.jobId)));
+  const jobRows = jobIds.length
+    ? await db
+        .select({ id: jobs.id, siteId: jobs.siteId, siteAddress: jobs.siteAddress })
+        .from(jobs)
+        .where(inArray(jobs.id, jobIds))
+    : [];
+  const siteIds = Array.from(
+    new Set<string>(jobRows.map((row) => row.siteId).filter((id): id is string => Boolean(id))),
+  );
+  const siteRows = siteIds.length
+    ? await db.select({ id: sites.id, postcode: sites.postcode }).from(sites).where(inArray(sites.id, siteIds))
+    : [];
+  const jobSiteByJobId = new Map<string, { postcode: string | null }>();
+  jobRows.forEach((row) => {
+    const site = row.siteId ? siteRows.find((s) => s.id === row.siteId) : null;
+    const sitePostcode = site?.postcode ?? extractPostcode(row.siteAddress ?? null);
+    jobSiteByJobId.set(row.id, { postcode: sitePostcode ?? null });
+  });
+
+  const jobSkillRows = jobIds.length
+    ? await db
+        .select({
+          jobId: jobSkillRequirements.jobId,
+          skillType: jobSkillRequirements.skillType,
+          skillLevel: jobSkillRequirements.skillLevel,
+        })
+        .from(jobSkillRequirements)
+        .where(inArray(jobSkillRequirements.jobId, jobIds))
+    : [];
+  const jobSkillsByJobId = jobSkillRows.reduce((acc, row) => {
+    const existing = acc.get(row.jobId) ?? [];
+    existing.push({ skillType: row.skillType, skillLevel: row.skillLevel });
+    acc.set(row.jobId, existing);
+    return acc;
+  }, new Map<string, { skillType: string; skillLevel?: string | null }[]>());
   const timeWindowRows = jobIds.length
     ? await db.select().from(jobTimeWindows).where(inArray(jobTimeWindows.jobId, jobIds))
     : [];
   const timeWindows: ScheduleJobTimeWindow[] = timeWindowRows.map((row) => ({
+    id: row.id,
     jobId: row.jobId,
     preferredDate: row.preferredDate,
     preferredTimeStart: row.preferredTimeStart,
@@ -367,6 +512,10 @@ async function loadScheduleMeta(organizationId: string, assignments: ScheduleAss
     availabilityByStaffId,
     timeWindowsByJobId,
     engineerToStaffId,
+    engineerSkillsById,
+    engineerPostcodeById,
+    jobSkillsByJobId,
+    jobSiteByJobId,
   });
 
   return {
@@ -379,6 +528,8 @@ async function loadScheduleMeta(organizationId: string, assignments: ScheduleAss
     availabilityByStaffId,
     timeWindowsByJobId,
     engineerToStaffId,
+    jobSkillsByJobId,
+    jobSiteByJobId,
   };
 }
 const DEMO_ENGINEERS = [
@@ -636,6 +787,7 @@ function buildDbRouter(): Router {
       }
 
       const createdAssignments: ScheduleAssignment[] = [];
+      const conflictOverride = conflictDetails.length > 0 && req.query.allowConflict === "true";
       for (const candidate of candidates) {
         const [inserted] = await db
           .insert(scheduleAssignments)
@@ -649,7 +801,20 @@ function buildDbRouter(): Router {
             requiredEngineers: candidate.requiredEngineers ?? 1,
           })
           .returning();
-        createdAssignments.push(mapDbRow(inserted));
+        const mapped = mapDbRow(inserted);
+        createdAssignments.push(mapped);
+        await maybeLogScheduleAudit(req, {
+          organizationId,
+          action: "schedule.assignment.create",
+          entityId: mapped.id,
+          jobId: mapped.jobId,
+          metadata: {
+            startsAt: mapped.startsAt,
+            endsAt: mapped.endsAt,
+            engineerId: mapped.engineerUserId ?? mapped.engineerId,
+            conflictOverride,
+          },
+        });
       }
 
       const assignments = [...existing, ...createdAssignments];
@@ -716,6 +881,7 @@ function buildDbRouter(): Router {
         return res.status(409).json({ message: "Scheduling conflict", conflicts: conflictDetails });
       }
 
+      const conflictOverride = conflictDetails.length > 0 && req.query.allowConflict === "true";
       await db
         .update(scheduleAssignments)
         .set({
@@ -725,6 +891,26 @@ function buildDbRouter(): Router {
           ...(nextEngineerId ? { engineerUserId: nextEngineerId } : {}),
         })
         .where(and(eq(scheduleAssignments.organizationId, organizationId), eq(scheduleAssignments.id, req.params.id)));
+
+      await maybeLogScheduleAudit(req, {
+        organizationId,
+        action: "schedule.assignment.update",
+        entityId: updatedAssignment.id,
+        jobId: updatedAssignment.jobId,
+        metadata: {
+          from: {
+            startsAt: existing.startsAt,
+            endsAt: existing.endsAt,
+            engineerId: existing.engineerUserId ?? existing.engineerId,
+          },
+          to: {
+            startsAt: updatedAssignment.startsAt,
+            endsAt: updatedAssignment.endsAt,
+            engineerId: updatedAssignment.engineerUserId ?? updatedAssignment.engineerId,
+          },
+          conflictOverride,
+        },
+      });
 
       const refreshedRows = await db
         .select()
@@ -1120,6 +1306,10 @@ function buildInMemoryRouter(): Router {
         availabilityByStaffId: new Map(),
         timeWindowsByJobId: new Map(),
         engineerToStaffId: new Map(),
+        engineerSkillsById: new Map(),
+        engineerPostcodeById: new Map(),
+        jobSkillsByJobId: new Map(),
+        jobSiteByJobId: new Map(),
       });
       res.json({
         jobs,
@@ -1190,6 +1380,10 @@ function buildInMemoryRouter(): Router {
         availabilityByStaffId: new Map(),
         timeWindowsByJobId: new Map(),
         engineerToStaffId: new Map(),
+        engineerSkillsById: new Map(),
+        engineerPostcodeById: new Map(),
+        jobSkillsByJobId: new Map(),
+        jobSiteByJobId: new Map(),
       });
       res.status(201).json({
         jobs,
@@ -1241,6 +1435,10 @@ function buildInMemoryRouter(): Router {
         availabilityByStaffId: new Map(),
         timeWindowsByJobId: new Map(),
         engineerToStaffId: new Map(),
+        engineerSkillsById: new Map(),
+        engineerPostcodeById: new Map(),
+        jobSkillsByJobId: new Map(),
+        jobSiteByJobId: new Map(),
       });
       res.json({
         jobs,
