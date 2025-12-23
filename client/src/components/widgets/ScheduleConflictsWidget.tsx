@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ export function ScheduleConflictsWidget({ days = 7 }: { days?: number }) {
 
   const conflicts = query.data ?? [];
 
-  if (query.isLoading) return <div className="text-sm text-muted-foreground">Loading conflicts…</div>;
+  if (query.isLoading) return <div className="text-sm text-muted-foreground">Loading conflicts...</div>;
 
   return (
     <div className="space-y-2 text-sm">
@@ -39,12 +39,7 @@ export function ScheduleConflictsWidget({ days = 7 }: { days?: number }) {
             <li key={`${c.itemId}-${c.overlapsWithId}`} className="flex flex-col rounded border p-2">
               <div className="font-medium">Engineer {c.engineerId}</div>
               <div className="text-xs text-muted-foreground">
-                {c.itemJobId} overlaps {c.overlapsWithJobId} • {new Date(c.overlapRange.start).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-                –
-                {new Date(c.overlapRange.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {c.itemJobId} overlaps {c.overlapsWithJobId} - {new Date(c.overlapRange.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - {new Date(c.overlapRange.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </div>
             </li>
           ))}
@@ -56,3 +51,5 @@ export function ScheduleConflictsWidget({ days = 7 }: { days?: number }) {
     </div>
   );
 }
+
+

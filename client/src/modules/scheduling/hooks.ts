@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type {
@@ -6,6 +6,10 @@ import type {
   ScheduleJobSlot,
   ScheduleRangeResponse,
   ScheduleConflictDetail,
+  ScheduleEngineer,
+  ScheduleEngineerProfile,
+  ScheduleAvailabilitySlot,
+  ScheduleJobTimeWindow,
 } from "@shared/schedule";
 import { createScheduledJob, fetchScheduleRange, updateAssignment } from "./api";
 
@@ -70,7 +74,7 @@ export function useScheduleRange(day: Date) {
         if (String(err?.message || "").toLowerCase().includes("auth")) {
           toast({
             title: "Not authorised",
-            description: "Auth/CSRF missing — refresh page",
+            description: "Auth/CSRF missing. Refresh the page.",
             variant: "destructive",
           });
         }
@@ -200,6 +204,11 @@ export function useScheduleRange(day: Date) {
     jobs: query.data?.jobs ?? [],
     assignments: query.data?.assignments ?? [],
     conflicts: conflictDetails,
+    warnings: query.data?.warnings ?? [],
+    engineers: query.data?.engineers ?? [],
+    profiles: query.data?.profiles ?? [],
+    availability: query.data?.availability ?? [],
+    timeWindows: query.data?.timeWindows ?? [],
     isLoading: query.isLoading,
     refetch: () => qc.invalidateQueries({ queryKey }),
     moveAssignment: moveMutation.mutateAsync,
@@ -211,4 +220,13 @@ export type ScheduleData = {
   jobs: ScheduleJobSlot[];
   conflicts: ScheduleConflictDetail[];
 };
+
+export type ScheduleMeta = {
+  engineers: ScheduleEngineer[];
+  profiles: ScheduleEngineerProfile[];
+  availability: ScheduleAvailabilitySlot[];
+  timeWindows: ScheduleJobTimeWindow[];
+  warnings: ScheduleRangeResponse["warnings"];
+};
+
 

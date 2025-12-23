@@ -6,12 +6,46 @@ export type ScheduleEngineer = {
   id: string;
   name: string;
   email?: string | null;
+  staffId?: string | null;
 };
 
 export type ScheduleJob = {
   id: string;
   title: string;
   site?: string | null;
+};
+
+export type ScheduleEngineerProfile = {
+  engineerUserId: string;
+  dailyCapacityMinutes: number;
+  workdayStart: string;
+  workdayEnd: string;
+  travelBufferMinutes: number;
+  notes?: string | null;
+};
+
+export type ScheduleAvailabilitySlot = {
+  id: string;
+  staffId: string;
+  dayOfWeek?: number | null;
+  specificDate?: string | null;
+  startTime: string;
+  endTime: string;
+  availabilityType: string;
+  isRecurring: boolean;
+  notes?: string | null;
+};
+
+export type ScheduleJobTimeWindow = {
+  jobId: string;
+  preferredDate?: string | null;
+  preferredTimeStart?: string | null;
+  preferredTimeEnd?: string | null;
+  alternateDate?: string | null;
+  alternateTimeStart?: string | null;
+  alternateTimeEnd?: string | null;
+  accessRestrictions?: string | null;
+  confirmationStatus?: string | null;
 };
 
 export const ScheduleJobSlotSchema = z.object({
@@ -28,6 +62,10 @@ export type ScheduleJobSlot = z.infer<typeof ScheduleJobSlotSchema>;
 export type ScheduleRangeResponse = {
   jobs: ScheduleJobSlot[];
   assignments: ScheduleAssignment[];
+  engineers?: ScheduleEngineer[];
+  profiles?: ScheduleEngineerProfile[];
+  availability?: ScheduleAvailabilitySlot[];
+  timeWindows?: ScheduleJobTimeWindow[];
   conflicts?: ScheduleConflictDetail[];
   warnings?: any[];
 };

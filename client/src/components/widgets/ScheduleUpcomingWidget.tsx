@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+﻿import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +29,7 @@ export function ScheduleUpcomingWidget({ days = 7, limit = 6, title }: ScheduleU
       if (res.status === 401 || res.status === 403) {
         toast({
           title: "Not authorised",
-          description: "Auth/CSRF missing — refresh page",
+          description: "Auth/CSRF missing. Refresh the page.",
           variant: "destructive",
         });
         throw new Error("Auth/CSRF missing");
@@ -50,11 +50,11 @@ export function ScheduleUpcomingWidget({ days = 7, limit = 6, title }: ScheduleU
     <div className="space-y-3">
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>{heading}</span>
-        {query.isFetching ? <span className="text-xs">Refreshing…</span> : null}
+        {query.isFetching ? <span className="text-xs">Refreshing...</span> : null}
       </div>
 
       {query.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading schedule…</p>
+        <p className="text-sm text-muted-foreground">Loading schedule...</p>
       ) : query.isError ? (
         <p className="text-sm text-destructive">Unable to load upcoming schedule.</p>
       ) : items.length === 0 ? (
@@ -96,3 +96,4 @@ export function ScheduleUpcomingWidget({ days = 7, limit = 6, title }: ScheduleU
     </div>
   );
 }
+

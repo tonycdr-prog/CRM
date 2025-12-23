@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
-import type { ScheduleRangeResponse } from "@shared/schedule";
+import type { ScheduleEngineerProfile, ScheduleRangeResponse } from "@shared/schedule";
 
 export async function fetchScheduleRange(from: string, to: string): Promise<ScheduleRangeResponse> {
   const res = await apiRequest("GET", `/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
@@ -45,6 +45,27 @@ export async function createScheduledJob(payload: {
     }
     const message = await res.text();
     throw new Error(message || "Failed to duplicate job");
+  }
+  return res.json();
+}
+
+export async function fetchEngineerProfiles(): Promise<ScheduleEngineerProfile[]> {
+  const res = await apiRequest("GET", "/api/schedule/engineer-profiles");
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "Failed to load engineer profiles");
+  }
+  return res.json();
+}
+
+export async function updateEngineerProfile(
+  engineerUserId: string,
+  payload: Partial<ScheduleEngineerProfile>,
+): Promise<ScheduleEngineerProfile> {
+  const res = await apiRequest("PUT", `/api/schedule/engineer-profiles/${encodeURIComponent(engineerUserId)}`, payload);
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "Failed to update engineer profile");
   }
   return res.json();
 }

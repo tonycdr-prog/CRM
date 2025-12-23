@@ -1925,6 +1925,34 @@ export const insertRecurringScheduleSchema = createInsertSchema(recurringSchedul
 export type InsertRecurringSchedule = z.infer<typeof insertRecurringScheduleSchema>;
 export type DbRecurringSchedule = typeof recurringSchedules.$inferSelect;
 
+// Schedule engineer profiles (capacity + working window defaults)
+export const scheduleEngineerProfiles = pgTable(
+  "schedule_engineer_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull(),
+    engineerUserId: text("engineer_user_id").notNull(),
+    dailyCapacityMinutes: integer("daily_capacity_minutes").notNull().default(480),
+    workdayStart: text("workday_start").notNull().default("08:00"),
+    workdayEnd: text("workday_end").notNull().default("17:00"),
+    travelBufferMinutes: integer("travel_buffer_minutes").notNull().default(30),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    orgEngineer: index("idx_schedule_engineer_profiles_org_engineer").on(t.organizationId, t.engineerUserId),
+  }),
+);
+
+export const insertScheduleEngineerProfileSchema = createInsertSchema(scheduleEngineerProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertScheduleEngineerProfile = z.infer<typeof insertScheduleEngineerProfileSchema>;
+export type DbScheduleEngineerProfile = typeof scheduleEngineerProfiles.$inferSelect;
+
 // Schedule assignments (jobs → engineers, persisted scheduling rows)
 export const scheduleAssignments = pgTable(
   "schedule_assignments",

@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from "express";
 import { nanoid } from "nanoid";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { asyncHandler } from "./utils/routeHelpers";
 import {
@@ -23,9 +23,12 @@ import {
   ScheduleJobSlot,
   listScheduleConflicts,
   type ScheduleConflictDetail,
+  type ScheduleAvailabilitySlot,
+  type ScheduleEngineerProfile,
+  type ScheduleJobTimeWindow,
 } from "@shared/schedule";
 import { db, isDatabaseAvailable } from "./db";
-import { scheduleAssignments } from "@shared/schema";
+import { scheduleAssignments, scheduleEngineerProfiles, staffAvailability, staffDirectory, jobTimeWindows } from "@shared/schema";
 import { isDevAuthBypassEnabled } from "./replitAuth";
 
 const toISO = (d: Date) => d.toISOString();
@@ -72,12 +75,312 @@ const ScheduleUpsertSchema = z.object({
   engineerId: z.string().optional(),
 });
 
+const EngineerProfileSchema = z.object({
+  dailyCapacityMinutes: z.number().int().min(60).max(1440).optional(),
+  workdayStart: z.string().optional(),
+  workdayEnd: z.string().optional(),
+  travelBufferMinutes: z.number().int().min(0).max(240).optional(),
+  notes: z.string().optional().nullable(),
+});
+
 type ScheduleWarning = {
-  type: "conflict";
+  type: "conflict" | "availability" | "capacity" | "time_window";
   engineerId: string;
-  overlappingIds: string[];
+  jobId: string;
+  message: string;
+  overlappingIds?: string[];
 };
 
+const DEFAULT_PROFILE: Omit<ScheduleEngineerProfile, "engineerUserId"> = {
+  dailyCapacityMinutes: 480,
+  workdayStart: "08:00",
+  workdayEnd: "17:00",
+  travelBufferMinutes: 30,
+};
+
+function parseTimeToMinutes(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const [hh, mm] = value.split(":").map((part) => Number(part));
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  return hh * 60 + mm;
+}
+
+function minutesBetween(a: Date, b: Date) {
+  return Math.round((b.getTime() - a.getTime()) / 60000);
+}
+
+function toDateKey(value: Date) {
+  return value.toISOString().split("T")[0] ?? "";
+}
+
+function isWithinTimeWindow(start: Date, end: Date, startTime: string | null | undefined, endTime: string | null | undefined) {
+  const startMin = parseTimeToMinutes(startTime);
+  const endMin = parseTimeToMinutes(endTime);
+  if (startMin === null || endMin === null) return true;
+  const fromStart = start.getHours() * 60 + start.getMinutes();
+  const fromEnd = end.getHours() * 60 + end.getMinutes();
+  return fromStart >= startMin && fromEnd <= endMin;
+}
+
+function overlapsTimeWindow(start: Date, end: Date, startTime: string | null | undefined, endTime: string | null | undefined) {
+  const startMin = parseTimeToMinutes(startTime);
+  const endMin = parseTimeToMinutes(endTime);
+  if (startMin === null || endMin === null) return false;
+  const fromStart = start.getHours() * 60 + start.getMinutes();
+  const fromEnd = end.getHours() * 60 + end.getMinutes();
+  return fromStart < endMin && fromEnd > startMin;
+}
+
+function availabilityMatchesDate(slot: ScheduleAvailabilitySlot, date: Date) {
+  const dateKey = toDateKey(date);
+  if (slot.specificDate && slot.specificDate === dateKey) return true;
+  if (slot.dayOfWeek === null || slot.dayOfWeek === undefined) return false;
+  if (!slot.isRecurring) return false;
+  return slot.dayOfWeek === date.getDay();
+}
+
+function buildWarning(
+  type: ScheduleWarning["type"],
+  engineerId: string,
+  jobId: string,
+  message: string,
+  overlappingIds?: string[],
+): ScheduleWarning {
+  return { type, engineerId, jobId, message, overlappingIds };
+}
+
+function buildScheduleWarnings(params: {
+  assignments: ScheduleAssignment[];
+  profiles: Map<string, ScheduleEngineerProfile>;
+  availabilityByStaffId: Map<string, ScheduleAvailabilitySlot[]>;
+  timeWindowsByJobId: Map<string, ScheduleJobTimeWindow>;
+  engineerToStaffId: Map<string, string>;
+}): ScheduleWarning[] {
+  const warnings: ScheduleWarning[] = [];
+  const minutesByEngineer = new Map<string, number>();
+
+  params.assignments.forEach((assignment) => {
+    const engineerId = assignment.engineerUserId ?? assignment.engineerId;
+    if (!engineerId || engineerId === "unassigned") return;
+    const start = assignment.startsAt ?? assignment.start;
+    const end = assignment.endsAt ?? assignment.end;
+    if (!start || !end) return;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return;
+
+    const durationMin = Math.max(0, minutesBetween(startDate, endDate));
+    minutesByEngineer.set(engineerId, (minutesByEngineer.get(engineerId) ?? 0) + durationMin);
+
+    const profile = params.profiles.get(engineerId) ?? { engineerUserId: engineerId, ...DEFAULT_PROFILE };
+    if (!isWithinTimeWindow(startDate, endDate, profile.workdayStart, profile.workdayEnd)) {
+      warnings.push(
+        buildWarning(
+          "availability",
+          engineerId,
+          assignment.jobId,
+          "Outside the engineer working window.",
+        ),
+      );
+    }
+
+    const staffId = params.engineerToStaffId.get(engineerId);
+    if (staffId) {
+      const slots = params.availabilityByStaffId.get(staffId) ?? [];
+      const matching = slots.filter((slot) => availabilityMatchesDate(slot, startDate));
+      const availableSlots = matching.filter((slot) => slot.availabilityType === "available");
+      const blockedSlots = matching.filter(
+        (slot) => slot.availabilityType === "unavailable" || slot.availabilityType === "holiday",
+      );
+
+      if (blockedSlots.some((slot) => overlapsTimeWindow(startDate, endDate, slot.startTime, slot.endTime))) {
+        warnings.push(
+          buildWarning(
+            "availability",
+            engineerId,
+            assignment.jobId,
+            "Scheduled during an unavailable or holiday window.",
+          ),
+        );
+      } else if (availableSlots.length > 0) {
+        const withinAny = availableSlots.some((slot) =>
+          isWithinTimeWindow(startDate, endDate, slot.startTime, slot.endTime),
+        );
+        if (!withinAny) {
+          warnings.push(
+            buildWarning(
+              "availability",
+              engineerId,
+              assignment.jobId,
+              "Outside declared availability for this day.",
+            ),
+          );
+        }
+      }
+    }
+
+    const timeWindow = params.timeWindowsByJobId.get(assignment.jobId);
+    if (timeWindow?.preferredDate) {
+      const dateKey = toDateKey(startDate);
+      if (dateKey !== timeWindow.preferredDate) {
+        warnings.push(
+          buildWarning(
+            "time_window",
+            engineerId,
+            assignment.jobId,
+            "Outside the preferred customer date.",
+          ),
+        );
+      } else if (
+        timeWindow.preferredTimeStart &&
+        timeWindow.preferredTimeEnd &&
+        !isWithinTimeWindow(startDate, endDate, timeWindow.preferredTimeStart, timeWindow.preferredTimeEnd)
+      ) {
+        warnings.push(
+          buildWarning(
+            "time_window",
+            engineerId,
+            assignment.jobId,
+            "Outside the preferred customer time window.",
+          ),
+        );
+      }
+    }
+  });
+
+  minutesByEngineer.forEach((minutes, engineerId) => {
+    const profile = params.profiles.get(engineerId) ?? { engineerUserId: engineerId, ...DEFAULT_PROFILE };
+    if (minutes > profile.dailyCapacityMinutes) {
+      warnings.push(
+        buildWarning(
+          "capacity",
+          engineerId,
+          "capacity",
+          "Daily capacity exceeded for this engineer.",
+        ),
+      );
+    }
+  });
+
+  return warnings;
+}
+
+async function loadScheduleMeta(organizationId: string, assignments: ScheduleAssignment[]) {
+  const engineerIds = Array.from(
+    new Set(
+      assignments
+        .map((a) => a.engineerUserId ?? a.engineerId)
+        .filter((id): id is string => Boolean(id && id !== "unassigned")),
+    ),
+  );
+
+  const staffRows = engineerIds.length
+    ? await db
+        .select({
+          id: staffDirectory.id,
+          userId: staffDirectory.userId,
+          firstName: staffDirectory.firstName,
+          lastName: staffDirectory.lastName,
+        })
+        .from(staffDirectory)
+        .where(inArray(staffDirectory.userId, engineerIds))
+    : [];
+
+  const engineerToStaffId = new Map<string, string>();
+  const engineers = engineerIds.map((id) => {
+    const staff = staffRows.find((row) => row.userId === id);
+    if (staff?.id) engineerToStaffId.set(id, staff.id);
+    return {
+      id,
+      name: staff ? `${staff.firstName} ${staff.lastName}`.trim() : id,
+      staffId: staff?.id ?? null,
+    };
+  });
+
+  const profileRows = engineerIds.length
+    ? await db
+        .select()
+        .from(scheduleEngineerProfiles)
+        .where(
+          and(
+            eq(scheduleEngineerProfiles.organizationId, organizationId),
+            inArray(scheduleEngineerProfiles.engineerUserId, engineerIds),
+          ),
+        )
+    : [];
+  const profiles = engineerIds.map((engineerId) => {
+    const profile = profileRows.find((row) => row.engineerUserId === engineerId);
+    return {
+      engineerUserId: engineerId,
+      dailyCapacityMinutes: profile?.dailyCapacityMinutes ?? DEFAULT_PROFILE.dailyCapacityMinutes,
+      workdayStart: profile?.workdayStart ?? DEFAULT_PROFILE.workdayStart,
+      workdayEnd: profile?.workdayEnd ?? DEFAULT_PROFILE.workdayEnd,
+      travelBufferMinutes: profile?.travelBufferMinutes ?? DEFAULT_PROFILE.travelBufferMinutes,
+      notes: profile?.notes ?? null,
+    } satisfies ScheduleEngineerProfile;
+  });
+
+  const staffIds = Array.from(new Set(staffRows.map((row) => row.id).filter(Boolean)));
+  const availabilityRows = staffIds.length
+    ? await db.select().from(staffAvailability).where(inArray(staffAvailability.staffId, staffIds))
+    : [];
+  const availability: ScheduleAvailabilitySlot[] = availabilityRows.map((row) => ({
+    id: row.id,
+    staffId: row.staffId,
+    dayOfWeek: row.dayOfWeek,
+    specificDate: row.specificDate,
+    startTime: row.startTime,
+    endTime: row.endTime,
+    availabilityType: row.availabilityType ?? "available",
+    isRecurring: row.isRecurring ?? false,
+    notes: row.notes ?? null,
+  }));
+
+  const jobIds = Array.from(new Set(assignments.map((a) => a.jobId)));
+  const timeWindowRows = jobIds.length
+    ? await db.select().from(jobTimeWindows).where(inArray(jobTimeWindows.jobId, jobIds))
+    : [];
+  const timeWindows: ScheduleJobTimeWindow[] = timeWindowRows.map((row) => ({
+    jobId: row.jobId,
+    preferredDate: row.preferredDate,
+    preferredTimeStart: row.preferredTimeStart,
+    preferredTimeEnd: row.preferredTimeEnd,
+    alternateDate: row.alternateDate,
+    alternateTimeStart: row.alternateTimeStart,
+    alternateTimeEnd: row.alternateTimeEnd,
+    accessRestrictions: row.accessRestrictions,
+    confirmationStatus: row.confirmationStatus,
+  }));
+
+  const profilesByEngineer = new Map(profiles.map((profile) => [profile.engineerUserId, profile]));
+  const availabilityByStaffId = availability.reduce((acc, slot) => {
+    const existing = acc.get(slot.staffId) ?? [];
+    existing.push(slot);
+    acc.set(slot.staffId, existing);
+    return acc;
+  }, new Map<string, ScheduleAvailabilitySlot[]>());
+  const timeWindowsByJobId = new Map(timeWindows.map((tw) => [tw.jobId, tw]));
+
+  const warnings = buildScheduleWarnings({
+    assignments,
+    profiles: profilesByEngineer,
+    availabilityByStaffId,
+    timeWindowsByJobId,
+    engineerToStaffId,
+  });
+
+  return {
+    engineers,
+    profiles,
+    availability,
+    timeWindows,
+    warnings,
+    profilesByEngineer,
+    availabilityByStaffId,
+    timeWindowsByJobId,
+    engineerToStaffId,
+  };
+}
 const DEMO_ENGINEERS = [
   { id: "eng-a", name: "Avery Demo" },
   { id: "eng-b", name: "Blake Demo" },
@@ -120,6 +423,8 @@ function buildWarnings(assignments: ScheduleAssignment[], candidate: ScheduleAss
     {
       type: "conflict" as const,
       engineerId: candidate.engineerUserId ?? candidate.engineerId ?? "",
+      jobId: candidate.jobId,
+      message: "Overlapping assignments detected.",
       overlappingIds: overlaps.map((o) => o.id),
     },
   ];
@@ -166,10 +471,92 @@ function buildDbRouter(): Router {
 
   const ensureOrg: RequestHandler = (req, res, next) => {
     const orgId = requireOrgId(req);
-    if (!orgId) return res.status(400).json({ message: "Missing organization" });
+    if (!orgId) return res.status(400).json({ message: "Missing organisation" });
     (req as any).organizationId = orgId;
     next();
   };
+
+  router.get(
+    "/engineer-profiles",
+    ensureOrg,
+    asyncHandler(async (req, res) => {
+      const { organizationId } = req as any;
+      const rows = await db
+        .select()
+        .from(scheduleEngineerProfiles)
+        .where(eq(scheduleEngineerProfiles.organizationId, organizationId));
+      res.json(rows.map((row) => ({
+        engineerUserId: row.engineerUserId,
+        dailyCapacityMinutes: row.dailyCapacityMinutes ?? DEFAULT_PROFILE.dailyCapacityMinutes,
+        workdayStart: row.workdayStart ?? DEFAULT_PROFILE.workdayStart,
+        workdayEnd: row.workdayEnd ?? DEFAULT_PROFILE.workdayEnd,
+        travelBufferMinutes: row.travelBufferMinutes ?? DEFAULT_PROFILE.travelBufferMinutes,
+        notes: row.notes ?? null,
+      } satisfies ScheduleEngineerProfile)));
+    }),
+  );
+
+  router.put(
+    "/engineer-profiles/:engineerUserId",
+    ensureOrg,
+    asyncHandler(async (req, res) => {
+      const { organizationId } = req as any;
+      const engineerUserId = req.params.engineerUserId;
+      const parsed = EngineerProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid profile payload", issues: parsed.error.issues });
+      }
+
+      const existing = await db
+        .select({ id: scheduleEngineerProfiles.id })
+        .from(scheduleEngineerProfiles)
+        .where(
+          and(
+            eq(scheduleEngineerProfiles.organizationId, organizationId),
+            eq(scheduleEngineerProfiles.engineerUserId, engineerUserId),
+          ),
+        )
+        .limit(1);
+
+      if (existing.length) {
+        const [updated] = await db
+          .update(scheduleEngineerProfiles)
+          .set({ ...parsed.data, updatedAt: new Date() })
+          .where(eq(scheduleEngineerProfiles.id, existing[0].id))
+          .returning();
+        return res.json({
+          engineerUserId: updated.engineerUserId,
+          dailyCapacityMinutes: updated.dailyCapacityMinutes ?? DEFAULT_PROFILE.dailyCapacityMinutes,
+          workdayStart: updated.workdayStart ?? DEFAULT_PROFILE.workdayStart,
+          workdayEnd: updated.workdayEnd ?? DEFAULT_PROFILE.workdayEnd,
+          travelBufferMinutes: updated.travelBufferMinutes ?? DEFAULT_PROFILE.travelBufferMinutes,
+          notes: updated.notes ?? null,
+        } satisfies ScheduleEngineerProfile);
+      }
+
+      const [created] = await db
+        .insert(scheduleEngineerProfiles)
+        .values({
+          organizationId,
+          engineerUserId,
+          dailyCapacityMinutes: parsed.data.dailyCapacityMinutes ?? DEFAULT_PROFILE.dailyCapacityMinutes,
+          workdayStart: parsed.data.workdayStart ?? DEFAULT_PROFILE.workdayStart,
+          workdayEnd: parsed.data.workdayEnd ?? DEFAULT_PROFILE.workdayEnd,
+          travelBufferMinutes: parsed.data.travelBufferMinutes ?? DEFAULT_PROFILE.travelBufferMinutes,
+          notes: parsed.data.notes ?? null,
+        })
+        .returning();
+
+      res.status(201).json({
+        engineerUserId: created.engineerUserId,
+        dailyCapacityMinutes: created.dailyCapacityMinutes ?? DEFAULT_PROFILE.dailyCapacityMinutes,
+        workdayStart: created.workdayStart ?? DEFAULT_PROFILE.workdayStart,
+        workdayEnd: created.workdayEnd ?? DEFAULT_PROFILE.workdayEnd,
+        travelBufferMinutes: created.travelBufferMinutes ?? DEFAULT_PROFILE.travelBufferMinutes,
+        notes: created.notes ?? null,
+      } satisfies ScheduleEngineerProfile);
+    }),
+  );
 
   router.get(
     "/",
@@ -194,7 +581,18 @@ function buildDbRouter(): Router {
       const assignments = rows.map(mapDbRow);
       const { jobs } = aggregateJobs(assignments);
       const detailedConflicts = computeConflicts(assignments);
-      res.json({ jobs, conflicts: detailedConflicts, warnings: [], assignments });
+      const meta = await loadScheduleMeta(organizationId, assignments);
+
+      res.json({
+        jobs,
+        conflicts: detailedConflicts,
+        warnings: meta.warnings,
+        assignments,
+        engineers: meta.engineers,
+        profiles: meta.profiles,
+        availability: meta.availability,
+        timeWindows: meta.timeWindows,
+      });
     }),
   );
 
@@ -259,7 +657,17 @@ function buildDbRouter(): Router {
       const detailedConflicts = computeConflicts(assignments).filter((c) =>
         createdAssignments.some((a) => a.id === c.itemId),
       );
-      res.status(201).json({ jobs, conflicts: detailedConflicts, warnings: [], assignments });
+      const meta = await loadScheduleMeta(organizationId, assignments);
+      res.status(201).json({
+        jobs,
+        conflicts: detailedConflicts,
+        warnings: meta.warnings,
+        assignments,
+        engineers: meta.engineers,
+        profiles: meta.profiles,
+        availability: meta.availability,
+        timeWindows: meta.timeWindows,
+      });
     }),
   );
 
@@ -325,7 +733,17 @@ function buildDbRouter(): Router {
       const refreshed = refreshedRows.map(mapDbRow);
       const detailedConflicts = computeConflicts(refreshed);
       const { jobs } = aggregateJobs(refreshed);
-      res.json({ jobs, conflicts: detailedConflicts, warnings: buildWarnings(refreshed, updatedAssignment, req.params.id), assignments: refreshed });
+      const meta = await loadScheduleMeta(organizationId, refreshed);
+      res.json({
+        jobs,
+        conflicts: detailedConflicts,
+        warnings: meta.warnings,
+        assignments: refreshed,
+        engineers: meta.engineers,
+        profiles: meta.profiles,
+        availability: meta.availability,
+        timeWindows: meta.timeWindows,
+      });
     }),
   );
 
@@ -688,7 +1106,31 @@ function buildInMemoryRouter(): Router {
     asyncHandler(async (_req, res) => {
       const state = getScheduleState();
       const { jobs, conflicts } = aggregateJobs(state.assignments, state.jobs as any);
-      res.json({ jobs, conflicts, warnings: [], assignments: state.assignments });
+      const profiles = state.engineers.map((engineer) => ({
+        engineerUserId: engineer.id,
+        dailyCapacityMinutes: DEFAULT_PROFILE.dailyCapacityMinutes,
+        workdayStart: DEFAULT_PROFILE.workdayStart,
+        workdayEnd: DEFAULT_PROFILE.workdayEnd,
+        travelBufferMinutes: DEFAULT_PROFILE.travelBufferMinutes,
+        notes: null,
+      }));
+      const warnings = buildScheduleWarnings({
+        assignments: state.assignments,
+        profiles: new Map(profiles.map((profile) => [profile.engineerUserId, profile])),
+        availabilityByStaffId: new Map(),
+        timeWindowsByJobId: new Map(),
+        engineerToStaffId: new Map(),
+      });
+      res.json({
+        jobs,
+        conflicts,
+        warnings,
+        assignments: state.assignments,
+        engineers: state.engineers.map((engineer) => ({ id: engineer.id, name: engineer.name })),
+        profiles,
+        availability: [],
+        timeWindows: [],
+      });
     }),
   );
 
@@ -734,7 +1176,31 @@ function buildInMemoryRouter(): Router {
       const { assignments } = getScheduleState();
       const { jobs } = aggregateJobs(assignments, state.jobs as any);
       const conflicts = computeConflicts(assignments).filter((c) => created.some((a) => a.id === c.itemId));
-      res.status(201).json({ jobs, conflicts, warnings, assignments });
+      const profiles = state.engineers.map((engineer) => ({
+        engineerUserId: engineer.id,
+        dailyCapacityMinutes: DEFAULT_PROFILE.dailyCapacityMinutes,
+        workdayStart: DEFAULT_PROFILE.workdayStart,
+        workdayEnd: DEFAULT_PROFILE.workdayEnd,
+        travelBufferMinutes: DEFAULT_PROFILE.travelBufferMinutes,
+        notes: null,
+      }));
+      const scheduleWarnings = buildScheduleWarnings({
+        assignments,
+        profiles: new Map(profiles.map((profile) => [profile.engineerUserId, profile])),
+        availabilityByStaffId: new Map(),
+        timeWindowsByJobId: new Map(),
+        engineerToStaffId: new Map(),
+      });
+      res.status(201).json({
+        jobs,
+        conflicts,
+        warnings: scheduleWarnings,
+        assignments,
+        engineers: state.engineers.map((engineer) => ({ id: engineer.id, name: engineer.name })),
+        profiles,
+        availability: [],
+        timeWindows: [],
+      });
     }),
   );
 
@@ -760,9 +1226,32 @@ function buildInMemoryRouter(): Router {
 
       if (!updated) return res.status(404).json({ message: "Assignment not found" });
       const state = getScheduleState();
-      const warnings = buildWarnings(state.assignments, updated, req.params.id);
       const { jobs, conflicts } = aggregateJobs(state.assignments, state.jobs as any);
-      res.json({ jobs, conflicts, warnings, assignments: state.assignments });
+      const profiles = state.engineers.map((engineer) => ({
+        engineerUserId: engineer.id,
+        dailyCapacityMinutes: DEFAULT_PROFILE.dailyCapacityMinutes,
+        workdayStart: DEFAULT_PROFILE.workdayStart,
+        workdayEnd: DEFAULT_PROFILE.workdayEnd,
+        travelBufferMinutes: DEFAULT_PROFILE.travelBufferMinutes,
+        notes: null,
+      }));
+      const warnings = buildScheduleWarnings({
+        assignments: state.assignments,
+        profiles: new Map(profiles.map((profile) => [profile.engineerUserId, profile])),
+        availabilityByStaffId: new Map(),
+        timeWindowsByJobId: new Map(),
+        engineerToStaffId: new Map(),
+      });
+      res.json({
+        jobs,
+        conflicts,
+        warnings,
+        assignments: state.assignments,
+        engineers: state.engineers.map((engineer) => ({ id: engineer.id, name: engineer.name })),
+        profiles,
+        availability: [],
+        timeWindows: [],
+      });
     }),
   );
 
