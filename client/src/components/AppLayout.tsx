@@ -25,7 +25,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useToast } from "@/hooks/use-toast";
 import { ROUTES } from "@/lib/routes";
 import { getModulesList, MODULE_NAV } from "@/lib/modules";
-import { MODULES } from "@shared/modules";
+import { MODULES, type ModuleId } from "@shared/modules";
 import { buildLayoutWithSidebarWidget } from "@shared/sidebarWidgets";
 import {
   LayoutDashboard,
@@ -40,6 +40,18 @@ import {
   Smartphone,
   Plus,
   Eye,
+  Calendar,
+  Waves,
+  Flame,
+  Droplets,
+  Thermometer,
+  Activity,
+  DollarSign,
+  FileText,
+  Users,
+  Sparkles,
+  ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -51,8 +63,7 @@ import {
   setModuleOverride,
   type ModuleOverrideMap,
 } from "@/lib/module-overrides";
-import { Label } from "@/components/ui/label";
-import { WidgetFrame } from "@/components/widgets/WidgetFrame";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -60,6 +71,29 @@ interface AppLayoutProps {
 }
 
 interface JourneyMenuItem {
+  title: string;
+  description: string;
+  url: string;
+  icon: any;
+}
+
+interface CoreNavItem {
+  title: string;
+  description: string;
+  url: string;
+  icon: any;
+  testId: string;
+}
+
+interface ModuleNavItem {
+  id: string;
+  label: string;
+  description: string;
+  moduleId?: ModuleId;
+  links: { title: string; path: string; hint: string }[];
+}
+
+interface SystemNavItem {
   title: string;
   description: string;
   url: string;
@@ -102,6 +136,220 @@ const journeyMenuItems: JourneyMenuItem[] = [
     description: "People, assets, system settings",
     url: ROUTES.HUB_MANAGE,
     icon: Settings,
+  },
+];
+
+const coreNavItems: CoreNavItem[] = [
+  {
+    title: "Dashboard",
+    description: "Operational overview",
+    url: ROUTES.DASHBOARD,
+    icon: LayoutDashboard,
+    testId: "nav-dashboard",
+  },
+  {
+    title: "Jobs",
+    description: "Core work queue",
+    url: ROUTES.JOBS,
+    icon: Briefcase,
+    testId: "nav-jobs",
+  },
+  {
+    title: "Sites",
+    description: "Places and systems",
+    url: ROUTES.SITES,
+    icon: Building2,
+    testId: "nav-sites",
+  },
+  {
+    title: "Assets",
+    description: "Equipment and checks",
+    url: ROUTES.SITE_ASSETS,
+    icon: HardDrive,
+    testId: "nav-assets",
+  },
+  {
+    title: "People",
+    description: "Teams and roles",
+    url: ROUTES.STAFF_DIRECTORY,
+    icon: Users,
+    testId: "nav-people",
+  },
+];
+
+// Modules are expressed as composable capabilities with a consistent sub-menu shape
+// so the sidebar reads as a workspace assembly, not a list of siloed apps.
+const moduleNavStructure: ModuleNavItem[] = [
+  {
+    id: "smoke-control",
+    label: "Smoke Control",
+    description: "Evidence-led ventilation and assurance",
+    moduleId: MODULES.LIFE_SAFETY,
+    links: [
+      { title: "Overview", path: ROUTES.DASHBOARD, hint: "Module home" },
+      { title: "Assets", path: ROUTES.SITE_ASSETS, hint: "Fans, dampers, AOVs" },
+      { title: "Forms / Tests", path: ROUTES.FORMS_RUNNER, hint: "Commissioning + PPM" },
+      { title: "Reports", path: ROUTES.REPORTS, hint: "Compliance outputs" },
+      { title: "Defects", path: ROUTES.DEFECTS, hint: "Issues and remedials" },
+      { title: "History", path: "/service-history", hint: "Golden Thread" },
+    ],
+  },
+  {
+    id: "passive-fire",
+    label: "Passive Fire",
+    description: "Compartments, doors, dampers",
+    links: [
+      { title: "Overview", path: ROUTES.GOLDEN_THREAD, hint: "Fire strategy anchors" },
+      { title: "Assets", path: ROUTES.SITE_ASSETS, hint: "Doorsets and dampers" },
+      { title: "Forms / Tests", path: ROUTES.FORMS_RUNNER, hint: "Survey runs" },
+      { title: "Reports", path: ROUTES.REPORTS, hint: "Output packs" },
+      { title: "Defects", path: ROUTES.DEFECTS, hint: "Track gaps" },
+      { title: "History", path: "/service-history", hint: "Change log" },
+    ],
+  },
+  {
+    id: "fire-alarms",
+    label: "Fire Alarms",
+    description: "Detection, notification, traces",
+    links: [
+      { title: "Overview", path: ROUTES.REPORTS, hint: "Open signals" },
+      { title: "Assets", path: ROUTES.SITE_ASSETS, hint: "Panels and loops" },
+      { title: "Forms / Tests", path: ROUTES.FORMS_RUNNER, hint: "Weekly / monthly" },
+      { title: "Reports", path: ROUTES.REPORTS, hint: "Audit exports" },
+      { title: "Defects", path: ROUTES.DEFECTS, hint: "Faults" },
+      { title: "History", path: "/service-history", hint: "Signals log" },
+    ],
+  },
+  {
+    id: "hvac",
+    label: "HVAC",
+    description: "Air handling and balance",
+    links: [
+      { title: "Overview", path: ROUTES.SCHEDULE, hint: "Planned works" },
+      { title: "Assets", path: ROUTES.EQUIPMENT, hint: "Plant register" },
+      { title: "Forms / Tests", path: ROUTES.FORMS_RUNNER, hint: "PPM runs" },
+      { title: "Reports", path: ROUTES.REPORTS, hint: "Performance" },
+      { title: "Defects", path: ROUTES.DEFECTS, hint: "Outstanding" },
+      { title: "History", path: "/site-health", hint: "Trends" },
+    ],
+  },
+  {
+    id: "water-quality",
+    label: "Water Quality",
+    description: "Sampling, flushing, certificates",
+    links: [
+      { title: "Overview", path: ROUTES.SCHEDULE, hint: "Programmes" },
+      { title: "Assets", path: ROUTES.SITE_ASSETS, hint: "Systems" },
+      { title: "Forms / Tests", path: ROUTES.FORMS_RUNNER, hint: "Sampling" },
+      { title: "Reports", path: ROUTES.REPORTS, hint: "Results" },
+      { title: "Defects", path: ROUTES.DEFECTS, hint: "Actions" },
+      { title: "History", path: "/site-health", hint: "Water log" },
+    ],
+  },
+  {
+    id: "air-quality",
+    label: "Air Quality",
+    description: "Sensors, filter changes, comfort",
+    links: [
+      { title: "Overview", path: ROUTES.SCHEDULE, hint: "Routines" },
+      { title: "Assets", path: ROUTES.EQUIPMENT, hint: "Sensors" },
+      { title: "Forms / Tests", path: ROUTES.FORMS_RUNNER, hint: "Checks" },
+      { title: "Reports", path: ROUTES.REPORTS, hint: "IAQ" },
+      { title: "Defects", path: ROUTES.DEFECTS, hint: "Exceptions" },
+      { title: "History", path: "/site-health", hint: "Timeline" },
+    ],
+  },
+  {
+    id: "bms",
+    label: "BMS",
+    description: "Control states and overrides",
+    links: [
+      { title: "Overview", path: ROUTES.DASHBOARD, hint: "Live cards" },
+      { title: "Assets", path: ROUTES.EQUIPMENT, hint: "Controllers" },
+      { title: "Forms / Tests", path: ROUTES.FORMS_RUNNER, hint: "Sequences" },
+      { title: "Reports", path: ROUTES.REPORTS, hint: "Snapshots" },
+      { title: "Defects", path: ROUTES.DEFECTS, hint: "Overrides" },
+      { title: "History", path: "/site-health", hint: "Trends" },
+    ],
+  },
+  {
+    id: "scheduling",
+    label: "Scheduling",
+    description: "Calendar + constraints",
+    moduleId: MODULES.SCHEDULING,
+    links: [
+      { title: "Calendar", path: ROUTES.SCHEDULE, hint: "Planner" },
+      { title: "Gantt", path: ROUTES.SCHEDULE, hint: "Phasing" },
+      { title: "Conflicts", path: ROUTES.SCHEDULE, hint: "Resolve clashes" },
+      { title: "Unassigned", path: ROUTES.SCHEDULE, hint: "Bucket" },
+      { title: "Engineer view", path: ROUTES.FIELD_COMPANION_HOME, hint: "Readiness" },
+    ],
+  },
+  {
+    id: "forms-entities",
+    label: "Forms & Entities",
+    description: "Templates and evidence",
+    moduleId: MODULES.FORMS_ENGINE,
+    links: [
+      { title: "Overview", path: ROUTES.HUB_FORMS, hint: "Hub" },
+      { title: "Builder", path: ROUTES.FORMS_BUILDER, hint: "Design" },
+      { title: "Runner", path: ROUTES.FORMS_RUNNER, hint: "Capture" },
+      { title: "Entities", path: ROUTES.ADMIN_ENTITIES, hint: "Structures" },
+      { title: "History", path: ROUTES.GOLDEN_THREAD, hint: "Golden Thread" },
+    ],
+  },
+  {
+    id: "finance",
+    label: "Finance",
+    description: "Quotes, remedials, invoicing",
+    moduleId: MODULES.FINANCE,
+    links: [
+      { title: "Quotes", path: ROUTES.FINANCE, hint: "Drafts" },
+      { title: "Remedials", path: ROUTES.FINANCE, hint: "Costed actions" },
+      { title: "Invoicing", path: ROUTES.FINANCE, hint: "Billing" },
+      { title: "Pipeline", path: ROUTES.FINANCE, hint: "Forecast" },
+      { title: "KPIs", path: ROUTES.PROFITABILITY, hint: "Performance" },
+    ],
+  },
+  {
+    id: "reporting",
+    label: "Reporting",
+    description: "Outputs and dashboards",
+    moduleId: MODULES.REPORTING,
+    links: [
+      { title: "Overview", path: ROUTES.REPORTS, hint: "Library" },
+      { title: "Assets", path: ROUTES.SITE_ASSETS, hint: "Context" },
+      { title: "Forms / Tests", path: ROUTES.FORMS_RUNNER, hint: "Sources" },
+      { title: "Reports", path: ROUTES.REPORTS, hint: "Render" },
+      { title: "Defects", path: ROUTES.DEFECTS, hint: "Traceability" },
+    ],
+  },
+];
+
+const systemNavItems: SystemNavItem[] = [
+  {
+    title: "Admin",
+    description: "Structure and templates",
+    url: ROUTES.ADMIN_ENTITIES,
+    icon: ShieldCheck,
+  },
+  {
+    title: "Settings",
+    description: "Workspace preferences",
+    url: ROUTES.SETTINGS,
+    icon: Settings,
+  },
+  {
+    title: "Audit / Activity",
+    description: "Footprints and state",
+    url: ROUTES.ADMIN_USAGE,
+    icon: Activity,
+  },
+  {
+    title: "Help",
+    description: "Guidance and methods",
+    url: ROUTES.DOWNLOADS,
+    icon: Sparkles,
   },
 ];
 
@@ -198,14 +446,9 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
 
   const allModules = getModulesList();
   const bannerModule = enabledModules[0];
-  const moduleNavEntries = enabledModules.map((module) => ({
-    id: module.id,
-    label: module.label,
-    tagline: module.tagline,
-    links: (MODULE_NAV[module.id]?.links ?? module.routes).filter(
-      (link) => !!link.path,
-    ),
-  }));
+  const enabledModuleSet = new Set(enabledModules.map((module) => module.id));
+  const moduleOpenStorageKey = "nav-module-open-state";
+  const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user?.id) return;
@@ -231,7 +474,50 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     if (typeof localStorage === "undefined") return;
     const dismissed = localStorage.getItem("module-banner-dismissed");
     setModuleBannerDismissed(dismissed === "true");
+    const storedOpen = localStorage.getItem(moduleOpenStorageKey);
+    if (storedOpen) {
+      setOpenModules(JSON.parse(storedOpen));
+    }
   }, []);
+
+  const toggleModuleOpen = (moduleId: string, next?: boolean) => {
+    setOpenModules((prev) => {
+      const nextState = { ...prev, [moduleId]: next ?? !prev[moduleId] };
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(moduleOpenStorageKey, JSON.stringify(nextState));
+      }
+      return nextState;
+    });
+  };
+
+  const moduleIcon = (moduleId: string) => {
+    switch (moduleId) {
+      case "smoke-control":
+        return Wind;
+      case "passive-fire":
+        return Flame;
+      case "fire-alarms":
+        return AlertTriangle;
+      case "hvac":
+        return Thermometer;
+      case "water-quality":
+        return Droplets;
+      case "air-quality":
+        return Activity;
+      case "bms":
+        return FileText;
+      case "scheduling":
+        return Calendar;
+      case "forms-entities":
+        return ClipboardList;
+      case "finance":
+        return DollarSign;
+      case "reporting":
+        return BarChart3;
+      default:
+        return Waves;
+    }
+  };
 
   useEffect(() => {
     if (
@@ -305,117 +591,230 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 <Wind className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h2 className="font-semibold text-sm">Smoke Control</h2>
-                <p className="text-xs text-muted-foreground">Operations Module</p>
+                <h2 className="font-semibold text-sm">Deucalion Workspace</h2>
+                <p className="text-xs text-muted-foreground">Calm, evidence-led CRM core</p>
               </div>
             </div>
           </SidebarHeader>
           
           <SidebarContent className="overflow-y-auto">
-            <SidebarGroup data-testid="modules-nav-section">
-              <SidebarGroupLabel>Modules</SidebarGroupLabel>
+            <SidebarGroup>
+              <SidebarGroupLabel>Core</SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu className="space-y-3">
-                  {moduleNavEntries.map((module) => {
-                    const primaryPath = module.links[0]?.path || ROUTES.DASHBOARD;
+                <SidebarMenu className="space-y-1">
+                  {coreNavItems.map((item) => {
+                    const isActive =
+                      location === item.url ||
+                      location.startsWith(item.url + "/") ||
+                      (item.url === ROUTES.DASHBOARD && location === "/");
+
                     return (
-                      <SidebarMenuItem key={module.id} className="p-0">
-                        <WidgetFrame
-                          widgetId={`module-links-${module.id}`}
-                          title={module.label}
-                          description={module.tagline}
-                          supportsExpand
-                          supportsNewTab
-                          supportsSendToScreen
-                          supportsRefreshAction={false}
-                          newTabHref={primaryPath}
-                          sendToScreenHref={primaryPath}
-                          className="shadow-none border-muted bg-muted/40"
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          className="h-auto py-2"
                         >
-                          <div className="space-y-2" data-testid={`module-links-${module.id}`}>
-                            {module.links.map((link) => {
-                              const isActive = location === link.path;
-                              return (
-                                <div
-                                  key={`${module.id}-${link.path}`}
-                                  className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 hover:border-primary/70"
-                                >
-                                  <Link
-                                    href={link.path}
-                                    className="flex-1 flex flex-col text-left"
-                                  >
-                                    <span className="font-medium leading-tight">
-                                      {link.title}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground leading-snug">
-                                      {isActive ? "Currently viewing" : "Open destination"}
-                                    </span>
-                                  </Link>
-                                  <Button variant="outline" size="sm" asChild>
-                                    <Link href={link.path}>Open</Link>
-                                  </Button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </WidgetFrame>
+                          <Link href={item.url} data-testid={item.testId}>
+                            <item.icon className="h-4 w-4 shrink-0" />
+                            <div className="flex flex-col">
+                              <span className="leading-tight">{item.title}</span>
+                              <span className="text-xs text-muted-foreground leading-snug">
+                                {item.description}
+                              </span>
+                            </div>
+                          </Link>
+                        </SidebarMenuButton>
+                        <SidebarMenuAction>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Add ${item.title} to dashboard`}
+                            data-testid={`add-${item.title.toLowerCase().replace(/\s+/g, '-')}-to-dashboard`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              addToDashboard.mutate({ route: item.url });
+                            }}
+                            disabled={pendingRoute === item.url && addToDashboard.isPending}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </SidebarMenuAction>
                       </SidebarMenuItem>
                     );
                   })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            <SidebarGroup data-testid="modules-nav-section">
+              <SidebarGroupLabel>Modules</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-2">
+                  {moduleNavStructure.map((module) => {
+                    const enabled = module.moduleId ? enabledModuleSet.has(module.moduleId) : true;
+                    const isOpen = openModules[module.id] ?? enabled;
+
+                    const ModuleIcon = moduleIcon(module.id);
+
+                    return (
+                      <SidebarMenuItem
+                        key={module.id}
+                        className="rounded-lg border bg-card/60"
+                        data-testid={`nav-module-${module.id}`}
+                      >
+                        <Collapsible open={isOpen} onOpenChange={(next) => toggleModuleOpen(module.id, next)}>
+                          <div className="flex items-center justify-between px-3 py-2">
+                            <CollapsibleTrigger asChild>
+                              <button
+                                type="button"
+                                className="flex flex-1 items-center justify-start gap-3 text-left"
+                              >
+                                <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center">
+                                  <ModuleIcon className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-medium leading-tight">{module.label}</span>
+                                  <span className="text-xs text-muted-foreground leading-snug">
+                                    {module.description}
+                                  </span>
+                                </div>
+                              </button>
+                            </CollapsibleTrigger>
+                            <Badge variant={enabled ? "outline" : "secondary"} className="text-[10px]">
+                              {enabled ? "On" : "Off"}
+                            </Badge>
+                          </div>
+
+                          <CollapsibleContent>
+                            <div className="flex flex-col gap-1 px-3 pb-3">
+                              {module.links.map((link) => {
+                                const isActive =
+                                  location === link.path ||
+                                  location.startsWith(link.path + "/");
+                                return (
+                                  <div
+                                    key={`${module.id}-${link.path}`}
+                                    className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-muted/60"
+                                  >
+                                    <SidebarMenuButton
+                                      asChild
+                                      isActive={isActive}
+                                      className="flex-1 h-auto py-1"
+                                    >
+                                      <Link href={link.path}>
+                                        <div className="flex flex-col text-left">
+                                          <span className="text-sm font-medium leading-tight">{link.title}</span>
+                                          <span className="text-xs text-muted-foreground leading-snug">{link.hint}</span>
+                                        </div>
+                                      </Link>
+                                    </SidebarMenuButton>
+                                    <SidebarMenuAction>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label={`Add ${link.title} to dashboard`}
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          addToDashboard.mutate({ route: link.path });
+                                        }}
+                                        disabled={pendingRoute === link.path && addToDashboard.isPending}
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+                                    </SidebarMenuAction>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>System</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {systemNavItems.map((item) => {
+                    const isActive = location === item.url || location.startsWith(item.url + "/");
+                    return (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton asChild isActive={isActive} className="h-auto py-2">
+                          <Link href={item.url}>
+                            <item.icon className="h-4 w-4 shrink-0" />
+                            <div className="flex flex-col">
+                              <span className="leading-tight">{item.title}</span>
+                              <span className="text-xs text-muted-foreground leading-snug">{item.description}</span>
+                            </div>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
             <SidebarGroup>
               <SidebarGroupLabel>Journey</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
                   {journeyMenuItems.map((item) => {
-                    const isActive = location === item.url || 
-                      location.startsWith(item.url + "/") || 
+                    const isActive =
+                      location === item.url ||
+                      location.startsWith(item.url + "/") ||
                       (item.url === ROUTES.DASHBOARD && location === "/");
-                    
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        className="h-auto py-2"
-                      >
-                        <Link
-                          href={item.url}
-                          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          className="h-auto py-2"
                         >
-                          <item.icon className="h-4 w-4 shrink-0" />
-                          <div className="flex flex-col">
-                            <span className="leading-tight">{item.title}</span>
-                            <span className="text-xs text-muted-foreground leading-snug">
-                              {item.description}
-                            </span>
-                          </div>
-                        </Link>
-                      </SidebarMenuButton>
-                      <SidebarMenuAction>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Add ${item.title} to dashboard`}
-                          data-testid={`add-${item.title.toLowerCase().replace(/\s+/g, '-')}-to-dashboard`}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            addToDashboard.mutate({ route: item.url });
-                          }}
-                          disabled={pendingRoute === item.url && addToDashboard.isPending}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </SidebarMenuAction>
-                    </SidebarMenuItem>
-                  );
-                })}
+                          <Link
+                            href={item.url}
+                            data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                          >
+                            <item.icon className="h-4 w-4 shrink-0" />
+                            <div className="flex flex-col">
+                              <span className="leading-tight">{item.title}</span>
+                              <span className="text-xs text-muted-foreground leading-snug">
+                                {item.description}
+                              </span>
+                            </div>
+                          </Link>
+                        </SidebarMenuButton>
+                        <SidebarMenuAction>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Add ${item.title} to dashboard`}
+                            data-testid={`add-${item.title.toLowerCase().replace(/\s+/g, '-')}-to-dashboard`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              addToDashboard.mutate({ route: item.url });
+                            }}
+                            disabled={pendingRoute === item.url && addToDashboard.isPending}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </SidebarMenuAction>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
             {showReviewSection && (
               <SidebarGroup>
                 <SidebarGroupLabel>Review (Dev Only)</SidebarGroupLabel>
@@ -476,21 +875,21 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               </SidebarGroup>
             )}
 
-              {showReviewSection && (
-                <div className="m-4 rounded-md border bg-muted/40 p-3 text-xs space-y-1" data-testid="dev-flags-banner">
-                  <div className="font-semibold text-sm">Dev Flags</div>
-                  <div>NODE_ENV: {devStatus?.isDev ? "development" : import.meta.env.MODE || "development"}</div>
-                  <div>DEV_AUTH_BYPASS: {String(devStatus?.devAuthBypass ?? !!devAuthBypassFlag)}</div>
-                  <div>DEV_REVIEW_MODE: {String(devStatus?.devReviewMode ?? showReviewSection)}</div>
-                  <div>DB available: {devStatus?.hasDbConnection === false ? "false" : "true"}</div>
-                  <div>Limited mode: {String(devStatus?.limitedMode ?? false)}</div>
-                  {devStatus?.limitedMode && (
-                    <div className="text-amber-600 font-semibold">
-                      DEV_AUTH_BYPASS enabled — database unavailable — limited mode
-                    </div>
-                  )}
-                </div>
-              )}
+            {showReviewSection && (
+              <div className="m-4 rounded-md border bg-muted/40 p-3 text-xs space-y-1" data-testid="dev-flags-banner">
+                <div className="font-semibold text-sm">Dev Flags</div>
+                <div>NODE_ENV: {devStatus?.isDev ? "development" : import.meta.env.MODE || "development"}</div>
+                <div>DEV_AUTH_BYPASS: {String(devStatus?.devAuthBypass ?? !!devAuthBypassFlag)}</div>
+                <div>DEV_REVIEW_MODE: {String(devStatus?.devReviewMode ?? showReviewSection)}</div>
+                <div>DB available: {devStatus?.hasDbConnection === false ? "false" : "true"}</div>
+                <div>Limited mode: {String(devStatus?.limitedMode ?? false)}</div>
+                {devStatus?.limitedMode && (
+                  <div className="text-amber-600 font-semibold">
+                    DEV_AUTH_BYPASS enabled — database unavailable — limited mode
+                  </div>
+                )}
+              </div>
+            )}
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t">

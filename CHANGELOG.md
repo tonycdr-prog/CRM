@@ -1,6 +1,8 @@
 ﻿# Changelog
 
 ## [Unreleased]
+- Redesigned the app sidebar into Core/Modules/System rails with consistent module sub-menus, enablement hints, and calmer macOS-inspired styling.
+- Added a workspace shell pattern for module pages with context headers, secondary evidence rails, and a refreshed Reporting workspace using the new layout.
 - Renamed the core module to Smoke Control and added placeholder module definitions for upcoming services.
 - Rebuilt the landing page with a widget-style hero grid, Golden Thread scroll demo, and module terminology tiles.
 - Refreshed the landing page to foreground the ETHOS pillars, calm visual system, and Linear/Vercel/Stripe design cues.
