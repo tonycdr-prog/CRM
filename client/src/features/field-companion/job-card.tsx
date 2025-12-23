@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { KeyboardEvent } from "react";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,8 +45,23 @@ export function JobCard({ job, onOpen }: JobCardProps) {
       ? 100
       : 0;
 
+  const statusLabel = job.status?.replace(/_/g, " ") || "scheduled";
+  const handleOpen = () => onOpen(job.id);
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onOpen(job.id);
+    }
+  };
+
   return (
-    <Card className="hover-elevate" onClick={() => onOpen(job.id)}>
+    <Card
+      className="hover-elevate border-border/70 bg-card/70 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      onClick={handleOpen}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -53,7 +69,7 @@ export function JobCard({ job, onOpen }: JobCardProps) {
             <CardTitle className="text-lg leading-snug">{job.title}</CardTitle>
           </div>
           <Badge variant="outline" className="capitalize">
-            {job.status?.replace("_", " ") || "scheduled"}
+            {statusLabel}
           </Badge>
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -78,7 +94,12 @@ export function JobCard({ job, onOpen }: JobCardProps) {
         </div>
         <div>
           <Progress value={percent} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-1">Evidence {percent}%</p>
+          <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Evidence {percent}%</span>
+            <span>
+              Assets {job.completedAssetCount}/{job.assetCount || 0}
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { format, isToday, isPast, isTomorrow, parseISO } from "date-fns";
+import { isToday, isPast, isTomorrow, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { JobCard, type JobWithSite } from "@/features/field-companion/job-card";
 import { ROUTES, buildPath } from "@/lib/routes";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
-import { MapPin, Wifi, WifiOff, AlertCircle, PlayCircle } from "lucide-react";
+import { Wifi, AlertCircle, PlayCircle, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Client {
@@ -24,11 +24,11 @@ interface Client {
 }
 
 function StatusPill({ pending, syncing }: { pending: number; syncing: boolean }) {
-  const Icon = syncing ? WifiOff : pending > 0 ? AlertCircle : Wifi;
-  const label = syncing ? "Offline" : pending > 0 ? `${pending} pending` : "Synced";
+  const Icon = syncing ? RotateCw : pending > 0 ? AlertCircle : Wifi;
+  const label = syncing ? "Syncing" : pending > 0 ? `${pending} pending` : "Synced";
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium">
-      <Icon className="h-4 w-4" />
+      <Icon className={cn("h-4 w-4", syncing && "animate-spin")} />
       {label}
     </div>
   );
@@ -57,7 +57,7 @@ export default function FieldCompanion() {
   const nextJobLabel = useMemo(() => {
     if (!activeJob) return "No job scheduled";
     const client = clients.find((c) => c.id === activeJob.clientId);
-    return [client?.companyName, activeJob.site?.name].filter(Boolean).join(" · ");
+    return [client?.companyName, activeJob.site?.name].filter(Boolean).join(" - ");
   }, [activeJob, clients]);
 
   return (
@@ -66,6 +66,29 @@ export default function FieldCompanion() {
       subtitle={activeJob ? nextJobLabel || "Ready when you are" : "Awaiting dispatch"}
       status={<StatusPill pending={pending} syncing={syncing} />}
     >
+      <section className="pt-4 space-y-3">
+        <Card className="border-border/70 bg-card/70 shadow-sm">
+          <CardHeader className="pb-2">
+            <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Readiness</p>
+            <CardTitle className="text-base">Today at a glance</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-3 gap-3 text-center text-sm">
+            <div className="rounded-lg border border-border/70 bg-muted/40 px-2 py-3">
+              <p className="text-xs uppercase text-muted-foreground">Active</p>
+              <p className="text-lg font-semibold">{todaysJobs.length}</p>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-muted/40 px-2 py-3">
+              <p className="text-xs uppercase text-muted-foreground">Upcoming</p>
+              <p className="text-lg font-semibold">{upcoming.length}</p>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-muted/40 px-2 py-3">
+              <p className="text-xs uppercase text-muted-foreground">Completed</p>
+              <p className="text-lg font-semibold">{completedToday.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="py-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Next job</h2>
@@ -81,7 +104,7 @@ export default function FieldCompanion() {
             </Button>
           )}
         </div>
-        {jobsLoading && <p className="text-sm text-muted-foreground">Loading jobs…</p>}
+        {jobsLoading && <p className="text-sm text-muted-foreground">Loading jobs...</p>}
         {!jobsLoading && activeJob && (
           <JobCard job={activeJob} onOpen={(id) => setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id }))} />
         )}
@@ -97,15 +120,24 @@ export default function FieldCompanion() {
           <h3 className="text-sm font-semibold">Timeline</h3>
           <Badge variant="outline">Today</Badge>
         </div>
-        <ScrollArea className="h-52 rounded-md border bg-card/60">
+        <ScrollArea className="h-52 rounded-md border border-border/70 bg-card/60">
           <div className="p-3 space-y-2">
             {todaysJobs.map((job) => (
               <div
                 key={job.id}
                 className={cn(
-                  "rounded-lg border px-3 py-2 flex items-center justify-between",
+                  "rounded-lg border px-3 py-2 flex items-center justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                   job.id === activeJob?.id && "border-primary/60 bg-primary/5"
                 )}
+                role="button"
+                tabIndex={0}
+                onClick={() => setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: job.id }))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setLocation(buildPath(ROUTES.FIELD_COMPANION_JOB, { id: job.id }));
+                  }
+                }}
               >
                 <div className="space-y-1">
                   <p className="text-sm font-medium">{job.title}</p>
@@ -144,7 +176,7 @@ export default function FieldCompanion() {
         </div>
         <div className="grid gap-3">
           {completedToday.map((job) => (
-            <Card key={job.id} className="bg-muted/60">
+            <Card key={job.id} className="border-border/70 bg-muted/60 shadow-sm">
               <CardHeader className="pb-2">
                 <p className="text-xs text-muted-foreground">{job.jobNumber}</p>
                 <CardTitle className="text-base">{job.title}</CardTitle>

@@ -26,7 +26,7 @@ export function CompanionShell({
 }: CompanionShellProps) {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      <div className="sticky top-0 z-10 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/70 border-b">
+      <div className="sticky top-0 z-10 bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b">
         <div className="px-4 py-3 flex items-start justify-between gap-3">
           <div className="space-y-0.5">
             <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Field Companion</p>
@@ -41,7 +41,12 @@ export function CompanionShell({
         <Separator />
       </div>
 
-      <div className={cn("flex-1 overflow-y-auto px-4 pb-24", className)}>{children}</div>
+      <div
+        className={cn("flex-1 overflow-y-auto px-4 pb-24", className)}
+        style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}
+      >
+        {children}
+      </div>
       <CompanionTabs />
     </div>
   );

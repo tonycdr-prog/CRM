@@ -26,7 +26,7 @@ export default function FieldCompanionSync() {
       }
     >
       <div className="py-4 space-y-4">
-        <Card className="bg-muted/50">
+        <Card className="border-border/70 bg-card/70 shadow-sm">
           <CardHeader className="pb-2">
             <p className="text-xs uppercase text-muted-foreground">Status</p>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -43,7 +43,7 @@ export default function FieldCompanionSync() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/70 bg-card/70 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Pending uploads</CardTitle>
             <p className="text-xs text-muted-foreground">Photos, signatures, and form rows waiting to sync</p>
@@ -60,7 +60,7 @@ export default function FieldCompanionSync() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/70 bg-card/70 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Failed sync</CardTitle>
             <p className="text-xs text-muted-foreground">Review conflicts calmly; nothing lost</p>

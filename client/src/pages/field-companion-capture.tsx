@@ -16,7 +16,7 @@ const captureActions = [
   },
   {
     title: "Forms",
-    description: "Create submission packs from assets — repeat per asset automatically.",
+    description: "Create submission packs from assets - repeat per asset automatically.",
     icon: ClipboardCheck,
     cta: "Start runner",
     route: (id: string) => buildPath(ROUTES.FIELD_COMPANION_JOB_FORMS, { id }),
@@ -50,7 +50,7 @@ export default function FieldCompanionCapture() {
         {captureActions.map((action) => {
           const Icon = action.icon;
           return (
-            <Card key={action.title} className="hover-elevate">
+            <Card key={action.title} className="hover-elevate border-border/70 bg-card/70 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <p className="text-xs uppercase text-muted-foreground">{action.title}</p>
@@ -69,7 +69,7 @@ export default function FieldCompanionCapture() {
           );
         })}
 
-        <Card className="bg-muted/50">
+        <Card className="border-border/70 bg-muted/40 shadow-sm">
           <CardHeader className="pb-2">
             <p className="text-xs uppercase text-muted-foreground">Attachments</p>
             <CardTitle className="text-lg">Capture on the move</CardTitle>

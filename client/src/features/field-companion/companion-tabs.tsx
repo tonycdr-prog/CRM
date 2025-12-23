@@ -21,7 +21,10 @@ export default function CompanionTabs() {
   }, [location]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+    <nav
+      className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       <div className="grid grid-cols-5 text-xs">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -32,13 +35,17 @@ export default function CompanionTabs() {
               type="button"
               onClick={() => setLocation(tab.path)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-3 transition-colors",
+                "flex flex-col items-center justify-center gap-1 py-2 transition-colors",
                 isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
               )}
-              aria-current={isActive}
+              aria-current={isActive ? "page" : undefined}
             >
               <Icon className={cn("h-5 w-5", isActive && "stroke-[2.5]")} />
               <span className="font-medium">{tab.label}</span>
+              <span
+                className={cn("h-1 w-8 rounded-full", isActive ? "bg-primary" : "bg-transparent")}
+                aria-hidden="true"
+              />
             </button>
           );
         })}

@@ -18,7 +18,7 @@ export default function FieldCompanionMore() {
         {items.map((item) => {
           const Icon = item.icon;
           return (
-            <Card key={item.title} className="hover-elevate">
+            <Card key={item.title} className="hover-elevate border-border/70 bg-card/70 shadow-sm">
               <CardHeader className="flex items-start justify-between pb-2">
                 <div>
                   <p className="text-xs uppercase text-muted-foreground">{item.title}</p>

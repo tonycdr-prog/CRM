@@ -47,6 +47,12 @@ export default function FieldCompanionJobs() {
     return { today, backlog, completed };
   }, [filtered]);
 
+  const counts = {
+    today: grouped.today.length,
+    backlog: grouped.backlog.length,
+    completed: grouped.completed.length,
+  };
+
   const list = tab === "today" ? grouped.today : tab === "backlog" ? grouped.backlog : grouped.completed;
 
   return (
@@ -64,14 +70,23 @@ export default function FieldCompanionJobs() {
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="today">Active</TabsTrigger>
-            <TabsTrigger value="backlog">Queued</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
+            <TabsTrigger value="today" className="gap-2">
+              <span>Active</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{counts.today}</span>
+            </TabsTrigger>
+            <TabsTrigger value="backlog" className="gap-2">
+              <span>Queued</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{counts.backlog}</span>
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="gap-2">
+              <span>Completed</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{counts.completed}</span>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div className="grid gap-3">
-          {isLoading && <p className="text-sm text-muted-foreground">Loading jobs…</p>}
+          {isLoading && <p className="text-sm text-muted-foreground">Loading jobs...</p>}
           {!isLoading &&
             list.map((job) => (
               <JobCard
