@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, real, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, real, timestamp, jsonb, index, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { dashboardLayoutItemSchema, type DashboardLayoutItem } from "./dashboard";
@@ -1924,6 +1924,34 @@ export const recurringSchedules = pgTable("recurring_schedules", {
 export const insertRecurringScheduleSchema = createInsertSchema(recurringSchedules).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertRecurringSchedule = z.infer<typeof insertRecurringScheduleSchema>;
 export type DbRecurringSchedule = typeof recurringSchedules.$inferSelect;
+
+// Schedule assignments (jobs → engineers, persisted scheduling rows)
+export const scheduleAssignments = pgTable(
+  "schedule_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull(),
+    jobId: uuid("job_id").notNull(),
+    engineerUserId: text("engineer_user_id").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    requiredEngineers: integer("required_engineers").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    orgTime: index("idx_schedule_assignments_org_time").on(t.organizationId, t.startsAt, t.endsAt),
+    engTime: index("idx_schedule_assignments_engineer_time").on(t.engineerUserId, t.startsAt, t.endsAt),
+  }),
+);
+
+export const insertScheduleAssignmentSchema = createInsertSchema(scheduleAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertScheduleAssignment = z.infer<typeof insertScheduleAssignmentSchema>;
+export type DbScheduleAssignment = typeof scheduleAssignments.$inferSelect;
 
 // Risk assessments / RAMS templates
 export const riskAssessments = pgTable("risk_assessments", {

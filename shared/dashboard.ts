@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+export const WIDGET_KEYS = {
+  HEALTH_STATUS: "health-status",
+  TEAM_NOTE: "team-note",
+  NAVIGATION_SHORTCUT: "navigation-shortcut",
+  SCHEDULE_UPCOMING: "schedule.upcoming",
+  SCHEDULE_TODAY: "schedule.today",
+  SCHEDULE_CONFLICTS: "schedule.conflicts",
+  FINANCE_SUMMARY: "finance.summary",
+  REPORTS_QUEUE: "reports.queue",
+} as const;
+
+export type WidgetKey = typeof WIDGET_KEYS[keyof typeof WIDGET_KEYS];
+
 export type WidgetRefreshPolicy =
   | { mode: "manual" }
   | { mode: "interval"; intervalMs: number };
@@ -78,7 +91,7 @@ export type DashboardLayoutPayload = z.infer<typeof dashboardLayoutPayloadSchema
 
 const defaultWidgets: DashboardWidgetDefinition<any>[] = [
   {
-    widgetId: "health-status",
+    widgetId: WIDGET_KEYS.HEALTH_STATUS,
     title: "Health status",
     description: "Shows the latest API health check result.",
     paramsSchema: z.object({
@@ -95,7 +108,7 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     allowedContexts: ["dashboard", "modal", "standalone"],
   },
   {
-    widgetId: "team-note",
+    widgetId: WIDGET_KEYS.TEAM_NOTE,
     title: "Team note",
     description: "Short reminder text visible on the dashboard.",
     paramsSchema: z.object({
@@ -113,7 +126,7 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     allowedContexts: ["dashboard", "modal", "standalone"],
   },
   {
-    widgetId: "navigation-shortcut",
+    widgetId: WIDGET_KEYS.NAVIGATION_SHORTCUT,
     title: "Navigation shortcut",
     description: "Link to a sidebar destination directly from the dashboard.",
     paramsSchema: z.object({
@@ -130,6 +143,83 @@ const defaultWidgets: DashboardWidgetDefinition<any>[] = [
     supportsRefreshAction: false,
     preferredSize: { w: 1, h: 1 },
     allowedContexts: ["dashboard", "standalone"],
+  },
+  {
+    widgetId: WIDGET_KEYS.SCHEDULE_UPCOMING,
+    title: "Upcoming jobs",
+    description: "Surface the next scheduled assignments for quick dispatching.",
+    paramsSchema: z.object({
+      days: z.number().int().min(1).max(30).default(7),
+    }),
+    defaultParams: { days: 7 },
+    checkPermissions: () => true,
+    refresh: { mode: "interval", intervalMs: 60_000 },
+    supportsExpand: true,
+    supportsNewTab: true,
+    supportsSendToScreen: true,
+    supportsRefreshAction: true,
+    preferredSize: { w: 6, h: 4 },
+    allowedContexts: ["dashboard", "modal", "standalone"],
+  },
+  {
+    widgetId: WIDGET_KEYS.SCHEDULE_TODAY,
+    title: "Today’s schedule",
+    description: "Compact view of today’s assignments.",
+    paramsSchema: z.object({ limit: z.number().int().min(1).max(10).default(5) }),
+    defaultParams: { limit: 5 },
+    checkPermissions: () => true,
+    refresh: { mode: "interval", intervalMs: 45_000 },
+    supportsExpand: true,
+    supportsNewTab: true,
+    supportsSendToScreen: true,
+    supportsRefreshAction: true,
+    preferredSize: { w: 4, h: 3 },
+    allowedContexts: ["dashboard", "modal", "standalone"],
+  },
+  {
+    widgetId: WIDGET_KEYS.SCHEDULE_CONFLICTS,
+    title: "Schedule conflicts",
+    description: "Upcoming overlaps that may need reassignment.",
+    paramsSchema: z.object({ days: z.number().int().min(1).max(30).default(7) }),
+    defaultParams: { days: 7 },
+    checkPermissions: () => true,
+    refresh: { mode: "interval", intervalMs: 60_000 },
+    supportsExpand: true,
+    supportsNewTab: true,
+    supportsSendToScreen: true,
+    supportsRefreshAction: true,
+    preferredSize: { w: 4, h: 3 },
+    allowedContexts: ["dashboard", "modal", "standalone"],
+  },
+  {
+    widgetId: WIDGET_KEYS.FINANCE_SUMMARY,
+    title: "Finance summary",
+    description: "Revenue, outstanding invoices, and cost snapshot.",
+    paramsSchema: z.object({ periodDays: z.number().int().min(7).max(90).default(30) }),
+    defaultParams: { periodDays: 30 },
+    checkPermissions: () => true,
+    refresh: { mode: "manual" },
+    supportsExpand: true,
+    supportsNewTab: true,
+    supportsSendToScreen: true,
+    supportsRefreshAction: true,
+    preferredSize: { w: 5, h: 3 },
+    allowedContexts: ["dashboard", "modal", "standalone"],
+  },
+  {
+    widgetId: WIDGET_KEYS.REPORTS_QUEUE,
+    title: "Reports queue",
+    description: "Recent reports and signatures awaiting review.",
+    paramsSchema: z.object({ limit: z.number().int().min(3).max(20).default(5) }),
+    defaultParams: { limit: 5 },
+    checkPermissions: () => true,
+    refresh: { mode: "interval", intervalMs: 60_000 },
+    supportsExpand: true,
+    supportsNewTab: true,
+    supportsSendToScreen: true,
+    supportsRefreshAction: true,
+    preferredSize: { w: 5, h: 3 },
+    allowedContexts: ["dashboard", "modal", "standalone"],
   },
 ];
 

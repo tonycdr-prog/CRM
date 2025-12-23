@@ -24,6 +24,8 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useToast } from "@/hooks/use-toast";
 import { ROUTES } from "@/lib/routes";
+import { getModulesList, MODULE_NAV } from "@/lib/modules";
+import { MODULES } from "@shared/modules";
 import { buildLayoutWithSidebarWidget } from "@shared/sidebarWidgets";
 import {
   LayoutDashboard,
@@ -41,6 +43,16 @@ import {
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useModules } from "@/hooks/use-modules";
+import {
+  clearModuleOverride,
+  loadModuleOverrides,
+  onModuleOverridesChanged,
+  setModuleOverride,
+  type ModuleOverrideMap,
+} from "@/lib/module-overrides";
+import { Label } from "@/components/ui/label";
+import { WidgetFrame } from "@/components/widgets/WidgetFrame";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -112,6 +124,10 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
       }
     | null
   >(null);
+  const [moduleBannerDismissed, setModuleBannerDismissed] = useState(false);
+  const [moduleOverrides, setModuleOverrides] = useState<ModuleOverrideMap>(loadModuleOverrides());
+  const [seedingDemo, setSeedingDemo] = useState(false);
+  const { modules: enabledModules } = useModules();
   const hasNotifiedNoDb = useRef(false);
   const devReviewModeEnv =
     (import.meta.env as any).DEV_REVIEW_MODE ??
@@ -132,10 +148,64 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
     }
   };
 
+  const handleSeedDemo = async () => {
+    if (seedingDemo) return;
+    setSeedingDemo(true);
+    try {
+      const response = await fetch("/api/dev/seed-demo", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        toast({
+          title: "Not authorised",
+          description: "Auth/CSRF missing — refresh page.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        toast({
+          title: "Demo seed failed",
+          description: payload?.message || response.statusText,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Demo data loaded",
+        description: payload?.message || "Sample jobs, templates, and reports are ready.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Demo seed failed",
+        description: err?.message ?? "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setSeedingDemo(false);
+    }
+  };
+
   const style = {
     "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   };
+
+  const allModules = getModulesList();
+  const bannerModule = enabledModules[0];
+  const moduleNavEntries = enabledModules.map((module) => ({
+    id: module.id,
+    label: module.label,
+    tagline: module.tagline,
+    links: (MODULE_NAV[module.id]?.links ?? module.routes).filter(
+      (link) => !!link.path,
+    ),
+  }));
 
   useEffect(() => {
     if (!user?.id) return;
@@ -150,6 +220,17 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setDevStatus(data))
       .catch(() => setDevStatus(null));
+  }, []);
+
+  useEffect(() => {
+    const off = onModuleOverridesChanged(() => setModuleOverrides(loadModuleOverrides()));
+    return off;
+  }, []);
+
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    const dismissed = localStorage.getItem("module-banner-dismissed");
+    setModuleBannerDismissed(dismissed === "true");
   }, []);
 
   useEffect(() => {
@@ -231,6 +312,59 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
           </SidebarHeader>
           
           <SidebarContent className="overflow-y-auto">
+            <SidebarGroup data-testid="modules-nav-section">
+              <SidebarGroupLabel>Modules</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-3">
+                  {moduleNavEntries.map((module) => {
+                    const primaryPath = module.links[0]?.path || ROUTES.DASHBOARD;
+                    return (
+                      <SidebarMenuItem key={module.id} className="p-0">
+                        <WidgetFrame
+                          widgetId={`module-links-${module.id}`}
+                          title={module.label}
+                          description={module.tagline}
+                          supportsExpand
+                          supportsNewTab
+                          supportsSendToScreen
+                          supportsRefreshAction={false}
+                          newTabHref={primaryPath}
+                          sendToScreenHref={primaryPath}
+                          className="shadow-none border-muted bg-muted/40"
+                        >
+                          <div className="space-y-2" data-testid={`module-links-${module.id}`}>
+                            {module.links.map((link) => {
+                              const isActive = location === link.path;
+                              return (
+                                <div
+                                  key={`${module.id}-${link.path}`}
+                                  className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 hover:border-primary/70"
+                                >
+                                  <Link
+                                    href={link.path}
+                                    className="flex-1 flex flex-col text-left"
+                                  >
+                                    <span className="font-medium leading-tight">
+                                      {link.title}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground leading-snug">
+                                      {isActive ? "Currently viewing" : "Open destination"}
+                                    </span>
+                                  </Link>
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link href={link.path}>Open</Link>
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </WidgetFrame>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
             <SidebarGroup>
               <SidebarGroupLabel>Journey</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -294,11 +428,11 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                       },
                       {
                         title: "Forms Builder",
-                        url: "/forms-builder",
+                        url: ROUTES.FORMS_BUILDER,
                       },
                       {
                         title: "Forms Runner",
-                        url: "/forms-runner",
+                        url: ROUTES.FORMS_RUNNER,
                       },
                       {
                         title: "Forms Hub",
@@ -306,23 +440,23 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                       },
                       {
                         title: "Reports",
-                        url: "/reports",
+                        url: ROUTES.REPORTS,
                       },
                       {
                         title: "Defects",
-                        url: "/defects",
+                        url: ROUTES.DEFECTS,
                       },
                       {
                         title: "Smoke Control Library",
-                        url: "/smoke-control-library",
+                        url: ROUTES.SMOKE_CONTROL_LIBRARY,
                       },
                       {
                         title: "Schedule",
-                        url: "/schedule",
+                        url: ROUTES.SCHEDULE,
                       },
                       {
                         title: "Finance",
-                        url: "/finance",
+                        url: ROUTES.FINANCE,
                       },
                     ].map((item) => (
                       <SidebarMenuItem key={item.url}>
@@ -444,8 +578,97 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                 {devStatus?.limitedMode && (
                   <span className="font-semibold">Some actions are stubbed while the database is unavailable.</span>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSeedDemo}
+                  disabled={seedingDemo}
+                  data-testid="button-seed-demo"
+                >
+                  {seedingDemo ? "Seeding…" : "Load demo data"}
+                </Button>
               </div>
             )}
+            {showReviewSection && !moduleBannerDismissed && (
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 border-b bg-primary/5 px-4 py-3 text-xs sm:text-sm"
+                data-testid="module-review-banner"
+              >
+                <div className="space-y-1 max-w-4xl">
+                  <div className="font-semibold text-sm">
+                    Module: {bannerModule?.label ?? MODULE_NAV[MODULES.LIFE_SAFETY]?.label ?? "Life Safety Ops"}
+                  </div>
+                  <p className="text-muted-foreground leading-snug">
+                    {bannerModule?.tagline ?? MODULE_NAV[MODULES.LIFE_SAFETY]?.tagline}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setModuleBannerDismissed(true);
+                    if (typeof localStorage !== "undefined") {
+                      localStorage.setItem("module-banner-dismissed", "true");
+                    }
+                  }}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            )}
+            {showReviewSection ? (
+              <div className="border-b bg-muted/30 px-4 py-3">
+                <div className="flex items-center justify-between gap-2 text-sm font-medium mb-2">
+                  <span>Module switches (dev-only)</span>
+                  <span className="text-xs text-muted-foreground">Toggle modules to preview ModuleGate behavior</span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {allModules.map((module) => {
+                    const derivedEnabled = moduleOverrides[module.id as keyof ModuleOverrideMap];
+                    const enabledFallback = enabledModules.some((m) => m.id === module.id);
+                    const isEnabled = derivedEnabled ?? enabledFallback;
+                    return (
+                      <div key={module.id} className="flex items-center justify-between rounded border bg-background px-3 py-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{module.label}</span>
+                            <Badge variant={isEnabled ? "default" : "secondary"}>{isEnabled ? "On" : "Off"}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{module.tagline}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={(checked) => {
+                              setModuleOverride(module.id as any, checked);
+                              setModuleOverrides(loadModuleOverrides());
+                              toast({
+                                title: `${module.label} ${checked ? "enabled" : "disabled"}`,
+                                description: "ModuleGate will reflect this override in dev preview.",
+                              });
+                            }}
+                            aria-label={`Toggle ${module.label}`}
+                          />
+                          {moduleOverrides[module.id as keyof ModuleOverrideMap] !== undefined ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Reset ${module.label} toggle`}
+                              onClick={() => {
+                                clearModuleOverride(module.id as any);
+                                setModuleOverrides(loadModuleOverrides());
+                              }}
+                            >
+                              <span className="text-xs">Reset</span>
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             {children}
           </main>
         </div>

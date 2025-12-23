@@ -28,14 +28,37 @@
 - Added a database-optional dev preview path that boots with in-memory sessions/layouts when DEV_AUTH_BYPASS is enabled without a database.
 - Added SPA fallback routing and a dev-only Review sidebar section to preview new pages together.
 - Loosened CSP directives in development to allow Vite/react-refresh while keeping production directives strict.
+- Added schedule conflict detection with structured 409 responses, conflict query endpoint, and dev/test coverage.
+- Surfaced conflict warnings in the schedule UI with a dedicated conflicts widget and dashboard rendering support.
+- Added shared schedule schemas (Zod) to mirror the scheduling migration and ensure assignments carry aligned start/ends metadata.
 - Added dashboard widget chrome actions (expand, pop-out, send-to-screen, refresh) and an edit mode with drag, resize, duplicate, and save for per-user layouts.
  - Expanded the dev preview path to surface review-mode status (including DB availability) via `/api/dev/status` and sidebar
    flags while keeping production auth/CSP unchanged.
  - Ensured production CSP keeps strict connect-src while development explicitly allows websocket/inlined scripts for Vite.
 - Refined the development preview path with memory-backed dev auth, environment-aware CSP helpers, SPA accept-header checks, and a dev flag banner plus tests.
 - Added a guarded `/api/dev/seed-demo` endpoint to seed demo data when a database is available under `SEED_DEMO=true`.
+- Tightened `/api/dev/seed-demo` gating for dev/review mode, surfaced a dev-banner "Load demo data" action with auth-friendly toasts, and added coverage for missing flag handling.
 - Grouped the defects UI by job with friendlier unauthorized messaging to aid review of defect workflows in preview mode.
 - Added a global dev review banner to surface auth/review/database flags during preview sessions.
 - Introduced a reusable widget chrome with expand/new-tab controls and a standalone widget view route.
 - Added a schedule service with in-memory assignments, duplication, and conflict detection plus API tests for create/update/duplicate flows.
 - Rebuilt the schedule page with calendar and gantt drag/drop, shift-duplicate, resize, conflict warnings, and engineer selection for duplicates.
+- Refreshed the schedule board with per-engineer drag-and-drop swimlanes, shift-duplicate support, and friendlier auth/conflict handling for preview.
+- Added a scheduling assignments migration to persist job-to-engineer windows with indexed lookups for conflict detection.
+- Updated the shared schedule assignment table mapping to use UUID columns and indexed builders consistent with the migration schema.
+- Reworked schedule routes to persist assignments against the database when available while retaining the in-memory dev fallback and refreshed API tests.
+- Introduced Life Safety Ops module framing with module constants, sidebar grouping, a review banner tagline, and supporting documentation.
+- Added a module registry with env-driven enablement, dev status surfacing, and client hooks so modules can be toggled without impacting CRM core routes.
+- Expanded module placeholders (reporting, asset management, compliance, forms engine) and added module gating with a friendly disabled state.
+- Declared @dnd-kit dependencies to support dashboard and scheduling drag-and-drop interactions.
+- Ensured module sidebar sub-links navigate directly to their pages with clearer "Open page" affordances for review flows.
+- Rendered module sub-links as widget-style previews with expand/pop-out/send controls so reviewers can launch destinations directly from the sidebar.
+- Added dev-only module switches to preview ModuleGate disabled states and expanded widget registry with schedule today, finance summary, and reports queue components.
+- Pinned npm installs to the public registry via `.npmrc` for consistent dependency resolution in dev environments.
+- Registered an upcoming-schedule dashboard widget with standard chrome actions to align with new widget key constants.
+- Added an upcoming schedule widget component that surfaces the next assignments with friendly auth/CSRF messaging and quick
+  navigation into the schedule page.
+- Added job-centric schedule endpoints (list/move/duplicate) with conflict warnings instead of hard failures plus in-memory/demo seeds for two engineers and three jobs, including an intentional overlap.
+- Rebuilt the schedule page to consume the new job model across calendar and gantt views with shift-duplicate, escape-to-cancel drag, pop-out widget support, and inline conflict badges.
+- Refactored scheduling into a dedicated module boundary with RESTful /api/schedule handlers, in-memory and DB demo seeds, shared client services/hooks, and updated conflict tests for warning-based responses.
+- Added assignment-level schedule responses (including assignments in range results), optimistic drag/drop with 15-minute snapping across calendar and gantt views, and regression tests for patch/create flows.

@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ViewModeProvider, useViewMode, useRouteSync } from "@/hooks/useViewMode";
 import { ROUTES, isCompanionPath } from "@/lib/routes";
 import { AppLayout } from "@/components/AppLayout";
+import { withModuleGuard } from "@/components/ModuleGate";
 import FieldCompanion from "@/pages/field-companion";
 import FieldJobDetail from "@/pages/field-job-detail";
 import FieldJobForms from "@/pages/field-job-forms";
@@ -91,6 +92,7 @@ import FormsBuilderPage from "@/pages/forms-builder";
 import FormsRunnerPage from "@/pages/forms-runner";
 import WidgetView from "@/pages/widget-view";
 import { Loader2 } from "lucide-react";
+import { MODULES } from "@shared/modules";
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -100,6 +102,26 @@ function PlaceholderPage({ title }: { title: string }) {
     </div>
   );
 }
+
+const FormsBuilderGuarded = withModuleGuard(
+  [MODULES.FORMS_ENGINE, MODULES.LIFE_SAFETY],
+  FormsBuilderPage,
+);
+const FormsRunnerGuarded = withModuleGuard(
+  [MODULES.FORMS_ENGINE, MODULES.LIFE_SAFETY],
+  FormsRunnerPage,
+);
+const SmokeLibraryGuarded = withModuleGuard(
+  [MODULES.FORMS_ENGINE, MODULES.LIFE_SAFETY],
+  SmokeControlLibraryPage,
+);
+const ReportsGuarded = withModuleGuard(
+  [MODULES.REPORTING, MODULES.LIFE_SAFETY, MODULES.FINANCE],
+  Reports,
+);
+const DefectsGuarded = withModuleGuard([MODULES.LIFE_SAFETY], Defects);
+const ScheduleGuarded = withModuleGuard([MODULES.SCHEDULING], Schedule);
+const FinanceGuarded = withModuleGuard([MODULES.FINANCE], Finance);
 
 function LayoutRoutes() {
   const { isOrgAdmin, loading: meLoading } = useMe();
@@ -117,8 +139,8 @@ function LayoutRoutes() {
         <Route path={ROUTES.HUB_CUSTOMERS} component={CustomersHub} />
         <Route path={ROUTES.HUB_REPORTS} component={ReportsHub} />
         <Route path={ROUTES.HUB_MANAGE} component={ManageHub} />
-        <Route path={ROUTES.FORMS_BUILDER} component={FormsBuilderPage} />
-        <Route path={ROUTES.FORMS_RUNNER} component={FormsRunnerPage} />
+        <Route path={ROUTES.FORMS_BUILDER} component={FormsBuilderGuarded} />
+        <Route path={ROUTES.FORMS_RUNNER} component={FormsRunnerGuarded} />
 
         <Route path="/test" component={FieldTesting} />
         <Route path="/clients" component={Clients} />
@@ -129,15 +151,15 @@ function LayoutRoutes() {
         <Route path="/jobs" component={Jobs} />
         <Route path={ROUTES.JOB_ACTIVITY} component={JobActivityPage} />
         <Route path="/jobs/:id" component={JobDetail} />
-        <Route path="/finance" component={Finance} />
+        <Route path="/finance" component={FinanceGuarded} />
         <Route path="/expenses" component={Expenses} />
         <Route path="/timesheets" component={Timesheets} />
         <Route path="/vehicles" component={Vehicles} />
         <Route path="/subcontractors" component={Subcontractors} />
         <Route path="/holidays" component={Holidays} />
         <Route path="/profitability" component={Profitability} />
-        <Route path="/reports" component={Reports} />
-        <Route path="/schedule" component={Schedule} />
+        <Route path="/reports" component={ReportsGuarded} />
+        <Route path="/schedule" component={ScheduleGuarded} />
         <Route path="/equipment" component={Equipment} />
         <Route path="/certifications" component={Certifications} />
         <Route path="/leads" component={Leads} />
@@ -152,7 +174,7 @@ function LayoutRoutes() {
         <Route path="/purchase-orders" component={PurchaseOrders} />
         <Route path="/training-records" component={TrainingRecords} />
         <Route path="/inventory" component={Inventory} />
-        <Route path="/defects" component={Defects} />
+        <Route path="/defects" component={DefectsGuarded} />
         <Route path="/document-register" component={DocumentRegister} />
         <Route path="/mileage-claims" component={MileageClaims} />
         <Route path="/work-notes" component={WorkNotes} />
@@ -189,7 +211,7 @@ function LayoutRoutes() {
             <Route path={ROUTES.ADMIN_TEMPLATE_EDIT} component={AdminTemplateEditPage} />
             <Route path={ROUTES.ADMIN_TEMPLATES} component={AdminTemplatesPage} />
             <Route path={ROUTES.ADMIN_USAGE} component={AdminUsagePage} />
-            <Route path={ROUTES.SMOKE_CONTROL_LIBRARY} component={SmokeControlLibraryPage} />
+            <Route path={ROUTES.SMOKE_CONTROL_LIBRARY} component={SmokeLibraryGuarded} />
           </>
         ) : (
           <>

@@ -28,6 +28,7 @@
 - DB generate: `DATABASE_URL=<postgres-url> npm run db:generate`
 - DB migrate/push: `DATABASE_URL=<postgres-url> npm run db:push`
 - DB seed: `DATABASE_URL=<postgres-url> SESSION_SECRET=<secret> REPL_ID=<repl-id> ISSUER_URL=<issuer> npm run db:seed`
+- Install deps: `npm install` (registry pinned via `.npmrc` to npmjs; may fail in restricted networks)
 
 ### Preview (Replit/local dev)
 - Set `NODE_ENV=development DEV_AUTH_BYPASS=true DEV_REVIEW_MODE=true SESSION_SECRET=dev`
@@ -36,6 +37,7 @@
 - Verify pages: `/dashboard`, `/forms-builder`, `/forms-runner`, `/hub/forms`, `/reports`, `/defects`, `/smoke-control-library`, `/schedule`, `/finance`
 - If no `DATABASE_URL` is available, the dev server will still start in limited mode with in-memory auth/layouts and show a dev banner noting the database is unavailable.
 - Dashboard edit mode: toggle "Edit layout" on `/dashboard` to drag, resize, duplicate (Shift+drag), and save widgets; header controls support expand, pop-out, send to screen, and refresh.
+- Use the dev-only module switches banner to toggle modules on/off and preview ModuleGate disabled states during review.
 
 ## D) Conventions
 - TypeScript strict across client/server/shared.
@@ -50,3 +52,10 @@
 - No console errors.
 - Basic happy-path manually verified.
 - Notes added to `CHANGELOG.md`.
+
+## Modules
+- Current module: **Life Safety Ops** (`life-safety`).
+- Additional module keys are scaffolded for scheduling (`scheduling`), finance (`finance`), reporting (`reporting`), asset management (`asset-management`), compliance/certifications (`compliance`), and forms engine (`forms-engine`).
+- Positioning: "Life Safety Ops is a standards-led operations module that turns site assets and calibrated test readings into compliant smoke-control forms, defects, and signed reports—fast, repeatably, and audit-ready."
+- Toggle modules via env flags (dev-only defaults on): `ENABLE_MODULE_LIFE_SAFETY_OPS`, `ENABLE_MODULE_SCHEDULING`, `ENABLE_MODULE_FINANCE`, `ENABLE_MODULE_REPORTING`, `ENABLE_MODULE_ASSET_MANAGEMENT`, `ENABLE_MODULE_COMPLIANCE`, `ENABLE_MODULE_FORMS_ENGINE`.
+- Sidebar "Modules" section links to the Life Safety Ops entry and its core pages (dashboard, forms, smoke control library, reports, defects, schedule, finance). In dev review mode, an inline banner reiterates the module tagline for clarity.
