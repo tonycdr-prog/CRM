@@ -224,6 +224,27 @@ const MODULE_SECTIONS = [
   },
 ];
 
+const ETHOS_PILLARS = [
+  {
+    title: "Foundational before clever",
+    detail: "CRM core stays stable; modules orbit around jobs, sites, assets, people, and history.",
+  },
+  {
+    title: "Evidence-first compliance",
+    detail: "Golden Thread timelines show provenance across forms, meters, defects, quotes, and remedials.",
+  },
+  {
+    title: "Human judgment in the loop",
+    detail: "Insights are advisory with rationale, keeping critical calls in operator control.",
+  },
+  {
+    title: "Calm, modular workspaces",
+    detail: "Widget chrome enables expand, pop-out, and second-screen views without noise or gimmicks.",
+  },
+];
+
+const DESIGN_INSPIRATIONS = ["Linear", "Vercel", "Stripe Dashboard"];
+
 const MOCK_WIDGET_DATA = {
   timeline: [
     { label: "Job created", meta: "Central Plaza - 09:12" },
@@ -679,7 +700,7 @@ export default function Landing() {
               <div className="text-sm uppercase tracking-[0.2em] text-muted-foreground">
                 Deucalion
               </div>
-              <div className="font-serif text-lg font-semibold">Widget-first CRM</div>
+              <div className="font-serif text-lg font-semibold">Ethos-led operations platform</div>
             </div>
           </div>
           <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
@@ -704,17 +725,18 @@ export default function Landing() {
           id="hero"
           className="relative overflow-hidden border-b border-border/60 bg-[radial-gradient(circle_at_top,_rgba(20,94,117,0.18),_transparent_55%)]"
         >
-          <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[1.1fr_1.4fr] lg:py-24">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(15,23,42,0.04),_transparent_55%)]" />
+          <div className="relative mx-auto grid max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[1.1fr_1.4fr] lg:py-24">
             <div className="space-y-6">
               <Badge variant="outline" className="text-xs uppercase tracking-[0.3em]">
-                Calm systems for critical work
+                Ethos-led Golden Thread
               </Badge>
               <h1 className="font-serif text-4xl font-semibold leading-tight md:text-5xl">
-                A live dashboard for compliance, not a pile of reports.
+                Calm, evidence-first operations built on a stable CRM core.
               </h1>
               <p className="text-lg text-muted-foreground">
-                Deucalion keeps the CRM core stable while modules handle scheduling,
-                forms, reporting, and compliance. Evidence stays connected, work stays calm.
+                Deucalion keeps jobs, sites, assets, people, and history as fixed truths. Modules stack on top for scheduling,
+                forms, reporting, and compliance while the Golden Thread keeps every action explainable.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button size="lg" asChild>
@@ -742,6 +764,14 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold">Design inspirations</span>
+                {DESIGN_INSPIRATIONS.map((label) => (
+                  <span key={label} className="rounded-full border border-border px-2 py-1 text-[11px]">
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -765,6 +795,40 @@ export default function Landing() {
                 >
                   {widgetContent(widget.key)}
                 </WidgetShell>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="ethos"
+          className="border-b border-border/60 bg-background/60 py-16 backdrop-blur-sm"
+        >
+          <div className="mx-auto max-w-6xl space-y-8 px-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-2">
+                <Badge variant="outline" className="text-xs uppercase tracking-[0.3em]">
+                  Ethos pillars
+                </Badge>
+                <h2 className="font-serif text-3xl font-semibold md:text-4xl">Built for calm critical work</h2>
+                <p className="text-muted-foreground">
+                  Every module and screen maps back to the design brief: clear structure before automation, evidence before
+                  summary, and interfaces that keep operators in control.
+                </p>
+              </div>
+              <div className="rounded-full border border-border bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
+                Inspired by Linear · Vercel · Stripe Dashboard
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {ETHOS_PILLARS.map((pillar) => (
+                <Card key={pillar.title} className="border-border/60">
+                  <CardHeader className="space-y-2">
+                    <CardTitle className="text-base">{pillar.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{pillar.detail}</p>
+                  </CardHeader>
+                </Card>
               ))}
             </div>
           </div>

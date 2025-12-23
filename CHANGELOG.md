@@ -3,6 +3,7 @@
 ## [Unreleased]
 - Renamed the core module to Smoke Control and added placeholder module definitions for upcoming services.
 - Rebuilt the landing page with a widget-style hero grid, Golden Thread scroll demo, and module terminology tiles.
+- Refreshed the landing page to foreground the ETHOS pillars, calm visual system, and Linear/Vercel/Stripe design cues.
 - Added SPEC-2 scaffolding (shared contracts/forms engine, Deucalion API stubs, kernel widgets, and infra compose/env).
 - Added a shared API client wrapper with consistent error mapping, auth/CSRF toast prompting, and request-id surfacing plus tests.
 - Swapped admin pages to the shared API client wrapper for consistent auth/error handling on templates, entities, and usage.
