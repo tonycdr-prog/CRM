@@ -104,6 +104,13 @@
   --destructive-border: 0 65% 42%;
 }
 
+.landing-ios {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-serif: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
 /* MODERN MINIMAL - DARK MODE */
 .dark {
   --button-outline: rgba(255,255,255, .08);

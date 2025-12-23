@@ -34,7 +34,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="bg-gradient-to-b from-background via-background/95 to-background text-foreground">
+    <div className="landing-ios bg-gradient-to-b from-background via-background/95 to-background text-foreground">
       <header className="border-b border-border/60 bg-gradient-to-b from-background via-background to-background/90" id="hero">
         <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-14 md:flex-row md:items-center md:justify-between">
           <div className="space-y-5 md:max-w-xl">

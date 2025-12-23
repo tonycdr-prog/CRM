@@ -22,6 +22,24 @@ export function ConceptScroller() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
 
+  const handleWheel: React.WheelEventHandler<HTMLDivElement> = (event) => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    if (maxScroll <= 0) return;
+
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+
+    const nextLeft = container.scrollLeft + event.deltaY;
+    if (nextLeft <= 0 || nextLeft >= maxScroll) {
+      return;
+    }
+
+    container.scrollLeft = nextLeft;
+    event.preventDefault();
+  };
+
   const scrollByAmount = (direction: "left" | "right") => {
     const container = scrollRef.current;
     if (!container) return;
@@ -73,6 +91,8 @@ export function ConceptScroller() {
             ref={scrollRef}
             role="region"
             aria-label="System concepts"
+            aria-describedby="concept-scroll-hint"
+            onWheel={handleWheel}
             className="flex gap-4 overflow-x-auto pb-4 [scrollbar-width:thin] snap-x snap-mandatory"
           >
             {conceptCards.map((card) => (
@@ -119,7 +139,7 @@ export function ConceptScroller() {
             aria-hidden
           />
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div id="concept-scroll-hint" className="text-xs text-muted-foreground">
           Scroll horizontally to view each concept, or use the buttons.
         </div>
       </div>
