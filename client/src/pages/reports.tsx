@@ -9,6 +9,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, FileText, ShieldCheck, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { WorkspaceShell, WorkspaceSection } from "@/features/workspaces/workspace-shell";
+import { RelatedEvidencePanel } from "@/features/workspaces/related-evidence-panel";
 
 interface ReportPayload {
   reportType: string;
@@ -179,41 +181,68 @@ export default function ReportsPage() {
   };
 
   const hasMissing = (payload?.systemSummary.missingEntities?.length ?? 0) > 0;
+  const payloadState = payload
+    ? payload.warnings.length
+      ? "Warnings present"
+      : "Ready"
+    : "Awaiting input";
+
+  const secondaryRail = (
+    <>
+      <RelatedEvidencePanel />
+      <Card className="border bg-card/70 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">Evidence guardrails</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p className="leading-snug">Evidence stays read-only here to keep human judgment in the loop.</p>
+          <ul className="list-disc pl-4 space-y-1">
+            <li>Use module sub-menus to jump without losing context.</li>
+            <li>Preview respects view variant — client vs internal.</li>
+            <li>Golden Thread stays visible: Job → Form → Report → Remedial.</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </>
+  );
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-primary" />
+    <WorkspaceShell
+      title="Reporting & Sign-off"
+      subtitle="Render evidence without losing the Job → Form → Report trail."
+      icon={FileText}
+      breadcrumbs={["Modules", "Reporting"]}
+      meta={[
+        { label: "Golden Thread", value: "Job → Report → Remedial" },
+        { label: "State", value: payloadState },
+      ]}
+      rail={secondaryRail}
+    >
+      <WorkspaceSection
+        title="Create report"
+        description="Provide a submission and type; the system stays calm until evidence is ready."
+        actions={
+          <div className="flex items-center gap-2">
+            <Select value={viewVariant} onValueChange={(val: "client" | "internal") => setViewVariant(val)}>
+              <SelectTrigger className="w-40" data-testid="select-view-variant">
+                <SelectValue placeholder="View variant" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="client">Client view</SelectItem>
+                <SelectItem value="internal">Internal view</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={() => report?.id && reloadReport(report.id)}
+              variant="outline"
+              disabled={!report?.id || loading}
+            >
+              Refresh
+            </Button>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold" data-testid="text-page-title">Reporting & Sign-off</h1>
-            <p className="text-muted-foreground">Generate operational reports from form submissions.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select value={viewVariant} onValueChange={(val: "client" | "internal") => setViewVariant(val)}>
-            <SelectTrigger className="w-40" data-testid="select-view-variant">
-              <SelectValue placeholder="View variant" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="client">Client view</SelectItem>
-              <SelectItem value="internal">Internal view</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={() => report?.id && reloadReport(report.id)} variant="outline" disabled={!report?.id || loading}>
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Create report</CardTitle>
-          <CardDescription>Provide a submission ID and report type to generate a report payload.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="submissionId">Submission ID</Label>
             <Input
@@ -250,117 +279,115 @@ export default function ReportsPage() {
               </Alert>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </WorkspaceSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Report preview</CardTitle>
-          <CardDescription>Rendered from the persisted payload with per-asset and system summaries.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!payload && (
-            <div className="text-sm text-muted-foreground">Generate a report to see details.</div>
-          )}
-          {payload && (
-            <>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant={viewVariant === "client" ? "secondary" : "default"}>{viewVariant} view</Badge>
-                <Badge variant="outline">Job {payload.jobId}</Badge>
-                <Badge variant="outline">Submission {payload.submissionId}</Badge>
-                {payload.systemSummary.systemTypeCode ? (
-                  <Badge variant="outline">System: {payload.systemSummary.systemTypeCode}</Badge>
-                ) : null}
-                {hasMissing && (
-                  <Badge variant="destructive" className="flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> Missing required
-                  </Badge>
-                )}
-              </div>
-
-              {payload.warnings.length ? (
-                <Alert variant="destructive" data-testid="alert-report-warnings">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Warnings</AlertTitle>
-                  <AlertDescription className="space-y-1">
-                    {payload.warnings.map((msg) => (
-                      <div key={msg}>{msg}</div>
-                    ))}
-                  </AlertDescription>
-                </Alert>
+      <WorkspaceSection
+        title="Report preview"
+        description="Rendered from persisted payload with per-asset summaries."
+      >
+        {!payload && (
+          <div className="text-sm text-muted-foreground">Generate a report to see details.</div>
+        )}
+        {payload && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge variant={viewVariant === "client" ? "secondary" : "default"}>{viewVariant} view</Badge>
+              <Badge variant="outline">Job {payload.jobId}</Badge>
+              <Badge variant="outline">Submission {payload.submissionId}</Badge>
+              {payload.systemSummary.systemTypeCode ? (
+                <Badge variant="outline">System: {payload.systemSummary.systemTypeCode}</Badge>
               ) : null}
+              {hasMissing && (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> Missing required
+                </Badge>
+              )}
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {payload.perAsset.map((asset) => (
-                  <Card key={`${asset.assetId ?? "general"}-${asset.label}`} className="border-dashed">
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4" /> {asset.label || "General"}
-                      </CardTitle>
-                      <CardDescription>{asset.location || "Unspecified location"}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {asset.instances.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No entity instances recorded for this asset.</p>
-                      )}
-                      {asset.instances.map((instance) => (
-                        <div key={instance.id} className="rounded-md border p-3 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="font-medium">{instance.title || "Entity"}</div>
-                            <Badge variant={instance.status === "submitted" ? "default" : "outline"}>{instance.status}</Badge>
-                          </div>
-                          <Separator />
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium">Answers</p>
-                            {renderAnswers(instance.answers)}
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium">Instrumentation</p>
-                            {renderReadings(instance.readings, viewVariant)}
-                          </div>
+            {payload.warnings.length ? (
+              <Alert variant="destructive" data-testid="alert-report-warnings">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Warnings</AlertTitle>
+                <AlertDescription className="space-y-1">
+                  {payload.warnings.map((msg) => (
+                    <div key={msg}>{msg}</div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {payload.perAsset.map((asset) => (
+                <Card key={`${asset.assetId ?? "general"}-${asset.label}`} className="border-dashed">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" /> {asset.label || "General"}
+                    </CardTitle>
+                    <CardDescription>{asset.location || "Unspecified location"}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {asset.instances.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No entity instances recorded for this asset.</p>
+                    )}
+                    {asset.instances.map((instance) => (
+                      <div key={instance.id} className="rounded-md border p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-medium">{instance.title || "Entity"}</div>
+                          <Badge variant={instance.status === "submitted" ? "default" : "outline"}>{instance.status}</Badge>
                         </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        <Separator />
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Answers</p>
+                          {renderAnswers(instance.answers)}
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Instrumentation</p>
+                          {renderReadings(instance.readings, viewVariant)}
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="space-y-2 p-3 rounded-md border">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" /> Submission status
-                  </div>
-                  <div className="text-sm">{payload.status}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Submitted entities: {payload.siteSummary.submittedEntities} / {payload.siteSummary.totalEntities}
-                  </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-2 p-3 rounded-md border">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" /> Submission status
                 </div>
-                <div className="space-y-2 p-3 rounded-md border">
-                  <div className="text-sm font-medium">Required entities</div>
-                  <div className="text-sm text-muted-foreground">
-                    {payload.systemSummary.requiredEntities.length ? payload.systemSummary.requiredEntities.join(", ") : "None"}
-                  </div>
-                </div>
-                <div className="space-y-2 p-3 rounded-md border">
-                  <div className="text-sm font-medium">Missing entities</div>
-                  <div className="text-sm text-muted-foreground">
-                    {payload.systemSummary.missingEntities.length
-                      ? payload.systemSummary.missingEntities.join(", ")
-                      : "No gaps detected"}
-                  </div>
+                <div className="text-sm">{payload.status}</div>
+                <div className="text-xs text-muted-foreground">
+                  Submitted entities: {payload.siteSummary.submittedEntities} / {payload.siteSummary.totalEntities}
                 </div>
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+              <div className="space-y-2 p-3 rounded-md border">
+                <div className="text-sm font-medium">Required entities</div>
+                <div className="text-sm text-muted-foreground">
+                  {payload.systemSummary.requiredEntities.length
+                    ? payload.systemSummary.requiredEntities.join(", ")
+                    : "None"}
+                </div>
+              </div>
+              <div className="space-y-2 p-3 rounded-md border">
+                <div className="text-sm font-medium">Missing entities</div>
+                <div className="text-sm text-muted-foreground">
+                  {payload.systemSummary.missingEntities.length
+                    ? payload.systemSummary.missingEntities.join(", ")
+                    : "No gaps detected"}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </WorkspaceSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Sign-off</CardTitle>
-          <CardDescription>Store a signature and payload hash for the current report.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+      <WorkspaceSection
+        title="Sign-off"
+        description="Store signatures without breaking the evidence chain."
+      >
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="signingRole">Signing role</Label>
             <Input
@@ -390,8 +417,8 @@ export default function ReportsPage() {
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </WorkspaceSection>
+    </WorkspaceShell>
   );
 }
