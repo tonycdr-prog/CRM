@@ -557,7 +557,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
                 Deucalion
               </p>
-              <h1 className="text-2xl font-semibold leading-tight text-foreground">
+              <h1 className="text-2xl font-semibold tracking-[0.12em] leading-snug text-foreground">
                 Calm operational workspace
               </h1>
             </div>
@@ -671,7 +671,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               </div>
             )}
 
-            <section className="space-y-4 px-6">
+            <section className="space-y-4 px-6 border-t border-muted/50 pt-6 mt-6">
               <div className="flex flex-col gap-1">
                 <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
                   Core flows
@@ -736,7 +736,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               </div>
             </section>
 
-            <section className="px-6">
+            <section className="px-6 border-t border-muted/50 pt-6 mt-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-border bg-muted/40 p-4">
                   <div className="flex items-center justify-between">
@@ -831,7 +831,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               dockItems.map((item) => (
                 <article
                   key={item.id}
-                  className="group flex min-w-[220px] flex-1 flex-col gap-3 rounded-2xl border border-border bg-muted/60 p-3 transition-colors duration-300 hover:border-primary group-hover:bg-background/80"
+                  className="group flex min-w-[220px] flex-1 flex-col gap-3 rounded-2xl border border-border bg-muted/60 p-3 transition-colors duration-300 hover:border-primary group-hover:bg-background/80 focus-within:ring-1 focus-within:ring-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background"
                 >
                   <div className="flex items-center gap-3">
                     <div
