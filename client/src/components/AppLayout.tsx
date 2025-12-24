@@ -551,7 +551,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
   return (
     <div className="relative flex h-screen w-full bg-background text-foreground">
       <main className={cn("flex h-full w-full flex-1 flex-col overflow-hidden", mainSpacingClass)}>
-        <header className="border-b border-border bg-background/80 px-6 py-4 backdrop-blur-sm">
+        <header className="border-b border-muted/40 bg-background/80 px-6 py-4 backdrop-blur-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
@@ -672,6 +672,11 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
             )}
 
             <section className="space-y-4 px-6 border-t border-muted/50 pt-6 mt-6">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.5em] text-muted-foreground">
+                <span className="h-px flex-1 bg-muted/70" aria-hidden="true" />
+                <span>System structure</span>
+                <span className="h-px flex-1 bg-muted/70" aria-hidden="true" />
+              </div>
               <div className="flex flex-col gap-1">
                 <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
                   Core flows
@@ -737,6 +742,11 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
             </section>
 
             <section className="px-6 border-t border-muted/50 pt-6 mt-6">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.5em] text-muted-foreground">
+                <span className="h-px flex-1 bg-muted/70" aria-hidden="true" />
+                <span>Guided evidence journeys</span>
+                <span className="h-px flex-1 bg-muted/70" aria-hidden="true" />
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-border bg-muted/40 p-4">
                   <div className="flex items-center justify-between">
@@ -802,9 +812,10 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
       <div className={dockWrapperClass}>
         <div className={dockContainerClass} role="region" aria-label="Composable systems dock">
           <div className="flex items-center justify-between gap-3">
-            <div>
+            <div className="flex flex-col gap-1">
               <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">Dock</p>
               <p className="text-sm font-semibold text-foreground">Composable palette</p>
+              <p className="text-[10px] text-muted-foreground">Traceable surfaces</p>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Button
@@ -836,10 +847,13 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
-                        "h-12 w-12 rounded-full bg-gradient-to-br shadow-inner transition-transform duration-300 group-hover:scale-105 group-hover:shadow-[0_0_22px_var(--dock-shadow)]",
+                        "h-12 w-12 rounded-full bg-gradient-to-br shadow-inner transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_22px_var(--dock-shadow)]",
                         item.color
                       )}
-                      style={{ "--dock-shadow": item.glow } as CSSProperties}
+                      style={{
+                        "--dock-shadow": item.glow,
+                        animation: "dockGlowPulse 10s ease-in-out infinite",
+                      } as CSSProperties}
                       aria-hidden="true"
                     />
                     <div className="flex-1">
@@ -853,35 +867,44 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Widget</span>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteWidget(item)}
-                        aria-label={`Delete ${item.label}`}
-                        title="Remove widget from dock"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleSendToTab(item)}
-                        aria-label={`Send ${item.label} to tab`}
-                        title="Send widget to dashboard tab"
-                        disabled={pendingRoute === item.route && addToDashboard.isPending}
-                      >
-                        <ArrowUpRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleFullScreen(item.label)}
-                        aria-label={`Focus ${item.label}`}
-                        title="Zoom widget into full screen"
-                      >
-                        <Maximize2 className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-center gap-1 text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteWidget(item)}
+                          aria-label={`Delete ${item.label}`}
+                          title="Remove widget from dock"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <span>Remove ×</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleSendToTab(item)}
+                          aria-label={`Send ${item.label} to tab`}
+                          title="Send widget to dashboard tab"
+                          disabled={pendingRoute === item.route && addToDashboard.isPending}
+                        >
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Button>
+                        <span>Send ↗</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleFullScreen(item.label)}
+                          aria-label={`Focus ${item.label}`}
+                          title="Zoom widget into full screen"
+                        >
+                          <Maximize2 className="h-4 w-4" />
+                        </Button>
+                        <span>Fullscreen ⤢</span>
+                      </div>
                     </div>
                   </div>
                 </article>
