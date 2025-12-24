@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +68,8 @@ interface DockItem {
   label: string;
   description: string;
   detail: string;
+  context: string;
+  glow: string;
   route?: string;
   color: string;
 }
@@ -199,6 +201,8 @@ const createDockItems = (): DockItem[] => [
     label: "CRM truth layer",
     description: "Jobs · sites · assets · people",
     detail: "Every entity maps back to the truth ledger.",
+    context: "Jobs queue / Sites registry",
+    glow: "rgba(14,165,233,0.55)",
     route: ROUTES.JOBS,
     color: "from-sky-500 to-blue-500",
   },
@@ -207,6 +211,8 @@ const createDockItems = (): DockItem[] => [
     label: "Evidence spine",
     description: "Traceable proof + attachments",
     detail: "Timeline, approvals, and linked files.",
+    context: "Forms + approvals",
+    glow: "rgba(16,185,129,0.55)",
     route: ROUTES.HUB_FORMS,
     color: "from-emerald-500 to-emerald-700",
   },
@@ -215,6 +221,8 @@ const createDockItems = (): DockItem[] => [
     label: "Golden thread UI",
     description: "Timelines, events, audit",
     detail: "Follow decisions from job creation to handoff.",
+    context: "Golden thread timeline",
+    glow: "rgba(251,191,36,0.45)",
     route: ROUTES.GOLDEN_THREAD,
     color: "from-amber-400 to-amber-600",
   },
@@ -223,6 +231,8 @@ const createDockItems = (): DockItem[] => [
     label: "Module gating",
     description: "Composable capabilities",
     detail: "Layer modules while keeping the foundation visible.",
+    context: "Dashboard + module gates",
+    glow: "rgba(192,132,252,0.55)",
     route: ROUTES.DASHBOARD,
     color: "from-purple-500 to-fuchsia-500",
   },
@@ -708,8 +718,10 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                               label: item.title,
                               description: item.description,
                               detail: item.description,
+                              context: "Quick entry",
+                              glow: "rgba(148,163,184,0.45)",
                               route: item.url,
-                              color: "",
+                              color: "from-slate-300 to-slate-500",
                             });
                           }}
                           aria-label={`Send ${item.title} to dashboard`}
@@ -824,15 +836,19 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
-                        "h-12 w-12 rounded-full bg-gradient-to-br shadow-inner",
+                        "h-12 w-12 rounded-full bg-gradient-to-br shadow-inner transition-transform duration-300 group-hover:scale-105 group-hover:shadow-[0_0_22px_var(--dock-shadow)]",
                         item.color
                       )}
+                      style={{ "--dock-shadow": item.glow } as CSSProperties}
                       aria-hidden="true"
                     />
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-foreground">{item.label}</p>
                       <p className="text-[11px] text-muted-foreground">{item.description}</p>
                       <p className="text-[11px] text-muted-foreground">{item.detail}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {item.context}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -843,6 +859,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                         size="icon"
                         onClick={() => handleDeleteWidget(item)}
                         aria-label={`Delete ${item.label}`}
+                        title="Remove widget from dock"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -851,6 +868,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                         size="icon"
                         onClick={() => handleSendToTab(item)}
                         aria-label={`Send ${item.label} to tab`}
+                        title="Send widget to dashboard tab"
                         disabled={pendingRoute === item.route && addToDashboard.isPending}
                       >
                         <ArrowUpRight className="h-4 w-4" />
@@ -860,6 +878,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
                         size="icon"
                         onClick={() => handleFullScreen(item.label)}
                         aria-label={`Focus ${item.label}`}
+                        title="Zoom widget into full screen"
                       >
                         <Maximize2 className="h-4 w-4" />
                       </Button>
