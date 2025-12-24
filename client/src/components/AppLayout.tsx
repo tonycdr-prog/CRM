@@ -831,7 +831,7 @@ export function AppLayout({ children, isOrgAdmin }: AppLayoutProps) {
               dockItems.map((item) => (
                 <article
                   key={item.id}
-                  className="group flex min-w-[220px] flex-1 flex-col gap-3 rounded-2xl border border-border bg-muted/60 p-3 transition hover:border-primary"
+                  className="group flex min-w-[220px] flex-1 flex-col gap-3 rounded-2xl border border-border bg-muted/60 p-3 transition-colors duration-300 hover:border-primary group-hover:bg-background/80"
                 >
                   <div className="flex items-center gap-3">
                     <div
