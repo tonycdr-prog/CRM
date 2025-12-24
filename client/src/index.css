@@ -292,4 +292,15 @@
     inset: -1px;
   }
 }
-\r\n@keyframes dockGlowPulse {\r\n  0%,\r\n  100% {\r\n    transform: scale(1);\r\n    opacity: 0.9;\r\n  }\r\n  50% {\r\n    transform: scale(1.05);\r\n    opacity: 0.7;\r\n  }\r\n}
+
+@keyframes dockGlowPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.7;
+  }
+}
